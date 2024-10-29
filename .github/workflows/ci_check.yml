@@ -1,0 +1,34 @@
+name: CI_Check
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22"
+
+      - name: Setup environnment
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev
+
+      - name: Install dependencies
+        run: |
+          go get .
+          go install fyne.io/fyne/v2/cmd/fyne@latest
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v ./...
