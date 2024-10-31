@@ -3,7 +3,6 @@ package infrastructure
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"go2s3/internal/connection"
 
@@ -15,9 +14,6 @@ const (
 	allConnectionsKey = "allConnections"
 )
 
-var (
-    ErrConnectionNotFound = errors.New("connection not found")
-)
 
 type ConnectionRepositoryImpl struct {
 	prefs fyne.Preferences
@@ -31,7 +27,7 @@ var _ connection.Repository = &ConnectionRepositoryImpl{}
 
 func (r *ConnectionRepositoryImpl) ListConnections(ctx context.Context) ([]*connection.Connection, error) {
 	content := r.prefs.String(allConnectionsKey)
-	if content == "" {
+	if content == "" || content == "null" {
 		return []*connection.Connection{}, nil
 	}
 
@@ -104,7 +100,7 @@ func (r *ConnectionRepositoryImpl) DeleteConnection(ctx context.Context, id uuid
     }
 
     if !found {
-        return ErrConnectionNotFound
+        return connection.ErrConnectionNotFound 
     }
 
     content, err := json.Marshal(connToKeep)
@@ -129,7 +125,7 @@ func (r *ConnectionRepositoryImpl) GetConnection(ctx context.Context, name strin
         }
     }
 
-    return nil, ErrConnectionNotFound
+    return nil, connection.ErrConnectionNotFound
 }
 
 func (r *ConnectionRepositoryImpl) SetSelectedConnection(ctx context.Context, id uuid.UUID) error {
@@ -149,7 +145,7 @@ func (r *ConnectionRepositoryImpl) SetSelectedConnection(ctx context.Context, id
     }
 
     if !found {
-        return ErrConnectionNotFound
+        return connection.ErrConnectionNotFound
     }
 
     content, err := json.Marshal(connections)
@@ -175,10 +171,10 @@ func (r *ConnectionRepositoryImpl) GetSelectedConnection(ctx context.Context) (*
         }
     }
 
-    return nil, ErrConnectionNotFound
+    return nil, connection.ErrConnectionNotFound
 }
 
-func fromJson[T interface{}](content string) (T, error) {
+func fromJson[T any](content string) (T, error) {
     var structType T
 	err := json.Unmarshal([]byte(content), &structType)
     if err != nil {

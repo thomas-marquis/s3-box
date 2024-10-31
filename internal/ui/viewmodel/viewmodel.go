@@ -52,7 +52,7 @@ func NewViewModel(explorerRepo explorer.Repository, dirScv *explorer.DirectorySe
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	currentConn, err := connRepo.GetSelectedConnection(ctx)
-	if err != nil {
+	if err != nil && err != connection.ErrConnectionNotFound {
 		panic(err)
 	}
 	if currentConn != nil {
