@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"go2s3/internal/connection"
 	"go2s3/internal/explorer"
 	"go2s3/internal/infrastructure"
 	appcontext "go2s3/internal/ui/app/context"
@@ -39,7 +40,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // TODO get this from the user's settings
 	defer cancel()
 	lastSelectedConn, err := connRepo.GetSelectedConnection(ctx)
-	if err != nil && err != infrastructure.ErrConnectionNotFound {
+	if err != nil && err != connection.ErrConnectionNotFound {
 		sugarLog.Error("Error getting selected connection", err)
 		return nil, err
 	}
