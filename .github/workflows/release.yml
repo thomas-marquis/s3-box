@@ -8,6 +8,9 @@ on:
 env:
   BASE_APP_NAME: "s3box"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
