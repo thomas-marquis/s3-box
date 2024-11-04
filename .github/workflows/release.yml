@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  BASE_APP_NAME: "s3box"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22"
+
+      - name: Setup environnment
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev
+
+      - name: Install dependencies
+        run: |
+          go get .
+          go install fyne.io/fyne/v2/cmd/fyne@latest
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Package for Linux
+        run: |
+          fyne package -os linux -icon icon.png --name ${{ env.BASE_APP_NAME }}-${{ github.ref }}
+
+      - name: Upload binary to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          release_name: Release ${{ github.ref }}
+          make_latest: true
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.BASE_APP_NAME }}-${{ github.ref }}
+          asset_name: ${{ env.BASE_APP_NAME }}-${{ github.ref }}
+          tag: ${{ github.ref }}
+          overwrite: true
+          body: "New release ${{ github.ref }}"
+          draft: false
+          prerelease: false
