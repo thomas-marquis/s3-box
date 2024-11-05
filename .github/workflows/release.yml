@@ -37,11 +37,11 @@ jobs:
 
       - name: Get semver
         id: get_version
-        run: echo "::set-output name=version::${GITHUB_REF_NAME#v}"
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
       - name: Package for Linux
         run: |
-          fyne package -os linux -icon icon.png -name ${{ env.BASE_APP_NAME }} -appVersion ${{ steps.get_version.outputs.version }}
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 fyne package -os linux -icon icon.png -name ${{ env.BASE_APP_NAME }} -appVersion ${{ steps.get_version.outputs.version }}
 
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v2
