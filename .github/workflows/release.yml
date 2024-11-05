@@ -6,7 +6,7 @@ on:
       - "v*"
 
 env:
-  BASE_APP_NAME: "s3box"
+  BASE_APP_NAME: "S3Box"
 
 permissions:
   contents: write
@@ -25,7 +25,7 @@ jobs:
       - name: Setup environnment
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev
+          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev libc6
 
       - name: Install dependencies
         run: |
@@ -35,17 +35,21 @@ jobs:
       - name: Test
         run: go test -v ./...
 
+      - name: Get semver
+        id: get_version
+        run: echo "::set-output name=version::${GITHUB_REF_NAME#v}"
+
       - name: Package for Linux
         run: |
-          fyne package -os linux -icon icon.png -name ${{ env.BASE_APP_NAME }}-${{ github.ref_name }}
+          fyne package -os linux -icon icon.png -name ${{ env.BASE_APP_NAME }} -appVersion ${{ steps.get_version.outputs.version }}
 
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v2
         with:
-          release_name: Release ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }} linux
           make_latest: true
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.BASE_APP_NAME }}-${{ github.ref_name }}.tar.xz
+          file: ${{ env.BASE_APP_NAME }}.tar.xz
           asset_name: ${{ env.BASE_APP_NAME }}-${{ github.ref_name }}.tar.xz
           tag: ${{ github.ref }}
           overwrite: true
