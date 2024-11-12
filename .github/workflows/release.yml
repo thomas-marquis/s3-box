@@ -48,10 +48,10 @@ jobs:
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v2
         with:
-          release_name: Release ${{ github.ref_name }} linux
+          release_name: Release ${{ github.ref_name }} linux amd64
           make_latest: true
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.BASE_APP_NAME }}.tar.xz
+          file: fyne-cross/dist/linux-amd64/${{ env.BASE_APP_NAME }}.tar.xz
           asset_name: ${{ env.BASE_APP_NAME }}-${{ github.ref_name }}.tar.xz
           tag: ${{ github.ref }}
           overwrite: true
