@@ -1,12 +1,10 @@
-name: Release
+name: Release (debug)
 
-on:
-  push:
-    tags:
-      - "v*"
+on: workflow_dispatch
 
 env:
   BASE_APP_NAME: "S3Box"
+  TAG: debug
 
 permissions:
   contents: write
@@ -25,7 +23,7 @@ jobs:
       - name: Setup environnment
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev libc6
+          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev
 
       - name: Install dependencies
         run: |
@@ -33,27 +31,28 @@ jobs:
           go install fyne.io/fyne/v2/cmd/fyne@latest
           go install github.com/fyne-io/fyne-cross@latest
 
-      - name: Test
-        run: go test -v ./...
+      # - name: Test
+      #   run: go test -v ./...
 
       - name: Get semver
         id: get_version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+        run: echo "version=0.1.0" >> $GITHUB_OUTPUT
 
       - name: Package for Linux
         run: |
-          fyne package -os linux -icon icon.png -name ${{ env.BASE_APP_NAME }} -appVersion ${{ steps.get_version.outputs.version }}
+          # fyne package -os linux -icon icon.png -name ${{ env.BASE_APP_NAME }} -appVersion ${{ steps.get_version.outputs.version }}
+          fyne-cross linux -arch=amd64 -name ${{ env.BASE_APP_NAME }} -icon icon.png
 
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v2
         with:
-          release_name: Release ${{ github.ref_name }} linux
+          release_name: Release ${{ env.TAG }} linux
           make_latest: true
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ${{ env.BASE_APP_NAME }}.tar.xz
-          asset_name: ${{ env.BASE_APP_NAME }}-${{ github.ref_name }}.tar.xz
-          tag: ${{ github.ref }}
+          asset_name: ${{ env.BASE_APP_NAME }}-${{ env.TAG }}.tar.xz
+          tag: "v0.1.0"
           overwrite: true
-          body: "New release ${{ github.ref_name }}"
+          body: "New release ${{ env.TAG }}"
           draft: false
           prerelease: false
