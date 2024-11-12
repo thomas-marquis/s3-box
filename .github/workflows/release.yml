@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  BASE_APP_NAME: "S3Box"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22"
+
+      - name: Setup environnment
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev libc6
+
+      - name: Install dependencies
+        run: |
+          go get .
+          go install fyne.io/fyne/v2/cmd/fyne@latest
+          go install github.com/fyne-io/fyne-cross@latest
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Get semver
+        id: get_version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Package for Linux
+        run: |
+          fyne-cross linux -arch=amd64 -name ${{ env.BASE_APP_NAME }} -icon icon.png -app-version ${{ steps.get_version.outputs.version }}
+
+      - name: Upload binary to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          release_name: Release ${{ github.ref_name }} linux amd64
+          make_latest: true
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: fyne-cross/dist/linux-amd64/${{ env.BASE_APP_NAME }}.tar.xz
+          asset_name: ${{ env.BASE_APP_NAME }}-${{ github.ref_name }}.tar.xz
+          tag: ${{ github.ref }}
+          overwrite: true
+          body: "New release ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
