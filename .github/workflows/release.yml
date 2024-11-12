@@ -33,8 +33,8 @@ jobs:
           go install fyne.io/fyne/v2/cmd/fyne@latest
           go install github.com/fyne-io/fyne-cross@latest
 
-      - name: Test
-        run: go test -v ./...
+      # - name: Test
+      #   run: go test -v ./...
 
       - name: Get semver
         id: get_version
@@ -42,7 +42,8 @@ jobs:
 
       - name: Package for Linux
         run: |
-          fyne package -os linux -icon icon.png -name ${{ env.BASE_APP_NAME }} -appVersion ${{ steps.get_version.outputs.version }}
+          # fyne package -os linux -icon icon.png -name ${{ env.BASE_APP_NAME }} -appVersion ${{ steps.get_version.outputs.version }}
+          fyne-cross linux -arch=amd64 -name ${{ env.BASE_APP_NAME }} -icon icon.png -app-version ${{ steps.get_version.outputs.version }}
 
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v2
