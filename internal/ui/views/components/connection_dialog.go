@@ -10,84 +10,82 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+func makeCopyBtn(enableCopy bool, entry *widget.Entry, w fyne.Window) *widget.Button {
+	return widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
+		if enableCopy && entry.Text != "" {
+			w.Clipboard().SetContent(entry.Text)
+		}
+	})
+}
+
+func makeTextInput(label, defaultValue, placeholder string, enableCopy bool, w fyne.Window) (*fyne.Container, *widget.Entry) {
+	entry := widget.NewEntry()
+	entry.SetPlaceHolder(placeholder)
+	entry.SetText(defaultValue)
+	copyBtn := makeCopyBtn(enableCopy, entry, w)
+	if !enableCopy {
+		copyBtn.Hide()
+	}
+	entryLabel := widget.NewLabel(label)
+	c := container.NewBorder(nil, nil, entryLabel, copyBtn, entry)
+	return c, entry
+}
+
 func NewConnectionDialog(
 	ctx appcontext.AppContext,
-	label, name, accessKey, secretKey, server, bucket string,
+	label, name, accessKey, secretKey, server, bucket, region string,
 	useTLS, enableCopy bool,
-	onSave func(name, accessKey, secretKey, server, bucket string, useTLS bool) error,
+	onSave func(name, accessKey, secretKey, server, bucket, region string, useTLS bool) error,
 ) *dialog.CustomDialog {
-	nameEntry := widget.NewEntry()
-	nameEntry.SetPlaceHolder("Connection name")
-	nameEntry.SetText(name)
-
-	accessKeyEntry := widget.NewEntry()
-	accessKeyEntry.SetPlaceHolder("Access key")
-	accessKeyEntry.SetText(accessKey)
-
-	secretKeyEntry := widget.NewEntry()
-	secretKeyEntry.SetPlaceHolder("secretKey")
-	secretKeyEntry.SetText(secretKey)
-
-	serverEntry := widget.NewEntry()
-	serverEntry.SetPlaceHolder("Server")
-	serverEntry.SetText(server)
-
-	bucketEntry := widget.NewEntry()
-	bucketEntry.SetPlaceHolder("Bucket")
-	bucketEntry.SetText(bucket)
+	nameBloc, nameEntry := makeTextInput("Connection name", name, "My new connection", enableCopy, ctx.W())
+	accessKeyBloc, accessKeyEntry := makeTextInput("Access key Id", accessKey, "Access key", enableCopy, ctx.W())
+	secretKeyBloc, secretKeyEntry := makeTextInput("Secret access key", secretKey, "Secret key", enableCopy, ctx.W())
+	serverBloc, serverEntry := makeTextInput("Server hostname", server, "s3.amazonaws.com", enableCopy, ctx.W())
+	bucketBloc, bucketEntry := makeTextInput("Bucket name", bucket, "my-bucket", enableCopy, ctx.W())
+	regionBloc, regionEntry := makeTextInput("Region", region, "us-east-1", enableCopy, ctx.W())
 
 	useTlsEntry := widget.NewCheck("Use TLS", nil)
 	useTlsEntry.Checked = useTLS
 
+	connTypeChoice := widget.NewRadioGroup([]string{"AWS", "Custom"}, func(val string) {
+		if val == "AWS" {
+			useTlsEntry.Hide()
+			serverEntry.SetText("")
+			serverBloc.Hide()
+			regionBloc.Show()
+		} else {
+			useTlsEntry.Show()
+			serverBloc.Show()
+			regionEntry.SetText("")
+			regionBloc.Hide()
+		}
+	})
+	if region == "" {
+		connTypeChoice.SetSelected("Custom")
+	} else {
+		connTypeChoice.SetSelected("AWS")
+	}
+
 	saveBtn := widget.NewButton("Save", func() {})
 	saveBtn.SetIcon(theme.ConfirmIcon())
-
-	copyAccessKeyBtn := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		if enableCopy && accessKeyEntry.Text != "" {
-			ctx.W().Clipboard().SetContent(accessKeyEntry.Text)
-		}
-	})
-
-	copySecretKeyBtn := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		if enableCopy && secretKeyEntry.Text != "" {
-			ctx.W().Clipboard().SetContent(secretKeyEntry.Text)
-		}
-	})
-
-	copyServerBtn := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		if enableCopy && serverEntry.Text != "" {
-			ctx.W().Clipboard().SetContent(serverEntry.Text)
-		}
-	})
-
-	copyBucketBtn := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		if enableCopy && bucketEntry.Text != "" {
-			ctx.W().Clipboard().SetContent(bucketEntry.Text)
-		}
-	})
-
-	if !enableCopy {
-		copyAccessKeyBtn.Hide()
-		copySecretKeyBtn.Hide()
-		copyServerBtn.Hide()
-		copyBucketBtn.Hide()
-	}
 
 	d := dialog.NewCustom(
 		label,
 		"Close",
 		container.NewVBox(
-			nameEntry,
-			container.NewBorder(nil, nil, nil, copyAccessKeyBtn, accessKeyEntry),
-			container.NewBorder(nil, nil, nil, copySecretKeyBtn, secretKeyEntry),
-			container.NewBorder(nil, nil, nil, copyServerBtn, serverEntry),
-			container.NewBorder(nil, nil, nil, copyBucketBtn, bucketEntry),
+			connTypeChoice,
+			nameBloc,
+			serverBloc,
+			accessKeyBloc,
+			secretKeyBloc,
+			bucketBloc,
+			regionBloc,
 			useTlsEntry,
 			container.NewHBox(saveBtn),
 		),
 		ctx.W(),
 	)
-	d.Resize(fyne.NewSize(500, 200))
+	d.Resize(fyne.NewSize(650, 200))
 
 	saveBtn.OnTapped = func() {
 		err := onSave(
@@ -96,6 +94,7 @@ func NewConnectionDialog(
 			secretKeyEntry.Text,
 			serverEntry.Text,
 			bucketEntry.Text,
+			regionEntry.Text,
 			useTlsEntry.Checked,
 		)
 		if err == nil {
@@ -105,6 +104,7 @@ func NewConnectionDialog(
 			secretKeyEntry.Text = ""
 			serverEntry.Text = ""
 			bucketEntry.Text = ""
+			regionEntry.Text = ""
 			useTlsEntry.Checked = false
 		}
 	}

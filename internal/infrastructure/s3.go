@@ -22,21 +22,24 @@ var (
 )
 
 type s3Client struct {
-	Bucket string
-
 	log     *zap.SugaredLogger
 	session *session.Session
 	s3      *s3.S3
+
+	Bucket string
 }
 
-func newS3Client(log *zap.SugaredLogger, accessKey, secretKey, server, bucket string, useTls bool) (*s3Client, error) {
+func newS3Client(log *zap.SugaredLogger, accessKey, secretKey, server, bucket, region string, useTls bool) (*s3Client, error) {
+	if region == "" {
+		region = "us-east-1" // for custom endpoints, value is not important but still required
+	}
 	sess, err := session.NewSession(&aws.Config{
 		Credentials: credentials.NewStaticCredentials(accessKey, secretKey, ""),
 		Endpoint:    aws.String(server),
 		Logger: aws.LoggerFunc(func(args ...interface{}) {
 			log.Infof(args[0].(string), args[1:]...)
 		}),
-		Region:           aws.String("us-west-2"), // The value here doesn't matter
+		Region:           aws.String(region),
 		S3ForcePathStyle: aws.Bool(true),
 		DisableSSL:       aws.Bool(!useTls),
 	})

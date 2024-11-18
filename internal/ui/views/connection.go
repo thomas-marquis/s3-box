@@ -30,9 +30,9 @@ func GetConnectionView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		"New connection",
 		theme.ContentAddIcon(),
 		func() {
-			components.NewConnectionDialog(ctx, "New connection", "", "", "", "", "", false, false,
-				func(name, accessKey, secretKey, server, bucket string, useTLS bool) error {
-					conn := connection.NewConnection(name, server, accessKey, secretKey, bucket, useTLS)
+			components.NewConnectionDialog(ctx, "New connection", "", "", "", "", "", "", false, false,
+				func(name, accessKey, secretKey, server, bucket, region string, useTLS bool) error {
+					conn := connection.NewConnection(name, server, accessKey, secretKey, bucket, useTLS, region)
 					return ctx.Vm().SaveConnection(conn)
 				}).Show()
 		})

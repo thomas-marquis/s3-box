@@ -23,7 +23,7 @@ func NewExplorerRepositoryImpl(logger *zap.Logger, defaultConn *connection.Conne
 	var remoteSrc *s3Client
 	var err error
 	if defaultConn != nil {
-		remoteSrc, err = newS3Client(log, defaultConn.AccessKey, defaultConn.SecretKey, defaultConn.Server, defaultConn.BucketName, defaultConn.UseTls)
+		remoteSrc, err = newS3Client(log, defaultConn.AccessKey, defaultConn.SecretKey, defaultConn.Server, defaultConn.BucketName, defaultConn.Region, defaultConn.UseTls)
 		if err != nil {
 			return nil, fmt.Errorf("NewExplorerRepositoryImpl: %w", err)
 		}
@@ -59,7 +59,7 @@ func (r *ExplorerRepositoryImpl) GetFileContent(ctx context.Context, file *explo
 
 func (r *ExplorerRepositoryImpl) SetConnection(ctx context.Context, c *connection.Connection) error {
 	r.conn = c
-	newRemote, err := newS3Client(r.log, c.AccessKey, c.SecretKey, c.Server, c.BucketName, c.UseTls)
+	newRemote, err := newS3Client(r.log, c.AccessKey, c.SecretKey, c.Server, c.BucketName, c.Region, c.UseTls)
 	if err != nil {
 		return fmt.Errorf("SetConnection: %w", err)
 	}

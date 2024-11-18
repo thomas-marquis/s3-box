@@ -64,6 +64,7 @@ func (r *ConnectionRepositoryImpl) SaveConnection(ctx context.Context, c *connec
             conn.BucketName = c.BucketName
             conn.UseTls = c.UseTls
             conn.IsSelected = c.IsSelected
+            conn.Region = c.Region
             break
         }
     }
