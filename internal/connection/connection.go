@@ -11,9 +11,10 @@ type Connection struct {
 	BucketName string
 	UseTls     bool
 	IsSelected bool
+	Region     string
 }
 
-func NewConnection(name, server, accessKey, secretKey, bucket string, useTLS bool) *Connection {
+func NewConnection(name, server, accessKey, secretKey, bucket string, useTLS bool, region string) *Connection {
 	return &Connection{
 		ID:         uuid.New(),
 		Name:       name,
@@ -22,5 +23,6 @@ func NewConnection(name, server, accessKey, secretKey, bucket string, useTLS boo
 		SecretKey:  secretKey,
 		BucketName: bucket,
 		UseTls:     useTLS,
+		Region:     region,
 	}
 }
