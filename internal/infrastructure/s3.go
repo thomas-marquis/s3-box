@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go2s3/internal/explorer"
+	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"os"
 	"strings"
 

@@ -2,13 +2,13 @@ package app
 
 import (
 	"context"
-	"go2s3/internal/connection"
-	"go2s3/internal/explorer"
-	"go2s3/internal/infrastructure"
-	appcontext "go2s3/internal/ui/app/context"
-	"go2s3/internal/ui/app/navigation"
-	"go2s3/internal/ui/viewmodel"
-	"go2s3/internal/ui/views"
+	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/explorer"
+	"github.com/thomas-marquis/s3-box/internal/infrastructure"
+	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
+	"github.com/thomas-marquis/s3-box/internal/ui/views"
 	"time"
 
 	"fyne.io/fyne/v2"

@@ -1,9 +1,9 @@
 package components
 
 import (
-	"go2s3/internal/explorer"
-	appcontext "go2s3/internal/ui/app/context"
-	"go2s3/internal/utils"
+	"github.com/thomas-marquis/s3-box/internal/explorer"
+	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/utils"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"

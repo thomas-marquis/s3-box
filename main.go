@@ -1,8 +1,8 @@
 package main
 
 import (
-	"go2s3/internal/ui/app"
-	"go2s3/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/app"
+	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 
 	"go.uber.org/zap"
 )

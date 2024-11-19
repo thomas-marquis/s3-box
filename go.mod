@@ -1,4 +1,4 @@
-module go2s3
+module github.com/thomas-marquis/s3-box
 
 go 1.22.5
 

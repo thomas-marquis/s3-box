@@ -11,8 +11,8 @@ package mocks_explorer
 
 import (
 	context "context"
-	connection "go2s3/internal/connection"
-	explorer "go2s3/internal/explorer"
+	connection "github.com/thomas-marquis/s3-box/internal/connection"
+	explorer "github.com/thomas-marquis/s3-box/internal/explorer"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

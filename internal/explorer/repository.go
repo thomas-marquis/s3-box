@@ -2,7 +2,7 @@ package explorer
 
 import (
 	"context"
-	"go2s3/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connection"
 )
 
 type Repository interface {

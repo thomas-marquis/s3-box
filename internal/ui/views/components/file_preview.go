@@ -2,8 +2,8 @@ package components
 
 import (
 	"fmt"
-	"go2s3/internal/explorer"
-	appcontext "go2s3/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/explorer"
+	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"strings"
 	"unicode"
 

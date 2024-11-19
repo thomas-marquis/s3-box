@@ -10,8 +10,8 @@
 package mocks_appcontext
 
 import (
-	navigation "go2s3/internal/ui/app/navigation"
-	viewmodel "go2s3/internal/ui/viewmodel"
+	navigation "github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	viewmodel "github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	reflect "reflect"
 
 	fyne "fyne.io/fyne/v2"

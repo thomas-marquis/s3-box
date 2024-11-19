@@ -1,9 +1,9 @@
 package components_test
 
 import (
-	"go2s3/internal/explorer"
-	"go2s3/internal/ui/views/components"
-	mocks_appcontext "go2s3/mocks/context"
+	"github.com/thomas-marquis/s3-box/internal/explorer"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/components"
+	mocks_appcontext "github.com/thomas-marquis/s3-box/mocks/context"
 	"testing"
 
 	"go.uber.org/mock/gomock"
