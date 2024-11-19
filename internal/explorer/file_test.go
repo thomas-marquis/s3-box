@@ -10,9 +10,10 @@ import (
 func Test_NewRemoteFile_ShouldBuildNewFile(t *testing.T) {
 	// Given
 	fullPath := "path/to/file.txt"
+	rootDir := explorer.NewDirectory("root", nil)
 
 	// When
-	file := explorer.NewRemoteFile(fullPath)
+	file := explorer.NewRemoteFile(fullPath, rootDir)
 
 	// Then
 	assert.Equal(t, "file.txt", file.Name())

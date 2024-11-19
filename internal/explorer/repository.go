@@ -17,4 +17,6 @@ type Repository interface {
 	DownloadFile(ctx context.Context, file *RemoteFile, dest string) error
 
 	UploadFile(ctx context.Context, local *LocalFile, remote *RemoteFile) error
+
+	DeleteFile(ctx context.Context, remote *RemoteFile) error
 }

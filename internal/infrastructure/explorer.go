@@ -93,3 +93,7 @@ func (r *ExplorerRepositoryImpl) UploadFile(ctx context.Context, local *explorer
 
 	return nil
 }
+
+func (r *ExplorerRepositoryImpl) DeleteFile(ctx context.Context, remote *explorer.RemoteFile) error {
+	return r.s3.DeleteFile(ctx, remote)
+}

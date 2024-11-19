@@ -13,14 +13,16 @@ type RemoteFile struct {
 	dirPath      string
 	sizeBytes    int64
 	lastModified time.Time
+	parentDir    *Directory
 }
 
-func NewRemoteFile(fullPath string) *RemoteFile {
+func NewRemoteFile(fullPath string, parentDir *Directory) *RemoteFile {
 	pathSplit := strings.Split(fullPath, "/")
 	return &RemoteFile{
-		fullPath: fullPath,
-		name:     pathSplit[len(pathSplit)-1],
-		dirPath:  strings.Join(pathSplit[:len(pathSplit)-1], "/"),
+		fullPath:  fullPath,
+		name:      pathSplit[len(pathSplit)-1],
+		dirPath:   strings.Join(pathSplit[:len(pathSplit)-1], "/"),
+		parentDir: parentDir,
 	}
 }
 
@@ -30,6 +32,10 @@ func (f *RemoteFile) Path() string {
 
 func (f *RemoteFile) Name() string {
 	return f.name
+}
+
+func (f *RemoteFile) ParentDir() *Directory {
+	return f.parentDir
 }
 
 func (f *RemoteFile) DirPath() string {

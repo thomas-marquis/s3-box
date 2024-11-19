@@ -240,7 +240,7 @@ func (vm *ViewModel) DownloadFile(f *explorer.RemoteFile, dest string) error {
 
 func (vm *ViewModel) UploadFile(localPath string, remoteDir *explorer.Directory) error {
 	localFile := explorer.NewLocalFile(localPath)
-	remoteFile := explorer.NewRemoteFile(remoteDir.Path() + "/" + localFile.FileName())
+	remoteFile := explorer.NewRemoteFile(remoteDir.Path()+"/"+localFile.FileName(), remoteDir)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -284,4 +284,10 @@ func (vm *ViewModel) SetLastUploadDir(filePath string) error {
 
 func (vm *ViewModel) resetTreeContent() {
 	vm.tree = binding.NewUntypedTree()
+}
+
+func (vm *ViewModel) DeleteFile(f *explorer.RemoteFile) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return vm.explorerRepo.DeleteFile(ctx, f)
 }
