@@ -1,7 +1,7 @@
 package components
 
 import (
-	appcontext "go2s3/internal/ui/app/context"
+	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"

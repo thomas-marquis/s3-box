@@ -3,8 +3,8 @@ package viewmodel
 import (
 	"context"
 	"fmt"
-	"go2s3/internal/connection"
-	"go2s3/internal/explorer"
+	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"path/filepath"
 	"time"
 

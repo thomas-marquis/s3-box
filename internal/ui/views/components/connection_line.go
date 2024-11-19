@@ -2,8 +2,8 @@ package components
 
 import (
 	"fmt"
-	"go2s3/internal/connection"
-	appcontext "go2s3/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/connection"
+	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"

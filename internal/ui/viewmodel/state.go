@@ -1,6 +1,6 @@
 package viewmodel
 
-import "go2s3/internal/connection"
+import "github.com/thomas-marquis/s3-box/internal/connection"
 
 type AppState struct {
 	SelectedConnection *connection.Connection

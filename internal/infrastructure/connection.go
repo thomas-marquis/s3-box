@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go2s3/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connection"
 
 	"fyne.io/fyne/v2"
 	"github.com/google/uuid"

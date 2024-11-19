@@ -1,8 +1,8 @@
 package appcontext
 
 import (
-	"go2s3/internal/ui/app/navigation"
-	"go2s3/internal/ui/viewmodel"
+	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 
 	"fyne.io/fyne/v2"
 	"go.uber.org/zap"

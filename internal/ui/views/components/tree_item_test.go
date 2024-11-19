@@ -1,7 +1,7 @@
 package components_test
 
 import (
-	"go2s3/internal/ui/views/components"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/components"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

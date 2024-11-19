@@ -2,7 +2,7 @@ package utils_test
 
 import (
 	"fmt"
-	"go2s3/internal/utils"
+	"github.com/thomas-marquis/s3-box/internal/utils"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

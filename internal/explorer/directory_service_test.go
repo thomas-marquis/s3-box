@@ -3,8 +3,8 @@ package explorer_test
 import (
 	"context"
 	"errors"
-	"go2s3/internal/explorer"
-	mocks_explorer "go2s3/mocks/explorer"
+	"github.com/thomas-marquis/s3-box/internal/explorer"
+	mocks_explorer "github.com/thomas-marquis/s3-box/mocks/explorer"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

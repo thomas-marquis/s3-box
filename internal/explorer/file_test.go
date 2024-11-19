@@ -1,7 +1,7 @@
 package explorer_test
 
 import (
-	"go2s3/internal/explorer"
+	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
