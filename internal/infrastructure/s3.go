@@ -81,7 +81,7 @@ func (d *s3Client) GetDirectoriesAndFileByPath(ctx context.Context, currDir *exp
 				if key == queryPath {
 					continue
 				}
-				newFile := explorer.NewRemoteFile(key)
+				newFile := explorer.NewRemoteFile(key, currDir)
 				newFile.SetSizeBytes(*obj.Size)
 				newFile.SetLastModified(*obj.LastModified)
 				files = append(files, newFile)
@@ -177,5 +177,18 @@ func (d *s3Client) UploadFile(ctx context.Context, local *explorer.LocalFile, re
 	}
 
 	d.log.Infof("Uploaded %s\n", remote.Path())
+	return nil
+}
+
+func (d *s3Client) DeleteFile(ctx context.Context, remote *explorer.RemoteFile) error {
+	_, err := d.s3.DeleteObjectWithContext(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(d.Bucket),
+		Key:    aws.String(remote.Path()),
+	})
+	if err != nil {
+		d.log.Errorf("Error deleting file: %v\n", err)
+		return fmt.Errorf("DeleteFile: %w", err)
+	}
+	d.log.Infof("Deleted %s\n", remote.Path())
 	return nil
 }

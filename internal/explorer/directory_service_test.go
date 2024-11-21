@@ -27,9 +27,9 @@ func Test_Load_ShouldLoadDirectoryContent(t *testing.T) {
 	subdir1 := explorer.NewDirectory("dir1", currDir)
 	subdir2 := explorer.NewDirectory("dir2", currDir)
 
-	file1 := explorer.NewRemoteFile("file1")
-	file2 := explorer.NewRemoteFile("file2")
-	file3 := explorer.NewRemoteFile("file3")
+	file1 := explorer.NewRemoteFile("file1", currDir)
+	file2 := explorer.NewRemoteFile("file2", currDir)
+	file3 := explorer.NewRemoteFile("file3", currDir)
 
 	ctx := context.TODO()
 

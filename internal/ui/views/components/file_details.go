@@ -1,6 +1,8 @@
 package components
 
 import (
+	"fmt"
+
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/utils"
@@ -27,6 +29,7 @@ type FileDetials struct {
 	pathLabel         *widget.Label
 	fileIcon          *widget.FileIcon
 	lastModifiedLabel *widget.Label
+	deleteBtn         *widget.Button
 }
 
 func NewFileDetails() *FileDetials {
@@ -60,8 +63,9 @@ func NewFileDetails() *FileDetials {
 	)
 
 	downloadBtn := widget.NewButton("Download", func() {})
+	deleteBtn := widget.NewButton("Delete", func() {})
 	buttonsContainer := container.NewHBox(
-		downloadBtn,
+		downloadBtn, deleteBtn,
 	)
 	topContainer := container.NewBorder(
 		infoContainer, buttonsContainer,
@@ -82,6 +86,7 @@ func NewFileDetails() *FileDetials {
 		pathLabel:         filepathLabel,
 		fileIcon:          fileIcon,
 		lastModifiedLabel: lastModifiedLabel,
+		deleteBtn:         deleteBtn,
 	}
 }
 
@@ -116,27 +121,58 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.RemoteFil
 	}
 
 	f.downloadBtn.OnTapped = func() {
-		saveDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
-			if err != nil {
-				ctx.L().Error("Error getting file writer", zap.Error(err))
-				// TODO handle error here
-				return
-			}
-			if writer == nil {
-				return
-			}
-			localDestFilePath := writer.URI().Path()
-			if err := ctx.Vm().DownloadFile(file, localDestFilePath); err != nil {
-				ctx.L().Error("Error downloading file", zap.Error(err))
-				// TODO handle error here
-			}
-			if err := ctx.Vm().SetLastSaveDir(localDestFilePath); err != nil {
-				ctx.L().Error("Error setting last save dir", zap.Error(err))
-			}
-			dialog.ShowInformation("Download", "File downloaded", ctx.W())
-		}, ctx.W())
+		saveDialog := dialog.NewFileSave(makeHandleOnDownloadTapped(ctx, file), ctx.W())
 		saveDialog.SetFileName(file.Name())
 		saveDialog.SetLocation(ctx.Vm().GetLastSaveDir())
 		saveDialog.Show()
+	}
+
+	f.deleteBtn.OnTapped = func() {
+		dialog.ShowConfirm(
+			"Delete file",
+			fmt.Sprintf("Are you sure you want to delete %s?", file.Name()),
+			makeHandleOnDeleteTapped(ctx, file),
+			ctx.W())
+	}
+}
+
+func makeHandleOnDownloadTapped(ctx appcontext.AppContext, file *explorer.RemoteFile) func(fyne.URIWriteCloser, error) {
+	return func(writer fyne.URIWriteCloser, err error) {
+		if err != nil {
+			ctx.L().Error("Error getting file writer", zap.Error(err))
+			// TODO handle error here
+			return
+		}
+		if writer == nil {
+			return
+		}
+		localDestFilePath := writer.URI().Path()
+		if err := ctx.Vm().DownloadFile(file, localDestFilePath); err != nil {
+			ctx.L().Error("Error downloading file", zap.Error(err))
+			// TODO handle error here
+		}
+		if err := ctx.Vm().SetLastSaveDir(localDestFilePath); err != nil {
+			ctx.L().Error("Error setting last save dir", zap.Error(err))
+		}
+		dialog.ShowInformation("Download", "File downloaded", ctx.W())
+	}
+}
+
+func makeHandleOnDeleteTapped(ctx appcontext.AppContext, file *explorer.RemoteFile) func(bool) {
+	return func(confirmed bool) {
+		if !confirmed {
+			return
+		}
+		if err := ctx.Vm().DeleteFile(file); err != nil {
+			ctx.L().Error("Error deleting file", zap.Error(err))
+			// TODO handle error here
+		}
+
+		// TODO: not working, need to reimplement refresh
+		// if err := ctx.Vm().RefreshDir(file.ParentDir()); err != nil {
+		// 	dialog.ShowError(err, ctx.W()) // TODO better error handling
+		// 	return
+		// }
+		dialog.ShowInformation("Delete", "File deleted", ctx.W())
 	}
 }
