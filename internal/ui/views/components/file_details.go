@@ -168,10 +168,11 @@ func makeHandleOnDeleteTapped(ctx appcontext.AppContext, file *explorer.RemoteFi
 			// TODO handle error here
 		}
 
-		if err := ctx.Vm().RefreshDir(file.ParentDir()); err != nil {
-			dialog.ShowError(err, ctx.W()) // TODO better error handling
-			return
-		}
+		// TODO: not working, need to reimplement refresh
+		// if err := ctx.Vm().RefreshDir(file.ParentDir()); err != nil {
+		// 	dialog.ShowError(err, ctx.W()) // TODO better error handling
+		// 	return
+		// }
 		dialog.ShowInformation("Delete", "File deleted", ctx.W())
 	}
 }
