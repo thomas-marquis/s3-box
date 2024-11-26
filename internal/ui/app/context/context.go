@@ -12,32 +12,38 @@ type AppContext interface {
 	Navigate(route navigation.Route) error
 	CurrentRoute() navigation.Route
 	Vm() *viewmodel.ViewModel
+	ExplorerVM() *viewmodel.ExplorerViewModel
 	W() fyne.Window
-	L() *zap.Logger
+	Log() *zap.Logger
 	ExitChan() chan struct{}
 }
 
 type AppContextImpl struct {
-	vm       *viewmodel.ViewModel
+	evm      *viewmodel.ExplorerViewModel
+	legacyVm *viewmodel.ViewModel
 	w        fyne.Window
-	l        *zap.Logger
+	logger   *zap.Logger
 	exitChan chan struct{}
 
 	currentRoute navigation.Route
 	views        map[navigation.Route]func(AppContext) (*fyne.Container, error)
 }
 
+var _ AppContext = &AppContextImpl{}
+
 func New(
 	w fyne.Window,
-	vm *viewmodel.ViewModel,
+	evm *viewmodel.ExplorerViewModel,
+	legacyVm *viewmodel.ViewModel,
 	initialRoute navigation.Route,
 	views map[navigation.Route]func(AppContext) (*fyne.Container, error),
 	logger *zap.Logger,
 ) *AppContextImpl {
 	return &AppContextImpl{
-		vm:           vm,
+		evm:          evm,
+		legacyVm:     legacyVm,
 		w:            w,
-		l:            logger,
+		logger:       logger,
 		exitChan:     make(chan struct{}),
 		currentRoute: initialRoute,
 		views:        views,
@@ -45,15 +51,19 @@ func New(
 }
 
 func (ctx *AppContextImpl) Vm() *viewmodel.ViewModel {
-	return ctx.vm
+	return ctx.legacyVm
+}
+
+func (ctx *AppContextImpl) ExplorerVM() *viewmodel.ExplorerViewModel {
+	return ctx.evm
 }
 
 func (ctx *AppContextImpl) W() fyne.Window {
 	return ctx.w
 }
 
-func (ctx *AppContextImpl) L() *zap.Logger {
-	return ctx.l
+func (ctx *AppContextImpl) Log() *zap.Logger {
+	return ctx.logger
 }
 
 func (ctx *AppContextImpl) ExitChan() chan struct{} {

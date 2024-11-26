@@ -3,18 +3,14 @@ package viewmodel
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
-	"path/filepath"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/storage"
-)
-
-const (
-	timeout = 15 * time.Second
 )
 
 type ViewModel struct {
