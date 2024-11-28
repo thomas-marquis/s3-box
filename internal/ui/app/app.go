@@ -9,9 +9,9 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/connectionview"
 	"github.com/thomas-marquis/s3-box/internal/ui/explorerview"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
-	"github.com/thomas-marquis/s3-box/internal/ui/views"
 
 	"fyne.io/fyne/v2"
 	fyne_app "fyne.io/fyne/v2/app"
@@ -30,9 +30,8 @@ type Go2S3App struct {
 
 func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	appViews := make(map[navigation.Route]func(appcontext.AppContext) (*fyne.Container, error))
-	// appViews[navigation.ExplorerRoute] = views.GetFileExplorerView
-	appViews[navigation.ExplorerRoute] = explorerview.GetFileExplorerView
-	appViews[navigation.ConnectionRoute] = views.GetConnectionView
+	appViews[navigation.ExplorerRoute] = explorerview.GetView
+	appViews[navigation.ConnectionRoute] = connectionview.GetView
 
 	sugarLog := logger.Sugar()
 	a := fyne_app.NewWithID(appId)
@@ -56,7 +55,8 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	dirSvc := explorer.NewDirectoryService(explRepo)
 	legacyVm := viewmodel.NewViewModel(explRepo, dirSvc, connRepo)
 	explorerVm := viewmodel.NewExplorerViewModel(explRepo, dirSvc, connRepo)
-	appctx := appcontext.New(w, explorerVm, legacyVm, initRoute, appViews, logger)
+	connectionVm := viewmodel.NewConnectionViewModel(explRepo, dirSvc, connRepo)
+	appctx := appcontext.New(w, explorerVm, connectionVm, legacyVm, initRoute, appViews, logger)
 
 	w.SetOnClosed(func() {
 		close(appctx.ExitChan())

@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
+func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	errChan := make(chan error)
 
 	noConn := makeNoConnectionTopBanner(ctx)
@@ -39,7 +39,7 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		}
 	}()
 
-	if err := ctx.Vm().ExpandDir(explorer.RootDir); err != nil {
+	if err := ctx.ConnectionVM().ExpandDir(explorer.RootDir); err != nil {
 		errChan <- err
 	}
 
@@ -85,13 +85,13 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	tree.OnSelected = func(uid string) {
 		item, err := ctx.Vm().Tree().GetValue(uid)
 		if err != nil {
-			ctx.L().Error("Error getting item", zap.Error(err))
+			ctx.Log().Error("Error getting item", zap.Error(err))
 			return
 		}
 
 		isDir, d, f, err := getCurrDirectoryOrFile(item)
 		if err != nil {
-			ctx.L().Error("Error getting directory or file", zap.Error(err))
+			ctx.Log().Error("Error getting directory or file", zap.Error(err))
 			return
 		}
 
