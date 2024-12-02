@@ -1,4 +1,4 @@
-package components
+package connectionview
 
 import (
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
@@ -31,7 +31,7 @@ func makeTextInput(label, defaultValue, placeholder string, enableCopy bool, w f
 	return c, entry
 }
 
-func NewConnectionDialog(
+func newConnectionDialog(
 	ctx appcontext.AppContext,
 	label, name, accessKey, secretKey, server, bucket, region string,
 	useTLS, enableCopy bool,

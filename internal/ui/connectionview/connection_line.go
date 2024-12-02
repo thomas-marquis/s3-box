@@ -1,4 +1,4 @@
-package components
+package connectionview
 
 import (
 	"fmt"
@@ -13,13 +13,13 @@ import (
 	"go.uber.org/zap"
 )
 
-type ConnectionLine struct{}
+type connectionLine struct{}
 
-func NewConnectionLine() *ConnectionLine {
-	return &ConnectionLine{}
+func newConnectionLine() *connectionLine {
+	return &connectionLine{}
 }
 
-func (*ConnectionLine) Raw() *fyne.Container {
+func (*connectionLine) Raw() *fyne.Container {
 	selected := widget.NewButtonWithIcon("", theme.RadioButtonIcon(), func() {})
 
 	name := widget.NewLabel("")
@@ -35,7 +35,7 @@ func (*ConnectionLine) Raw() *fyne.Container {
 	)
 }
 
-func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, conn *connection.Connection) {
+func (*connectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, conn *connection.Connection) {
 	c, _ := o.(*fyne.Container)
 
 	leftGroup := c.Objects[0].(*fyne.Container)
@@ -52,14 +52,18 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 		dialog.ShowConfirm(
 			"Select connection",
 			fmt.Sprintf("Are you sure you want to select the connection '%s'?", conn.Name),
-			func(b bool) {
-				if b {
-					if err := ctx.Vm().SelectConnection(conn); err != nil {
-						ctx.L().Error("Failed to select connection", zap.Error(err))
-					}
-					if err := ctx.Vm().RefreshConnections(); err != nil {
-						ctx.L().Error("Failed to refresh connections", zap.Error(err))
-					}
+			func(confirmed bool) {
+				if !confirmed {
+					return
+				}
+				if err := ctx.ConnectionVM().SelectConnection(conn); err != nil {
+					ctx.Log().Error("Failed to select connection", zap.Error(err))
+				}
+				if err := ctx.ConnectionVM().RefreshConnections(); err != nil {
+					ctx.Log().Error("Failed to refresh connections", zap.Error(err))
+				}
+				if err := ctx.ExplorerVM().ResetTree(); err != nil {
+					ctx.Log().Error("Failed to reset tree after connection changed", zap.Error(err))
 				}
 			},
 			ctx.W(),
@@ -75,7 +79,7 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 	btnGroup := c.Objects[1].(*fyne.Container)
 	editBtn := btnGroup.Objects[0].(*widget.Button)
 	editBtn.OnTapped = func() {
-		NewConnectionDialog(
+		newConnectionDialog(
 			ctx, "Edit connection",
 			conn.Name, conn.AccessKey, conn.SecretKey, conn.Server, conn.BucketName, conn.Region, conn.UseTls,
 			true,
@@ -87,7 +91,7 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 				conn.BucketName = bucket
 				conn.Region = region
 				conn.UseTls = useTLS
-				return ctx.Vm().SaveConnection(conn)
+				return ctx.ConnectionVM().SaveConnection(conn)
 			}).Show()
 	}
 
@@ -95,7 +99,7 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 	deleteBtn.OnTapped = func() {
 		dialog.ShowConfirm("Delete connection", fmt.Sprintf("Are you sure you want to delete the connection '%s'?", conn.Name), func(b bool) {
 			if b {
-				ctx.Vm().DeleteConenction(conn)
+				ctx.ConnectionVM().DeleteConenction(conn)
 			}
 		}, ctx.W())
 	}
