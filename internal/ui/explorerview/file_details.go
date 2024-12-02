@@ -111,7 +111,7 @@ func (f *fileDetials) Update(ctx appcontext.AppContext, file *explorer.RemoteFil
 
 	f.lastModifiedLabel.SetText(file.LastModified().Format("2006-01-02 15:04:05"))
 
-	if file.SizeBytes() <= ctx.Vm().GetMaxFileSizePreview() {
+	if file.SizeBytes() <= ctx.ExplorerVM().GetMaxFileSizePreview() {
 		f.previewBtn.Show()
 		f.previewBtn.OnTapped = func() {
 			showFilePreviewDialog(ctx, file)
@@ -123,7 +123,7 @@ func (f *fileDetials) Update(ctx appcontext.AppContext, file *explorer.RemoteFil
 	f.downloadBtn.OnTapped = func() {
 		saveDialog := dialog.NewFileSave(makeHandleOnDownloadTapped(ctx, file), ctx.W())
 		saveDialog.SetFileName(file.Name())
-		saveDialog.SetLocation(ctx.Vm().GetLastSaveDir())
+		saveDialog.SetLocation(ctx.ExplorerVM().GetLastSaveDir())
 		saveDialog.Show()
 	}
 
@@ -147,11 +147,11 @@ func makeHandleOnDownloadTapped(ctx appcontext.AppContext, file *explorer.Remote
 			return
 		}
 		localDestFilePath := writer.URI().Path()
-		if err := ctx.Vm().DownloadFile(file, localDestFilePath); err != nil {
+		if err := ctx.ExplorerVM().DownloadFile(file, localDestFilePath); err != nil {
 			ctx.Log().Error("Error downloading file", zap.Error(err))
 			// TODO handle error here
 		}
-		if err := ctx.Vm().SetLastSaveDir(localDestFilePath); err != nil {
+		if err := ctx.ExplorerVM().SetLastSaveDir(localDestFilePath); err != nil {
 			ctx.Log().Error("Error setting last save dir", zap.Error(err))
 		}
 		dialog.ShowInformation("Download", "File downloaded", ctx.W())
@@ -163,7 +163,7 @@ func makeHandleOnDeleteTapped(ctx appcontext.AppContext, file *explorer.RemoteFi
 		if !confirmed {
 			return
 		}
-		if err := ctx.Vm().DeleteFile(file); err != nil {
+		if err := ctx.ExplorerVM().DeleteFile(file); err != nil {
 			ctx.Log().Error("Error deleting file", zap.Error(err))
 			// TODO handle error here
 		}

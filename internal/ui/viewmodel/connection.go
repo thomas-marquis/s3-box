@@ -11,29 +11,28 @@ import (
 )
 
 type ConnectionViewModel struct {
-	explorerRepo  explorer.Repository
-	connRepo      connection.Repository
-	dirSvc        *explorer.DirectoryService
-	connections   binding.UntypedList
-	state         AppState
-	loading       binding.Bool
-	lastSaveDir   fyne.ListableURI
-	lastUploadDir fyne.ListableURI
+	explorerRepo       explorer.Repository
+	connRepo           connection.Repository
+	dirSvc             *explorer.DirectoryService
+	connections        binding.UntypedList
+	loading            binding.Bool
+	lastSaveDir        fyne.ListableURI
+	lastUploadDir      fyne.ListableURI
+	selectedConnection *connection.Connection
 }
 
 func NewConnectionViewModel(explorerRepo explorer.Repository, dirScv *explorer.DirectoryService, connRepo connection.Repository) *ConnectionViewModel {
 	c := binding.NewUntypedList()
 
-	vm := &ConnectionViewModel{
+	v := &ConnectionViewModel{
 		explorerRepo: explorerRepo,
 		dirSvc:       dirScv,
 		connections:  c,
 		connRepo:     connRepo,
-		state:        NewAppState(),
 		loading:      binding.NewBool(),
 	}
 
-	if err := vm.RefreshConnections(); err != nil {
+	if err := v.RefreshConnections(); err != nil {
 		panic(err)
 	}
 
@@ -44,82 +43,83 @@ func NewConnectionViewModel(explorerRepo explorer.Repository, dirScv *explorer.D
 		panic(err)
 	}
 	if currentConn != nil {
-		vm.state.SelectedConnection = currentConn
+		v.selectedConnection = currentConn
 	}
 
-	return vm
+	return v
 }
 
-func (vm *ConnectionViewModel) Loading() binding.Bool {
-	return vm.loading
+func (v *ConnectionViewModel) Loading() binding.Bool {
+	return v.loading
 }
 
-func (vm *ConnectionViewModel) StartLoading() {
-	vm.loading.Set(true)
+func (v *ConnectionViewModel) StartLoading() {
+	v.loading.Set(true)
 }
 
-func (vm *ConnectionViewModel) StopLoading() {
-	vm.loading.Set(false)
+func (v *ConnectionViewModel) StopLoading() {
+	v.loading.Set(false)
 }
 
-func (vm *ConnectionViewModel) Connections() binding.UntypedList {
-	return vm.connections
+func (v *ConnectionViewModel) Connections() binding.UntypedList {
+	return v.connections
 }
 
-func (vm *ConnectionViewModel) RefreshConnections() error {
+func (v *ConnectionViewModel) RefreshConnections() error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	conns, err := vm.connRepo.ListConnections(ctx)
+	conns, err := v.connRepo.ListConnections(ctx)
 	if err != nil {
 		return err
 	}
 
-	prevConns, err := vm.connections.Get()
+	prevConns, err := v.connections.Get()
 	if err != nil {
 		return err
 	}
 	for _, c := range prevConns {
-		vm.connections.Remove(c)
+		v.connections.Remove(c)
 	}
 
 	for _, c := range conns {
-		vm.connections.Append(c)
+		v.connections.Append(c)
 	}
 
 	return nil
 }
 
-func (vm *ConnectionViewModel) SaveConnection(c *connection.Connection) error {
+func (v *ConnectionViewModel) SaveConnection(c *connection.Connection) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	if err := vm.connRepo.SaveConnection(ctx, c); err != nil {
+	if err := v.connRepo.SaveConnection(ctx, c); err != nil {
 		return err
 	}
 
-	return vm.RefreshConnections()
+	return v.RefreshConnections()
 }
 
-func (vm *ConnectionViewModel) DeleteConenction(c *connection.Connection) error {
+func (v *ConnectionViewModel) DeleteConenction(c *connection.Connection) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	if err := vm.connRepo.DeleteConnection(ctx, c.ID); err != nil {
+	if err := v.connRepo.DeleteConnection(ctx, c.ID); err != nil {
 		return err
 	}
 
-	return vm.RefreshConnections()
+	return v.RefreshConnections()
 }
 
-func (vm *ConnectionViewModel) SelectedConnection() *connection.Connection {
-	return vm.state.SelectedConnection
+func (v *ConnectionViewModel) SelectedConnection() *connection.Connection {
+	return v.selectedConnection
 }
 
-func (vm *ConnectionViewModel) SelectConnection(c *connection.Connection) error {
-	vm.loading.Set(true)
-	prevConn := vm.state.SelectedConnection
+func (v *ConnectionViewModel) SelectConnection(c *connection.Connection) error {
+	v.loading.Set(true)
+	defer v.loading.Set(false)
 
+	prevConn := v.selectedConnection
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
-	if err := vm.connRepo.SetSelectedConnection(ctx, c.ID); err != nil {
+	if err := v.connRepo.SetSelectedConnection(ctx, c.ID); err != nil {
 		cancel()
 		return err
 	}
@@ -127,27 +127,13 @@ func (vm *ConnectionViewModel) SelectConnection(c *connection.Connection) error 
 
 	ctx, cancel = context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	if err := vm.explorerRepo.SetConnection(ctx, c); err != nil {
-		if err := vm.connRepo.SetSelectedConnection(ctx, prevConn.ID); err != nil {
+	if err := v.explorerRepo.SetConnection(ctx, c); err != nil {
+		if err := v.connRepo.SetSelectedConnection(ctx, prevConn.ID); err != nil {
 			return err
 		}
 		return err
 	}
 
-	if c != prevConn {
-		vm.resetTreeContent()
-		explorer.RootDir.IsLoaded = false // TODO: crado, crecréer un rootdir plutôt
-		explorer.RootDir.SubDirectories = make([]*explorer.Directory, 0)
-		explorer.RootDir.Files = make([]*explorer.RemoteFile, 0)
-		if err := vm.tree.Append("", explorer.RootDir.Path(), explorer.RootDir); err != nil {
-			return err
-		}
-		if err := vm.ExpandDir(explorer.RootDir); err != nil {
-			return err
-		}
-	}
-
-	vm.state.SelectedConnection = c
-	vm.loading.Set(false)
+	v.selectedConnection = c
 	return nil
 }

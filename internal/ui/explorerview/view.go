@@ -39,14 +39,14 @@ func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		}
 	}()
 
-	if err := ctx.ConnectionVM().ExpandDir(explorer.RootDir); err != nil {
+	if err := ctx.ExplorerVM().ExpandDir(explorer.RootDir); err != nil {
 		errChan <- err
 	}
 
 	treeItemBuilder := newTreeItemBuilder()
 
 	tree := widget.NewTreeWithData(
-		ctx.Vm().Tree(),
+		ctx.ExplorerVM().Tree(),
 		func(branch bool) fyne.CanvasObject {
 			return treeItemBuilder.NewRaw()
 		},
@@ -59,14 +59,14 @@ func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
 			}
 
 			if isDir {
-				err := ctx.Vm().ExpandDir(d)
+				err := ctx.ExplorerVM().ExpandDir(d)
 				if err != nil {
 					errChan <- err
 					return
 				}
 				if d.Path() == explorer.RootDir.Path() {
 					var bucket string
-					if conn := ctx.Vm().SelectedConnection(); conn != nil {
+					if conn := ctx.ConnectionVM().SelectedConnection(); conn != nil {
 						bucket = conn.BucketName
 					}
 					treeItemBuilder.Update(o, "Bucket: "+bucket)
@@ -83,7 +83,7 @@ func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	dirDetails := newDirDetails()
 
 	tree.OnSelected = func(uid string) {
-		item, err := ctx.Vm().Tree().GetValue(uid)
+		item, err := ctx.ExplorerVM().Tree().GetValue(uid)
 		if err != nil {
 			ctx.Log().Error("Error getting item", zap.Error(err))
 			return

@@ -53,10 +53,9 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	}
 
 	dirSvc := explorer.NewDirectoryService(explRepo)
-	legacyVm := viewmodel.NewViewModel(explRepo, dirSvc, connRepo)
 	explorerVm := viewmodel.NewExplorerViewModel(explRepo, dirSvc, connRepo)
 	connectionVm := viewmodel.NewConnectionViewModel(explRepo, dirSvc, connRepo)
-	appctx := appcontext.New(w, explorerVm, connectionVm, legacyVm, initRoute, appViews, logger)
+	appctx := appcontext.New(w, explorerVm, connectionVm, initRoute, appViews, logger)
 
 	w.SetOnClosed(func() {
 		close(appctx.ExitChan())

@@ -47,7 +47,7 @@ func (d *dirDetials) Update(ctx appcontext.AppContext, dir *explorer.Directory) 
 
 	d.uploadBtn.OnTapped = func() {
 		selectDialog := dialog.NewFileOpen(makeHandleOnUploadTapped(ctx, dir), ctx.W())
-		selectDialog.SetLocation(ctx.Vm().GetLastUploadDir())
+		selectDialog.SetLocation(ctx.ExplorerVM().GetLastUploadDir())
 		selectDialog.Show()
 	}
 }
@@ -64,16 +64,16 @@ func makeHandleOnUploadTapped(ctx appcontext.AppContext, dir *explorer.Directory
 		}
 
 		localDestFilePath := reader.URI().Path()
-		if err := ctx.Vm().UploadFile(localDestFilePath, dir); err != nil {
+		if err := ctx.ExplorerVM().UploadFile(localDestFilePath, dir); err != nil {
 			dialog.ShowError(err, ctx.W()) // TODO better error handling
 			return
 		}
-		if err := ctx.Vm().SetLastUploadDir(localDestFilePath); err != nil {
+		if err := ctx.ExplorerVM().SetLastUploadDir(localDestFilePath); err != nil {
 			dialog.ShowError(err, ctx.W()) // TODO better error handling
 			return
 		}
 
-		if err := ctx.Vm().RefreshDir(dir); err != nil {
+		if err := ctx.ExplorerVM().RefreshDir(dir); err != nil {
 			dialog.ShowError(err, ctx.W()) // TODO better error handling
 			return
 		}

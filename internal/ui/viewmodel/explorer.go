@@ -61,6 +61,10 @@ func (v *ExplorerViewModel) Loading() binding.Bool {
 	return v.loading
 }
 
+func (v *ExplorerViewModel) Tree() binding.UntypedTree {
+	return v.tree
+}
+
 func (v *ExplorerViewModel) StartLoading() {
 	v.loading.Set(true)
 }
@@ -190,4 +194,21 @@ func (v *ExplorerViewModel) DeleteFile(f *explorer.RemoteFile) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return v.explorerRepo.DeleteFile(ctx, f)
+}
+
+func (v *ExplorerViewModel) ResetTree() error {
+	v.resetTreeContent()
+
+	explorer.RootDir.IsLoaded = false // TODO: crado, recréer un rootdir plutôt
+	explorer.RootDir.SubDirectories = make([]*explorer.Directory, 0)
+	explorer.RootDir.Files = make([]*explorer.RemoteFile, 0)
+
+	if err := v.tree.Append("", explorer.RootDir.Path(), explorer.RootDir); err != nil {
+		return err
+	}
+	if err := v.ExpandDir(explorer.RootDir); err != nil {
+		return err
+	}
+
+	return nil
 }

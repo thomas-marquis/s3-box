@@ -15,7 +15,7 @@ import (
 func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	connLine := newConnectionLine()
 	connectionsList := widget.NewListWithData(
-		ctx.Vm().Connections(),
+		ctx.ConnectionVM().Connections(),
 		func() fyne.CanvasObject {
 			return connLine.Raw()
 		},
@@ -32,7 +32,7 @@ func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
 			newConnectionDialog(ctx, "New connection", "", "", "", "", "", "", false, false,
 				func(name, accessKey, secretKey, server, bucket, region string, useTLS bool) error {
 					conn := connection.NewConnection(name, server, accessKey, secretKey, bucket, useTLS, region)
-					return ctx.Vm().SaveConnection(conn)
+					return ctx.ConnectionVM().SaveConnection(conn)
 				}).Show()
 		})
 

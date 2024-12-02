@@ -11,7 +11,6 @@ import (
 type AppContext interface {
 	Navigate(route navigation.Route) error
 	CurrentRoute() navigation.Route
-	Vm() *viewmodel.ViewModel
 	ExplorerVM() *viewmodel.ExplorerViewModel
 	ConnectionVM() *viewmodel.ConnectionViewModel
 	W() fyne.Window
@@ -22,7 +21,6 @@ type AppContext interface {
 type AppContextImpl struct {
 	evm      *viewmodel.ExplorerViewModel
 	cvm      *viewmodel.ConnectionViewModel
-	legacyVm *viewmodel.ViewModel
 	w        fyne.Window
 	logger   *zap.Logger
 	exitChan chan struct{}
@@ -37,7 +35,6 @@ func New(
 	w fyne.Window,
 	evm *viewmodel.ExplorerViewModel,
 	cvm *viewmodel.ConnectionViewModel,
-	legacyVm *viewmodel.ViewModel,
 	initialRoute navigation.Route,
 	views map[navigation.Route]func(AppContext) (*fyne.Container, error),
 	logger *zap.Logger,
@@ -45,17 +42,12 @@ func New(
 	return &AppContextImpl{
 		evm:          evm,
 		cvm:          cvm,
-		legacyVm:     legacyVm,
 		w:            w,
 		logger:       logger,
 		exitChan:     make(chan struct{}),
 		currentRoute: initialRoute,
 		views:        views,
 	}
-}
-
-func (ctx *AppContextImpl) Vm() *viewmodel.ViewModel {
-	return ctx.legacyVm
 }
 
 func (ctx *AppContextImpl) ExplorerVM() *viewmodel.ExplorerViewModel {
