@@ -1,4 +1,4 @@
-package components
+package explorerview
 
 import (
 	"github.com/thomas-marquis/s3-box/internal/explorer"
@@ -11,14 +11,14 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-type DirDetials struct {
+type dirDetials struct {
 	c *fyne.Container
 
 	pathLabel *widget.Label
 	uploadBtn *widget.Button
 }
 
-func NewDirDetails() *DirDetials {
+func newDirDetails() *dirDetials {
 	pathLabel := widget.NewLabel("")
 
 	uploadBtn := widget.NewButton("Upload file", func() {})
@@ -31,23 +31,23 @@ func NewDirDetails() *DirDetials {
 		top, uploadBtn,
 		nil, nil,
 	)
-	return &DirDetials{
+	return &dirDetials{
 		c:         c,
 		pathLabel: pathLabel,
 		uploadBtn: uploadBtn,
 	}
 }
 
-func (d *DirDetials) Object() fyne.CanvasObject {
+func (d *dirDetials) Object() fyne.CanvasObject {
 	return d.c
 }
 
-func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.Directory) {
+func (d *dirDetials) Update(ctx appcontext.AppContext, dir *explorer.Directory) {
 	d.pathLabel.SetText(dir.Path())
 
 	d.uploadBtn.OnTapped = func() {
 		selectDialog := dialog.NewFileOpen(makeHandleOnUploadTapped(ctx, dir), ctx.W())
-		selectDialog.SetLocation(ctx.Vm().GetLastUploadDir())
+		selectDialog.SetLocation(ctx.ExplorerVM().GetLastUploadDir())
 		selectDialog.Show()
 	}
 }
@@ -64,16 +64,16 @@ func makeHandleOnUploadTapped(ctx appcontext.AppContext, dir *explorer.Directory
 		}
 
 		localDestFilePath := reader.URI().Path()
-		if err := ctx.Vm().UploadFile(localDestFilePath, dir); err != nil {
+		if err := ctx.ExplorerVM().UploadFile(localDestFilePath, dir); err != nil {
 			dialog.ShowError(err, ctx.W()) // TODO better error handling
 			return
 		}
-		if err := ctx.Vm().SetLastUploadDir(localDestFilePath); err != nil {
+		if err := ctx.ExplorerVM().SetLastUploadDir(localDestFilePath); err != nil {
 			dialog.ShowError(err, ctx.W()) // TODO better error handling
 			return
 		}
 
-		if err := ctx.Vm().RefreshDir(dir); err != nil {
+		if err := ctx.ExplorerVM().RefreshDir(dir); err != nil {
 			dialog.ShowError(err, ctx.W()) // TODO better error handling
 			return
 		}

@@ -1,4 +1,4 @@
-package components
+package explorerview
 
 import (
 	"fyne.io/fyne/v2"
@@ -6,18 +6,18 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-type TreeItem struct{}
+type treeItem struct{}
 
-func NewTreeItemBuilder() *TreeItem {
-	return &TreeItem{}
+func newTreeItemBuilder() *treeItem {
+	return &treeItem{}
 }
 
-func (i *TreeItem) NewRaw() *fyne.Container {
+func (i *treeItem) NewRaw() *fyne.Container {
 	name := widget.NewLabel(".")
 	return container.NewHBox(name)
 }
 
-func (i *TreeItem) Update(o fyne.CanvasObject, contentName string) {
+func (i *treeItem) Update(o fyne.CanvasObject, contentName string) {
 	c, _ := o.(*fyne.Container)
 	contentLabel := c.Objects[0].(*widget.Label)
 	contentLabel.SetText(contentName)

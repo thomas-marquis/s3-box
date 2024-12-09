@@ -1,4 +1,4 @@
-package components
+package explorerview
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ func isStringPrintable(s string) bool {
 	return true
 }
 
-func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.RemoteFile) {
+func showFilePreviewDialog(ctx appcontext.AppContext, file *explorer.RemoteFile) {
 	previewData := binding.NewString()
 	loading := binding.NewBool()
 	loading.Set(false)
@@ -37,7 +37,7 @@ func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.RemoteFile)
 	go func() {
 		loading.Set(true)
 		defer loading.Set(false)
-		fileContent, err := ctx.Vm().PreviewFile(file)
+		fileContent, err := ctx.ExplorerVM().PreviewFile(file)
 		if err != nil {
 			dialog.ShowError(err, ctx.W())
 			return

@@ -1,4 +1,4 @@
-package components
+package explorerview
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ const (
 	maxFileNameLength = 80
 )
 
-type FileDetials struct {
+type fileDetials struct {
 	c *fyne.Container
 
 	downloadBtn       *widget.Button
@@ -32,7 +32,7 @@ type FileDetials struct {
 	deleteBtn         *widget.Button
 }
 
-func NewFileDetails() *FileDetials {
+func newFileDetails() *fileDetials {
 	sizeText := widget.NewLabel("Size")
 	sizeText.TextStyle = fyne.TextStyle{Bold: true}
 	sizeText.Alignment = fyne.TextAlignTrailing
@@ -77,7 +77,7 @@ func NewFileDetails() *FileDetials {
 		topContainer, container.NewCenter(previewBtn),
 		nil, nil,
 	)
-	return &FileDetials{
+	return &fileDetials{
 		c:                 c,
 		downloadBtn:       downloadBtn,
 		previewBtn:        previewBtn,
@@ -90,11 +90,11 @@ func NewFileDetails() *FileDetials {
 	}
 }
 
-func (d *FileDetials) Object() fyne.CanvasObject {
+func (d *fileDetials) Object() fyne.CanvasObject {
 	return d.c
 }
 
-func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.RemoteFile) {
+func (f *fileDetials) Update(ctx appcontext.AppContext, file *explorer.RemoteFile) {
 	f.sizeLabel.SetText(utils.FormatSizeBytes(file.SizeBytes()))
 
 	var path string
@@ -111,10 +111,10 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.RemoteFil
 
 	f.lastModifiedLabel.SetText(file.LastModified().Format("2006-01-02 15:04:05"))
 
-	if file.SizeBytes() <= ctx.Vm().GetMaxFileSizePreview() {
+	if file.SizeBytes() <= ctx.ExplorerVM().GetMaxFileSizePreview() {
 		f.previewBtn.Show()
 		f.previewBtn.OnTapped = func() {
-			ShowFilePreviewDialog(ctx, file)
+			showFilePreviewDialog(ctx, file)
 		}
 	} else {
 		f.previewBtn.Hide()
@@ -123,7 +123,7 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.RemoteFil
 	f.downloadBtn.OnTapped = func() {
 		saveDialog := dialog.NewFileSave(makeHandleOnDownloadTapped(ctx, file), ctx.W())
 		saveDialog.SetFileName(file.Name())
-		saveDialog.SetLocation(ctx.Vm().GetLastSaveDir())
+		saveDialog.SetLocation(ctx.ExplorerVM().GetLastSaveDir())
 		saveDialog.Show()
 	}
 
@@ -139,7 +139,7 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.RemoteFil
 func makeHandleOnDownloadTapped(ctx appcontext.AppContext, file *explorer.RemoteFile) func(fyne.URIWriteCloser, error) {
 	return func(writer fyne.URIWriteCloser, err error) {
 		if err != nil {
-			ctx.L().Error("Error getting file writer", zap.Error(err))
+			ctx.Log().Error("Error getting file writer", zap.Error(err))
 			// TODO handle error here
 			return
 		}
@@ -147,12 +147,12 @@ func makeHandleOnDownloadTapped(ctx appcontext.AppContext, file *explorer.Remote
 			return
 		}
 		localDestFilePath := writer.URI().Path()
-		if err := ctx.Vm().DownloadFile(file, localDestFilePath); err != nil {
-			ctx.L().Error("Error downloading file", zap.Error(err))
+		if err := ctx.ExplorerVM().DownloadFile(file, localDestFilePath); err != nil {
+			ctx.Log().Error("Error downloading file", zap.Error(err))
 			// TODO handle error here
 		}
-		if err := ctx.Vm().SetLastSaveDir(localDestFilePath); err != nil {
-			ctx.L().Error("Error setting last save dir", zap.Error(err))
+		if err := ctx.ExplorerVM().SetLastSaveDir(localDestFilePath); err != nil {
+			ctx.Log().Error("Error setting last save dir", zap.Error(err))
 		}
 		dialog.ShowInformation("Download", "File downloaded", ctx.W())
 	}
@@ -163,8 +163,8 @@ func makeHandleOnDeleteTapped(ctx appcontext.AppContext, file *explorer.RemoteFi
 		if !confirmed {
 			return
 		}
-		if err := ctx.Vm().DeleteFile(file); err != nil {
-			ctx.L().Error("Error deleting file", zap.Error(err))
+		if err := ctx.ExplorerVM().DeleteFile(file); err != nil {
+			ctx.Log().Error("Error deleting file", zap.Error(err))
 			// TODO handle error here
 		}
 
