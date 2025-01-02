@@ -95,26 +95,86 @@ func (v *ExplorerViewModel) ExpandDir(d *explorer.Directory) error {
 	return nil
 }
 
-func (v *ExplorerViewModel) RefreshDir(d *explorer.Directory) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	if err := v.dirSvc.Load(ctx, d); err != nil {
-		if err == explorer.ErrConnectionNoSet {
-			return viewerror.ErrNoConnectionSelected
+func (v *ExplorerViewModel) printTree() {
+	ids, _, _ := v.tree.Get()
+	// for id, val := range val {
+	// 	fmt.Printf("id: %s -> %v\n", id, val)
+	// }
+	fmt.Println("==============================")
+	for parent, children := range ids {
+		fmt.Printf("'%s'\n", parent)
+		for _, child := range children {
+			fmt.Printf("\t'%s'\n", child)
 		}
-		return err
 	}
+}
 
-	for _, sd := range d.SubDirectories {
-		v.tree.Remove(sd.Path())
-		v.tree.Append(d.Path(), sd.Path(), sd)
+var errItemNotFound = fmt.Errorf("item not found in tree")
+
+func removeItem(values *map[string][]string, id string) error {
+	_, ok := (*values)[id]
+	if !ok {
+		return errItemNotFound
 	}
-	for _, f := range d.Files {
-		v.tree.Remove(f.Path())
-		v.tree.Append(d.Path(), f.Path(), f)
-	}
+	delete(*values, id)
 
 	return nil
+}
+
+func (v *ExplorerViewModel) resetTreeUnderDirectory(d *explorer.Directory) error {
+	// ids, val, err := v.tree.Get()
+	// if err != nil {
+	// 	return err
+	// }
+	// tmpTree := binding.BindUntypedTree(&ids, &val)
+	//
+	// for _, sd := range d.SubDirectories {
+	// 	if err := tmpTree.Remove(sd.Path()); err != nil {
+	// 		fmt.Printf("An error occured durint reset tree at item %s", sd.Path())
+	// 	}
+	// }
+	// for _, f := range d.Files {
+	// 	if err := tmpTree.Remove(f.Path()); err != nil {
+	// 		fmt.Printf("An error occured durint reset tree at item %s", f.Path())
+	// 	}
+	// }
+	// if err := tmpTree.Reload(); err != nil {
+	// 	return err
+	// }
+	v.printTree()
+	ids, val, err := v.tree.Get()
+	if err != nil {
+		fmt.Printf("An error occured durint reset tree at item %s", d.Path())
+		return err
+	}
+	if err := removeItem(&ids, d.Path()); err != nil {
+		fmt.Printf("An error occured durint removing directory from tree at item %s", d.Path())
+	}
+	// TODO : remove children
+
+	_, err := v.tree.GetItem(d.Path())
+	// fmt.Printf("GetItem %v\n", x)
+	if err != nil {
+		fmt.Printf("An error occured durint reset tree at item %s", d.Path())
+		return err
+	}
+	for _, _id := range v.tree.ChildIDs(d.Path()) {
+		id := _id
+		fmt.Printf("Remove item %s\n", id)
+		if err := v.tree.Remove(id); err != nil {
+			fmt.Printf("An error occured durint reset tree at item %s", id)
+		}
+	}
+	return nil
+}
+
+func (v *ExplorerViewModel) RefreshDir(d *explorer.Directory) error {
+	if err := v.resetTreeUnderDirectory(d); err != nil {
+		return err
+	}
+	d.Unload()
+
+	return v.ExpandDir(d)
 }
 
 func (v *ExplorerViewModel) PreviewFile(f *explorer.RemoteFile) (string, error) {

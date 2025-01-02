@@ -63,3 +63,9 @@ func (d *Directory) DisplayContent() string {
 	}
 	return content
 }
+
+func (d *Directory) Unload() {
+	d.IsLoaded = false
+	d.Files = make([]*RemoteFile, 0)
+	d.SubDirectories = make([]*Directory, 0)
+}

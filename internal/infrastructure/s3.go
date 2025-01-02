@@ -5,9 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"os"
 	"strings"
+
+	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/explorer"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -105,7 +107,7 @@ func (d *s3Client) GetDirectoriesAndFileByPath(ctx context.Context, currDir *exp
 		},
 	); err != nil {
 		d.log.Errorf("Error listing objects: %v\n", err)
-		return nil, nil, fmt.Errorf("GetDirectoriesAndFileByPath: %w", err)
+		return nil, nil, connection.ErrConnectionFailed
 	}
 
 	return dirs, files, nil

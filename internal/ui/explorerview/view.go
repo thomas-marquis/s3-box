@@ -20,6 +20,7 @@ func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	noConn.Hide()
 
 	content := container.NewHSplit(widget.NewLabel(""), widget.NewLabel(""))
+	content.SetOffset(0.3)
 
 	go func() {
 		for {

@@ -14,8 +14,9 @@ import (
 type dirDetials struct {
 	c *fyne.Container
 
-	pathLabel *widget.Label
-	uploadBtn *widget.Button
+	pathLabel  *widget.Label
+	uploadBtn  *widget.Button
+	refreshBtn *widget.Button
 }
 
 func newDirDetails() *dirDetials {
@@ -23,18 +24,24 @@ func newDirDetails() *dirDetials {
 
 	uploadBtn := widget.NewButton("Upload file", func() {})
 
-	top := container.NewHBox(
+	refreshBtn := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() {})
+
+	pathBanner := container.NewHBox(
 		widget.NewIcon(theme.FolderIcon()),
 		pathLabel,
 	)
+	buttons := container.NewHBox(refreshBtn)
+	top := container.NewVBox(pathBanner, buttons)
 	c := container.NewBorder(
 		top, uploadBtn,
 		nil, nil,
 	)
+
 	return &dirDetials{
-		c:         c,
-		pathLabel: pathLabel,
-		uploadBtn: uploadBtn,
+		c:          c,
+		pathLabel:  pathLabel,
+		uploadBtn:  uploadBtn,
+		refreshBtn: refreshBtn,
 	}
 }
 
@@ -49,6 +56,10 @@ func (d *dirDetials) Update(ctx appcontext.AppContext, dir *explorer.Directory) 
 		selectDialog := dialog.NewFileOpen(makeHandleOnUploadTapped(ctx, dir), ctx.W())
 		selectDialog.SetLocation(ctx.ExplorerVM().GetLastUploadDir())
 		selectDialog.Show()
+	}
+
+	d.refreshBtn.OnTapped = func() {
+		ctx.ExplorerVM().RefreshDir(dir)
 	}
 }
 
