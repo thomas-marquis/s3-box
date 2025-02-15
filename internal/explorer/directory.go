@@ -53,6 +53,10 @@ func (d *Directory) Path() string {
 	return d.Parrent.Path() + "/" + d.Name
 }
 
+func (d *Directory) IsRoot() bool {
+	return d == RootDir
+}
+
 func (d *Directory) DisplayContent() string {
 	var content = "-> " + d.Name + "\n"
 	for _, sd := range d.SubDirectories {

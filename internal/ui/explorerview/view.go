@@ -19,6 +19,15 @@ func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	noConn := makeNoConnectionTopBanner(ctx)
 	noConn.Hide()
 
+	progressBar := widget.NewProgressBarInfinite()
+	ctx.ExplorerVM().Loading().AddListener(binding.NewDataListener(func() {
+		if ctx.ExplorerVM().IsLoading() {
+			progressBar.Show()
+		} else {
+			progressBar.Hide()
+		}
+	}))
+
 	content := container.NewHSplit(widget.NewLabel(""), widget.NewLabel(""))
 	content.SetOffset(0.3)
 
@@ -65,7 +74,7 @@ func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
 					errChan <- err
 					return
 				}
-				if d.Path() == explorer.RootDir.Path() {
+				if d.IsRoot() {
 					var bucket string
 					if conn := ctx.ConnectionVM().SelectedConnection(); conn != nil {
 						bucket = conn.BucketName
@@ -80,10 +89,25 @@ func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		})
 
 	detailsContainer := container.NewVBox()
+
+	tree.OnSelected = makeTreeOnSelectedHandler(ctx, detailsContainer)
+	content.Leading = container.NewScroll(tree)
+	content.Trailing = detailsContainer
+
+	return container.NewBorder(
+		noConn,
+		progressBar,
+		nil,
+		nil,
+		content,
+	), nil
+}
+
+func makeTreeOnSelectedHandler(ctx appcontext.AppContext, detailsContainer *fyne.Container) func(string) {
 	fileDetails := newFileDetails()
 	dirDetails := newDirDetails()
 
-	tree.OnSelected = func(uid string) {
+	return func(uid string) {
 		item, err := ctx.ExplorerVM().Tree().GetValue(uid)
 		if err != nil {
 			ctx.Log().Error("Error getting item", zap.Error(err))
@@ -104,19 +128,6 @@ func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
 			detailsContainer.Objects = []fyne.CanvasObject{fileDetails.Object()}
 		}
 	}
-
-	content.Leading = container.NewScroll(tree)
-	content.Trailing = detailsContainer
-
-	mainContainer := container.NewBorder(
-		noConn,
-		nil,
-		nil,
-		nil,
-		content,
-	)
-
-	return mainContainer, nil
 }
 
 func getCurrDirectoryOrFile(di any) (bool, *explorer.Directory, *explorer.RemoteFile, error) {
