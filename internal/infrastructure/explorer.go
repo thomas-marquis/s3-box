@@ -35,7 +35,7 @@ func NewExplorerRepositoryImpl(logger *zap.Logger, defaultConn *connection.Conne
 	}, nil
 }
 
-func (r *ExplorerRepositoryImpl) ListDirectoryContent(ctx context.Context, dir *explorer.Directory) ([]*explorer.Directory, []*explorer.RemoteFile, error) {
+func (r *ExplorerRepositoryImpl) ListDirectoryContent(ctx context.Context, dir *explorer.S3Directory) ([]*explorer.S3Directory, []*explorer.S3File, error) {
 	if r.s3 == nil {
 		return nil, nil, explorer.ErrConnectionNoSet
 	}
@@ -49,7 +49,7 @@ func (r *ExplorerRepositoryImpl) ListDirectoryContent(ctx context.Context, dir *
 	return dirs, files, nil
 }
 
-func (r *ExplorerRepositoryImpl) GetFileContent(ctx context.Context, file *explorer.RemoteFile) ([]byte, error) {
+func (r *ExplorerRepositoryImpl) GetFileContent(ctx context.Context, file *explorer.S3File) ([]byte, error) {
 	if r.s3 == nil {
 		return nil, explorer.ErrConnectionNoSet
 	}
@@ -67,7 +67,7 @@ func (r *ExplorerRepositoryImpl) SetConnection(ctx context.Context, c *connectio
 	return nil
 }
 
-func (r *ExplorerRepositoryImpl) DownloadFile(ctx context.Context, file *explorer.RemoteFile, dest string) error {
+func (r *ExplorerRepositoryImpl) DownloadFile(ctx context.Context, file *explorer.S3File, dest string) error {
 	if r.s3 == nil {
 		return explorer.ErrConnectionNoSet
 	}
@@ -81,7 +81,7 @@ func (r *ExplorerRepositoryImpl) DownloadFile(ctx context.Context, file *explore
 	return nil
 }
 
-func (r *ExplorerRepositoryImpl) UploadFile(ctx context.Context, local *explorer.LocalFile, remote *explorer.RemoteFile) error {
+func (r *ExplorerRepositoryImpl) UploadFile(ctx context.Context, local *explorer.LocalFile, remote *explorer.S3File) error {
 	if r.s3 == nil {
 		return explorer.ErrConnectionNoSet
 	}
@@ -94,6 +94,6 @@ func (r *ExplorerRepositoryImpl) UploadFile(ctx context.Context, local *explorer
 	return nil
 }
 
-func (r *ExplorerRepositoryImpl) DeleteFile(ctx context.Context, remote *explorer.RemoteFile) error {
+func (r *ExplorerRepositoryImpl) DeleteFile(ctx context.Context, remote *explorer.S3File) error {
 	return r.s3.DeleteFile(ctx, remote)
 }

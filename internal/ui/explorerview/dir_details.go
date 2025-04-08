@@ -49,7 +49,7 @@ func (d *dirDetials) Object() fyne.CanvasObject {
 	return d.c
 }
 
-func (d *dirDetials) Update(ctx appcontext.AppContext, dir *explorer.Directory) {
+func (d *dirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory) {
 	d.pathLabel.SetText(dir.Path())
 
 	d.uploadBtn.OnTapped = func() {
@@ -63,7 +63,7 @@ func (d *dirDetials) Update(ctx appcontext.AppContext, dir *explorer.Directory) 
 	}
 }
 
-func makeHandleOnUploadTapped(ctx appcontext.AppContext, dir *explorer.Directory) func(reader fyne.URIReadCloser, err error) {
+func makeHandleOnUploadTapped(ctx appcontext.AppContext, dir *explorer.S3Directory) func(reader fyne.URIReadCloser, err error) {
 	return func(reader fyne.URIReadCloser, err error) {
 		if err != nil {
 			dialog.ShowError(err, ctx.W()) // TODO better error handling

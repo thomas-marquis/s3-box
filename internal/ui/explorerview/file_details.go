@@ -94,7 +94,7 @@ func (d *fileDetials) Object() fyne.CanvasObject {
 	return d.c
 }
 
-func (f *fileDetials) Update(ctx appcontext.AppContext, file *explorer.RemoteFile) {
+func (f *fileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 	f.sizeLabel.SetText(utils.FormatSizeBytes(file.SizeBytes()))
 
 	var path string
@@ -136,7 +136,7 @@ func (f *fileDetials) Update(ctx appcontext.AppContext, file *explorer.RemoteFil
 	}
 }
 
-func makeHandleOnDownloadTapped(ctx appcontext.AppContext, file *explorer.RemoteFile) func(fyne.URIWriteCloser, error) {
+func makeHandleOnDownloadTapped(ctx appcontext.AppContext, file *explorer.S3File) func(fyne.URIWriteCloser, error) {
 	return func(writer fyne.URIWriteCloser, err error) {
 		if err != nil {
 			ctx.Log().Error("Error getting file writer", zap.Error(err))
@@ -158,7 +158,7 @@ func makeHandleOnDownloadTapped(ctx appcontext.AppContext, file *explorer.Remote
 	}
 }
 
-func makeHandleOnDeleteTapped(ctx appcontext.AppContext, file *explorer.RemoteFile) func(bool) {
+func makeHandleOnDeleteTapped(ctx appcontext.AppContext, file *explorer.S3File) func(bool) {
 	return func(confirmed bool) {
 		if !confirmed {
 			return

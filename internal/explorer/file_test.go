@@ -13,7 +13,7 @@ func Test_NewRemoteFile_ShouldBuildNewFile(t *testing.T) {
 	rootDir := explorer.NewDirectory("root", nil)
 
 	// When
-	file := explorer.NewRemoteFile(fullPath, rootDir)
+	file := explorer.NewS3File(fullPath, rootDir)
 
 	// Then
 	assert.Equal(t, "file.txt", file.Name())

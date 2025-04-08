@@ -79,7 +79,7 @@ func (v *ExplorerViewModel) StartLoading() {
 func (v *ExplorerViewModel) StopLoading() {
 	v.loading.Set(false)
 }
-func (v *ExplorerViewModel) ExpandDir(d *explorer.Directory) error {
+func (v *ExplorerViewModel) ExpandDir(d *explorer.S3Directory) error {
 	if d.IsLoaded {
 		return nil
 	}
@@ -131,7 +131,7 @@ func removeItem(values *map[string][]string, id string) error {
 	return nil
 }
 
-func (v *ExplorerViewModel) resetTreeUnderDirectory(d *explorer.Directory) error {
+func (v *ExplorerViewModel) resetTreeUnderDirectory(d *explorer.S3Directory) error {
 	// ids, val, err := v.tree.Get()
 	// if err != nil {
 	// 	return err
@@ -179,7 +179,7 @@ func (v *ExplorerViewModel) resetTreeUnderDirectory(d *explorer.Directory) error
 	// return nil
 }
 
-func (v *ExplorerViewModel) RefreshDir(d *explorer.Directory) error {
+func (v *ExplorerViewModel) RefreshDir(d *explorer.S3Directory) error {
 	v.loading.Set(true)
 	defer v.loading.Set(false)
 
@@ -191,7 +191,7 @@ func (v *ExplorerViewModel) RefreshDir(d *explorer.Directory) error {
 	return v.ExpandDir(d)
 }
 
-func (v *ExplorerViewModel) PreviewFile(f *explorer.RemoteFile) (string, error) {
+func (v *ExplorerViewModel) PreviewFile(f *explorer.S3File) (string, error) {
 	if f.SizeBytes() > v.GetMaxFileSizePreview() {
 		return "", fmt.Errorf("file is too big to PreviewFile")
 	}
@@ -210,15 +210,15 @@ func (*ExplorerViewModel) GetMaxFileSizePreview() int64 {
 	return 1024 * 1024
 }
 
-func (v *ExplorerViewModel) DownloadFile(f *explorer.RemoteFile, dest string) error {
+func (v *ExplorerViewModel) DownloadFile(f *explorer.S3File, dest string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return v.explorerRepo.DownloadFile(ctx, f, dest)
 }
 
-func (v *ExplorerViewModel) UploadFile(localPath string, remoteDir *explorer.Directory) error {
+func (v *ExplorerViewModel) UploadFile(localPath string, remoteDir *explorer.S3Directory) error {
 	localFile := explorer.NewLocalFile(localPath)
-	remoteFile := explorer.NewRemoteFile(remoteDir.Path()+"/"+localFile.FileName(), remoteDir)
+	remoteFile := explorer.NewS3File(remoteDir.Path()+"/"+localFile.FileName(), remoteDir)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -264,7 +264,7 @@ func (vm *ExplorerViewModel) resetTreeContent() {
 	vm.tree = binding.NewUntypedTree()
 }
 
-func (v *ExplorerViewModel) DeleteFile(f *explorer.RemoteFile) error {
+func (v *ExplorerViewModel) DeleteFile(f *explorer.S3File) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return v.explorerRepo.DeleteFile(ctx, f)
@@ -274,8 +274,8 @@ func (v *ExplorerViewModel) ResetTree() error {
 	v.resetTreeContent()
 
 	explorer.RootDir.IsLoaded = false // TODO: crado, recréer un rootdir plutôt
-	explorer.RootDir.SubDirectories = make([]*explorer.Directory, 0)
-	explorer.RootDir.Files = make([]*explorer.RemoteFile, 0)
+	explorer.RootDir.SubDirectories = make([]*explorer.S3Directory, 0)
+	explorer.RootDir.Files = make([]*explorer.S3File, 0)
 
 	if err := v.tree.Append("", explorer.RootDir.Path(), explorer.RootDir); err != nil {
 		return err

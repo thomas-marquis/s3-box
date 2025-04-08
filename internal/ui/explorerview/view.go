@@ -130,11 +130,11 @@ func makeTreeOnSelectedHandler(ctx appcontext.AppContext, detailsContainer *fyne
 	}
 }
 
-func getCurrDirectoryOrFile(di any) (bool, *explorer.Directory, *explorer.RemoteFile, error) {
+func getCurrDirectoryOrFile(di any) (bool, *explorer.S3Directory, *explorer.S3File, error) {
 	switch v := di.(type) {
-	case *explorer.Directory:
+	case *explorer.S3Directory:
 		return true, v, nil, nil
-	case *explorer.RemoteFile:
+	case *explorer.S3File:
 		return false, nil, v, nil
 	default:
 		return false, nil, nil, fmt.Errorf("unexpected type %T", v)

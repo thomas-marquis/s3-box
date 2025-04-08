@@ -58,7 +58,7 @@ func newS3Client(log *zap.SugaredLogger, accessKey, secretKey, server, bucket, r
 	}, nil
 }
 
-func (d *s3Client) GetDirectoriesAndFileByPath(ctx context.Context, currDir *explorer.Directory) ([]*explorer.Directory, []*explorer.RemoteFile, error) {
+func (d *s3Client) GetDirectoriesAndFileByPath(ctx context.Context, currDir *explorer.S3Directory) ([]*explorer.S3Directory, []*explorer.S3File, error) {
 	var queryPath string
 	if currDir == explorer.RootDir {
 		queryPath = ""
@@ -66,8 +66,8 @@ func (d *s3Client) GetDirectoriesAndFileByPath(ctx context.Context, currDir *exp
 		queryPath = strings.TrimPrefix(currDir.Path(), "/") + "/"
 	}
 
-	var files = make([]*explorer.RemoteFile, 0)
-	var dirs = make([]*explorer.Directory, 0)
+	var files = make([]*explorer.S3File, 0)
+	var dirs = make([]*explorer.S3Directory, 0)
 
 	if err := d.s3.ListObjectsPagesWithContext(
 		ctx,
@@ -83,7 +83,7 @@ func (d *s3Client) GetDirectoriesAndFileByPath(ctx context.Context, currDir *exp
 				if key == queryPath {
 					continue
 				}
-				newFile := explorer.NewRemoteFile(key, currDir)
+				newFile := explorer.NewS3File(key, currDir)
 				newFile.SetSizeBytes(*obj.Size)
 				newFile.SetLastModified(*obj.LastModified)
 				files = append(files, newFile)
@@ -113,7 +113,7 @@ func (d *s3Client) GetDirectoriesAndFileByPath(ctx context.Context, currDir *exp
 	return dirs, files, nil
 }
 
-func (d *s3Client) GetFileContent(ctx context.Context, file *explorer.RemoteFile) ([]byte, error) {
+func (d *s3Client) GetFileContent(ctx context.Context, file *explorer.S3File) ([]byte, error) {
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(d.Bucket),
 		Key:    aws.String(file.Path()),
@@ -159,7 +159,7 @@ func (d *s3Client) DownloadFile(ctx context.Context, key, dest string) error {
 	return nil
 }
 
-func (d *s3Client) UploadFile(ctx context.Context, local *explorer.LocalFile, remote *explorer.RemoteFile) error {
+func (d *s3Client) UploadFile(ctx context.Context, local *explorer.LocalFile, remote *explorer.S3File) error {
 	file, err := os.Open(local.Path())
 	if err != nil {
 		d.log.Errorf("Error opening file: %v\n", err)
@@ -182,7 +182,7 @@ func (d *s3Client) UploadFile(ctx context.Context, local *explorer.LocalFile, re
 	return nil
 }
 
-func (d *s3Client) DeleteFile(ctx context.Context, remote *explorer.RemoteFile) error {
+func (d *s3Client) DeleteFile(ctx context.Context, remote *explorer.S3File) error {
 	_, err := d.s3.DeleteObjectWithContext(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(d.Bucket),
 		Key:    aws.String(remote.Path()),

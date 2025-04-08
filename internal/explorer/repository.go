@@ -7,16 +7,16 @@ import (
 
 type Repository interface {
 	// ListDirectoryContent returns all directories and files in the given directory
-	ListDirectoryContent(ctx context.Context, dir *Directory) ([]*Directory, []*RemoteFile, error)
+	ListDirectoryContent(ctx context.Context, dir *S3Directory) ([]*S3Directory, []*S3File, error)
 
-	GetFileContent(ctx context.Context, file *RemoteFile) ([]byte, error)
+	GetFileContent(ctx context.Context, file *S3File) ([]byte, error)
 
 	// SetConnection sets the current connection to be used
 	SetConnection(ctx context.Context, c *connection.Connection) error
 
-	DownloadFile(ctx context.Context, file *RemoteFile, dest string) error
+	DownloadFile(ctx context.Context, file *S3File, dest string) error
 
-	UploadFile(ctx context.Context, local *LocalFile, remote *RemoteFile) error
+	UploadFile(ctx context.Context, local *LocalFile, remote *S3File) error
 
-	DeleteFile(ctx context.Context, remote *RemoteFile) error
+	DeleteFile(ctx context.Context, remote *S3File) error
 }
