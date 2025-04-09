@@ -4,7 +4,7 @@ type Directory struct {
 	Name           string
 	Parrent        *Directory
 	SubDirectories []*Directory
-	Files          []*RemoteFile
+	Files          []*S3File
 	IsLoaded       bool
 }
 
@@ -20,7 +20,7 @@ func NewDirectory(name string, parent *Directory) *Directory {
 		Name:           name,
 		Parrent:        parent,
 		SubDirectories: make([]*Directory, 0),
-		Files:          make([]*RemoteFile, 0),
+		Files:          make([]*S3File, 0),
 		IsLoaded:       false,
 	}
 }
@@ -30,7 +30,7 @@ var (
 		Name:           rooDirName,
 		Parrent:        nil,
 		SubDirectories: make([]*Directory, 0),
-		Files:          make([]*RemoteFile, 0),
+		Files:          make([]*S3File, 0),
 		IsLoaded:       false,
 	}
 )
@@ -39,7 +39,7 @@ func (d *Directory) AddSubdir(sd *Directory) {
 	d.SubDirectories = append(d.SubDirectories, sd)
 }
 
-func (d *Directory) AddFile(f *RemoteFile) {
+func (d *Directory) AddFile(f *S3File) {
 	d.Files = append(d.Files, f)
 }
 

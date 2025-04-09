@@ -42,7 +42,7 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // DownloadFile mocks base method.
-func (m *MockRepository) DownloadFile(arg0 context.Context, arg1 *explorer.RemoteFile, arg2 string) error {
+func (m *MockRepository) DownloadFile(arg0 context.Context, arg1 *explorer.S3File, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DownloadFile", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -56,7 +56,7 @@ func (mr *MockRepositoryMockRecorder) DownloadFile(arg0, arg1, arg2 any) *gomock
 }
 
 // GetFileContent mocks base method.
-func (m *MockRepository) GetFileContent(arg0 context.Context, arg1 *explorer.RemoteFile) ([]byte, error) {
+func (m *MockRepository) GetFileContent(arg0 context.Context, arg1 *explorer.S3File) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetFileContent", arg0, arg1)
 	ret0, _ := ret[0].([]byte)
@@ -71,11 +71,11 @@ func (mr *MockRepositoryMockRecorder) GetFileContent(arg0, arg1 any) *gomock.Cal
 }
 
 // ListDirectoryContent mocks base method.
-func (m *MockRepository) ListDirectoryContent(arg0 context.Context, arg1 *explorer.Directory) ([]*explorer.Directory, []*explorer.RemoteFile, error) {
+func (m *MockRepository) ListDirectoryContent(arg0 context.Context, arg1 *explorer.Directory) ([]*explorer.Directory, []*explorer.S3File, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListDirectoryContent", arg0, arg1)
 	ret0, _ := ret[0].([]*explorer.Directory)
-	ret1, _ := ret[1].([]*explorer.RemoteFile)
+	ret1, _ := ret[1].([]*explorer.S3File)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -101,7 +101,7 @@ func (mr *MockRepositoryMockRecorder) SetConnection(arg0, arg1 any) *gomock.Call
 }
 
 // UploadFile mocks base method.
-func (m *MockRepository) UploadFile(arg0 context.Context, arg1 *explorer.LocalFile, arg2 *explorer.RemoteFile) error {
+func (m *MockRepository) UploadFile(arg0 context.Context, arg1 *explorer.LocalFile, arg2 *explorer.S3File) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UploadFile", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

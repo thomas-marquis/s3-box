@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type RemoteFile struct {
+type S3File struct {
 	name         string
 	fullPath     string
 	dirPath      string
@@ -13,39 +13,39 @@ type RemoteFile struct {
 	lastModified time.Time
 }
 
-func NewRemoteFile(fullPath string) *RemoteFile {
+func NewS3File(fullPath string) *S3File {
 	pathSplit := strings.Split(fullPath, "/")
-	return &RemoteFile{
+	return &S3File{
 		fullPath: fullPath,
 		name:     pathSplit[len(pathSplit)-1],
 		dirPath:  strings.Join(pathSplit[:len(pathSplit)-1], "/"),
 	}
 }
 
-func (f *RemoteFile) Path() string {
+func (f *S3File) Path() string {
 	return f.fullPath
 }
 
-func (f *RemoteFile) Name() string {
+func (f *S3File) Name() string {
 	return f.name
 }
 
-func (f *RemoteFile) DirPath() string {
+func (f *S3File) DirPath() string {
 	return f.dirPath
 }
 
-func (f *RemoteFile) SizeBytes() int64 {
+func (f *S3File) SizeBytes() int64 {
 	return f.sizeBytes
 }
 
-func (f *RemoteFile) SetSizeBytes(size int64) {
+func (f *S3File) SetSizeBytes(size int64) {
 	f.sizeBytes = size
 }
 
-func (f *RemoteFile) LastModified() time.Time {
+func (f *S3File) LastModified() time.Time {
 	return f.lastModified
 }
 
-func (f *RemoteFile) SetLastModified(t time.Time) {
+func (f *S3File) SetLastModified(t time.Time) {
 	f.lastModified = t
 }

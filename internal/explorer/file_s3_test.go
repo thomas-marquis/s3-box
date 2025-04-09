@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_NewRemoteFile_ShouldBuildNewFile(t *testing.T) {
+func Test_NewS3File_ShouldBuildNewFile(t *testing.T) {
 	// Given
 	fullPath := "path/to/file.txt"
 
 	// When
-	file := explorer.NewRemoteFile(fullPath)
+	file := explorer.NewS3File(fullPath)
 
 	// Then
 	assert.Equal(t, "file.txt", file.Name())

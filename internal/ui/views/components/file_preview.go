@@ -28,7 +28,7 @@ func isStringPrintable(s string) bool {
 	return true
 }
 
-func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.RemoteFile) {
+func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.S3File) {
 	previewData := binding.NewString()
 	loading := binding.NewBool()
 	loading.Set(false)

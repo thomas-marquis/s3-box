@@ -170,7 +170,7 @@ func (vm *ViewModel) DeleteConenction(c *connection.Connection) error {
 	return vm.RefreshConnections()
 }
 
-func (vm *ViewModel) PreviewFile(f *explorer.RemoteFile) (string, error) {
+func (vm *ViewModel) PreviewFile(f *explorer.S3File) (string, error) {
 	if f.SizeBytes() > vm.GetMaxFileSizePreview() {
 		return "", fmt.Errorf("file is too big to PreviewFile")
 	}
@@ -218,7 +218,7 @@ func (vm *ViewModel) SelectConnection(c *connection.Connection) error {
 		vm.resetTreeContent()
 		explorer.RootDir.IsLoaded = false // TODO: crado, crecréer un rootdir plutôt
 		explorer.RootDir.SubDirectories = make([]*explorer.Directory, 0)
-		explorer.RootDir.Files = make([]*explorer.RemoteFile, 0)
+		explorer.RootDir.Files = make([]*explorer.S3File, 0)
 		if err := vm.tree.Append("", explorer.RootDir.Path(), explorer.RootDir); err != nil {
 			return err
 		}
@@ -232,7 +232,7 @@ func (vm *ViewModel) SelectConnection(c *connection.Connection) error {
 	return nil
 }
 
-func (vm *ViewModel) DownloadFile(f *explorer.RemoteFile, dest string) error {
+func (vm *ViewModel) DownloadFile(f *explorer.S3File, dest string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return vm.explorerRepo.DownloadFile(ctx, f, dest)
@@ -240,7 +240,7 @@ func (vm *ViewModel) DownloadFile(f *explorer.RemoteFile, dest string) error {
 
 func (vm *ViewModel) UploadFile(localPath string, remoteDir *explorer.Directory) error {
 	localFile := explorer.NewLocalFile(localPath)
-	remoteFile := explorer.NewRemoteFile(remoteDir.Path() + "/" + localFile.FileName())
+	remoteFile := explorer.NewS3File(remoteDir.Path() + "/" + localFile.FileName())
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()

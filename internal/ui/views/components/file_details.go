@@ -89,7 +89,7 @@ func (d *FileDetials) Object() fyne.CanvasObject {
 	return d.c
 }
 
-func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.RemoteFile) {
+func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 	f.sizeLabel.SetText(utils.FormatSizeBytes(file.SizeBytes()))
 
 	var path string

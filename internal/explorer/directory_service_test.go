@@ -27,15 +27,15 @@ func Test_Load_ShouldLoadDirectoryContent(t *testing.T) {
 	subdir1 := explorer.NewDirectory("dir1", currDir)
 	subdir2 := explorer.NewDirectory("dir2", currDir)
 
-	file1 := explorer.NewRemoteFile("file1")
-	file2 := explorer.NewRemoteFile("file2")
-	file3 := explorer.NewRemoteFile("file3")
+	file1 := explorer.NewS3File("file1")
+	file2 := explorer.NewS3File("file2")
+	file3 := explorer.NewS3File("file3")
 
 	ctx := context.TODO()
 
 	repo.EXPECT().
 		ListDirectoryContent(ctx, currDir).
-		Return([]*explorer.Directory{subdir1, subdir2}, []*explorer.RemoteFile{file1, file2, file3}, nil).
+		Return([]*explorer.Directory{subdir1, subdir2}, []*explorer.S3File{file1, file2, file3}, nil).
 		Times(1)
 
 	// When

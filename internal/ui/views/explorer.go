@@ -16,11 +16,11 @@ import (
 	"go.uber.org/zap"
 )
 
-func getCurrDirectoryOrFile(di any) (bool, *explorer.Directory, *explorer.RemoteFile, error) {
+func getCurrDirectoryOrFile(di any) (bool, *explorer.Directory, *explorer.S3File, error) {
 	switch v := di.(type) {
 	case *explorer.Directory:
 		return true, v, nil, nil
-	case *explorer.RemoteFile:
+	case *explorer.S3File:
 		return false, nil, v, nil
 	default:
 		return false, nil, nil, fmt.Errorf("unexpected type %T", v)
