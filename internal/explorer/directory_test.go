@@ -9,8 +9,8 @@ import (
 
 func Test_Path_ShouldReturnFullPathWhenParentDirIsNotNil(t *testing.T) {
 	// Given
-	parentDir := explorer.NewDirectory("parent", explorer.RootDir)
-	currDir := explorer.NewDirectory("dir", parentDir)
+	parentDir := explorer.NewS3Directory("parent", explorer.RootDir)
+	currDir := explorer.NewS3Directory("dir", parentDir)
 
 	// When
 	path := currDir.Path()
@@ -19,12 +19,12 @@ func Test_Path_ShouldReturnFullPathWhenParentDirIsNotNil(t *testing.T) {
 	assert.Equal(t, "/parent/dir", path)
 }
 
-func Test_NewDirectory_ShouldSetRootDirAsParentByDefault(t *testing.T) {
+func Test_NewS3Directory_ShouldSetRootDirAsParentByDefault(t *testing.T) {
 	// Given
-	parentDir := explorer.NewDirectory("parent", nil)
+	parentDir := explorer.NewS3Directory("parent", nil)
 
 	// When
-	currDir := explorer.NewDirectory("dir", parentDir)
+	currDir := explorer.NewS3Directory("dir", parentDir)
 
 	// Then
 	assert.Equal(t, explorer.RootDir, currDir.Parrent.Parrent)

@@ -78,7 +78,7 @@ func (vm *ViewModel) Tree() binding.UntypedTree {
 	return vm.tree
 }
 
-func (vm *ViewModel) ExpandDir(d *explorer.Directory) error {
+func (vm *ViewModel) ExpandDir(d *explorer.S3Directory) error {
 	if d.IsLoaded {
 		return nil
 	}
@@ -101,7 +101,7 @@ func (vm *ViewModel) ExpandDir(d *explorer.Directory) error {
 	return nil
 }
 
-func (vm *ViewModel) RefreshDir(d *explorer.Directory) error {
+func (vm *ViewModel) RefreshDir(d *explorer.S3Directory) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	if err := vm.dirSvc.Load(ctx, d); err != nil {
@@ -217,7 +217,7 @@ func (vm *ViewModel) SelectConnection(c *connection.Connection) error {
 	if c != prevConn {
 		vm.resetTreeContent()
 		explorer.RootDir.IsLoaded = false // TODO: crado, crecréer un rootdir plutôt
-		explorer.RootDir.SubDirectories = make([]*explorer.Directory, 0)
+		explorer.RootDir.SubDirectories = make([]*explorer.S3Directory, 0)
 		explorer.RootDir.Files = make([]*explorer.S3File, 0)
 		if err := vm.tree.Append("", explorer.RootDir.Path(), explorer.RootDir); err != nil {
 			return err
@@ -238,7 +238,7 @@ func (vm *ViewModel) DownloadFile(f *explorer.S3File, dest string) error {
 	return vm.explorerRepo.DownloadFile(ctx, f, dest)
 }
 
-func (vm *ViewModel) UploadFile(localPath string, remoteDir *explorer.Directory) error {
+func (vm *ViewModel) UploadFile(localPath string, remoteDir *explorer.S3Directory) error {
 	localFile := explorer.NewLocalFile(localPath)
 	remoteFile := explorer.NewS3File(remoteDir.Path() + "/" + localFile.FileName())
 

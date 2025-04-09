@@ -7,7 +7,7 @@ import (
 
 type Repository interface {
 	// ListDirectoryContent returns all directories and files in the given directory
-	ListDirectoryContent(ctx context.Context, dir *Directory) ([]*Directory, []*S3File, error)
+	ListDirectoryContent(ctx context.Context, dir *S3Directory) ([]*S3Directory, []*S3File, error)
 
 	GetFileContent(ctx context.Context, file *S3File) ([]byte, error)
 

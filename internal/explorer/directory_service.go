@@ -13,11 +13,11 @@ func NewDirectoryService(repo Repository) *DirectoryService {
 	return &DirectoryService{repository: repo}
 }
 
-func (s *DirectoryService) GetRootDirectory() (*Directory, error) {
-	return NewDirectory("", nil), nil
+func (s *DirectoryService) GetRootDirectory() (*S3Directory, error) {
+	return NewS3Directory("", nil), nil
 }
 
-func (s *DirectoryService) Load(ctx context.Context, d *Directory) error {
+func (s *DirectoryService) Load(ctx context.Context, d *S3Directory) error {
 	subdirs, files, err := s.repository.ListDirectoryContent(ctx, d)
 	if err != nil {
 		if err == ErrConnectionNoSet {

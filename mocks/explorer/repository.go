@@ -71,10 +71,10 @@ func (mr *MockRepositoryMockRecorder) GetFileContent(arg0, arg1 any) *gomock.Cal
 }
 
 // ListDirectoryContent mocks base method.
-func (m *MockRepository) ListDirectoryContent(arg0 context.Context, arg1 *explorer.Directory) ([]*explorer.Directory, []*explorer.S3File, error) {
+func (m *MockRepository) ListDirectoryContent(arg0 context.Context, arg1 *explorer.S3Directory) ([]*explorer.S3Directory, []*explorer.S3File, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListDirectoryContent", arg0, arg1)
-	ret0, _ := ret[0].([]*explorer.Directory)
+	ret0, _ := ret[0].([]*explorer.S3Directory)
 	ret1, _ := ret[1].([]*explorer.S3File)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2

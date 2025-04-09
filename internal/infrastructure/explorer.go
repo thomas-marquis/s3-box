@@ -35,7 +35,7 @@ func NewExplorerRepositoryImpl(logger *zap.Logger, defaultConn *connection.Conne
 	}, nil
 }
 
-func (r *ExplorerRepositoryImpl) ListDirectoryContent(ctx context.Context, dir *explorer.Directory) ([]*explorer.Directory, []*explorer.S3File, error) {
+func (r *ExplorerRepositoryImpl) ListDirectoryContent(ctx context.Context, dir *explorer.S3Directory) ([]*explorer.S3Directory, []*explorer.S3File, error) {
 	if r.s3 == nil {
 		return nil, nil, explorer.ErrConnectionNoSet
 	}

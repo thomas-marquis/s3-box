@@ -16,9 +16,9 @@ import (
 	"go.uber.org/zap"
 )
 
-func getCurrDirectoryOrFile(di any) (bool, *explorer.Directory, *explorer.S3File, error) {
+func getCurrDirectoryOrFile(di any) (bool, *explorer.S3Directory, *explorer.S3File, error) {
 	switch v := di.(type) {
-	case *explorer.Directory:
+	case *explorer.S3Directory:
 		return true, v, nil, nil
 	case *explorer.S3File:
 		return false, nil, v, nil

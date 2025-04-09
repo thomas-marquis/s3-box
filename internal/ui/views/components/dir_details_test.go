@@ -14,7 +14,7 @@ func Benchmark_DirDetails_WithMutation(b *testing.B) {
 	ctrl := gomock.NewController(b)
 	mCtx := mocks_appcontext.NewMockAppContext(ctrl)
 	c := components.NewDirDetails()
-	d := explorer.NewDirectory("root", nil)
+	d := explorer.NewS3Directory("root", nil)
 	b.ResetTimer()
 
 	// When

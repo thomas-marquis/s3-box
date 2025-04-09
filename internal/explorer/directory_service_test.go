@@ -21,11 +21,11 @@ func Test_Load_ShouldLoadDirectoryContent(t *testing.T) {
 	// Given
 	_, repo := getDirectoryServiceMocks(t)
 	svc := explorer.NewDirectoryService(repo)
-	rootDir := explorer.NewDirectory("root", nil)
-	currDir := explorer.NewDirectory("mydirectory", rootDir)
+	rootDir := explorer.NewS3Directory("root", nil)
+	currDir := explorer.NewS3Directory("mydirectory", rootDir)
 
-	subdir1 := explorer.NewDirectory("dir1", currDir)
-	subdir2 := explorer.NewDirectory("dir2", currDir)
+	subdir1 := explorer.NewS3Directory("dir1", currDir)
+	subdir2 := explorer.NewS3Directory("dir2", currDir)
 
 	file1 := explorer.NewS3File("file1")
 	file2 := explorer.NewS3File("file2")
@@ -35,7 +35,7 @@ func Test_Load_ShouldLoadDirectoryContent(t *testing.T) {
 
 	repo.EXPECT().
 		ListDirectoryContent(ctx, currDir).
-		Return([]*explorer.Directory{subdir1, subdir2}, []*explorer.S3File{file1, file2, file3}, nil).
+		Return([]*explorer.S3Directory{subdir1, subdir2}, []*explorer.S3File{file1, file2, file3}, nil).
 		Times(1)
 
 	// When
@@ -52,8 +52,8 @@ func Test_Load_ShouldReturnErrorWhenFailedToGetContent(t *testing.T) {
 	// Given
 	_, repo := getDirectoryServiceMocks(t)
 	svc := explorer.NewDirectoryService(repo)
-	rootDir := explorer.NewDirectory("root", nil)
-	currDir := explorer.NewDirectory("mydirectory", rootDir)
+	rootDir := explorer.NewS3Directory("root", nil)
+	currDir := explorer.NewS3Directory("mydirectory", rootDir)
 
 	ctx := context.TODO()
 
@@ -70,8 +70,8 @@ func Test_Load_ShouldReturnErrConnectionNotSetWhenNoConnection(t *testing.T) {
 	// Given
 	_, repo := getDirectoryServiceMocks(t)
 	svc := explorer.NewDirectoryService(repo)
-	rootDir := explorer.NewDirectory("root", nil)
-	currDir := explorer.NewDirectory("mydirectory", rootDir)
+	rootDir := explorer.NewS3Directory("root", nil)
+	currDir := explorer.NewS3Directory("mydirectory", rootDir)
 
 	ctx := context.TODO()
 

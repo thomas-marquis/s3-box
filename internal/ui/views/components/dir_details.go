@@ -42,7 +42,7 @@ func (d *DirDetials) Object() fyne.CanvasObject {
 	return d.c
 }
 
-func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.Directory) {
+func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory) {
 	d.pathLabel.SetText(dir.Path())
 
 	d.uploadBtn.OnTapped = func() {

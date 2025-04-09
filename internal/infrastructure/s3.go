@@ -56,7 +56,7 @@ func newS3Client(log *zap.SugaredLogger, accessKey, secretKey, server, bucket, r
 	}, nil
 }
 
-func (d *s3Client) GetDirectoriesAndFileByPath(ctx context.Context, currDir *explorer.Directory) ([]*explorer.Directory, []*explorer.S3File, error) {
+func (d *s3Client) GetDirectoriesAndFileByPath(ctx context.Context, currDir *explorer.S3Directory) ([]*explorer.S3Directory, []*explorer.S3File, error) {
 	var queryPath string
 	if currDir == explorer.RootDir {
 		queryPath = ""
@@ -65,7 +65,7 @@ func (d *s3Client) GetDirectoriesAndFileByPath(ctx context.Context, currDir *exp
 	}
 
 	var files = make([]*explorer.S3File, 0)
-	var dirs = make([]*explorer.Directory, 0)
+	var dirs = make([]*explorer.S3Directory, 0)
 
 	if err := d.s3.ListObjectsPagesWithContext(
 		ctx,
@@ -97,7 +97,7 @@ func (d *s3Client) GetDirectoriesAndFileByPath(ctx context.Context, currDir *exp
 					dirPathStriped := strings.TrimSuffix(s3Prefix, "/")
 					dirPathSplit := strings.Split(dirPathStriped, "/")
 					dirName := dirPathSplit[len(dirPathSplit)-1]
-					newDir := explorer.NewDirectory(dirName, currDir)
+					newDir := explorer.NewS3Directory(dirName, currDir)
 					dirs = append(dirs, newDir)
 				}
 			}
