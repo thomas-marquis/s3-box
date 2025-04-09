@@ -1,11 +1,12 @@
 package explorer
 
 type S3Directory struct {
-	Name           string
-	Parrent        *S3Directory
-	SubDirectories []*S3Directory
-	Files          []*S3File
-	IsLoaded       bool
+	Name                string
+	Parrent             *S3Directory
+	SubDirectories      []*S3Directory // DEPRECATED
+	Files               []*S3File
+	IsLoaded            bool
+	SubDirectoriesPaths []string
 }
 
 const (
@@ -17,11 +18,12 @@ func NewDirectory(name string, parent *S3Directory) *S3Directory {
 		parent = RootDir
 	}
 	return &S3Directory{
-		Name:           name,
-		Parrent:        parent,
-		SubDirectories: make([]*S3Directory, 0),
-		Files:          make([]*S3File, 0),
-		IsLoaded:       false,
+		Name:                name,
+		Parrent:             parent,
+		SubDirectories:      make([]*S3Directory, 0),
+		Files:               make([]*S3File, 0),
+		IsLoaded:            false,
+		SubDirectoriesPaths: make([]string, 0),
 	}
 }
 
@@ -35,8 +37,16 @@ var (
 	}
 )
 
-func (d *S3Directory) AddSubdir(sd *S3Directory) {
-	d.SubDirectories = append(d.SubDirectories, sd)
+func (d *S3Directory) CreateNewSubDirectory(name string) *S3Directory {
+	return NewDirectory(name, d)
+}
+
+// func (d *S3Directory) AddSubdir(sd *S3Directory) {
+// 	d.SubDirectories = append(d.SubDirectories, sd)
+// }
+
+func (d *S3Directory) AddSubdir(sdPath string) {
+	d.SubDirectoriesPaths = append(d.SubDirectoriesPaths, sdPath)
 }
 
 func (d *S3Directory) AddFile(f *S3File) {

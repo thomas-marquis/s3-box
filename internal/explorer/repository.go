@@ -20,3 +20,9 @@ type Repository interface {
 
 	DeleteFile(ctx context.Context, remote *S3File) error
 }
+
+type S3DirectoryRepository interface {
+	Save(ctx context.Context, dir *S3Directory) error
+
+	GetByPath(ctx context.Context, path string) (*S3Directory, error)
+}
