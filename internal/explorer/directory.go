@@ -1,28 +1,39 @@
 package explorer
 
+type S3DirectoryID string
+
+func (id S3DirectoryID) String() string {
+	return string(id)
+}
+
 type S3Directory struct {
-	Name           string
-	Parrent        *S3Directory
-	SubDirectories []*S3Directory
-	Files          []*S3File
-	IsLoaded       bool
+	ID                S3DirectoryID
+	Name              string
+	Parrent           *S3Directory
+	SubDirectories    []*S3Directory
+	SubDirectoriesIDs []S3DirectoryID
+	Files             []*S3File
+	IsLoaded          bool
 }
 
 const (
 	rooDirName = "/"
+	RootDirID  = S3DirectoryID("")
 )
 
 func NewS3Directory(name string, parent *S3Directory) *S3Directory {
 	if parent == nil {
 		parent = RootDir
 	}
-	return &S3Directory{
+	d := &S3Directory{
 		Name:           name,
 		Parrent:        parent,
 		SubDirectories: make([]*S3Directory, 0),
 		Files:          make([]*S3File, 0),
 		IsLoaded:       false,
 	}
+	d.ID = S3DirectoryID(d.Path())
+	return d
 }
 
 var (

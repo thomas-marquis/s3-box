@@ -6,15 +6,23 @@ import (
 )
 
 type DirectoryService struct {
-	repository Repository
+	repository      Repository
+	s3DirRepository S3DirectoryRepository
 }
 
-func NewDirectoryService(repo Repository) *DirectoryService {
-	return &DirectoryService{repository: repo}
+func NewDirectoryService(repo Repository, dirRepo S3DirectoryRepository) *DirectoryService {
+	return &DirectoryService{repository: repo, s3DirRepository: dirRepo}
 }
 
 func (s *DirectoryService) GetRootDirectory() (*S3Directory, error) {
-	return NewS3Directory("", nil), nil
+	dir, err := s.s3DirRepository.GetByID(RootDirID)
+	if err == ErrObjectNotFound {
+		return nil, err
+	} else if err != nil {
+		return nil, fmt.Errorf("impossible to get root directory: %s", err)
+	}
+
+	return dir, nil
 }
 
 func (s *DirectoryService) Load(ctx context.Context, d *S3Directory) error {

@@ -50,7 +50,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		return nil, err
 	}
 
-	dirSvc := explorer.NewDirectoryService(explRepo)
+	dirSvc := explorer.NewDirectoryService(explRepo, nil) // TDOD: inject
 	vm := viewmodel.NewViewModel(explRepo, dirSvc, connRepo)
 	appctx := appcontext.New(w, vm, initRoute, appViews, logger)
 
