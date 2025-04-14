@@ -2,10 +2,11 @@ package components
 
 import (
 	"fmt"
-	"github.com/thomas-marquis/s3-box/internal/explorer"
-	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"strings"
 	"unicode"
+
+	"github.com/thomas-marquis/s3-box/internal/explorer"
+	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -98,7 +99,7 @@ func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.S3File) {
 		preview,
 	)
 	dial := dialog.NewCustom(
-		file.Name(),
+		file.Name,
 		"Close",
 		container,
 		ctx.W(),

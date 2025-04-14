@@ -1,76 +1,114 @@
 package explorer
 
+import (
+	"fmt"
+	"strings"
+)
+
 type S3DirectoryID string
+
+const (
+	rootDirName = ""
+	notAParentID = S3DirectoryID("")
+	RootDirID  = S3DirectoryID("/")
+)
 
 func (id S3DirectoryID) String() string {
 	return string(id)
 }
 
+func (id S3DirectoryID) ToName() string {
+	if id == RootDirID {
+		return rootDirName
+	}
+	dirPathStriped := strings.TrimSuffix(id.String(), "/")
+	dirPathSplit := strings.Split(dirPathStriped, "/")
+	dirName := dirPathSplit[len(dirPathSplit)-1]
+	return dirName
+}
+
 type S3Directory struct {
 	ID                S3DirectoryID
 	Name              string
-	Parrent           *S3Directory
-	SubDirectories    []*S3Directory
+	ParentID          S3DirectoryID
 	SubDirectoriesIDs []S3DirectoryID
 	Files             []*S3File
-	IsLoaded          bool
-}
-
-const (
-	rooDirName = "/"
-	RootDirID  = S3DirectoryID("")
-)
-
-func NewS3Directory(name string, parent *S3Directory) *S3Directory {
-	if parent == nil {
-		parent = RootDir
-	}
-	d := &S3Directory{
-		Name:           name,
-		Parrent:        parent,
-		SubDirectories: make([]*S3Directory, 0),
-		Files:          make([]*S3File, 0),
-		IsLoaded:       false,
-	}
-	d.ID = S3DirectoryID(d.Path())
-	return d
 }
 
 var (
 	RootDir = &S3Directory{
-		Name:           rooDirName,
-		Parrent:        nil,
-		SubDirectories: make([]*S3Directory, 0),
-		Files:          make([]*S3File, 0),
-		IsLoaded:       false,
+		Name:              rootDirName,
+		ParentID:          notAParentID,
+		SubDirectoriesIDs: make([]S3DirectoryID, 0),
+		Files:             make([]*S3File, 0),
 	}
 )
 
-func (d *S3Directory) AddSubdir(sd *S3Directory) {
-	d.SubDirectories = append(d.SubDirectories, sd)
+// NewS3Directory creates a new S3 directory
+// returns an error when the directory name is not valid
+func NewS3Directory(name string, parentID S3DirectoryID) (*S3Directory, error) {
+	if name == "" {
+		return nil, fmt.Errorf("directory name is empty")
+	}
+	if name == "/" {
+		return nil, fmt.Errorf("directory name should not be '/'")
+	}
+	if strings.Contains(name, "/") {
+		return nil, fmt.Errorf("directory name should not contain '/'s")
+	}
+
+	return &S3Directory{
+		ID:                buildID(name, parentID),
+		Name:              name,
+		ParentID:          parentID,
+		SubDirectoriesIDs: make([]S3DirectoryID, 0),
+		Files:             make([]*S3File, 0),
+	}, nil
 }
 
-func (d *S3Directory) AddFile(f *S3File) {
-	d.Files = append(d.Files, f)
+// AddSubDirectory reference a new subdirectory in the current one
+// returns an error when the subdirectory already exists
+func (d *S3Directory) AddSubDirectory(name string) error {
+	ID := buildID(name, d.ID)
+	for _, sdID := range d.SubDirectoriesIDs {
+		if sdID == ID {
+			return fmt.Errorf("sub directory %s already exists in S3 directory %s", ID.String(), d.ID.String())
+		}
+	}
+	d.SubDirectoriesIDs = append(d.SubDirectoriesIDs, ID)
+	return nil
 }
 
-func (d *S3Directory) Path() string {
-	if d.Parrent == nil {
-		return d.Name
+// CreateFile creates a new file in the current directory
+// returns an error when the file name is not valid
+func (d *S3Directory) CreateFile(name string) (*S3File, error) {
+	file, err := NewS3File(name, d)
+	if err != nil {
+		return nil, err
 	}
-	if d.Parrent == RootDir {
-		return d.Parrent.Path() + d.Name
-	}
-	return d.Parrent.Path() + "/" + d.Name
+	return file, nil
 }
 
-func (d *S3Directory) DisplayContent() string {
-	var content = "-> " + d.Name + "\n"
-	for _, sd := range d.SubDirectories {
-		content += "\t-> " + sd.Name + "\n"
-	}
+// AddFile adds a file to the current directory
+// returns an error when the file already exists
+func (d *S3Directory) AddFile(file *S3File) error {
 	for _, f := range d.Files {
-		content += "\t-  " + f.Name() + "\n"
+		if f.ID == file.ID {
+			return fmt.Errorf("file %s already exists in S3 directory %s", file.Name, d.ID.String())
+		}
 	}
-	return content
+	d.Files = append(d.Files, file)
+	return nil
 }
+
+func buildID(dirName string, parentID S3DirectoryID) S3DirectoryID {
+	if parentID == RootDirID {
+		return S3DirectoryID(dirName)
+	}
+	return S3DirectoryID(parentID.String() + "/" + dirName)
+}
+
+
+// TODO: download -> LocalDirectory
+// TODO: create file -> S3File
+// TODO: create sub directory -> S3Directory

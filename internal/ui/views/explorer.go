@@ -1,7 +1,9 @@
 package views
 
 import (
+	"context"
 	"fmt"
+
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
@@ -37,33 +39,25 @@ func makeNoConnectionTopBanner(ctx appcontext.AppContext) *fyne.Container {
 }
 
 func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
-	errChan := make(chan error)
-
 	noConn := makeNoConnectionTopBanner(ctx)
 	noConn.Hide()
 
 	content := container.NewHSplit(widget.NewLabel(""), widget.NewLabel(""))
 
+	// Start error handler
 	go func() {
-		for {
-			select {
-			case err := <-errChan:
-				if err == viewmodel.ErrNoConnectionSelected {
-					noConn.Show()
-					content.Hide()
-				} else {
-					ctx.L().Error("Error in explorer view", zap.Error(err))
-				}
-			case _, ok := <-ctx.ExitChan():
-				if !ok {
-					return
-				}
+		for err := range ctx.Vm().ErrorChan() {
+			if err == viewmodel.ErrNoConnectionSelected {
+				noConn.Show()
+				content.Hide()
+			} else {
+				ctx.L().Error("Error in explorer view", zap.Error(err))
 			}
 		}
 	}()
 
-	if err := ctx.Vm().ExpandDir(explorer.RootDir); err != nil {
-		errChan <- err
+	if err := ctx.Vm().AppendDirToTree(context.Background(), explorer.RootDirID); err != nil {
+		ctx.Vm().ErrorChan() <- err
 	}
 
 	treeItemBuilder := components.NewTreeItemBuilder()
@@ -75,31 +69,36 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		},
 		func(i binding.DataItem, branch bool, o fyne.CanvasObject) {
 			di, _ := i.(binding.Untyped).Get()
-			isDir, d, f, err := getCurrDirectoryOrFile(di)
-			if err != nil {
-				errChan <- err
+			nodeItem, ok := di.(*viewmodel.TreeNode)
+			if !ok {
+				ctx.Vm().ErrorChan() <- fmt.Errorf("unexpected type %T", di)
 				return
 			}
-
-			if isDir {
-				err := ctx.Vm().ExpandDir(d)
-				if err != nil {
-					errChan <- err
-					return
-				}
-				if d.Path() == explorer.RootDir.Path() {
-					var bucket string
-					if conn := ctx.Vm().SelectedConnection(); conn != nil {
-						bucket = conn.BucketName
-					}
-					treeItemBuilder.Update(o, "Bucket: "+bucket)
-				} else {
-					treeItemBuilder.Update(o, d.Name+"/")
-				}
-			} else {
-				treeItemBuilder.Update(o, f.Name())
-			}
+			treeItemBuilder.Update(o, *nodeItem)
 		})
+		
+	tree.OnSelected = func(uid widget.TreeNodeID) {
+		di, err := ctx.Vm().Tree().GetValue(uid)
+		if err != nil {
+			ctx.Vm().ErrorChan() <- fmt.Errorf("Error getting value: %v\n", err)
+			return
+		}
+		nodeItem, ok := di.(*viewmodel.TreeNode)
+		if !ok {
+			ctx.Vm().ErrorChan() <- fmt.Errorf("ERROR unexpected type %T\n", di)
+			return
+		}
+		fmt.Printf("Selected: %s (ID=%s)\n", nodeItem.DisplayName, nodeItem.ID)
+
+		if nodeItem.IsDirectory && !nodeItem.Loaded {
+			if err := ctx.Vm().AppendDirToTree(context.Background(), explorer.S3DirectoryID(nodeItem.ID)); err != nil {
+				ctx.Vm().ErrorChan() <- err
+				return
+			}
+			tree.OpenBranch(uid)
+			nodeItem.Loaded = true
+		}
+	}
 
 	detailsContainer := container.NewVBox()
 	fileDetails := components.NewFileDetails()

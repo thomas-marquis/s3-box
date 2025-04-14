@@ -90,23 +90,23 @@ func (d *FileDetials) Object() fyne.CanvasObject {
 }
 
 func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
-	f.sizeLabel.SetText(utils.FormatSizeBytes(file.SizeBytes()))
+	f.sizeLabel.SetText(utils.FormatSizeBytes(file.SizeBytes))
 
 	var path string
-	originalPath := file.Path()
+	originalPath := file.ID.String()
 	if len(originalPath) > maxFileNameLength {
-		path = ".../" + file.Name()
+		path = ".../" + file.Name
 	} else {
 		path = originalPath
 	}
 	f.pathLabel.SetText(path)
 
-	fileURI := storage.NewFileURI(file.Path())
+	fileURI := storage.NewFileURI(file.ID.String())
 	f.fileIcon.SetURI(fileURI)
 
-	f.lastModifiedLabel.SetText(file.LastModified().Format("2006-01-02 15:04:05"))
+	f.lastModifiedLabel.SetText(file.LastModified.Format("2006-01-02 15:04:05"))
 
-	if file.SizeBytes() <= ctx.Vm().GetMaxFileSizePreview() {
+	if file.SizeBytes <= ctx.Vm().GetMaxFileSizePreview() {
 		f.previewBtn.Show()
 		f.previewBtn.OnTapped = func() {
 			ShowFilePreviewDialog(ctx, file)
@@ -135,7 +135,7 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 			}
 			dialog.ShowInformation("Download", "File downloaded", ctx.W())
 		}, ctx.W())
-		saveDialog.SetFileName(file.Name())
+		saveDialog.SetFileName(file.Name)
 		saveDialog.SetLocation(ctx.Vm().GetLastSaveDir())
 		saveDialog.Show()
 	}

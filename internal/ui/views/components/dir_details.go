@@ -43,7 +43,7 @@ func (d *DirDetials) Object() fyne.CanvasObject {
 }
 
 func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory) {
-	d.pathLabel.SetText(dir.Path())
+	d.pathLabel.SetText(dir.ID.String())
 
 	d.uploadBtn.OnTapped = func() {
 		selectDialog := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
@@ -66,10 +66,10 @@ func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory
 				return
 			}
 
-			if err := ctx.Vm().RefreshDir(dir); err != nil {
-				dialog.ShowError(err, ctx.W()) // TODO better error handling
-				return
-			}
+			// if err := ctx.Vm().RefreshDir(dir); err != nil {
+			// 	dialog.ShowError(err, ctx.W()) // TODO better error handling
+			// 	return
+			// }
 			dialog.ShowInformation("Upload", "File uploaded", ctx.W())
 		}, ctx.W())
 

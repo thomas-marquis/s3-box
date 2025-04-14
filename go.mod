@@ -5,6 +5,7 @@ go 1.22.5
 require (
 	fyne.io/fyne/v2 v2.5.2
 	github.com/aws/aws-sdk-go v1.55.3
+	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/mock v0.4.0
 	go.uber.org/zap v1.27.0

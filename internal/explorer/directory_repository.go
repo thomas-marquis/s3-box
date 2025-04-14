@@ -1,6 +1,8 @@
 package explorer
 
-import "context"
+import (
+	"context"
+)
 
 type S3DirectoryRepository interface {
 	// GetByID retrieves a directory by its ID

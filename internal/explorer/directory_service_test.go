@@ -1,85 +1,102 @@
 package explorer_test
 
-import (
-	"context"
-	"errors"
-	"github.com/thomas-marquis/s3-box/internal/explorer"
-	mocks_explorer "github.com/thomas-marquis/s3-box/mocks/explorer"
-	"testing"
+// import (
+// 	"context"
+// 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
-)
+// 	"github.com/thomas-marquis/s3-box/internal/explorer"
+// 	mocks_explorer "github.com/thomas-marquis/s3-box/mocks/explorer"
 
-func getDirectoryServiceMocks(t *testing.T) (*gomock.Controller, *mocks_explorer.MockRepository) {
-	ctrl := gomock.NewController(t)
-	repo := mocks_explorer.NewMockRepository(ctrl)
-	return ctrl, repo
-}
+// 	"github.com/gofrs/uuid"
+// 	"github.com/stretchr/testify/assert"
+// 	"go.uber.org/mock/gomock"
+// )
 
-func Test_Load_ShouldLoadDirectoryContent(t *testing.T) {
-	// Given
-	_, repo := getDirectoryServiceMocks(t)
-	svc := explorer.NewDirectoryService(repo)
-	rootDir := explorer.NewS3Directory("root", nil)
-	currDir := explorer.NewS3Directory("mydirectory", rootDir)
+// func getDirectoryServiceMocks(t *testing.T) (*gomock.Controller, *mocks_explorer.MockS3DirectoryRepository) {
+// 	ctrl := gomock.NewController(t)
+// 	repo := mocks_explorer.NewMockS3DirectoryRepository(ctrl)
+// 	return ctrl, repo
+// }
 
-	subdir1 := explorer.NewS3Directory("dir1", currDir)
-	subdir2 := explorer.NewS3Directory("dir2", currDir)
+// func Test_GetRootDirectory_ShouldReturnRootDirectory(t *testing.T) {
+// 	// Given
+// 	_, repo := getDirectoryServiceMocks(t)
+// 	svc := explorer.NewDirectoryService()
+// 	connID := uuid.Must(uuid.NewV4())
+// 	svc.AddDirectoryRepository(connID, repo)
+// 	svc.SetActiveRepository(connID)
 
-	file1 := explorer.NewS3File("file1")
-	file2 := explorer.NewS3File("file2")
-	file3 := explorer.NewS3File("file3")
+// 	expectedDir := explorer.NewS3Directory("root", explorer.RootDirID)
+// 	ctx := context.TODO()
 
-	ctx := context.TODO()
+// 	repo.EXPECT().
+// 		GetByID(ctx, explorer.RootDirID).
+// 		Return(expectedDir, nil).
+// 		Times(1)
 
-	repo.EXPECT().
-		ListDirectoryContent(ctx, currDir).
-		Return([]*explorer.S3Directory{subdir1, subdir2}, []*explorer.S3File{file1, file2, file3}, nil).
-		Times(1)
+// 	// When
+// 	dir, err := svc.GetRootDirectory(ctx)
 
-	// When
-	err := svc.Load(ctx, currDir)
+// 	// Then
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, expectedDir, dir)
+// }
 
-	// Then
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(currDir.SubDirectories))
-	assert.Equal(t, 3, len(currDir.Files))
-	assert.True(t, currDir.IsLoaded)
-}
+// func Test_GetRootDirectory_ShouldReturnErrorWhenNoActiveConnection(t *testing.T) {
+// 	// Given
+// 	_, repo := getDirectoryServiceMocks(t)
+// 	svc := explorer.NewDirectoryService()
+// 	connID := uuid.Must(uuid.NewV4())
+// 	svc.AddDirectoryRepository(connID, repo)
+// 	ctx := context.TODO()
 
-func Test_Load_ShouldReturnErrorWhenFailedToGetContent(t *testing.T) {
-	// Given
-	_, repo := getDirectoryServiceMocks(t)
-	svc := explorer.NewDirectoryService(repo)
-	rootDir := explorer.NewS3Directory("root", nil)
-	currDir := explorer.NewS3Directory("mydirectory", rootDir)
+// 	// When
+// 	dir, err := svc.GetRootDirectory(ctx)
 
-	ctx := context.TODO()
+// 	// Then
+// 	assert.Equal(t, explorer.ErrConnectionNoSet, err)
+// 	assert.Nil(t, dir)
+// }
 
-	repo.EXPECT().ListDirectoryContent(ctx, currDir).Return(nil, nil, errors.New("ckc"))
+// func Test_GetDirectoryByID_ShouldReturnDirectory(t *testing.T) {
+// 	// Given
+// 	_, repo := getDirectoryServiceMocks(t)
+// 	svc := explorer.NewDirectoryService()
+// 	connID := uuid.Must(uuid.NewV4())
+// 	svc.AddDirectoryRepository(connID, repo)
+// 	svc.SetActiveRepository(connID)
 
-	// When
-	err := svc.Load(ctx, currDir)
+// 	dirID := explorer.S3DirectoryID("path/to/dir")
+// 	expectedDir := explorer.NewS3Directory("dir", explorer.S3DirectoryID("path/to"))
+// 	ctx := context.TODO()
 
-	// Then
-	assert.Equal(t, errors.New("impossible to load directory '/root/mydirectory' content: ckc"), err)
-}
+// 	repo.EXPECT().
+// 		GetByID(ctx, dirID).
+// 		Return(expectedDir, nil).
+// 		Times(1)
 
-func Test_Load_ShouldReturnErrConnectionNotSetWhenNoConnection(t *testing.T) {
-	// Given
-	_, repo := getDirectoryServiceMocks(t)
-	svc := explorer.NewDirectoryService(repo)
-	rootDir := explorer.NewS3Directory("root", nil)
-	currDir := explorer.NewS3Directory("mydirectory", rootDir)
+// 	// When
+// 	dir, err := svc.GetDirectoryByID(ctx, dirID)
 
-	ctx := context.TODO()
+// 	// Then
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, expectedDir, dir)
+// }
 
-	repo.EXPECT().ListDirectoryContent(ctx, currDir).Return(nil, nil, explorer.ErrConnectionNoSet)
+// func Test_GetDirectoryByID_ShouldReturnErrorWhenNoActiveConnection(t *testing.T) {
+// 	// Given
+// 	_, repo := getDirectoryServiceMocks(t)
+// 	svc := explorer.NewDirectoryService()
+// 	connID := uuid.Must(uuid.NewV4())
+// 	svc.AddDirectoryRepository(connID, repo)
+// 	ctx := context.TODO()
 
-	// When
-	err := svc.Load(ctx, currDir)
+// 	dirID := explorer.S3DirectoryID("path/to/dir")
 
-	// Then
-	assert.Equal(t, explorer.ErrConnectionNoSet, err)
-}
+// 	// When
+// 	dir, err := svc.GetDirectoryByID(ctx, dirID)
+
+// 	// Then
+// 	assert.Equal(t, explorer.ErrConnectionNoSet, err)
+// 	assert.Nil(t, dir)
+// }

@@ -1,51 +1,52 @@
 package explorer
 
 import (
+	"errors"
 	"strings"
 	"time"
 )
 
+type S3FileID string
+
+func (id S3FileID) String() string {
+	return string(id)
+}
+
+func (id S3FileID) ToName() string {
+	dirPathStriped := strings.TrimSuffix(id.String(), "/")
+	dirPathSplit := strings.Split(dirPathStriped, "/")
+	dirName := dirPathSplit[len(dirPathSplit)-1]
+	return dirName
+}
+
 type S3File struct {
-	name         string
-	fullPath     string
-	dirPath      string
-	sizeBytes    int64
-	lastModified time.Time
+	ID           S3FileID
+	DirectoryID  S3DirectoryID
+	Name         string
+	SizeBytes    int64
+	LastModified time.Time
 }
 
-func NewS3File(fullPath string) *S3File {
-	pathSplit := strings.Split(fullPath, "/")
-	return &S3File{
-		fullPath: fullPath,
-		name:     pathSplit[len(pathSplit)-1],
-		dirPath:  strings.Join(pathSplit[:len(pathSplit)-1], "/"),
+func NewS3File(name string, dir *S3Directory) (*S3File, error) {
+	if name == "" {
+		return nil, errors.New("file name is empty")
 	}
+	if name == "/" {
+		return nil, errors.New("file name is not valid")
+	}
+	
+	return &S3File{
+		ID:           makeFileID(name, dir),
+		Name:         name,
+		DirectoryID:  dir.ID,
+	}, nil
 }
 
-func (f *S3File) Path() string {
-	return f.fullPath
-}
+// TODO: delete
+// TODO: move ???
+// TODO: copy -> S3File
+// TODO: download -> LocalFile
 
-func (f *S3File) Name() string {
-	return f.name
-}
-
-func (f *S3File) DirPath() string {
-	return f.dirPath
-}
-
-func (f *S3File) SizeBytes() int64 {
-	return f.sizeBytes
-}
-
-func (f *S3File) SetSizeBytes(size int64) {
-	f.sizeBytes = size
-}
-
-func (f *S3File) LastModified() time.Time {
-	return f.lastModified
-}
-
-func (f *S3File) SetLastModified(t time.Time) {
-	f.lastModified = t
+func makeFileID(name string, dir *S3Directory) S3FileID {
+	return S3FileID(dir.ID.String() + "/" + name)
 }

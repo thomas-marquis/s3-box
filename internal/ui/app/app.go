@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"time"
+
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
@@ -9,7 +11,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views"
-	"time"
 
 	"fyne.io/fyne/v2"
 	fyne_app "fyne.io/fyne/v2/app"
@@ -44,14 +45,27 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		sugarLog.Error("Error getting selected connection", err)
 		return nil, err
 	}
-	explRepo, err := infrastructure.NewExplorerRepositoryImpl(logger, lastSelectedConn)
+	dirRepo, err := infrastructure.NewS3DirectoryRepositoryImpl(logger, lastSelectedConn)
 	if err != nil {
 		sugarLog.Error("Error creating explorer repository", err)
 		return nil, err
 	}
 
-	dirSvc := explorer.NewDirectoryService(explRepo, nil) // TDOD: inject
-	vm := viewmodel.NewViewModel(explRepo, dirSvc, connRepo)
+	fileRepo, err := infrastructure.NewS3FileRepository(logger, lastSelectedConn)
+	if err != nil {
+		sugarLog.Error("Error creating file repository", err)
+		return nil, err
+	}
+
+	dirSvc := explorer.NewDirectoryService()
+	dirSvc.AddDirectoryRepository(lastSelectedConn.ID, dirRepo)
+	dirSvc.SetActiveRepository(lastSelectedConn.ID)
+
+	fileSvc := explorer.NewFileService()
+	fileSvc.AddFileRepository(lastSelectedConn.ID, fileRepo)
+	fileSvc.SetActiveRepository(lastSelectedConn.ID)
+	
+	vm := viewmodel.NewViewModel(dirRepo, dirSvc, connRepo, fileSvc)
 	appctx := appcontext.New(w, vm, initRoute, appViews, logger)
 
 	w.SetOnClosed(func() {

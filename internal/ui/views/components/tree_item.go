@@ -3,22 +3,35 @@ package components
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 )
 
-type TreeItem struct{}
+type TreeItem struct {
+}
 
 func NewTreeItemBuilder() *TreeItem {
 	return &TreeItem{}
 }
 
 func (i *TreeItem) NewRaw() *fyne.Container {
-	name := widget.NewLabel(".")
-	return container.NewHBox(name)
+	displayLabel := widget.NewLabel("-")
+	icon := widget.NewIcon(theme.FolderIcon())
+	icon.Hide()
+	return container.NewHBox(icon, displayLabel)
 }
 
-func (i *TreeItem) Update(o fyne.CanvasObject, contentName string) {
+func (i *TreeItem) Update(o fyne.CanvasObject, nodeItem viewmodel.TreeNode) {
 	c, _ := o.(*fyne.Container)
-	contentLabel := c.Objects[0].(*widget.Label)
-	contentLabel.SetText(contentName)
+	icon := c.Objects[0].(*widget.Icon)
+	displayLabel := c.Objects[1].(*widget.Label)
+
+	displayLabel.SetText(nodeItem.DisplayName)
+	
+	if nodeItem.IsDirectory {
+		icon.Show()
+	} else {
+		icon.Hide()
+	}
 }
