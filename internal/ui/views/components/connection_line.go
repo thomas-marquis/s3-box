@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
@@ -95,7 +96,9 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 	deleteBtn.OnTapped = func() {
 		dialog.ShowConfirm("Delete connection", fmt.Sprintf("Are you sure you want to delete the connection '%s'?", conn.Name), func(b bool) {
 			if b {
-				ctx.Vm().DeleteConenction(conn)
+				if err := ctx.Vm().DeleteConnection(conn); err != nil {
+					ctx.L().Error("Failed to delete connection", zap.Error(err))
+				}
 			}
 		}, ctx.W())
 	}

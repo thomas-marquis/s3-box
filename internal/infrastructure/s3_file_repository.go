@@ -23,6 +23,8 @@ type S3FileRepositoryImpl struct {
 	conn    *connection.Connection
 }
 
+var _ explorer.S3FileRepository = &S3FileRepositoryImpl{}
+
 func NewS3FileRepository(logger *zap.Logger, conn *connection.Connection) (*S3FileRepositoryImpl, error) {
 	log := logger.Sugar()
 
@@ -96,5 +98,28 @@ func (r *S3FileRepositoryImpl) DownloadFile(ctx context.Context, key, dest strin
 	}
 
 	r.log.Infof("Downloaded %s, %d bytes\n", key, numBytes)
+	return nil
+}
+
+func (r *S3FileRepositoryImpl) UploadFile(ctx context.Context, local *explorer.LocalFile, remote *explorer.S3File) error {
+	file, err := os.Open(local.Path())
+	if err != nil {
+		r.log.Errorf("Error opening file: %v\n", err)
+		return fmt.Errorf("UploadFile: %w", err)
+	}
+	defer file.Close()
+
+	uploader := s3manager.NewUploader(r.session)
+	_, err = uploader.UploadWithContext(ctx, &s3manager.UploadInput{
+		Bucket: aws.String(r.conn.BucketName),
+		Key:    aws.String(remote.ID.String()),
+		Body:   file,
+	})
+	if err != nil {
+		r.log.Errorf("Error uploading file: %v\n", err)
+		return fmt.Errorf("UploadFile: %w", err)
+	}
+
+	r.log.Infof("Uploaded %s\n", remote.ID.String())
 	return nil
 }

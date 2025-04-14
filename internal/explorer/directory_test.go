@@ -67,6 +67,17 @@ func Test_NewS3Directory_ShouldReturnErrorWhenDirectoryNameIsEmpty(t *testing.T)
 	assert.Error(t, err)
 }
 
+func Test_NewS3Directory_ShouldBuildNewWhenEmptyNameAndNoParentID(t *testing.T) {
+	// When
+	dir, err := explorer.NewS3Directory("", explorer.NilParentID)
+
+	// Then
+	assert.NoError(t, err)
+	assert.Equal(t, explorer.NilParentID, dir.ParentID)
+	assert.Equal(t, "", dir.Name)
+	assert.Equal(t, explorer.RootDirID, dir.ID)
+}
+
 func Test_NewS3Directory_ShouldReturnErrorWhenDirectoryNameIsSlash(t *testing.T) {
 	// When
 	_, err := explorer.NewS3Directory("/", explorer.RootDirID)

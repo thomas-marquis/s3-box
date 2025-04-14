@@ -14,7 +14,7 @@ type DirectoryService struct {
 	repoFactory DirectoryRepositoryFactory
 }
 
-type DirectoryRepositoryFactory func(ctx context.Context, connID uuid.UUID) (*S3DirectoryRepository, error)
+type DirectoryRepositoryFactory func(ctx context.Context, connID uuid.UUID) (S3DirectoryRepository, error)
 
 func NewDirectoryService(logger *zap.Logger, repoFactory DirectoryRepositoryFactory) *DirectoryService {
 	return &DirectoryService{

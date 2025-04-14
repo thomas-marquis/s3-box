@@ -44,7 +44,6 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 
 	content := container.NewHSplit(widget.NewLabel(""), widget.NewLabel(""))
 
-	// Start error handler
 	go func() {
 		for err := range ctx.Vm().ErrorChan() {
 			if err == viewmodel.ErrNoConnectionSelected {
@@ -71,8 +70,7 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 			di, _ := i.(binding.Untyped).Get()
 			nodeItem, ok := di.(*viewmodel.TreeNode)
 			if !ok {
-				ctx.Vm().ErrorChan() <- fmt.Errorf("unexpected type %T", di)
-				return
+				panic(fmt.Sprintf("unexpected type %T", di))
 			}
 			treeItemBuilder.Update(o, *nodeItem)
 		})
@@ -85,8 +83,7 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		}
 		nodeItem, ok := di.(*viewmodel.TreeNode)
 		if !ok {
-			ctx.Vm().ErrorChan() <- fmt.Errorf("ERROR unexpected type %T\n", di)
-			return
+			panic(fmt.Sprintf("unexpected type %T", di))
 		}
 		fmt.Printf("Selected: %s (ID=%s)\n", nodeItem.DisplayName, nodeItem.ID)
 

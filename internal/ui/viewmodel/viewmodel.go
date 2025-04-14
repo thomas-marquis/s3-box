@@ -19,7 +19,6 @@ const (
 )
 
 type ViewModel struct {
-	explorerRepo  explorer.S3DirectoryRepository
 	connRepo      connection.Repository
 	dirSvc        *explorer.DirectoryService
 	fileSvc       *explorer.FileService
@@ -35,7 +34,7 @@ type ViewModel struct {
 	dirsById  map[explorer.S3DirectoryID]*explorer.S3Directory
 }
 
-func NewViewModel(explorerRepo explorer.S3DirectoryRepository, dirSvc *explorer.DirectoryService, connRepo connection.Repository, fileSvc *explorer.FileService) *ViewModel {
+func NewViewModel(dirSvc *explorer.DirectoryService, connRepo connection.Repository, fileSvc *explorer.FileService) *ViewModel {
 	t := binding.NewUntypedTree()
 	c := binding.NewUntypedList()
 	errChan := make(chan error)
@@ -50,6 +49,7 @@ func NewViewModel(explorerRepo explorer.S3DirectoryRepository, dirSvc *explorer.
 		dirsById:     make(map[explorer.S3DirectoryID]*explorer.S3Directory),
 		fileSvc:      fileSvc,
 		errChan:      errChan,
+		connRepo:     connRepo,
 	}
 
 	// Start error handler
@@ -59,21 +59,21 @@ func NewViewModel(explorerRepo explorer.S3DirectoryRepository, dirSvc *explorer.
 		}
 	}()
 
-	rootNode := NewTreeNode(explorer.RootDirID.String(), "/", true)
-	t.Append("", rootNode.ID, rootNode)
-	// if err := vm.AppendDirToTree(context.Background(), explorer.RootDirID); err != nil {
+	// rootNode := NewTreeNode(explorer.RootDirID.String(), "/", true)
+	// t.Append("", rootNode.ID, rootNode)
+	// // if err := vm.AppendDirToTree(context.Background(), explorer.RootDirID); err != nil {
 
-	// }
+	// // }
 
 	if err := vm.RefreshConnections(); err != nil {
-		vm.errChan <- fmt.Errorf("Error refreshing connections: %w", err)
+		vm.errChan <- fmt.Errorf("error refreshing connections: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	currentConn, err := vm.getCurrentConnection(ctx)
 	if err != nil && err != connection.ErrConnectionNotFound {
-		vm.errChan <- fmt.Errorf("Error getting selected connection: %w", err)
+		vm.errChan <- fmt.Errorf("error getting selected connection: %w", err)
 	}
 	if currentConn != nil {
 		vm.state.SelectedConnection = currentConn
@@ -81,19 +81,6 @@ func NewViewModel(explorerRepo explorer.S3DirectoryRepository, dirSvc *explorer.
 	}
 
 	return vm
-}
-
-func (vm *ViewModel) getCurrentConnection(ctx context.Context) (*connection.Connection, error) {
-	repo, err := vm.connRepoFactory.Get(ctx, vm.state.SelectedConnection)
-	if err != nil {
-		return nil, err
-	}
-	return repo.GetSelectedConnection(ctx)
-}
-
-func (vm *ViewModel) setActiveConnection(conn *connection.Connection) {
-	vm.dirSvc.SetActiveConnection(conn)
-	vm.fileSvc.SetActiveConnection(conn)
 }
 
 func (vm *ViewModel) ErrorChan() chan error {
@@ -125,7 +112,7 @@ func (vm *ViewModel) AppendDirToTree(ctx context.Context, dirID explorer.S3Direc
 
 	dir, err := vm.dirSvc.GetDirectoryByID(ctx, dirID)
 	if err != nil {
-		vm.errChan <- fmt.Errorf("Error getting directory by ID: %w", err)
+		vm.errChan <- fmt.Errorf("error getting directory by ID (%s): %w", dirID, err)
 		return err
 	}
 	vm.dirsById[dirID] = dir
@@ -133,12 +120,12 @@ func (vm *ViewModel) AppendDirToTree(ctx context.Context, dirID explorer.S3Direc
 	dirNode := NewTreeNode(dirID.String(), dirID.ToName(), true)
 	if isDirAlreadyInTree {
 		if err := vm.tree.SetValue(dirID.String(), dirNode); err != nil {
-			vm.errChan <- fmt.Errorf("Error setting tree value: %w", err)
+			vm.errChan <- fmt.Errorf("error setting tree value: %w", err)
 			return err
 		}
 	} else {
 		if err := vm.tree.Append(dirID.String(), dirNode.ID, dirNode); err != nil {
-			vm.errChan <- fmt.Errorf("Error appending directory to tree: %w", err)
+			vm.errChan <- fmt.Errorf("error appending directory to tree: %w", err)
 			return err
 		}
 	}
@@ -147,7 +134,7 @@ func (vm *ViewModel) AppendDirToTree(ctx context.Context, dirID explorer.S3Direc
 	for _, file := range dir.Files {
 		fileNode := NewTreeNode(file.ID.String(), file.Name, false)
 		if err := vm.tree.Append(dirID.String(), fileNode.ID, fileNode); err != nil {
-			vm.errChan <- fmt.Errorf("Error appending file to tree: %w", err)
+			vm.errChan <- fmt.Errorf("error appending file to tree: %w", err)
 			continue
 		}
 		fileNode.Loaded = true
@@ -156,7 +143,7 @@ func (vm *ViewModel) AppendDirToTree(ctx context.Context, dirID explorer.S3Direc
 	for _, subDirID := range dir.SubDirectoriesIDs {
 		subDirNode := NewTreeNode(subDirID.String(), subDirID.ToName(), true)
 		if err := vm.tree.Append(dirID.String(), subDirNode.ID, subDirNode); err != nil {
-			vm.errChan <- fmt.Errorf("Error appending subdirectory to tree: %w", err)
+			vm.errChan <- fmt.Errorf("error appending subdirectory to tree: %w", err)
 			continue
 		}
 		subDirNode.Loaded = true
@@ -219,13 +206,13 @@ func (vm *ViewModel) RefreshConnections() error {
 	defer cancel()
 	conns, err := vm.connRepo.ListConnections(ctx)
 	if err != nil {
-		vm.errChan <- fmt.Errorf("Error listing connections: %w", err)
+		vm.errChan <- fmt.Errorf("error listing connections: %w", err)
 		return err
 	}
 
 	prevConns, err := vm.connections.Get()
 	if err != nil {
-		vm.errChan <- fmt.Errorf("Error getting previous connections: %w", err)
+		vm.errChan <- fmt.Errorf("error getting previous connections: %w", err)
 		return err
 	}
 	for _, c := range prevConns {
@@ -243,7 +230,7 @@ func (vm *ViewModel) SaveConnection(c *connection.Connection) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	if err := vm.connRepo.SaveConnection(ctx, c); err != nil {
-		vm.errChan <- fmt.Errorf("Error saving connection: %w", err)
+		vm.errChan <- fmt.Errorf("error saving connection: %w", err)
 		return err
 	}
 
@@ -254,7 +241,7 @@ func (vm *ViewModel) DeleteConnection(c *connection.Connection) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	if err := vm.connRepo.DeleteConnection(ctx, c.ID); err != nil {
-		vm.errChan <- fmt.Errorf("Error deleting connection: %w", err)
+		vm.errChan <- fmt.Errorf("error deleting connection: %w", err)
 		return err
 	}
 
@@ -270,7 +257,7 @@ func (vm *ViewModel) PreviewFile(f *explorer.S3File) (string, error) {
 	defer cancel()
 	content, err := vm.fileSvc.GetContent(ctx, f)
 	if err != nil {
-		vm.errChan <- fmt.Errorf("Error getting file content: %w", err)
+		vm.errChan <- fmt.Errorf("error getting file content: %w", err)
 		return "", err
 	}
 
@@ -299,21 +286,12 @@ func (vm *ViewModel) SelectConnection(c *connection.Connection) error {
 	ctx, cancel = context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// Set the active connection in the directory service
 	vm.setActiveConnection(c)
-	if err := vm.connRepo.SetSelectedConnection(ctx, c.ID); err != nil {
-		return err
-	}
 
 	if c != prevConn {
 		vm.resetTreeContent()
-		// explorer.RootDir.IsLoaded = false // TODO: crado, crecréer un rootdir plutôt
-		explorer.RootDir.SubDirectories = make([]*explorer.S3Directory, 0)
-		explorer.RootDir.Files = make([]*explorer.S3File, 0)
-		if err := vm.tree.Append("", explorer.RootDir.Path(), explorer.RootDir); err != nil {
-			return err
-		}
-		if err := vm.ExpandDir(explorer.RootDir); err != nil {
+		if err := vm.initializeTreeData(ctx); err != nil {
+			vm.errChan <- fmt.Errorf("error initializing tree: %w", err)
 			return err
 		}
 	}
@@ -327,7 +305,7 @@ func (vm *ViewModel) DownloadFile(f *explorer.S3File, dest string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	if err := vm.fileSvc.DownloadFile(ctx, f, dest); err != nil {
-		vm.errChan <- fmt.Errorf("Error downloading file: %w", err)
+		vm.errChan <- fmt.Errorf("error downloading file: %w", err)
 		return err
 	}
 	return nil
@@ -337,7 +315,7 @@ func (vm *ViewModel) UploadFile(localPath string, remoteDir *explorer.S3Director
 	localFile := explorer.NewLocalFile(localPath)
 	remoteFile, err := explorer.NewS3File(localFile.FileName(), remoteDir)
 	if err != nil {
-		vm.errChan <- fmt.Errorf("Error creating S3 file: %w", err)
+		vm.errChan <- fmt.Errorf("error creating S3 file: %w", err)
 		return err
 	}
 
@@ -345,7 +323,7 @@ func (vm *ViewModel) UploadFile(localPath string, remoteDir *explorer.S3Director
 	defer cancel()
 
 	if err := vm.fileSvc.UploadFile(ctx, localFile, remoteFile); err != nil {
-		vm.errChan <- fmt.Errorf("Error uploading file: %w", err)
+		vm.errChan <- fmt.Errorf("error uploading file: %w", err)
 		return err
 	}
 
@@ -384,4 +362,34 @@ func (vm *ViewModel) SetLastUploadDir(filePath string) error {
 
 func (vm *ViewModel) resetTreeContent() {
 	vm.tree = binding.NewUntypedTree()
+}
+
+func (vm *ViewModel) initializeTreeData(ctx context.Context) error {
+	rootDir, err := vm.dirSvc.GetRootDirectory(ctx)
+	if err != nil {
+		return fmt.Errorf("error getting root directory: %w", err)
+	}
+	rootNode := NewTreeNode(rootDir.ID.String(), rootDir.ID.ToName(), true)
+	if err := vm.tree.Append("", rootNode.ID, rootNode); err != nil {
+		return fmt.Errorf("error appending root directory to tree: %w", err)
+	}
+
+	if err := vm.AppendDirToTree(ctx, rootDir.ID); err != nil {
+		return fmt.Errorf("error appending root directory to tree: %w", err)
+	}
+
+	return nil
+}
+
+func (vm *ViewModel) getCurrentConnection(ctx context.Context) (*connection.Connection, error) {
+	conn, err := vm.connRepo.GetSelectedConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
+func (vm *ViewModel) setActiveConnection(conn *connection.Connection) {
+	vm.dirSvc.SetActiveConnection(conn.ID)
+	vm.fileSvc.SetActiveConnection(conn.ID)
 }

@@ -130,6 +130,9 @@ func getQueryPath(id explorer.S3DirectoryID) string {
 }
 
 func getParentDirIDFromChildID(id explorer.S3DirectoryID) explorer.S3DirectoryID {
+	if id == explorer.RootDirID {
+		return explorer.NilParentID
+	}
 	dirPathStriped := strings.TrimSuffix(id.String(), "/")
 	dirPathSplit := strings.Split(dirPathStriped, "/")
 	

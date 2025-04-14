@@ -36,8 +36,10 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	a := fyne_app.NewWithID(appId)
 	w := a.NewWindow("S3 Box")
 
+	// START DI
 	connRepo := infrastructure.NewConnectionRepositoryImpl(a.Preferences())
 
+	// TODO: setup the last connection in other part of the app
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // TODO get this from the user's settings
 	defer cancel()
 	lastSelectedConn, err := connRepo.GetSelectedConnection(ctx)
@@ -45,28 +47,18 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		sugarLog.Error("Error getting selected connection", err)
 		return nil, err
 	}
-	dirRepo, err := infrastructure.NewS3DirectoryRepositoryImpl(logger, lastSelectedConn)
-	if err != nil {
-		sugarLog.Error("Error creating explorer repository", err)
-		return nil, err
-	}
-
-	fileRepo, err := infrastructure.NewS3FileRepository(logger, lastSelectedConn)
-	if err != nil {
-		sugarLog.Error("Error creating file repository", err)
-		return nil, err
-	}
-
-	dirSvc := explorer.NewDirectoryService()
-	dirSvc.AddDirectoryRepository(lastSelectedConn.ID, dirRepo)
-	dirSvc.SetActiveRepository(lastSelectedConn.ID)
-
-	fileSvc := explorer.NewFileService()
-	fileSvc.AddFileRepository(lastSelectedConn.ID, fileRepo)
-	fileSvc.SetActiveRepository(lastSelectedConn.ID)
 	
-	vm := viewmodel.NewViewModel(dirRepo, dirSvc, connRepo, fileSvc)
+	dirSvc := explorer.NewDirectoryService(
+		logger,
+		BuildS3DirectoryRepositoryFactory(lastSelectedConn, logger, connRepo),
+	)
+	fileSvc := explorer.NewFileService(
+		logger,
+		BuildS3FileRepositoryFactory(lastSelectedConn, logger, connRepo),
+	)
+	vm := viewmodel.NewViewModel(dirSvc, connRepo, fileSvc)
 	appctx := appcontext.New(w, vm, initRoute, appViews, logger)
+	// END DI
 
 	w.SetOnClosed(func() {
 		close(appctx.ExitChan())

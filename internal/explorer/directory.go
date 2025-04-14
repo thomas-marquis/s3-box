@@ -8,9 +8,9 @@ import (
 type S3DirectoryID string
 
 const (
-	rootDirName = ""
-	notAParentID = S3DirectoryID("")
-	RootDirID  = S3DirectoryID("/")
+	rootDirName  = ""
+	NilParentID = S3DirectoryID("")
+	RootDirID    = S3DirectoryID("/")
 )
 
 func (id S3DirectoryID) String() string {
@@ -38,7 +38,7 @@ type S3Directory struct {
 var (
 	RootDir = &S3Directory{
 		Name:              rootDirName,
-		ParentID:          notAParentID,
+		ParentID:          NilParentID,
 		SubDirectoriesIDs: make([]S3DirectoryID, 0),
 		Files:             make([]*S3File, 0),
 	}
@@ -47,7 +47,7 @@ var (
 // NewS3Directory creates a new S3 directory
 // returns an error when the directory name is not valid
 func NewS3Directory(name string, parentID S3DirectoryID) (*S3Directory, error) {
-	if name == "" {
+	if name == "" && parentID != NilParentID {
 		return nil, fmt.Errorf("directory name is empty")
 	}
 	if name == "/" {
@@ -107,7 +107,6 @@ func buildID(dirName string, parentID S3DirectoryID) S3DirectoryID {
 	}
 	return S3DirectoryID(parentID.String() + "/" + dirName)
 }
-
 
 // TODO: download -> LocalDirectory
 // TODO: create file -> S3File
