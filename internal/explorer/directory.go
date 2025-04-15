@@ -101,6 +101,28 @@ func (d *S3Directory) AddFile(file *S3File) error {
 	return nil
 }
 
+// DeleteFile removes a file from the current directory
+// returns an error when the file does not exist
+func (d *S3Directory) DeleteFile(fileID S3FileID) error {
+	for i, f := range d.Files {
+		if f.ID == fileID {
+			d.Files = append(d.Files[:i], d.Files[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("file %s does not exist in S3 directory %s", fileID, d.ID.String())
+}
+
+// HasFile checks if a file belongs to the current directory
+func (d *S3Directory) HasFile(fileID S3FileID) bool {
+	for _, f := range d.Files {
+		if f.ID == fileID {
+			return true
+		}
+	}
+	return false
+}
+
 func buildID(dirName string, parentID S3DirectoryID) S3DirectoryID {
 	if parentID == RootDirID {
 		return S3DirectoryID(dirName)

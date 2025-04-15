@@ -377,6 +377,37 @@ func (vm *ExplorerViewModel) UploadFile(localPath string, remoteDir *explorer.S3
 	return vm.RefreshDir(remoteDir.ID)
 }
 
+func (vm *ExplorerViewModel) DeleteFile(file *explorer.S3File) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// Get the parent directory
+	dir, err := vm.dirSvc.GetDirectoryByID(ctx, file.DirectoryID)
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error getting parent directory: %w", err)
+		return err
+	}
+
+	// Delete the file using the DirectoryService
+	if err := vm.dirSvc.DeleteFile(ctx, dir, file.ID); err != nil {
+		vm.errChan <- fmt.Errorf("error deleting file: %w", err)
+		return err
+	}
+
+	// Remove file from tree
+	if err := vm.tree.Remove(file.ID.String()); err != nil {
+		vm.errChan <- fmt.Errorf("error removing file from tree: %w", err)
+		return err
+	}
+
+	// Remove file from cache
+	vm.mu.Lock()
+	delete(vm.filesById, file.ID)
+	vm.mu.Unlock()
+
+	return nil
+}
+
 func (vm *ExplorerViewModel) GetLastSaveDir() fyne.ListableURI {
 	return vm.lastSaveDir
 }

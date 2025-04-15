@@ -13,4 +13,7 @@ type S3FileRepository interface {
 
 	// UploadFile uploads a local file to S3
 	UploadFile(ctx context.Context, local *LocalFile, remote *S3File) error
+
+	// DeleteFile deletes a file from S3
+	DeleteFile(ctx context.Context, id S3FileID) error
 }

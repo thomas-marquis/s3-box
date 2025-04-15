@@ -123,3 +123,19 @@ func (r *S3FileRepositoryImpl) UploadFile(ctx context.Context, local *explorer.L
 	r.log.Infof("Uploaded %s\n", remote.ID.String())
 	return nil
 }
+
+func (r *S3FileRepositoryImpl) DeleteFile(ctx context.Context, id explorer.S3FileID) error {
+	input := &s3.DeleteObjectInput{
+		Bucket: aws.String(r.conn.BucketName),
+		Key:    aws.String(string(id)),
+	}
+
+	_, err := r.s3.DeleteObjectWithContext(ctx, input)
+	if err != nil {
+		r.log.Errorf("Error deleting file: %v\n", err)
+		return fmt.Errorf("DeleteFile: %w", err)
+	}
+
+	r.log.Infof("Deleted %s\n", id)
+	return nil
+}

@@ -52,6 +52,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	dirSvc := explorer.NewDirectoryService(
 		logger,
 		BuildS3DirectoryRepositoryFactory(lastSelectedConn, logger, connRepo),
+		BuildS3FileRepositoryFactory(lastSelectedConn, logger, connRepo),
 		connSvc,
 	)
 	fileSvc := explorer.NewFileService(

@@ -1,6 +1,8 @@
 package components
 
 import (
+	"fmt"
+
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/utils"
@@ -9,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"go.uber.org/zap"
 )
@@ -22,6 +25,7 @@ type FileDetials struct {
 
 	downloadBtn       *widget.Button
 	previewBtn        *widget.Button
+	deleteBtn         *widget.Button
 	infoContainer     *fyne.Container
 	sizeLabel         *widget.Label
 	pathLabel         *widget.Label
@@ -60,8 +64,10 @@ func NewFileDetails() *FileDetials {
 	)
 
 	downloadBtn := widget.NewButton("Download", func() {})
+	deleteBtn := widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), func() {})
 	buttonsContainer := container.NewHBox(
 		downloadBtn,
+		deleteBtn,
 	)
 	topContainer := container.NewBorder(
 		infoContainer, buttonsContainer,
@@ -77,6 +83,7 @@ func NewFileDetails() *FileDetials {
 		c:                 c,
 		downloadBtn:       downloadBtn,
 		previewBtn:        previewBtn,
+		deleteBtn:         deleteBtn,
 		infoContainer:     infoContainer,
 		sizeLabel:         sizeLabel,
 		pathLabel:         filepathLabel,
@@ -138,5 +145,18 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 		saveDialog.SetFileName(file.Name)
 		saveDialog.SetLocation(ctx.ExplorerViewModel().GetLastSaveDir())
 		saveDialog.Show()
+	}
+
+	f.deleteBtn.OnTapped = func() {
+		dialog.ShowConfirm("Delete file", fmt.Sprintf("Are you sure you want to delete '%s'?", file.Name), func(b bool) {
+			if b {
+				if err := ctx.ExplorerViewModel().DeleteFile(file); err != nil {
+					ctx.L().Error("Error deleting file", zap.Error(err))
+					dialog.ShowError(err, ctx.Window())
+				} else {
+					dialog.ShowInformation("Delete", "File deleted", ctx.Window())
+				}
+			}
+		}, ctx.Window())
 	}
 }
