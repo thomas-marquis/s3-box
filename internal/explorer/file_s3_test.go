@@ -41,7 +41,7 @@ func Test_NewS3File_ShouldBuildNewFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, fileName, file.Name)
 	assert.Equal(t, parentDir.ID, file.DirectoryID)
-	assert.Equal(t, explorer.S3FileID("/path/file.txt"), file.ID)
+	assert.Equal(t, explorer.S3FileID("path/file.txt"), file.ID)
 }
 
 func Test_NewS3File_ShouldBuildNewFileWithNonRootParent(t *testing.T) {

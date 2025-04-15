@@ -31,3 +31,4 @@ go.work.sum
 .lsp
 .clj-kondo
 /tools
+/s3-box

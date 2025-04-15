@@ -16,17 +16,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func getCurrDirectoryOrFile(di any) (bool, *explorer.S3Directory, *explorer.S3File, error) {
-	switch v := di.(type) {
-	case *explorer.S3Directory:
-		return true, v, nil, nil
-	case *explorer.S3File:
-		return false, nil, v, nil
-	default:
-		return false, nil, nil, fmt.Errorf("unexpected type %T", v)
-	}
-}
-
 func makeNoConnectionTopBanner(ctx appcontext.AppContext) *fyne.Container {
 	return container.NewVBox(
 		container.NewCenter(widget.NewLabel("No connection selected, please select a connection in the settings menu")),
