@@ -106,7 +106,7 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 
 	f.lastModifiedLabel.SetText(file.LastModified.Format("2006-01-02 15:04:05"))
 
-	if file.SizeBytes <= ctx.Vm().GetMaxFileSizePreview() {
+	if file.SizeBytes <= ctx.ExplorerViewModel().GetMaxFileSizePreview() {
 		f.previewBtn.Show()
 		f.previewBtn.OnTapped = func() {
 			ShowFilePreviewDialog(ctx, file)
@@ -126,17 +126,17 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 				return
 			}
 			localDestFilePath := writer.URI().Path()
-			if err := ctx.Vm().DownloadFile(file, localDestFilePath); err != nil {
+			if err := ctx.ExplorerViewModel().DownloadFile(file, localDestFilePath); err != nil {
 				ctx.L().Error("Error downloading file", zap.Error(err))
 				// TODO handle error here
 			}
-			if err := ctx.Vm().SetLastSaveDir(localDestFilePath); err != nil {
+			if err := ctx.ExplorerViewModel().SetLastSaveDir(localDestFilePath); err != nil {
 				ctx.L().Error("Error setting last save dir", zap.Error(err))
 			}
-			dialog.ShowInformation("Download", "File downloaded", ctx.W())
-		}, ctx.W())
+			dialog.ShowInformation("Download", "File downloaded", ctx.Window())
+		}, ctx.Window())
 		saveDialog.SetFileName(file.Name)
-		saveDialog.SetLocation(ctx.Vm().GetLastSaveDir())
+		saveDialog.SetLocation(ctx.ExplorerViewModel().GetLastSaveDir())
 		saveDialog.Show()
 	}
 }

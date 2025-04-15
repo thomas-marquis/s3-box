@@ -38,6 +38,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 
 	// START DI
 	connRepo := infrastructure.NewConnectionRepositoryImpl(a.Preferences())
+	connSvc := connection.NewConnectionService(connRepo)
 
 	// TODO: setup the last connection in other part of the app
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // TODO get this from the user's settings
@@ -47,17 +48,20 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		sugarLog.Error("Error getting selected connection", err)
 		return nil, err
 	}
-	
+
 	dirSvc := explorer.NewDirectoryService(
 		logger,
 		BuildS3DirectoryRepositoryFactory(lastSelectedConn, logger, connRepo),
+		connSvc,
 	)
 	fileSvc := explorer.NewFileService(
 		logger,
 		BuildS3FileRepositoryFactory(lastSelectedConn, logger, connRepo),
+		connSvc,
 	)
-	vm := viewmodel.NewViewModel(dirSvc, connRepo, fileSvc)
-	appctx := appcontext.New(w, vm, initRoute, appViews, logger)
+	connVm := viewmodel.NewConnectionViewModel(connRepo, connSvc)
+	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, fileSvc)
+	appctx := appcontext.New(w, vm, connVm, initRoute, appViews, logger)
 	// END DI
 
 	w.SetOnClosed(func() {
@@ -74,12 +78,12 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 }
 
 func (a *Go2S3App) Start() error {
-	a.ctx.W().Resize(fyne.NewSize(1000, 700))
+	a.ctx.Window().Resize(fyne.NewSize(1000, 700))
 	err := a.ctx.Navigate(a.initRoute)
 	if err != nil {
 		return err
 	}
-	a.ctx.W().ShowAndRun()
+	a.ctx.Window().ShowAndRun()
 	return nil
 }
 

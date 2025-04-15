@@ -11,14 +11,16 @@ import (
 type AppContext interface {
 	Navigate(route navigation.Route) error
 	CurrentRoute() navigation.Route
-	Vm() *viewmodel.ViewModel
-	W() fyne.Window
+	ExplorerViewModel() *viewmodel.ExplorerViewModel
+	ConnectionViewModel() *viewmodel.ConnectionViewModel
+	Window() fyne.Window
 	L() *zap.Logger
 	ExitChan() chan struct{}
 }
 
 type AppContextImpl struct {
-	vm       *viewmodel.ViewModel
+	vm       *viewmodel.ExplorerViewModel
+	connVm   *viewmodel.ConnectionViewModel
 	w        fyne.Window
 	l        *zap.Logger
 	exitChan chan struct{}
@@ -27,15 +29,19 @@ type AppContextImpl struct {
 	views        map[navigation.Route]func(AppContext) (*fyne.Container, error)
 }
 
+var _ AppContext = &AppContextImpl{}
+
 func New(
 	w fyne.Window,
-	vm *viewmodel.ViewModel,
+	vm *viewmodel.ExplorerViewModel,
+	connVm *viewmodel.ConnectionViewModel,
 	initialRoute navigation.Route,
 	views map[navigation.Route]func(AppContext) (*fyne.Container, error),
 	logger *zap.Logger,
 ) *AppContextImpl {
 	return &AppContextImpl{
 		vm:           vm,
+		connVm:       connVm,
 		w:            w,
 		l:            logger,
 		exitChan:     make(chan struct{}),
@@ -44,11 +50,15 @@ func New(
 	}
 }
 
-func (ctx *AppContextImpl) Vm() *viewmodel.ViewModel {
+func (ctx *AppContextImpl) ExplorerViewModel() *viewmodel.ExplorerViewModel {
 	return ctx.vm
 }
 
-func (ctx *AppContextImpl) W() fyne.Window {
+func (ctx *AppContextImpl) ConnectionViewModel() *viewmodel.ConnectionViewModel {
+	return ctx.connVm
+}
+
+func (ctx *AppContextImpl) Window() fyne.Window {
 	return ctx.w
 }
 
@@ -70,7 +80,7 @@ func (ctx *AppContextImpl) Navigate(route navigation.Route) error {
 		return err
 	}
 
-	ctx.W().SetContent(view)
+	ctx.Window().SetContent(view)
 	ctx.currentRoute = route
 
 	return nil

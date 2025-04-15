@@ -38,20 +38,20 @@ func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.S3File) {
 	go func() {
 		loading.Set(true)
 		defer loading.Set(false)
-		fileContent, err := ctx.Vm().PreviewFile(file)
+		fileContent, err := ctx.ExplorerViewModel().PreviewFile(file)
 		if err != nil {
-			dialog.ShowError(err, ctx.W())
+			dialog.ShowError(err, ctx.Window())
 			return
 		}
 		if !isStringPrintable(fileContent) {
 			fileContent = "Binary file, no preview available."
 		}
 		if err = nbLines.Set(strings.Count(fileContent, "\n") + 1); err != nil {
-			dialog.ShowError(fmt.Errorf("impossible to display line number: %s", err), ctx.W())
+			dialog.ShowError(fmt.Errorf("impossible to display line number: %s", err), ctx.Window())
 			return
 		}
 		if err = previewData.Set(fileContent); err != nil {
-			dialog.ShowError(fmt.Errorf("file preview impossible: %s", err), ctx.W())
+			dialog.ShowError(fmt.Errorf("file preview impossible: %s", err), ctx.Window())
 			return
 		}
 	}()
@@ -78,7 +78,7 @@ func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.S3File) {
 
 	copyContentBtn := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
 		fileContent, _ := previewData.Get()
-		ctx.W().Clipboard().SetContent(fileContent)
+		ctx.Window().Clipboard().SetContent(fileContent)
 	})
 
 	nbLinesLabel := widget.NewLabel("")
@@ -102,7 +102,7 @@ func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.S3File) {
 		file.Name,
 		"Close",
 		container,
-		ctx.W(),
+		ctx.Window(),
 	)
 	dial.Resize(fyne.NewSize(700, 500))
 	dial.Show()

@@ -37,12 +37,12 @@ func NewConnectionDialog(
 	useTLS, enableCopy bool,
 	onSave func(name, accessKey, secretKey, server, bucket, region string, useTLS bool) error,
 ) *dialog.CustomDialog {
-	nameBloc, nameEntry := makeTextInput("Connection name", name, "My new connection", enableCopy, ctx.W())
-	accessKeyBloc, accessKeyEntry := makeTextInput("Access key Id", accessKey, "Access key", enableCopy, ctx.W())
-	secretKeyBloc, secretKeyEntry := makeTextInput("Secret access key", secretKey, "Secret key", enableCopy, ctx.W())
-	serverBloc, serverEntry := makeTextInput("Server hostname", server, "s3.amazonaws.com", enableCopy, ctx.W())
-	bucketBloc, bucketEntry := makeTextInput("Bucket name", bucket, "my-bucket", enableCopy, ctx.W())
-	regionBloc, regionEntry := makeTextInput("Region", region, "us-east-1", enableCopy, ctx.W())
+	nameBloc, nameEntry := makeTextInput("Connection name", name, "My new connection", enableCopy, ctx.Window())
+	accessKeyBloc, accessKeyEntry := makeTextInput("Access key Id", accessKey, "Access key", enableCopy, ctx.Window())
+	secretKeyBloc, secretKeyEntry := makeTextInput("Secret access key", secretKey, "Secret key", enableCopy, ctx.Window())
+	serverBloc, serverEntry := makeTextInput("Server hostname", server, "s3.amazonaws.com", enableCopy, ctx.Window())
+	bucketBloc, bucketEntry := makeTextInput("Bucket name", bucket, "my-bucket", enableCopy, ctx.Window())
+	regionBloc, regionEntry := makeTextInput("Region", region, "us-east-1", enableCopy, ctx.Window())
 
 	useTlsEntry := widget.NewCheck("Use TLS", nil)
 	useTlsEntry.Checked = useTLS
@@ -83,7 +83,7 @@ func NewConnectionDialog(
 			useTlsEntry,
 			container.NewHBox(saveBtn),
 		),
-		ctx.W(),
+		ctx.Window(),
 	)
 	d.Resize(fyne.NewSize(650, 200))
 

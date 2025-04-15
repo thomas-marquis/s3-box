@@ -55,15 +55,21 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 			fmt.Sprintf("Are you sure you want to select the connection '%s'?", conn.Name),
 			func(b bool) {
 				if b {
-					if err := ctx.Vm().SelectConnection(conn); err != nil {
+					hasChanged, err := ctx.ConnectionViewModel().SelectConnection(conn)
+					if err != nil {
 						ctx.L().Error("Failed to select connection", zap.Error(err))
 					}
-					if err := ctx.Vm().RefreshConnections(); err != nil {
-						ctx.L().Error("Failed to refresh connections", zap.Error(err))
+					if hasChanged {
+						if err := ctx.ConnectionViewModel().RefreshConnections(); err != nil {
+							ctx.L().Error("Failed to refresh connections", zap.Error(err))
+						}
+						if err := ctx.ExplorerViewModel().ResetTree(); err != nil {
+							ctx.L().Error("Failed to reset tree", zap.Error(err))
+						}
 					}
 				}
 			},
-			ctx.W(),
+			ctx.Window(),
 		)
 	}
 
@@ -88,7 +94,7 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 				conn.BucketName = bucket
 				conn.Region = region
 				conn.UseTls = useTLS
-				return ctx.Vm().SaveConnection(conn)
+				return ctx.ConnectionViewModel().SaveConnection(conn)
 			}).Show()
 	}
 
@@ -96,10 +102,10 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 	deleteBtn.OnTapped = func() {
 		dialog.ShowConfirm("Delete connection", fmt.Sprintf("Are you sure you want to delete the connection '%s'?", conn.Name), func(b bool) {
 			if b {
-				if err := ctx.Vm().DeleteConnection(conn); err != nil {
+				if err := ctx.ConnectionViewModel().DeleteConnection(conn); err != nil {
 					ctx.L().Error("Failed to delete connection", zap.Error(err))
 				}
 			}
-		}, ctx.W())
+		}, ctx.Window())
 	}
 }

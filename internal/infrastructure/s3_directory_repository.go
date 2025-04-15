@@ -51,16 +51,6 @@ func NewS3DirectoryRepositoryImpl(logger *zap.Logger, conn *connection.Connectio
 		s3:      s3.New(sess),
 		log:     log,
 	}, nil
-	
-	// var remoteSrc *s3Client
-	// var err error
-	// if defaultConn != nil {
-	// 	remoteSrc, err = newS3Client(log, defaultConn.AccessKey, defaultConn.SecretKey, defaultConn.Server, defaultConn.BucketName, defaultConn.Region, defaultConn.UseTls)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("NewS3DirectoryRepositoryImpl: %w", err)
-	// 	}
-	// }
-
 }
 
 func (r *S3DirectoryRepositoryImpl) GetByID(ctx context.Context, id explorer.S3DirectoryID) (*explorer.S3Directory, error) {	
@@ -130,7 +120,7 @@ func getQueryPath(id explorer.S3DirectoryID) string {
 }
 
 func getParentDirIDFromChildID(id explorer.S3DirectoryID) explorer.S3DirectoryID {
-	if id == explorer.RootDirID {
+	if id == explorer.RootDirID || id == explorer.NilParentID {
 		return explorer.NilParentID
 	}
 	dirPathStriped := strings.TrimSuffix(id.String(), "/")

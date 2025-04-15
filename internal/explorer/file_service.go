@@ -5,64 +5,65 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/thomas-marquis/s3-box/internal/connection"
 	"go.uber.org/zap"
 )
 
 type FileService struct {
-	logger     *zap.Logger
-	connID     uuid.UUID
+	logger      *zap.Logger
 	repoFactory FileRepositoryFactory
+	connSvc     connection.ConnectionService
 }
 
 type FileRepositoryFactory func(ctx context.Context, connID uuid.UUID) (S3FileRepository, error)
 
-func NewFileService(logger *zap.Logger, repoFactory FileRepositoryFactory) *FileService {
+func NewFileService(
+	logger *zap.Logger,
+	repoFactory FileRepositoryFactory,
+	connSvc connection.ConnectionService,
+) *FileService {
 	return &FileService{
-		logger:     logger,
+		logger:      logger,
 		repoFactory: repoFactory,
-		connID:      uuid.Nil,
+		connSvc:     connSvc,
 	}
-}
-
-func (s *FileService) SetActiveConnection(connID uuid.UUID) {
-	s.connID = connID
 }
 
 func (s *FileService) GetContent(ctx context.Context, file *S3File) ([]byte, error) {
-	if s.connID == uuid.Nil {
-		return nil, ErrConnectionNoSet
-	}
-
-	repo, err := s.repoFactory(ctx, s.connID)
+	repo, err := s.getActiveRepository(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("GetContent: %w", err)
+		return nil, err
 	}
 
 	return repo.GetContent(ctx, file.ID)
 }
 
 func (s *FileService) DownloadFile(ctx context.Context, file *S3File, dest string) error {
-	if s.connID == uuid.Nil {
-		return ErrConnectionNoSet
-	}
-
-	repo, err := s.repoFactory(ctx, s.connID)
+	repo, err := s.getActiveRepository(ctx)
 	if err != nil {
-		return fmt.Errorf("DownloadFile: %w", err)
+		return err
 	}
 
 	return repo.DownloadFile(ctx, file.ID.String(), dest)
 }
 
 func (s *FileService) UploadFile(ctx context.Context, local *LocalFile, remote *S3File) error {
-	if s.connID == uuid.Nil {
-		return ErrConnectionNoSet
-	}
-
-	repo, err := s.repoFactory(ctx, s.connID)
+	repo, err := s.getActiveRepository(ctx)
 	if err != nil {
-		return fmt.Errorf("UploadFile: %w", err)
+		return err
 	}
 
 	return repo.UploadFile(ctx, local, remote)
-} 
+}
+
+func (s *FileService) getActiveRepository(ctx context.Context) (S3FileRepository, error) {
+	connId, err := s.connSvc.GetActiveConnectionID(ctx)
+	if connId == uuid.Nil || err == ErrConnectionNoSet {
+		return nil, ErrConnectionNoSet
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error whe getting file repository: %w", err)
+	}
+	return s.repoFactory(ctx, connId)
+}
+

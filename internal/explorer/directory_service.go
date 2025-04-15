@@ -5,27 +5,28 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/thomas-marquis/s3-box/internal/connection"
 	"go.uber.org/zap"
 )
 
 type DirectoryService struct {
-	logger     *zap.Logger
-	connID     uuid.UUID
+	logger      *zap.Logger
 	repoFactory DirectoryRepositoryFactory
+	connSvc     connection.ConnectionService
 }
 
 type DirectoryRepositoryFactory func(ctx context.Context, connID uuid.UUID) (S3DirectoryRepository, error)
 
-func NewDirectoryService(logger *zap.Logger, repoFactory DirectoryRepositoryFactory) *DirectoryService {
+func NewDirectoryService(
+	logger *zap.Logger,
+	repoFactory DirectoryRepositoryFactory,
+	connSvc connection.ConnectionService,
+) *DirectoryService {
 	return &DirectoryService{
 		logger:      logger,
 		repoFactory: repoFactory,
-		connID:      uuid.Nil,
+		connSvc:     connSvc,
 	}
-}
-
-func (s *DirectoryService) SetActiveConnection(connID uuid.UUID) {
-	s.connID = connID
 }
 
 func (s *DirectoryService) GetRootDirectory(ctx context.Context) (*S3Directory, error) {
@@ -45,24 +46,23 @@ func (s *DirectoryService) GetRootDirectory(ctx context.Context) (*S3Directory, 
 }
 
 func (s *DirectoryService) GetDirectoryByID(ctx context.Context, id S3DirectoryID) (*S3Directory, error) {
-	if s.connID == uuid.Nil {
-		return nil, ErrConnectionNoSet
-	}
-
 	repo, err := s.getActiveRepository(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("GetDirectoryByID: %w", err)
+		return nil, err
 	}
 
 	return repo.GetByID(ctx, id)
 }
 
 func (s *DirectoryService) getActiveRepository(ctx context.Context) (S3DirectoryRepository, error) {
-	if s.connID == uuid.Nil {
+	connId, err := s.connSvc.GetActiveConnectionID(ctx)
+	if connId == uuid.Nil || err == ErrConnectionNoSet {
 		return nil, ErrConnectionNoSet
 	}
-	dirRepo, err := s.repoFactory(ctx, s.connID)
-	return dirRepo, err
+	if err != nil {
+		return nil, fmt.Errorf("error whe getting directory repository: %w", err)
+	}
+	return s.repoFactory(ctx, connId)
 }
 
 // LoadDirectory loads the content of a directory from the repository
@@ -87,3 +87,4 @@ func (s *DirectoryService) getActiveRepository(ctx context.Context) (S3Directory
 // }
 
 // TODO: add a method to create a new directory (and save it) and handle the case the name contains "/"s
+

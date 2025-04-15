@@ -48,7 +48,7 @@ func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory
 	d.uploadBtn.OnTapped = func() {
 		selectDialog := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 			if err != nil {
-				dialog.ShowError(err, ctx.W()) // TODO better error handling
+				dialog.ShowError(err, ctx.Window()) // TODO better error handling
 				return
 			}
 
@@ -57,12 +57,12 @@ func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory
 			}
 
 			localDestFilePath := reader.URI().Path()
-			if err := ctx.Vm().UploadFile(localDestFilePath, dir); err != nil {
-				dialog.ShowError(err, ctx.W()) // TODO better error handling
+			if err := ctx.ExplorerViewModel().UploadFile(localDestFilePath, dir); err != nil {
+				dialog.ShowError(err, ctx.Window()) // TODO better error handling
 				return
 			}
-			if err := ctx.Vm().SetLastUploadDir(localDestFilePath); err != nil {
-				dialog.ShowError(err, ctx.W()) // TODO better error handling
+			if err := ctx.ExplorerViewModel().SetLastUploadDir(localDestFilePath); err != nil {
+				dialog.ShowError(err, ctx.Window()) // TODO better error handling
 				return
 			}
 
@@ -70,10 +70,10 @@ func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory
 			// 	dialog.ShowError(err, ctx.W()) // TODO better error handling
 			// 	return
 			// }
-			dialog.ShowInformation("Upload", "File uploaded", ctx.W())
-		}, ctx.W())
+			dialog.ShowInformation("Upload", "File uploaded", ctx.Window())
+		}, ctx.Window())
 
-		selectDialog.SetLocation(ctx.Vm().GetLastUploadDir())
+		selectDialog.SetLocation(ctx.ExplorerViewModel().GetLastUploadDir())
 		selectDialog.Show()
 	}
 }

@@ -1,7 +1,6 @@
 package views
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/thomas-marquis/s3-box/internal/explorer"
@@ -15,7 +14,6 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
-	"go.uber.org/zap"
 )
 
 func getCurrDirectoryOrFile(di any) (bool, *explorer.S3Directory, *explorer.S3File, error) {
@@ -44,25 +42,20 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 
 	content := container.NewHSplit(widget.NewLabel(""), widget.NewLabel(""))
 
-	go func() {
-		for err := range ctx.Vm().ErrorChan() {
-			if err == viewmodel.ErrNoConnectionSelected {
-				noConn.Show()
-				content.Hide()
-			} else {
-				ctx.L().Error("Error in explorer view", zap.Error(err))
-			}
+	ctx.ExplorerViewModel().OnDisplayNoConnectionBannerChange(func(shouldDisplay bool) {
+		if shouldDisplay {
+			noConn.Show()
+			content.Hide()
+		} else {
+			noConn.Hide()
+			content.Show()
 		}
-	}()
-
-	if err := ctx.Vm().AppendDirToTree(context.Background(), explorer.RootDirID); err != nil {
-		ctx.Vm().ErrorChan() <- err
-	}
+	})
 
 	treeItemBuilder := components.NewTreeItemBuilder()
 
 	tree := widget.NewTreeWithData(
-		ctx.Vm().Tree(),
+		ctx.ExplorerViewModel().Tree(),
 		func(branch bool) fyne.CanvasObject {
 			return treeItemBuilder.NewRaw()
 		},
@@ -74,50 +67,42 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 			}
 			treeItemBuilder.Update(o, *nodeItem)
 		})
-		
+
+	detailsContainer := container.NewVBox()
+	fileDetails := components.NewFileDetails()
+	dirDetails := components.NewDirDetails()
+
 	tree.OnSelected = func(uid widget.TreeNodeID) {
-		di, err := ctx.Vm().Tree().GetValue(uid)
+		di, err := ctx.ExplorerViewModel().Tree().GetValue(uid)
 		if err != nil {
-			ctx.Vm().ErrorChan() <- fmt.Errorf("Error getting value: %v\n", err)
+			ctx.ExplorerViewModel().ErrorChan() <- fmt.Errorf("error getting value: %v", err)
 			return
 		}
 		nodeItem, ok := di.(*viewmodel.TreeNode)
 		if !ok {
 			panic(fmt.Sprintf("unexpected type %T", di))
 		}
-		fmt.Printf("Selected: %s (ID=%s)\n", nodeItem.DisplayName, nodeItem.ID)
 
 		if nodeItem.IsDirectory && !nodeItem.Loaded {
-			if err := ctx.Vm().AppendDirToTree(context.Background(), explorer.S3DirectoryID(nodeItem.ID)); err != nil {
-				ctx.Vm().ErrorChan() <- err
+			if err := ctx.ExplorerViewModel().AppendDirToTree(explorer.S3DirectoryID(nodeItem.ID)); err != nil {
+				ctx.ExplorerViewModel().ErrorChan() <- err
 				return
 			}
 			tree.OpenBranch(uid)
 			nodeItem.Loaded = true
 		}
-	}
-
-	detailsContainer := container.NewVBox()
-	fileDetails := components.NewFileDetails()
-	dirDetails := components.NewDirDetails()
-
-	tree.OnSelected = func(uid string) {
-		item, err := ctx.Vm().Tree().GetValue(uid)
-		if err != nil {
-			ctx.L().Error("Error getting item", zap.Error(err))
-			return
-		}
-
-		isDir, d, f, err := getCurrDirectoryOrFile(item)
-		if err != nil {
-			ctx.L().Error("Error getting directory or file", zap.Error(err))
-			return
-		}
-
-		if isDir {
+		if nodeItem.IsDirectory {
+			d, err := ctx.ExplorerViewModel().GetDirByID(explorer.S3DirectoryID(nodeItem.ID))
+			if err != nil {
+				panic(fmt.Sprintf("error getting directory by ID (%s) in cache: %v", nodeItem.ID, err))
+			}
 			dirDetails.Update(ctx, d)
 			detailsContainer.Objects = []fyne.CanvasObject{dirDetails.Object()}
 		} else {
+			f, err := ctx.ExplorerViewModel().GetFileByID(explorer.S3FileID(nodeItem.ID))
+			if err != nil {
+				panic(fmt.Sprintf("error getting file by ID (%s) in cache: %v", nodeItem.ID, err))
+			}
 			fileDetails.Update(ctx, f)
 			detailsContainer.Objects = []fyne.CanvasObject{fileDetails.Object()}
 		}
