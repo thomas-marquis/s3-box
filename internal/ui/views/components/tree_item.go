@@ -28,8 +28,13 @@ func (i *TreeItem) Update(o fyne.CanvasObject, nodeItem viewmodel.TreeNode) {
 	displayLabel := c.Objects[1].(*widget.Label)
 
 	displayLabel.SetText(nodeItem.DisplayName)
-	
+
 	if nodeItem.IsDirectory {
+		if nodeItem.Loaded {
+			icon.SetResource(theme.FolderOpenIcon())
+		} else {
+			icon.SetResource(theme.FolderIcon())
+		}
 		icon.Show()
 	} else {
 		icon.Hide()

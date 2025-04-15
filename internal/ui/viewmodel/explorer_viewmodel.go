@@ -63,7 +63,7 @@ func NewExplorerViewModel(dirSvc *explorer.DirectoryService, connRepo connection
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout*2)
 	defer cancel()
 
 	_, err := connRepo.GetSelectedConnection(ctx)
@@ -109,15 +109,27 @@ func (vm *ExplorerViewModel) Tree() binding.UntypedTree {
 	return vm.tree
 }
 
+func (vm *ExplorerViewModel) RefreshDir(dirId explorer.S3DirectoryID) error {
+	if err := vm.RemoveDirToTree(dirId); err != nil {
+		return err
+	}
+
+	return vm.AppendDirToTree(dirId)
+}
+
 func (vm *ExplorerViewModel) AppendDirToTree(dirID explorer.S3DirectoryID) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	isDirAlreadyInTree := false
-	_, err := vm.tree.GetValue(dirID.String())
+	di, err := vm.tree.GetValue(dirID.String())
+	var existingNode *TreeNode = nil
 	if err == nil {
-		isDirAlreadyInTree = true
+		var ok bool
+		existingNode, ok = di.(*TreeNode)
+		if !ok {
+			panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", dirID.String()))
+		}
 	}
 
 	dir, err := vm.dirSvc.GetDirectoryByID(ctx, dirID)
@@ -130,19 +142,16 @@ func (vm *ExplorerViewModel) AppendDirToTree(dirID explorer.S3DirectoryID) error
 	vm.mu.Unlock()
 
 	fmt.Printf("Appending directory to tree: %s\n", dirID)
-	dirNode := NewTreeNode(dirID.String(), dirID.ToName(), true)
-	if isDirAlreadyInTree {
-		if err := vm.tree.SetValue(dirID.String(), dirNode); err != nil {
-			vm.errChan <- fmt.Errorf("error setting tree value: %w", err)
-			return err
-		}
+	if existingNode != nil {
+		existingNode.Loaded = true
 	} else {
+		dirNode := NewTreeNode(dirID.String(), dirID.ToName(), true)
+		dirNode.Loaded = true
 		if err := vm.tree.Append(dirID.String(), dirNode.ID, dirNode); err != nil {
 			vm.errChan <- fmt.Errorf("error appending directory to tree: %w", err)
 			return err
 		}
 	}
-	dirNode.Loaded = true
 
 	for _, file := range dir.Files {
 		fileNode := NewTreeNode(file.ID.String(), file.Name, false)
@@ -162,6 +171,45 @@ func (vm *ExplorerViewModel) AppendDirToTree(dirID explorer.S3DirectoryID) error
 			continue
 		}
 		subDirNode.Loaded = false
+	}
+
+	return nil
+}
+
+func (vm *ExplorerViewModel) RemoveDirToTree(dirID explorer.S3DirectoryID) error {
+	item, err := vm.tree.GetValue(dirID.String())
+	if err != nil {
+		return fmt.Errorf("impossible to retreive the direcotry you want to remove: %s", dirID.String())
+	}
+	node, ok := item.(*TreeNode)
+	if !ok {
+		panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", dirID.String()))
+	}
+
+	if !node.Loaded {
+		if err := vm.tree.Remove(dirID.String()); err != nil {
+			vm.errChan <- fmt.Errorf("error removing directory from tree: %w", err)
+			return err
+		}
+	} else {
+		vm.mu.Lock()
+		dir, ok := vm.dirsById[dirID]
+		vm.mu.Unlock()
+		if !ok {
+			panic(fmt.Sprintf("impossible to find the directory in the cache: %s", dirID.String()))
+		}
+		for _, f := range dir.Files {
+			if err := vm.tree.Remove(f.ID.String()); err != nil {
+				vm.errChan <- fmt.Errorf("error removing file from tree: %w", err)
+				return err
+			}
+		}
+		for _, subDirID := range dir.SubDirectoriesIDs {
+			if err := vm.RemoveDirToTree(subDirID); err != nil {
+				vm.errChan <- fmt.Errorf("error removing subdirectory from tree: %w", err)
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -242,7 +290,7 @@ func (vm *ExplorerViewModel) UploadFile(localPath string, remoteDir *explorer.S3
 		return err
 	}
 
-	return nil
+	return vm.RefreshDir(remoteDir.ID)
 }
 
 func (vm *ExplorerViewModel) GetLastSaveDir() fyne.ListableURI {
@@ -284,7 +332,12 @@ func (vm *ExplorerViewModel) initializeTreeData(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("error getting root directory: %w", err)
 	}
-	rootNode := NewTreeNode(rootDir.ID.String(), rootDir.ID.ToName(), true)
+	currentConn, err := vm.connRepo.GetSelectedConnection(ctx)
+	if err != nil {
+		return fmt.Errorf("error getting selected connection: %w", err)
+	}
+	displayLabel := "Bucket: " + currentConn.BucketName
+	rootNode := NewTreeNode(rootDir.ID.String(), displayLabel, true)
 	if err := vm.tree.Append("", rootNode.ID, rootNode); err != nil {
 		return fmt.Errorf("error appending root directory to tree: %w", err)
 	}
