@@ -29,7 +29,7 @@ func NewConnectionViewModel(connRepo connection.Repository, connSvc connection.C
 	if err := vm.RefreshConnections(); err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error refreshing connections: %w", err)
-		fmt.Printf("error refreshing connections: %w", err)
+		fmt.Printf("error refreshing connections: %v", err)
 	}
 
 	vm.loading.Set(false)
@@ -48,7 +48,7 @@ func (vm *ConnectionViewModel) RefreshConnections() error {
 	if err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error listing connections: %w", err)
-		fmt.Printf("error listing connections: %w", err)
+		fmt.Printf("error listing connections: %v", err)
 		return err
 	}
 
@@ -56,7 +56,7 @@ func (vm *ConnectionViewModel) RefreshConnections() error {
 	if err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error getting previous connections: %w", err)
-		fmt.Printf("error getting previous connections: %w", err)
+		fmt.Printf("error getting previous connections: %v", err)
 		return err
 	}
 	for _, c := range prevConns {
@@ -76,7 +76,7 @@ func (vm *ConnectionViewModel) SaveConnection(c *connection.Connection) error {
 	if err := vm.connRepo.SaveConnection(ctx, c); err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error saving connection: %w", err)
-		fmt.Printf("error saving connection: %w", err)
+		fmt.Printf("error saving connection: %v", err)
 		return err
 	}
 
@@ -89,7 +89,7 @@ func (vm *ConnectionViewModel) DeleteConnection(c *connection.Connection) error 
 	if err := vm.connRepo.DeleteConnection(ctx, c.ID); err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error deleting connection: %w", err)
-		fmt.Printf("error deleting connection: %w", err)
+		fmt.Printf("error deleting connection: %v", err)
 		return err
 	}
 

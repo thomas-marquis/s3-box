@@ -31,6 +31,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	appViews := make(map[navigation.Route]func(appcontext.AppContext) (*fyne.Container, error))
 	appViews[navigation.ExplorerRoute] = views.GetFileExplorerView
 	appViews[navigation.ConnectionRoute] = views.GetConnectionView
+	appViews[navigation.SettingsRoute] = views.GetSettingsView
 
 	sugarLog := logger.Sugar()
 	a := fyne_app.NewWithID(appId)
@@ -40,6 +41,9 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	connRepo := infrastructure.NewConnectionRepositoryImpl(a.Preferences())
 	connSvc := connection.NewConnectionService(connRepo)
 
+	settingsRepo := infrastructure.NewSettingsRepository(a.Preferences())
+	settingsVm := viewmodel.NewSettingsViewModel(settingsRepo)
+	
 	// TODO: setup the last connection in other part of the app
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // TODO get this from the user's settings
 	defer cancel()
@@ -62,7 +66,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	)
 	connVm := viewmodel.NewConnectionViewModel(connRepo, connSvc)
 	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, fileSvc)
-	appctx := appcontext.New(w, vm, connVm, initRoute, appViews, logger)
+	appctx := appcontext.New(w, vm, connVm, settingsVm, initRoute, appViews, logger)
 	// END DI
 
 	w.SetOnClosed(func() {
@@ -92,6 +96,9 @@ func getMainMenu(ctx appcontext.AppContext) *fyne.MainMenu {
 	settingsMenu := fyne.NewMenu("Settings",
 		fyne.NewMenuItem("Manage connections", func() {
 			ctx.Navigate(navigation.ConnectionRoute)
+		}),
+		fyne.NewMenuItem("Manage settings", func() {
+			ctx.Navigate(navigation.SettingsRoute)
 		}),
 	)
 	fileMenu := fyne.NewMenu("File",

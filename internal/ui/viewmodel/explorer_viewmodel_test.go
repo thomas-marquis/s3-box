@@ -23,11 +23,19 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 
 	logger := zap.NewNop()
 	dirRepo := mocks_explorer.NewMockS3DirectoryRepository(ctrl)
+	fileRepo := mocks_explorer.NewMockS3FileRepository(ctrl)
 	connSvc := mocks_connection.NewMockConnectionService(ctrl)
 	connRepo := mocks_connection.NewMockRepository(ctrl)
-	dirSvc := explorer.NewDirectoryService(logger, func(ctx context.Context, connID uuid.UUID) (explorer.S3DirectoryRepository, error) {
-		return dirRepo, nil
-	}, connSvc)
+	dirSvc := explorer.NewDirectoryService(
+		logger,
+		func(ctx context.Context, connID uuid.UUID) (explorer.S3DirectoryRepository, error) {
+			return dirRepo, nil
+		},
+		func(ctx context.Context, connID uuid.UUID) (explorer.S3FileRepository, error) {
+			return fileRepo, nil
+		},
+		connSvc,
+	)
 
 	dirID := explorer.S3DirectoryID("/test")
 	newDir := &explorer.S3Directory{
@@ -81,11 +89,19 @@ func Test_RefreshDir_ShouldHandleErrorFromDirectoryService(t *testing.T) {
 
 	logger := zap.NewNop()
 	dirRepo := mocks_explorer.NewMockS3DirectoryRepository(ctrl)
+	fileRepo := mocks_explorer.NewMockS3FileRepository(ctrl)
 	connSvc := mocks_connection.NewMockConnectionService(ctrl)
 	connRepo := mocks_connection.NewMockRepository(ctrl)
-	dirSvc := explorer.NewDirectoryService(logger, func(ctx context.Context, connID uuid.UUID) (explorer.S3DirectoryRepository, error) {
-		return dirRepo, nil
-	}, connSvc)
+	dirSvc := explorer.NewDirectoryService(
+		logger,
+		func(ctx context.Context, connID uuid.UUID) (explorer.S3DirectoryRepository, error) {
+			return dirRepo, nil
+		},
+		func(ctx context.Context, connID uuid.UUID) (explorer.S3FileRepository, error) {
+			return fileRepo, nil
+		},
+		connSvc,
+	)
 
 	dirID := explorer.S3DirectoryID("/test")
 	connID := uuid.New()
@@ -132,11 +148,19 @@ func Test_RefreshDir_ShouldHandleErrorFromTreeOperations(t *testing.T) {
 
 	logger := zap.NewNop()
 	dirRepo := mocks_explorer.NewMockS3DirectoryRepository(ctrl)
+	fileRepo := mocks_explorer.NewMockS3FileRepository(ctrl)
 	connSvc := mocks_connection.NewMockConnectionService(ctrl)
 	connRepo := mocks_connection.NewMockRepository(ctrl)
-	dirSvc := explorer.NewDirectoryService(logger, func(ctx context.Context, connID uuid.UUID) (explorer.S3DirectoryRepository, error) {
-		return dirRepo, nil
-	}, connSvc)
+	dirSvc := explorer.NewDirectoryService(
+		logger,
+		func(ctx context.Context, connID uuid.UUID) (explorer.S3DirectoryRepository, error) {
+			return dirRepo, nil
+		},
+		func(ctx context.Context, connID uuid.UUID) (explorer.S3FileRepository, error) {
+			return fileRepo, nil
+		},
+		connSvc,
+	)
 
 	dirID := explorer.S3DirectoryID("/test")
 	dir := &explorer.S3Directory{
@@ -180,4 +204,4 @@ func Test_RefreshDir_ShouldHandleErrorFromTreeOperations(t *testing.T) {
 
 	// Then
 	assert.NoError(t, err) // Les erreurs d'arbre sont loggées mais ne font pas échouer l'opération
-} 
+}
