@@ -64,8 +64,8 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		BuildS3FileRepositoryFactory(lastSelectedConn, logger, connRepo),
 		connSvc,
 	)
-	connVm := viewmodel.NewConnectionViewModel(connRepo, connSvc)
-	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, fileSvc)
+	connVm := viewmodel.NewConnectionViewModel(connRepo, connSvc, settingsVm)
+	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, fileSvc, settingsVm)
 	appctx := appcontext.New(w, vm, connVm, settingsVm, initRoute, appViews, logger)
 	// END DI
 

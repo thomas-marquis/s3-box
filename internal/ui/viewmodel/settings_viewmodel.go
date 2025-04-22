@@ -1,6 +1,7 @@
 package viewmodel
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -12,22 +13,39 @@ const (
 	settingsTimeout = 15 * time.Second
 )
 
-type SettingsViewModel struct {
+
+type SettingsViewModel interface {
+	Save(s settings.Settings) error
+	TimeoutInSeconds() time.Duration
+}
+
+type settingsViewModelImpl struct {
 	settingsRepo settings.Repository
 	loading      binding.Bool
 	errChan      chan error
+
+	timeoutInSeconds binding.Int
 }
 
-func NewSettingsViewModel(settingsRepo settings.Repository) *SettingsViewModel {
+func NewSettingsViewModel(settingsRepo settings.Repository) SettingsViewModel {
 	errChan := make(chan error)
 
-	vm := &SettingsViewModel{
+	ctx, cancel := context.WithTimeout(context.Background(), settingsTimeout)
+	defer cancel()
+	s, err := settingsRepo.Get(ctx)
+	if err != nil {
+		errChan <- fmt.Errorf("error getting settings: %w", err)
+	}
+
+	vm := &settingsViewModelImpl{
 		settingsRepo: settingsRepo,
 		loading:      binding.NewBool(),
 		errChan:      errChan,
+		timeoutInSeconds: binding.NewInt(),
 	}
 
-	// Start error handler
+	vm.synchronize(s)
+
 	go func() {
 		for err := range errChan {
 			fmt.Printf("Error in SettingsViewModel: %v\n", err)
@@ -37,33 +55,29 @@ func NewSettingsViewModel(settingsRepo settings.Repository) *SettingsViewModel {
 	return vm
 }
 
-func (vm *SettingsViewModel) Save(s settings.Settings) error {
-	if err := vm.settingsRepo.Save(s); err != nil {
+func (vm *settingsViewModelImpl) Save(s settings.Settings) error {
+	ctx, cancel := context.WithTimeout(context.Background(), settingsTimeout)
+	defer cancel()
+
+	if err := vm.settingsRepo.Save(ctx, s); err != nil {
 		vm.errChan <- fmt.Errorf("error saving settings: %w", err)
 		return err
 	}
 
+	vm.synchronize(s)
+
 	return nil
 }
 
-func (vm *SettingsViewModel) Get() (settings.Settings, error) {
-	s, err := vm.settingsRepo.Get()
+func (vm *settingsViewModelImpl) TimeoutInSeconds() time.Duration {
+	val, err := vm.timeoutInSeconds.Get()
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error getting settings: %w", err)
-		return settings.Settings{}, err
+		vm.errChan <- fmt.Errorf("error getting timeout in seconds: %w", err)
+		return settings.DefaultTimeoutInSeconds * time.Second
 	}
-
-	return s, nil
+	return time.Duration(val) * time.Second
 }
 
-func (vm *SettingsViewModel) Loading() binding.Bool {
-	return vm.loading
+func (vm *settingsViewModelImpl) synchronize(s settings.Settings) {
+	vm.timeoutInSeconds.Set(s.TimeoutInSeconds)
 }
-
-func (vm *SettingsViewModel) StartLoading() {
-	vm.loading.Set(true)
-}
-
-func (vm *SettingsViewModel) StopLoading() {
-	vm.loading.Set(false)
-} 

@@ -13,7 +13,7 @@ type AppContext interface {
 	CurrentRoute() navigation.Route
 	ExplorerViewModel() *viewmodel.ExplorerViewModel
 	ConnectionViewModel() *viewmodel.ConnectionViewModel
-	SettingsViewModel() *viewmodel.SettingsViewModel
+	SettingsViewModel() viewmodel.SettingsViewModel
 	Window() fyne.Window
 	L() *zap.Logger
 	ExitChan() chan struct{}
@@ -22,7 +22,7 @@ type AppContext interface {
 type AppContextImpl struct {
 	vm       *viewmodel.ExplorerViewModel
 	connVm   *viewmodel.ConnectionViewModel
-	settingsVm *viewmodel.SettingsViewModel
+	settingsVm viewmodel.SettingsViewModel
 	w        fyne.Window
 	l        *zap.Logger
 	exitChan chan struct{}
@@ -37,7 +37,7 @@ func New(
 	w fyne.Window,
 	vm *viewmodel.ExplorerViewModel,
 	connVm *viewmodel.ConnectionViewModel,
-	settingsVm *viewmodel.SettingsViewModel,
+	settingsVm viewmodel.SettingsViewModel,
 	initialRoute navigation.Route,
 	views map[navigation.Route]func(AppContext) (*fyne.Container, error),
 	logger *zap.Logger,
@@ -62,7 +62,7 @@ func (ctx *AppContextImpl) ConnectionViewModel() *viewmodel.ConnectionViewModel 
 	return ctx.connVm
 }
 
-func (ctx *AppContextImpl) SettingsViewModel() *viewmodel.SettingsViewModel {
+func (ctx *AppContextImpl) SettingsViewModel() viewmodel.SettingsViewModel {
 	return ctx.settingsVm
 }
 

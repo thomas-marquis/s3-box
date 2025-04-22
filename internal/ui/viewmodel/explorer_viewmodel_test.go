@@ -36,6 +36,8 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 		},
 		connSvc,
 	)
+	settingsVm := viewmodel.NewSettingsViewModel(nil)
+	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, nil, settingsVm)
 
 	dirID := explorer.S3DirectoryID("/test")
 	newDir := &explorer.S3Directory{
@@ -73,8 +75,6 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 		Return(newDir, nil).
 		Times(1)
 
-	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, nil)
-
 	// When
 	err := vm.RefreshDir(dirID)
 
@@ -102,6 +102,8 @@ func Test_RefreshDir_ShouldHandleErrorFromDirectoryService(t *testing.T) {
 		},
 		connSvc,
 	)
+	settingsVm := viewmodel.NewSettingsViewModel(nil)
+	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, nil, settingsVm)
 
 	dirID := explorer.S3DirectoryID("/test")
 	connID := uuid.New()
@@ -131,8 +133,6 @@ func Test_RefreshDir_ShouldHandleErrorFromDirectoryService(t *testing.T) {
 		Return(nil, explorer.ErrConnectionNoSet).
 		Times(1)
 
-	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, nil)
-
 	// When
 	err := vm.RefreshDir(dirID)
 
@@ -161,6 +161,8 @@ func Test_RefreshDir_ShouldHandleErrorFromTreeOperations(t *testing.T) {
 		},
 		connSvc,
 	)
+	settingsVm := viewmodel.NewSettingsViewModel(nil)
+	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, nil, settingsVm)
 
 	dirID := explorer.S3DirectoryID("/test")
 	dir := &explorer.S3Directory{
@@ -196,8 +198,6 @@ func Test_RefreshDir_ShouldHandleErrorFromTreeOperations(t *testing.T) {
 		GetByID(gomock.Any(), dirID).
 		Return(dir, nil).
 		Times(1)
-
-	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, nil)
 
 	// When
 	err := vm.RefreshDir(dirID)

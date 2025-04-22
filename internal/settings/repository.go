@@ -1,9 +1,11 @@
 package settings
 
+import "context"
+
 type Repository interface {
 	// Save saves the settings
-	Save(settings Settings) error
+	Save(ctx context.Context, settings Settings) error
 
 	// Get returns the settings
-	Get() (Settings, error)
+	Get(ctx context.Context) (Settings, error)
 }

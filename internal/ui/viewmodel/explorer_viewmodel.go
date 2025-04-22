@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
@@ -15,17 +14,13 @@ import (
 	"fyne.io/fyne/v2/storage"
 )
 
-const (
-	timeout = 15 * time.Second
-)
-
 type ExplorerViewModel struct {
 	mu                        sync.Mutex
 	connRepo                  connection.Repository
 	dirSvc                    *explorer.DirectoryService
 	fileSvc                   *explorer.FileService
+	settingsVm                SettingsViewModel
 	tree                      binding.UntypedTree
-	state                     AppState
 	loading                   binding.Bool
 	lastSaveDir               fyne.ListableURI
 	lastUploadDir             fyne.ListableURI
@@ -36,14 +31,14 @@ type ExplorerViewModel struct {
 	dirsById  map[explorer.S3DirectoryID]*explorer.S3Directory
 }
 
-func NewExplorerViewModel(dirSvc *explorer.DirectoryService, connRepo connection.Repository, fileSvc *explorer.FileService) *ExplorerViewModel {
+func NewExplorerViewModel(dirSvc *explorer.DirectoryService, connRepo connection.Repository, fileSvc *explorer.FileService, settingsVm SettingsViewModel) *ExplorerViewModel {
 	t := binding.NewUntypedTree()
 	errChan := make(chan error)
 
 	vm := &ExplorerViewModel{
 		tree:                      t,
 		dirSvc:                    dirSvc,
-		state:                     NewAppState(),
+		settingsVm:                settingsVm,
 		loading:                   binding.NewBool(),
 		filesById:                 make(map[explorer.S3FileID]*explorer.S3File),
 		dirsById:                  make(map[explorer.S3DirectoryID]*explorer.S3Directory),
@@ -60,7 +55,7 @@ func NewExplorerViewModel(dirSvc *explorer.DirectoryService, connRepo connection
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout*2)
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds()*2)
 	defer cancel()
 
 	_, err := connRepo.GetSelectedConnection(ctx)
@@ -107,7 +102,7 @@ func (vm *ExplorerViewModel) Tree() binding.UntypedTree {
 }
 
 func (vm *ExplorerViewModel) RefreshDir(dirID explorer.S3DirectoryID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
 	defer cancel()
 
 	dir, err := vm.fetchAndUpdateDirectory(ctx, dirID)
@@ -203,7 +198,7 @@ func (vm *ExplorerViewModel) appendDirectoryNode(parentDirID explorer.S3Director
 
 func (vm *ExplorerViewModel) AppendDirToTree(dirID explorer.S3DirectoryID) error {
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(ctx, vm.settingsVm.TimeoutInSeconds())
 	defer cancel()
 
 	di, err := vm.tree.GetValue(dirID.String())
@@ -324,7 +319,7 @@ func (vm *ExplorerViewModel) PreviewFile(f *explorer.S3File) (string, error) {
 		return "", fmt.Errorf("file is too big to PreviewFile")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
 	defer cancel()
 	content, err := vm.fileSvc.GetContent(ctx, f)
 	if err != nil {
@@ -339,17 +334,13 @@ func (vm *ExplorerViewModel) GetMaxFileSizePreview() int64 {
 	return 1024 * 1024
 }
 
-func (vm *ExplorerViewModel) SelectedConnection() *connection.Connection {
-	return vm.state.SelectedConnection
-}
-
 func (vm *ExplorerViewModel) ResetTree() error {
 	vm.resetTreeContent()
 	return vm.initializeTreeData(context.Background())
 }
 
 func (vm *ExplorerViewModel) DownloadFile(f *explorer.S3File, dest string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
 	defer cancel()
 	if err := vm.fileSvc.DownloadFile(ctx, f, dest); err != nil {
 		vm.errChan <- fmt.Errorf("error downloading file: %w", err)
@@ -366,7 +357,7 @@ func (vm *ExplorerViewModel) UploadFile(localPath string, remoteDir *explorer.S3
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
 	defer cancel()
 
 	if err := vm.fileSvc.UploadFile(ctx, localFile, remoteFile); err != nil {
@@ -378,29 +369,25 @@ func (vm *ExplorerViewModel) UploadFile(localPath string, remoteDir *explorer.S3
 }
 
 func (vm *ExplorerViewModel) DeleteFile(file *explorer.S3File) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
 	defer cancel()
 
-	// Get the parent directory
 	dir, err := vm.dirSvc.GetDirectoryByID(ctx, file.DirectoryID)
 	if err != nil {
 		vm.errChan <- fmt.Errorf("error getting parent directory: %w", err)
 		return err
 	}
 
-	// Delete the file using the DirectoryService
 	if err := vm.dirSvc.DeleteFile(ctx, dir, file.ID); err != nil {
 		vm.errChan <- fmt.Errorf("error deleting file: %w", err)
 		return err
 	}
 
-	// Remove file from tree
 	if err := vm.tree.Remove(file.ID.String()); err != nil {
 		vm.errChan <- fmt.Errorf("error removing file from tree: %w", err)
 		return err
 	}
 
-	// Remove file from cache
 	vm.mu.Lock()
 	delete(vm.filesById, file.ID)
 	vm.mu.Unlock()
