@@ -44,7 +44,7 @@ func (c *ConnectionViewModel) Connections() binding.UntypedList {
 }
 
 func (vm *ConnectionViewModel) RefreshConnections() error {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	conns, err := vm.connRepo.ListConnections(ctx)
 	if err != nil {
@@ -73,7 +73,7 @@ func (vm *ConnectionViewModel) RefreshConnections() error {
 }
 
 func (vm *ConnectionViewModel) SaveConnection(c *connection.Connection) error {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	if err := vm.connRepo.SaveConnection(ctx, c); err != nil {
 		// TOOD: send to global logging chan
@@ -86,7 +86,7 @@ func (vm *ConnectionViewModel) SaveConnection(c *connection.Connection) error {
 }
 
 func (vm *ConnectionViewModel) DeleteConnection(c *connection.Connection) error {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	if err := vm.connRepo.DeleteConnection(ctx, c.ID); err != nil {
 		// TOOD: send to global logging chan
@@ -104,13 +104,13 @@ func (vm *ConnectionViewModel) SelectConnection(c *connection.Connection) (bool,
 	vm.loading.Set(true)
 	prevConn := vm.selectedConnection
 
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	if err := vm.connRepo.SetSelectedConnection(ctx, c.ID); err != nil {
 		return false, err
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
+	ctx, cancel = context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
 	vm.selectedConnection = c

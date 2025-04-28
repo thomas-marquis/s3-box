@@ -21,6 +21,7 @@ import (
 type MockS3DirectoryRepository struct {
 	ctrl     *gomock.Controller
 	recorder *MockS3DirectoryRepositoryMockRecorder
+	isgomock struct{}
 }
 
 // MockS3DirectoryRepositoryMockRecorder is the mock recorder for MockS3DirectoryRepository.
@@ -41,30 +42,30 @@ func (m *MockS3DirectoryRepository) EXPECT() *MockS3DirectoryRepositoryMockRecor
 }
 
 // GetByID mocks base method.
-func (m *MockS3DirectoryRepository) GetByID(arg0 context.Context, arg1 explorer.S3DirectoryID) (*explorer.S3Directory, error) {
+func (m *MockS3DirectoryRepository) GetByID(ctx context.Context, id explorer.S3DirectoryID) (*explorer.S3Directory, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByID", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetByID", ctx, id)
 	ret0, _ := ret[0].(*explorer.S3Directory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetByID indicates an expected call of GetByID.
-func (mr *MockS3DirectoryRepositoryMockRecorder) GetByID(arg0, arg1 any) *gomock.Call {
+func (mr *MockS3DirectoryRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockS3DirectoryRepository)(nil).GetByID), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockS3DirectoryRepository)(nil).GetByID), ctx, id)
 }
 
 // Save mocks base method.
-func (m *MockS3DirectoryRepository) Save(arg0 context.Context, arg1 *explorer.S3Directory) error {
+func (m *MockS3DirectoryRepository) Save(ctx context.Context, d *explorer.S3Directory) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", arg0, arg1)
+	ret := m.ctrl.Call(m, "Save", ctx, d)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockS3DirectoryRepositoryMockRecorder) Save(arg0, arg1 any) *gomock.Call {
+func (mr *MockS3DirectoryRepositoryMockRecorder) Save(ctx, d any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockS3DirectoryRepository)(nil).Save), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockS3DirectoryRepository)(nil).Save), ctx, d)
 }

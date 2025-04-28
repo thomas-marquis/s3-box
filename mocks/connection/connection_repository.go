@@ -22,6 +22,7 @@ import (
 type MockRepository struct {
 	ctrl     *gomock.Controller
 	recorder *MockRepositoryMockRecorder
+	isgomock struct{}
 }
 
 // MockRepositoryMockRecorder is the mock recorder for MockRepository.
@@ -42,88 +43,88 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // DeleteConnection mocks base method.
-func (m *MockRepository) DeleteConnection(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockRepository) DeleteConnection(ctx context.Context, id uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteConnection", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteConnection", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteConnection indicates an expected call of DeleteConnection.
-func (mr *MockRepositoryMockRecorder) DeleteConnection(arg0, arg1 any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) DeleteConnection(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteConnection", reflect.TypeOf((*MockRepository)(nil).DeleteConnection), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteConnection", reflect.TypeOf((*MockRepository)(nil).DeleteConnection), ctx, id)
 }
 
 // GetByID mocks base method.
-func (m *MockRepository) GetByID(arg0 context.Context, arg1 uuid.UUID) (*connection.Connection, error) {
+func (m *MockRepository) GetByID(ctx context.Context, id uuid.UUID) (*connection.Connection, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByID", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetByID", ctx, id)
 	ret0, _ := ret[0].(*connection.Connection)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetByID indicates an expected call of GetByID.
-func (mr *MockRepositoryMockRecorder) GetByID(arg0, arg1 any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockRepository)(nil).GetByID), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockRepository)(nil).GetByID), ctx, id)
 }
 
 // GetSelectedConnection mocks base method.
-func (m *MockRepository) GetSelectedConnection(arg0 context.Context) (*connection.Connection, error) {
+func (m *MockRepository) GetSelectedConnection(ctx context.Context) (*connection.Connection, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSelectedConnection", arg0)
+	ret := m.ctrl.Call(m, "GetSelectedConnection", ctx)
 	ret0, _ := ret[0].(*connection.Connection)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSelectedConnection indicates an expected call of GetSelectedConnection.
-func (mr *MockRepositoryMockRecorder) GetSelectedConnection(arg0 any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) GetSelectedConnection(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSelectedConnection", reflect.TypeOf((*MockRepository)(nil).GetSelectedConnection), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSelectedConnection", reflect.TypeOf((*MockRepository)(nil).GetSelectedConnection), ctx)
 }
 
 // ListConnections mocks base method.
-func (m *MockRepository) ListConnections(arg0 context.Context) ([]*connection.Connection, error) {
+func (m *MockRepository) ListConnections(ctx context.Context) ([]*connection.Connection, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListConnections", arg0)
+	ret := m.ctrl.Call(m, "ListConnections", ctx)
 	ret0, _ := ret[0].([]*connection.Connection)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListConnections indicates an expected call of ListConnections.
-func (mr *MockRepositoryMockRecorder) ListConnections(arg0 any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) ListConnections(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListConnections", reflect.TypeOf((*MockRepository)(nil).ListConnections), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListConnections", reflect.TypeOf((*MockRepository)(nil).ListConnections), ctx)
 }
 
 // SaveConnection mocks base method.
-func (m *MockRepository) SaveConnection(arg0 context.Context, arg1 *connection.Connection) error {
+func (m *MockRepository) SaveConnection(ctx context.Context, c *connection.Connection) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveConnection", arg0, arg1)
+	ret := m.ctrl.Call(m, "SaveConnection", ctx, c)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveConnection indicates an expected call of SaveConnection.
-func (mr *MockRepositoryMockRecorder) SaveConnection(arg0, arg1 any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) SaveConnection(ctx, c any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveConnection", reflect.TypeOf((*MockRepository)(nil).SaveConnection), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveConnection", reflect.TypeOf((*MockRepository)(nil).SaveConnection), ctx, c)
 }
 
 // SetSelectedConnection mocks base method.
-func (m *MockRepository) SetSelectedConnection(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockRepository) SetSelectedConnection(ctx context.Context, id uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetSelectedConnection", arg0, arg1)
+	ret := m.ctrl.Call(m, "SetSelectedConnection", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SetSelectedConnection indicates an expected call of SetSelectedConnection.
-func (mr *MockRepositoryMockRecorder) SetSelectedConnection(arg0, arg1 any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) SetSelectedConnection(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSelectedConnection", reflect.TypeOf((*MockRepository)(nil).SetSelectedConnection), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSelectedConnection", reflect.TypeOf((*MockRepository)(nil).SetSelectedConnection), ctx, id)
 }
