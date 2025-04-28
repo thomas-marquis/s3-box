@@ -14,7 +14,7 @@ func Test_TreeItem_ShouldUpdateWithoutPanic(t *testing.T) {
 	// Given
 	builder := components.NewTreeItemBuilder()
 	container := builder.NewRaw()
-	nodeItem := viewmodel.NewTreeNode("/home/", "home", true)
+	nodeItem := viewmodel.NewTreeNode("/home/", "home", viewmodel.TreeNodeTypeDirectory)
 
 	// When / Then
 	assert.NotPanics(t, func() {
@@ -26,7 +26,7 @@ func Test_TreeItem_ShouldUpdateWithIcon(t *testing.T) {
 	// Given
 	builder := components.NewTreeItemBuilder()
 	container := builder.NewRaw()
-	nodeItem := viewmodel.NewTreeNode("/home/", "home", true)
+	nodeItem := viewmodel.NewTreeNode("/home/", "home", viewmodel.TreeNodeTypeDirectory)
 
 	// When
 	builder.Update(container, *nodeItem)
@@ -34,3 +34,4 @@ func Test_TreeItem_ShouldUpdateWithIcon(t *testing.T) {
 	// Then
 	assert.True(t, container.Objects[0].(*widget.Icon).Visible())
 }
+

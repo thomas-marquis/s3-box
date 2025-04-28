@@ -72,15 +72,15 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 			panic(fmt.Sprintf("unexpected type %T", di))
 		}
 
-		if nodeItem.IsDirectory && !nodeItem.Loaded {
+		if (nodeItem.Type == viewmodel.TreeNodeTypeDirectory || nodeItem.Type == viewmodel.TreeNodeTypeBucketRoot) && !nodeItem.IsLoaded() {
 			if err := ctx.ExplorerViewModel().AppendDirToTree(explorer.S3DirectoryID(nodeItem.ID)); err != nil {
 				ctx.ExplorerViewModel().ErrorChan() <- err
 				return
 			}
 			tree.OpenBranch(uid)
-			nodeItem.Loaded = true
+			nodeItem.SetIsLoaded()
 		}
-		if nodeItem.IsDirectory {
+		if nodeItem.Type == viewmodel.TreeNodeTypeDirectory || nodeItem.Type == viewmodel.TreeNodeTypeBucketRoot {
 			d, err := ctx.ExplorerViewModel().GetDirByID(explorer.S3DirectoryID(nodeItem.ID))
 			if err != nil {
 				panic(fmt.Sprintf("error getting directory by ID (%s) in cache: %v", nodeItem.ID, err))
@@ -90,7 +90,7 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		} else {
 			f, err := ctx.ExplorerViewModel().GetFileByID(explorer.S3FileID(nodeItem.ID))
 			if err != nil {
-				panic(fmt.Sprintf("error getting file by ID (%s) in cache: %v", nodeItem.ID, err))
+				panic(fmt.Sprintf("error getting file by ID (%s: %s) in cache: %v", nodeItem.Type, nodeItem.ID, err))
 			}
 			fileDetails.Update(ctx, f)
 			detailsContainer.Objects = []fyne.CanvasObject{fileDetails.Object()}

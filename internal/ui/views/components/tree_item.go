@@ -29,12 +29,8 @@ func (i *TreeItem) Update(o fyne.CanvasObject, nodeItem viewmodel.TreeNode) {
 
 	displayLabel.SetText(nodeItem.DisplayName)
 
-	if nodeItem.IsDirectory {
-		if nodeItem.Loaded {
-			icon.SetResource(theme.FolderOpenIcon())
-		} else {
-			icon.SetResource(theme.FolderIcon())
-		}
+	if nodeItem.Icon != nil {
+		icon.SetResource(nodeItem.Icon)
 		icon.Show()
 	} else {
 		icon.Hide()

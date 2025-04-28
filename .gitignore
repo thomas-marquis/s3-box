@@ -32,3 +32,4 @@ go.work.sum
 .clj-kondo
 /tools
 /s3-box
+/s3box

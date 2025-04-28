@@ -36,8 +36,7 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 		},
 		connSvc,
 	)
-	settingsVm := viewmodel.NewSettingsViewModel(nil)
-	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, nil, settingsVm)
+	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, nil, viewmodel.NewSettingsViewModel(nil))
 
 	dirID := explorer.S3DirectoryID("/test")
 	newDir := &explorer.S3Directory{
@@ -205,3 +204,4 @@ func Test_RefreshDir_ShouldHandleErrorFromTreeOperations(t *testing.T) {
 	// Then
 	assert.NoError(t, err) // Les erreurs d'arbre sont loggées mais ne font pas échouer l'opération
 }
+
