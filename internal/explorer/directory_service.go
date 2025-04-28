@@ -10,10 +10,10 @@ import (
 )
 
 type DirectoryService struct {
-	logger         *zap.Logger
-	repoFactory    DirectoryRepositoryFactory
+	logger          *zap.Logger
+	repoFactory     DirectoryRepositoryFactory
 	fileRepoFactory FileRepositoryFactory
-	connSvc        connection.ConnectionService
+	connSvc         connection.ConnectionService
 }
 
 type DirectoryRepositoryFactory func(ctx context.Context, connID uuid.UUID) (S3DirectoryRepository, error)
@@ -25,10 +25,10 @@ func NewDirectoryService(
 	connSvc connection.ConnectionService,
 ) *DirectoryService {
 	return &DirectoryService{
-		logger:         logger,
-		repoFactory:    repoFactory,
+		logger:          logger,
+		repoFactory:     repoFactory,
 		fileRepoFactory: fileRepoFactory,
-		connSvc:        connSvc,
+		connSvc:         connSvc,
 	}
 }
 
@@ -67,29 +67,6 @@ func (s *DirectoryService) getActiveRepository(ctx context.Context) (S3Directory
 	}
 	return s.repoFactory(ctx, connId)
 }
-
-// LoadDirectory loads the content of a directory from the repository
-// func (s *DirectoryService) LoadDirectory(ctx context.Context, dir *S3Directory) error {
-// 	repo, err := s.getActiveRepository()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Get the directory from the repository to ensure we have the latest content
-// 	latestDir, err := repo.GetByID(ctx, dir.ID)
-// 	if err != nil {
-// 		return fmt.Errorf("impossible to load directory: %s", err)
-// 	}
-
-// 	// Update the directory with the latest content
-// 	dir.SubDirectories = latestDir.SubDirectories
-// 	dir.Files = latestDir.Files
-// 	dir.SubDirectoriesIDs = latestDir.SubDirectoriesIDs
-
-// 	return nil
-// }
-
-// TODO: add a method to create a new directory (and save it) and handle the case the name contains "/"s
 
 // DeleteFile deletes a file from a directory
 // It ensures the directory aggregate consistency by removing the file from the directory
@@ -160,4 +137,3 @@ func (s *DirectoryService) getFileRepository(ctx context.Context) (S3FileReposit
 	}
 	return s.fileRepoFactory(ctx, connId)
 }
-

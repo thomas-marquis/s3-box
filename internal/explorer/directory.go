@@ -8,9 +8,9 @@ import (
 type S3DirectoryID string
 
 const (
-	rootDirName  = ""
+	rootDirName = ""
 	NilParentID = S3DirectoryID("")
-	RootDirID    = S3DirectoryID("/")
+	RootDirID   = S3DirectoryID("/")
 )
 
 func (id S3DirectoryID) String() string {
@@ -129,7 +129,3 @@ func buildID(dirName string, parentID S3DirectoryID) S3DirectoryID {
 	}
 	return S3DirectoryID(parentID.String() + "/" + dirName)
 }
-
-// TODO: download -> LocalDirectory
-// TODO: create file -> S3File
-// TODO: create sub directory -> S3Directory
