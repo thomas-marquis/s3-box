@@ -11,18 +11,20 @@ import (
 type AppContext interface {
 	Navigate(route navigation.Route) error
 	CurrentRoute() navigation.Route
-	ExplorerVM() *viewmodel.ExplorerViewModel
-	ConnectionVM() *viewmodel.ConnectionViewModel
-	W() fyne.Window
-	Log() *zap.Logger
+	ExplorerViewModel() *viewmodel.ExplorerViewModel
+	ConnectionViewModel() *viewmodel.ConnectionViewModel
+	SettingsViewModel() viewmodel.SettingsViewModel
+	Window() fyne.Window
+	L() *zap.Logger
 	ExitChan() chan struct{}
 }
 
 type AppContextImpl struct {
-	evm      *viewmodel.ExplorerViewModel
-	cvm      *viewmodel.ConnectionViewModel
+	vm       *viewmodel.ExplorerViewModel
+	connVm   *viewmodel.ConnectionViewModel
+	settingsVm viewmodel.SettingsViewModel
 	w        fyne.Window
-	logger   *zap.Logger
+	l        *zap.Logger
 	exitChan chan struct{}
 
 	currentRoute navigation.Route
@@ -33,37 +35,43 @@ var _ AppContext = &AppContextImpl{}
 
 func New(
 	w fyne.Window,
-	evm *viewmodel.ExplorerViewModel,
-	cvm *viewmodel.ConnectionViewModel,
+	vm *viewmodel.ExplorerViewModel,
+	connVm *viewmodel.ConnectionViewModel,
+	settingsVm viewmodel.SettingsViewModel,
 	initialRoute navigation.Route,
 	views map[navigation.Route]func(AppContext) (*fyne.Container, error),
 	logger *zap.Logger,
 ) *AppContextImpl {
 	return &AppContextImpl{
-		evm:          evm,
-		cvm:          cvm,
+		vm:           vm,
+		connVm:       connVm,
+		settingsVm:   settingsVm,
 		w:            w,
-		logger:       logger,
+		l:            logger,
 		exitChan:     make(chan struct{}),
 		currentRoute: initialRoute,
 		views:        views,
 	}
 }
 
-func (ctx *AppContextImpl) ExplorerVM() *viewmodel.ExplorerViewModel {
-	return ctx.evm
+func (ctx *AppContextImpl) ExplorerViewModel() *viewmodel.ExplorerViewModel {
+	return ctx.vm
 }
 
-func (ctx *AppContextImpl) ConnectionVM() *viewmodel.ConnectionViewModel {
-	return ctx.cvm
+func (ctx *AppContextImpl) ConnectionViewModel() *viewmodel.ConnectionViewModel {
+	return ctx.connVm
 }
 
-func (ctx *AppContextImpl) W() fyne.Window {
+func (ctx *AppContextImpl) SettingsViewModel() viewmodel.SettingsViewModel {
+	return ctx.settingsVm
+}
+
+func (ctx *AppContextImpl) Window() fyne.Window {
 	return ctx.w
 }
 
-func (ctx *AppContextImpl) Log() *zap.Logger {
-	return ctx.logger
+func (ctx *AppContextImpl) L() *zap.Logger {
+	return ctx.l
 }
 
 func (ctx *AppContextImpl) ExitChan() chan struct{} {
@@ -80,7 +88,7 @@ func (ctx *AppContextImpl) Navigate(route navigation.Route) error {
 		return err
 	}
 
-	ctx.W().SetContent(view)
+	ctx.Window().SetContent(view)
 	ctx.currentRoute = route
 
 	return nil

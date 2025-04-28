@@ -9,9 +9,8 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
-	"github.com/thomas-marquis/s3-box/internal/ui/connectionview"
-	"github.com/thomas-marquis/s3-box/internal/ui/explorerview"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
+	"github.com/thomas-marquis/s3-box/internal/ui/views"
 
 	"fyne.io/fyne/v2"
 	fyne_app "fyne.io/fyne/v2/app"
@@ -30,15 +29,22 @@ type Go2S3App struct {
 
 func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	appViews := make(map[navigation.Route]func(appcontext.AppContext) (*fyne.Container, error))
-	appViews[navigation.ExplorerRoute] = explorerview.GetView
-	appViews[navigation.ConnectionRoute] = connectionview.GetView
+	appViews[navigation.ExplorerRoute] = views.GetFileExplorerView
+	appViews[navigation.ConnectionRoute] = views.GetConnectionView
+	appViews[navigation.SettingsRoute] = views.GetSettingsView
 
 	sugarLog := logger.Sugar()
 	a := fyne_app.NewWithID(appId)
 	w := a.NewWindow("S3 Box")
 
+	// START DI
 	connRepo := infrastructure.NewConnectionRepositoryImpl(a.Preferences())
+	connSvc := connection.NewConnectionService(connRepo)
 
+	settingsRepo := infrastructure.NewSettingsRepository(a.Preferences())
+	settingsVm := viewmodel.NewSettingsViewModel(settingsRepo)
+	
+	// TODO: setup the last connection in other part of the app
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // TODO get this from the user's settings
 	defer cancel()
 	lastSelectedConn, err := connRepo.GetSelectedConnection(ctx)
@@ -46,16 +52,22 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		sugarLog.Error("Error getting selected connection", err)
 		return nil, err
 	}
-	explRepo, err := infrastructure.NewExplorerRepositoryImpl(logger, lastSelectedConn)
-	if err != nil {
-		sugarLog.Error("Error creating explorer repository", err)
-		return nil, err
-	}
 
-	dirSvc := explorer.NewDirectoryService(explRepo)
-	explorerVm := viewmodel.NewExplorerViewModel(explRepo, dirSvc, connRepo)
-	connectionVm := viewmodel.NewConnectionViewModel(explRepo, dirSvc, connRepo)
-	appctx := appcontext.New(w, explorerVm, connectionVm, initRoute, appViews, logger)
+	dirSvc := explorer.NewDirectoryService(
+		logger,
+		BuildS3DirectoryRepositoryFactory(lastSelectedConn, logger, connRepo),
+		BuildS3FileRepositoryFactory(lastSelectedConn, logger, connRepo),
+		connSvc,
+	)
+	fileSvc := explorer.NewFileService(
+		logger,
+		BuildS3FileRepositoryFactory(lastSelectedConn, logger, connRepo),
+		connSvc,
+	)
+	connVm := viewmodel.NewConnectionViewModel(connRepo, connSvc, settingsVm)
+	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, fileSvc, settingsVm)
+	appctx := appcontext.New(w, vm, connVm, settingsVm, initRoute, appViews, logger)
+	// END DI
 
 	w.SetOnClosed(func() {
 		close(appctx.ExitChan())
@@ -71,12 +83,12 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 }
 
 func (a *Go2S3App) Start() error {
-	a.ctx.W().Resize(fyne.NewSize(1000, 700))
+	a.ctx.Window().Resize(fyne.NewSize(1000, 700))
 	err := a.ctx.Navigate(a.initRoute)
 	if err != nil {
 		return err
 	}
-	a.ctx.W().ShowAndRun()
+	a.ctx.Window().ShowAndRun()
 	return nil
 }
 
@@ -84,6 +96,9 @@ func getMainMenu(ctx appcontext.AppContext) *fyne.MainMenu {
 	settingsMenu := fyne.NewMenu("Settings",
 		fyne.NewMenuItem("Manage connections", func() {
 			ctx.Navigate(navigation.ConnectionRoute)
+		}),
+		fyne.NewMenuItem("Manage settings", func() {
+			ctx.Navigate(navigation.SettingsRoute)
 		}),
 	)
 	fileMenu := fyne.NewMenu("File",

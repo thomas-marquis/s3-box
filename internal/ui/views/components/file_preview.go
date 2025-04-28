@@ -1,11 +1,12 @@
-package explorerview
+package components
 
 import (
 	"fmt"
-	"github.com/thomas-marquis/s3-box/internal/explorer"
-	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"strings"
 	"unicode"
+
+	"github.com/thomas-marquis/s3-box/internal/explorer"
+	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -28,7 +29,7 @@ func isStringPrintable(s string) bool {
 	return true
 }
 
-func showFilePreviewDialog(ctx appcontext.AppContext, file *explorer.RemoteFile) {
+func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.S3File) {
 	previewData := binding.NewString()
 	loading := binding.NewBool()
 	loading.Set(false)
@@ -37,20 +38,20 @@ func showFilePreviewDialog(ctx appcontext.AppContext, file *explorer.RemoteFile)
 	go func() {
 		loading.Set(true)
 		defer loading.Set(false)
-		fileContent, err := ctx.ExplorerVM().PreviewFile(file)
+		fileContent, err := ctx.ExplorerViewModel().PreviewFile(file)
 		if err != nil {
-			dialog.ShowError(err, ctx.W())
+			dialog.ShowError(err, ctx.Window())
 			return
 		}
 		if !isStringPrintable(fileContent) {
 			fileContent = "Binary file, no preview available."
 		}
 		if err = nbLines.Set(strings.Count(fileContent, "\n") + 1); err != nil {
-			dialog.ShowError(fmt.Errorf("impossible to display line number: %s", err), ctx.W())
+			dialog.ShowError(fmt.Errorf("impossible to display line number: %s", err), ctx.Window())
 			return
 		}
 		if err = previewData.Set(fileContent); err != nil {
-			dialog.ShowError(fmt.Errorf("file preview impossible: %s", err), ctx.W())
+			dialog.ShowError(fmt.Errorf("file preview impossible: %s", err), ctx.Window())
 			return
 		}
 	}()
@@ -77,7 +78,7 @@ func showFilePreviewDialog(ctx appcontext.AppContext, file *explorer.RemoteFile)
 
 	copyContentBtn := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
 		fileContent, _ := previewData.Get()
-		ctx.W().Clipboard().SetContent(fileContent)
+		ctx.Window().Clipboard().SetContent(fileContent)
 	})
 
 	nbLinesLabel := widget.NewLabel("")
@@ -98,10 +99,10 @@ func showFilePreviewDialog(ctx appcontext.AppContext, file *explorer.RemoteFile)
 		preview,
 	)
 	dial := dialog.NewCustom(
-		file.Name(),
+		file.Name,
 		"Close",
 		container,
-		ctx.W(),
+		ctx.Window(),
 	)
 	dial.Resize(fyne.NewSize(700, 500))
 	dial.Show()

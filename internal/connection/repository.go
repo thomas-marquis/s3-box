@@ -16,8 +16,8 @@ type Repository interface {
 	// DeleteConnection deletes given connection
 	DeleteConnection(ctx context.Context, id uuid.UUID) error
 
-	// GetConnection returns a connection by name
-	GetConnection(ctx context.Context, name string) (*Connection, error)
+	// GetConnection returns a connection by ID
+	GetByID(ctx context.Context, id uuid.UUID) (*Connection, error)
 
 	SetSelectedConnection(ctx context.Context, id uuid.UUID) error
 

@@ -28,3 +28,8 @@ go.work.sum
 /tmp-pkg
 /Icon.png
 /fyne-cross
+.lsp
+.clj-kondo
+/tools
+/s3-box
+/s3box

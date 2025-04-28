@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/thomas-marquis/s3-box/internal/connection"
 
 	"fyne.io/fyne/v2"
@@ -114,14 +115,14 @@ func (r *ConnectionRepositoryImpl) DeleteConnection(ctx context.Context, id uuid
     return nil
 }
 
-func (r *ConnectionRepositoryImpl) GetConnection(ctx context.Context, name string) (*connection.Connection, error) {
+func (r *ConnectionRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*connection.Connection, error) {
     connections, err := r.ListConnections(ctx)
     if err != nil {
-        return nil, fmt.Errorf("GetConnection: %w", err)
+        return nil, fmt.Errorf("GetByID: %w", err)
     }
 
     for _, c := range connections {
-        if c.Name == name {
+        if c.ID == id {
             return c, nil
         }
     }

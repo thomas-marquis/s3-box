@@ -42,20 +42,6 @@ func (m *MockAppContext) EXPECT() *MockAppContextMockRecorder {
 	return m.recorder
 }
 
-// ConnectionVM mocks base method.
-func (m *MockAppContext) ConnectionVM() *viewmodel.ConnectionViewModel {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConnectionVM")
-	ret0, _ := ret[0].(*viewmodel.ConnectionViewModel)
-	return ret0
-}
-
-// ConnectionVM indicates an expected call of ConnectionVM.
-func (mr *MockAppContextMockRecorder) ConnectionVM() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionVM", reflect.TypeOf((*MockAppContext)(nil).ConnectionVM))
-}
-
 // CurrentRoute mocks base method.
 func (m *MockAppContext) CurrentRoute() navigation.Route {
 	m.ctrl.T.Helper()
@@ -84,32 +70,18 @@ func (mr *MockAppContextMockRecorder) ExitChan() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExitChan", reflect.TypeOf((*MockAppContext)(nil).ExitChan))
 }
 
-// ExplorerVM mocks base method.
-func (m *MockAppContext) ExplorerVM() *viewmodel.ExplorerViewModel {
+// L mocks base method.
+func (m *MockAppContext) L() *zap.Logger {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExplorerVM")
-	ret0, _ := ret[0].(*viewmodel.ExplorerViewModel)
-	return ret0
-}
-
-// ExplorerVM indicates an expected call of ExplorerVM.
-func (mr *MockAppContextMockRecorder) ExplorerVM() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExplorerVM", reflect.TypeOf((*MockAppContext)(nil).ExplorerVM))
-}
-
-// Log mocks base method.
-func (m *MockAppContext) Log() *zap.Logger {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Log")
+	ret := m.ctrl.Call(m, "L")
 	ret0, _ := ret[0].(*zap.Logger)
 	return ret0
 }
 
-// Log indicates an expected call of Log.
-func (mr *MockAppContextMockRecorder) Log() *gomock.Call {
+// L indicates an expected call of L.
+func (mr *MockAppContextMockRecorder) L() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Log", reflect.TypeOf((*MockAppContext)(nil).Log))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "L", reflect.TypeOf((*MockAppContext)(nil).L))
 }
 
 // Navigate mocks base method.
@@ -124,6 +96,20 @@ func (m *MockAppContext) Navigate(arg0 navigation.Route) error {
 func (mr *MockAppContextMockRecorder) Navigate(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Navigate", reflect.TypeOf((*MockAppContext)(nil).Navigate), arg0)
+}
+
+// Vm mocks base method.
+func (m *MockAppContext) Vm() *viewmodel.ExplorerViewModel {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Vm")
+	ret0, _ := ret[0].(*viewmodel.ExplorerViewModel)
+	return ret0
+}
+
+// Vm indicates an expected call of Vm.
+func (mr *MockAppContextMockRecorder) Vm() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Vm", reflect.TypeOf((*MockAppContext)(nil).Vm))
 }
 
 // W mocks base method.
