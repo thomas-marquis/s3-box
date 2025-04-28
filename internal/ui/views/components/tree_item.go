@@ -1,4 +1,4 @@
-package explorerview
+package components
 
 import (
 	"fyne.io/fyne/v2"
@@ -9,6 +9,10 @@ import (
 )
 
 type TreeItem struct {
+}
+
+func NewTreeItemBuilder() *TreeItem {
+	return &TreeItem{}
 }
 
 func (i *TreeItem) NewRaw() *fyne.Container {

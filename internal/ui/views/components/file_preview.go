@@ -1,4 +1,4 @@
-package explorerview
+package components
 
 import (
 	"fmt"

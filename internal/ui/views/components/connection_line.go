@@ -1,4 +1,4 @@
-package connectionview
+package components
 
 import (
 	"fmt"
@@ -14,13 +14,13 @@ import (
 	"go.uber.org/zap"
 )
 
-type connectionLine struct{}
+type ConnectionLine struct{}
 
-func newConnectionLine() *connectionLine {
-	return &connectionLine{}
+func NewConnectionLine() *ConnectionLine {
+	return &ConnectionLine{}
 }
 
-func (*connectionLine) Raw() *fyne.Container {
+func (*ConnectionLine) Raw() *fyne.Container {
 	selected := widget.NewButtonWithIcon("", theme.RadioButtonIcon(), func() {})
 
 	name := widget.NewLabel("")
@@ -36,7 +36,7 @@ func (*connectionLine) Raw() *fyne.Container {
 	)
 }
 
-func (*connectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, conn *connection.Connection) {
+func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, conn *connection.Connection) {
 	c, _ := o.(*fyne.Container)
 
 	leftGroup := c.Objects[0].(*fyne.Container)
@@ -82,7 +82,7 @@ func (*connectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 	btnGroup := c.Objects[1].(*fyne.Container)
 	editBtn := btnGroup.Objects[0].(*widget.Button)
 	editBtn.OnTapped = func() {
-		newConnectionDialog(
+		NewConnectionDialog(
 			ctx, "Edit connection",
 			conn.Name, conn.AccessKey, conn.SecretKey, conn.Server, conn.BucketName, conn.Region, conn.UseTls,
 			true,
