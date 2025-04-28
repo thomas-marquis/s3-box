@@ -1,10 +1,9 @@
-package views
+package connectionview
 
 import (
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/components"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -13,8 +12,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func GetConnectionView(ctx appcontext.AppContext) (*fyne.Container, error) {
-	connLine := components.NewConnectionLine()
+func GetView(ctx appcontext.AppContext) (*fyne.Container, error) {
+	connLine := newConnectionLine()
 	connectionsList := widget.NewListWithData(
 		ctx.ConnectionViewModel().Connections(),
 		func() fyne.CanvasObject {
@@ -30,7 +29,7 @@ func GetConnectionView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		"New connection",
 		theme.ContentAddIcon(),
 		func() {
-			components.NewConnectionDialog(ctx, "New connection", "", "", "", "", "", "", false, false,
+			newConnectionDialog(ctx, "New connection", "", "", "", "", "", "", false, false,
 				func(name, accessKey, secretKey, server, bucket, region string, useTLS bool) error {
 					conn := connection.NewConnection(name, server, accessKey, secretKey, bucket, useTLS, region)
 					return ctx.ConnectionViewModel().SaveConnection(conn)

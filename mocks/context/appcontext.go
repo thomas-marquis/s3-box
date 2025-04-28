@@ -42,6 +42,20 @@ func (m *MockAppContext) EXPECT() *MockAppContextMockRecorder {
 	return m.recorder
 }
 
+// ConnectionVM mocks base method.
+func (m *MockAppContext) ConnectionVM() *viewmodel.ConnectionViewModel {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConnectionVM")
+	ret0, _ := ret[0].(*viewmodel.ConnectionViewModel)
+	return ret0
+}
+
+// ConnectionVM indicates an expected call of ConnectionVM.
+func (mr *MockAppContextMockRecorder) ConnectionVM() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionVM", reflect.TypeOf((*MockAppContext)(nil).ConnectionVM))
+}
+
 // CurrentRoute mocks base method.
 func (m *MockAppContext) CurrentRoute() navigation.Route {
 	m.ctrl.T.Helper()
@@ -70,18 +84,32 @@ func (mr *MockAppContextMockRecorder) ExitChan() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExitChan", reflect.TypeOf((*MockAppContext)(nil).ExitChan))
 }
 
-// L mocks base method.
-func (m *MockAppContext) L() *zap.Logger {
+// ExplorerVM mocks base method.
+func (m *MockAppContext) ExplorerVM() *viewmodel.ExplorerViewModel {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "L")
+	ret := m.ctrl.Call(m, "ExplorerVM")
+	ret0, _ := ret[0].(*viewmodel.ExplorerViewModel)
+	return ret0
+}
+
+// ExplorerVM indicates an expected call of ExplorerVM.
+func (mr *MockAppContextMockRecorder) ExplorerVM() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExplorerVM", reflect.TypeOf((*MockAppContext)(nil).ExplorerVM))
+}
+
+// Log mocks base method.
+func (m *MockAppContext) Log() *zap.Logger {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Log")
 	ret0, _ := ret[0].(*zap.Logger)
 	return ret0
 }
 
-// L indicates an expected call of L.
-func (mr *MockAppContextMockRecorder) L() *gomock.Call {
+// Log indicates an expected call of Log.
+func (mr *MockAppContextMockRecorder) Log() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "L", reflect.TypeOf((*MockAppContext)(nil).L))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Log", reflect.TypeOf((*MockAppContext)(nil).Log))
 }
 
 // Navigate mocks base method.

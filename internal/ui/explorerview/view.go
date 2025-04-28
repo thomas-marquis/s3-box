@@ -1,4 +1,4 @@
-package views
+package explorerview
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/components"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -41,7 +40,7 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		}
 	})
 
-	treeItemBuilder := components.NewTreeItemBuilder()
+	treeItemBuilder := newTreeItemBuilder()
 
 	tree := widget.NewTreeWithData(
 		ctx.ExplorerViewModel().Tree(),
@@ -58,8 +57,8 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		})
 
 	detailsContainer := container.NewVBox()
-	fileDetails := components.NewFileDetails()
-	dirDetails := components.NewDirDetails()
+	fileDetails := newFileDetails()
+	dirDetails := newDirDetails()
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
 		di, err := ctx.ExplorerViewModel().Tree().GetValue(uid)
@@ -109,4 +108,15 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	)
 
 	return mainContainer, nil
+}
+
+func getCurrDirectoryOrFile(di any) (bool, *explorer.Directory, *explorer.RemoteFile, error) {
+	switch v := di.(type) {
+	case *explorer.Directory:
+		return true, v, nil, nil
+	case *explorer.RemoteFile:
+		return false, nil, v, nil
+	default:
+		return false, nil, nil, fmt.Errorf("unexpected type %T", v)
+	}
 }

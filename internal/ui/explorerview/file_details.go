@@ -1,4 +1,4 @@
-package components
+package explorerview
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ const (
 	maxFileNameLength = 80
 )
 
-type FileDetials struct {
+type fileDetials struct {
 	c *fyne.Container
 
 	downloadBtn       *widget.Button
@@ -33,7 +33,7 @@ type FileDetials struct {
 	lastModifiedLabel *widget.Label
 }
 
-func NewFileDetails() *FileDetials {
+func newFileDetails() *fileDetials {
 	sizeText := widget.NewLabel("Size")
 	sizeText.TextStyle = fyne.TextStyle{Bold: true}
 	sizeText.Alignment = fyne.TextAlignTrailing
@@ -79,7 +79,7 @@ func NewFileDetails() *FileDetials {
 		topContainer, container.NewCenter(previewBtn),
 		nil, nil,
 	)
-	return &FileDetials{
+	return &fileDetials{
 		c:                 c,
 		downloadBtn:       downloadBtn,
 		previewBtn:        previewBtn,
@@ -89,10 +89,11 @@ func NewFileDetails() *FileDetials {
 		pathLabel:         filepathLabel,
 		fileIcon:          fileIcon,
 		lastModifiedLabel: lastModifiedLabel,
+		deleteBtn:         deleteBtn,
 	}
 }
 
-func (d *FileDetials) Object() fyne.CanvasObject {
+func (d *fileDetials) Object() fyne.CanvasObject {
 	return d.c
 }
 
@@ -116,7 +117,7 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 	if file.SizeBytes <= ctx.ExplorerViewModel().GetMaxFileSizePreview() {
 		f.previewBtn.Show()
 		f.previewBtn.OnTapped = func() {
-			ShowFilePreviewDialog(ctx, file)
+			showFilePreviewDialog(ctx, file)
 		}
 	} else {
 		f.previewBtn.Hide()
