@@ -1,0 +1,67 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# S3-Box Functional Rules
+
+## Overview
+S3-Box is a desktop application for navigating and managing files and folders on S3-compatible storage. It is written in Go, follows Domain Driven Design (DDD), and uses the Fyne framework for its graphical user interface.
+
+## Main Features
+
+### 1. S3 Connection Management
+- Users can create, edit, delete, and select S3 connections.
+- The connections are presisted
+- Each connection includes server, access key, secret key, bucket, region, and TLS usage.
+- Only one connection can be active at a time; switching connections resets the file explorer tree.
+
+### 2. File Explorer
+- Users can browse S3 buckets and directories in a tree view.
+- Directories and files are loaded on demand.
+- Selecting a directory shows its details and allows file upload.
+- Selecting a file shows its details and allows preview (if its size is bellow a given limit), download, and deletion.
+
+### 3. File Operations
+- **Upload:** Users can upload files from their local system to the selected S3 directory.
+- **Download:** Users can download files from S3 to their local system.
+- **Preview:** Users can preview files up to a configurable size limit.
+- **Delete:** Users can delete files from S3 directories.
+
+### 4. Directory Operations
+- Directories are aggregates; they contain subdirectories and files.
+- Users can navigate into subdirectories and see their contents.
+- Directory consistency is maintained when files are added or removed.
+- A directory reference its sub-directories bt their IDs
+- A directory ID is its paths (ending with a "/")
+
+### 5. Settings
+- Users can configure:
+  - Timeout for S3 operations
+  - Color theme (light, dark, system)
+  - Maximum file size for preview
+- Settings are validated and persisted.
+
+### 6. Error Handling & Feedback
+- Errors and confirmations are shown via dialogs.
+- Operations like upload, download, and delete provide user feedback.
+
+### 7. UI/UX
+- The application uses Fyne for a modern, responsive desktop UI.
+- Navigation between explorer, settings, and connection management is seamless.
+
+## Domain Model
+- **S3Directory:** Aggregate representing a directory in S3, containing subdirectories and files.
+- **S3File:** Entity representing a file in S3, with metadata (name, size, last modified, etc).
+- **Connection:** Represents an S3 connection configuration.
+- **Settings:** User preferences for the application.
+
+## Technical Notes
+- All business logic is in `/internal`.
+- Infrastructure (S3 API, persistence) is in `/internal/infrastructure`.
+- UI code is in `/internal/ui` and is framework-specific.
+- Domain code is framework-agnostic and lives in `/internal/explorer`, `/internal/connection`, etc.
+
+---
+This file summarizes the main user-facing features and domain concepts of S3-Box, as implemented in the codebase.
+

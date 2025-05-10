@@ -39,26 +39,30 @@ func NewColorThemeFromString(s string) (ColorTheme, error) {
 type Settings struct {
 	TimeoutInSeconds int
 	Color            ColorTheme
+	MaxFilePreviewSizeBytes int
 }
 
 var ErrInvalidTimeout = errors.New("timeout must be positive")
 
 const (
 	DefaultTimeoutInSeconds = 15
+	DefaultMaxFilePreviewSizeBytes = 1024 * 1024 * 5 // 5MB
 )
 
-func NewSettings(timeoutInSeconds int) (Settings, error) {
+func NewSettings(timeoutInSeconds int, maxFilePreviewSizeBytes int) (Settings, error) {
 	if timeoutInSeconds <= 0 {
 		return Settings{}, ErrInvalidTimeout
 	}
 
 	return Settings{
 		TimeoutInSeconds: timeoutInSeconds,
+		MaxFilePreviewSizeBytes: maxFilePreviewSizeBytes,
 	}, nil
 }
 
 func DefaultSettings() Settings {
 	return Settings{
 		TimeoutInSeconds: DefaultTimeoutInSeconds,
+		MaxFilePreviewSizeBytes: DefaultMaxFilePreviewSizeBytes,
 	}
 }

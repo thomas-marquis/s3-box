@@ -19,6 +19,7 @@ type SettingsViewModel interface {
 	Save(s settings.Settings) error
 	TimeoutInSeconds() binding.Int
 	CurrentTimeout() time.Duration
+	MaxFilePreviewSizeBytes() binding.Int
 	CurrentColorTheme() settings.ColorTheme
 	ChangeColorTheme(theme settings.ColorTheme) error
 }
@@ -29,8 +30,11 @@ type settingsViewModelImpl struct {
 	errChan      chan error
 
 	timeoutInSeconds binding.Int
+	maxFilePreviewSizeBytes binding.Int
 	fyneSettings     fyne.Settings
 }
+
+var _ SettingsViewModel = &settingsViewModelImpl{}
 
 func NewSettingsViewModel(settingsRepo settings.Repository, fyneSettings fyne.Settings) SettingsViewModel {
 	errChan := make(chan error)
@@ -47,6 +51,7 @@ func NewSettingsViewModel(settingsRepo settings.Repository, fyneSettings fyne.Se
 		loading:          binding.NewBool(),
 		errChan:          errChan,
 		timeoutInSeconds: binding.NewInt(),
+		maxFilePreviewSizeBytes: binding.NewInt(),
 		fyneSettings:     fyneSettings,
 	}
 
@@ -88,8 +93,8 @@ func (vm *settingsViewModelImpl) CurrentTimeout() time.Duration {
 	return time.Duration(val) * time.Second
 }
 
-func (vm *settingsViewModelImpl) synchronize(s settings.Settings) {
-	vm.timeoutInSeconds.Set(s.TimeoutInSeconds)
+func (vm *settingsViewModelImpl) MaxFilePreviewSizeBytes() binding.Int {
+	return vm.maxFilePreviewSizeBytes
 }
 
 func (vm *settingsViewModelImpl) currentSettings() (settings.Settings, error) {
@@ -127,4 +132,9 @@ func (vm *settingsViewModelImpl) CurrentColorTheme() settings.ColorTheme {
 		return settings.ColorThemeSystem
 	}
 	return s.Color
+}
+
+func (vm *settingsViewModelImpl) synchronize(s settings.Settings) {
+	vm.timeoutInSeconds.Set(s.TimeoutInSeconds)
+	vm.maxFilePreviewSizeBytes.Set(s.MaxFilePreviewSizeBytes)
 }

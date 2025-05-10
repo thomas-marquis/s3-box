@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/thomas-marquis/s3-box/internal/settings"
@@ -28,6 +29,8 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 			dialog.ShowError(err, ctx.Window())
 		}
 	})
+	maxFilePreviewSizeEntry := widget.NewEntryWithData(
+		binding.IntToString(ctx.SettingsViewModel().MaxFilePreviewSizeBytes()))
 	currentTheme := ctx.SettingsViewModel().CurrentColorTheme()
 	themeSelector.PlaceHolder = currentTheme.String()
 
@@ -35,6 +38,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		Items: []*widget.FormItem{
 			{Text: "Timeout (seconde)", Widget: timeoutEntry},
 			{Text: "Color theme", Widget: themeSelector},
+			{Text: "File size limit for preview (MB)", Widget: maxFilePreviewSizeEntry},
 		},
 		OnSubmit: func() {
 			timeout, err := strconv.Atoi(timeoutEntry.Text)
@@ -43,7 +47,23 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 				return
 			}
 
-			s, err := settings.NewSettings(timeout)
+			if err := timeoutValidator(timeout); err != nil {
+				dialog.ShowError(err, ctx.Window())
+				return
+			}
+
+			maxFilePreviewSize, err := strconv.Atoi(maxFilePreviewSizeEntry.Text)
+			if err != nil {
+				dialog.ShowError(err, ctx.Window())
+				return
+			}
+
+			if err := maxFilePreviewSizeBytesValidator(maxFilePreviewSize); err != nil {
+				dialog.ShowError(err, ctx.Window())
+				return
+			}
+
+			s, err := settings.NewSettings(timeout, maxFilePreviewSize)
 			if err != nil {
 				dialog.ShowError(err, ctx.Window())
 				return
@@ -71,4 +91,24 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		container.NewHBox(goToExplorerBtn),
 		form,
 	), nil
+}
+
+func maxFilePreviewSizeBytesValidator(maxFilePreviewSizeBytes int) error {
+	if maxFilePreviewSizeBytes < 0 {
+		return fmt.Errorf("max file preview size bytes must be greater than 0")
+	}
+	if maxFilePreviewSizeBytes > 1024*1024*1024*10 {
+		return fmt.Errorf("max file preview size bytes must be less than 10GB")
+	}
+	return nil
+}
+
+func timeoutValidator(timeout int) error {
+	if timeout < 0 {
+		return fmt.Errorf("timeout must be greater than 0")
+	}
+	if timeout > 1000 {
+		return fmt.Errorf("timeout must be less than 1000 seconds")
+	}
+	return nil
 }

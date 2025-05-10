@@ -60,6 +60,7 @@ func Test_SettingView_ShouldUpdateAndSaveSettings(t *testing.T) {
 		fakeWindow,
 		navigation.SettingsRoute,
 		testViews,
+		fakeApp.Settings(),
 	)
 	settingsView, _ := views.GetSettingsView(appCtx)
 

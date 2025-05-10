@@ -1,0 +1,73 @@
+---
+description: Read this rule when you want edit the code or the tests
+globs: 
+alwaysApply: false
+---
+# S3-Box Technical Rules
+
+## Global Folder Structure
+
+- `/internal` — Main application code, organized by domain:
+  - `/explorer` — Domain logic for S3 directories and files
+  - `/connection` — S3 connection domain logic
+  - `/settings` — Application settings domain logic
+  - `/infrastructure` — S3 API and persistence implementations
+  - `/ui` — Fyne-based UI code
+    - `/app` — Application context, navigation, and dependency injection
+    - `/views` — Main UI views (explorer, settings, connection)
+      - `/components` — Reusable UI components (dialogs, details, etc)
+    - `/viewmodel` — View models for UI state
+    - `/navigation` — Route definitions
+  - `/utils` — Utility functions (e.g., size formatting)
+- `/mocks` — Auto-generated mocks for unit testing (using GoMock)
+- `/resources` — Static resources (e.g., test data)
+- `/docs` — Documentation
+- `/tools` — Tooling scripts or helpers
+- `main.go` — Application entry point
+- `Makefile` — Build, run, clean, and test commands
+- `gen.go` — Code generation directives (GoMock)
+
+## Coding Style
+
+- Written in Go, using Go 1.23+
+- Follows idiomatic Go conventions
+- No inline comments except for method documentation (only when the method name is not self-explanatory)
+- Documentation is placed only in abstractions, not in implementations
+- All code and documentation is in English
+- Domain Driven Design (DDD) principles: domain logic is framework-agnostic, infrastructure and UI are separated
+- Clean architecture principle: domain must not depends on infrastructure, etc.
+
+## Unit Test Style
+
+- Uses the standard `testing` package and `testify/assert` for assertions
+- Uses GoMock for mocking dependencies
+- Test function names use the pattern `Test_<UnitOfWork>_<Condition>_<Expectation>`
+- Arrange-Act-Assert structure is used, with clear separation of setup, execution, and verification
+- Example: [size_test.go](mdc:internal/utils/size_test.go)
+- Example (service test with mocks): [directory_service_test.go](mdc:internal/explorer/directory_service_test.go)
+
+## Mocking
+
+- Uses GoMock for mocking interfaces
+- Mocks are generated via `go generate` and `mockgen` (see [gen.go](mdc:gen.go))
+- Mocks are placed in the `/mocks` directory, mirroring the structure of the code they mock
+- Example directive in `gen.go`:
+  - `//go:generate mockgen -package mocks_explorer -destination mocks/explorer/directory_repository.go github.com/thomas-marquis/s3-box/internal/explorer S3DirectoryRepository`
+
+## Code Generation
+
+- All mocks are generated using GoMock and `mockgen`
+- Run `go generate ./...` to regenerate mocks as needed
+- `gen.go` contains all `//go:generate` directives for mocks
+
+## How to Launch the Project
+
+- Use the `Makefile` for common tasks:
+  - `make` or `make all` — Build the application binary (`s3box`)
+  - `make run` — Build and run the application
+  - `make clean` — Remove the built binary
+  - `make test` — Run all unit tests
+
+---
+This file summarizes the technical conventions, folder structure, and development practices for S3-Box.
+
