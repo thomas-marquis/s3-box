@@ -28,3 +28,11 @@ func FormatSizeBytes(b int64) string {
 	}
 	return fmt.Sprintf("%.2f PB", float64(b)/float64(peta))
 }
+
+func BytesToMB(b int64) int64 {
+	return b / mega
+}
+
+func MegaToBytes(mb int64) int64 {
+	return mb * mega
+}

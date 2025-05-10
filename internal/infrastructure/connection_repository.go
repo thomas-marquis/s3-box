@@ -15,6 +15,34 @@ const (
 	allConnectionsKey = "allConnections"
 )
 
+type connectionDTO struct {
+	ID uuid.UUID `json:"id"`
+	Name string `json:"name"`
+	Server string `json:"server"`
+	AccessKey string `json:"accessKey"`
+	SecretKey string `json:"secretKey"`
+}
+
+func (c *connectionDTO) toConnection() *connection.Connection {
+	return &connection.Connection{
+		ID: c.ID,
+		Name: c.Name,
+		Server: c.Server,
+		AccessKey: c.AccessKey,
+		SecretKey: c.SecretKey,
+	}
+}
+
+func newConnectionDTO(c *connection.Connection) *connectionDTO {
+	return &connectionDTO{
+		ID: c.ID,
+		Name: c.Name,
+		Server: c.Server,
+		AccessKey: c.AccessKey,
+		SecretKey: c.SecretKey,
+	}
+}
+
 
 type ConnectionRepositoryImpl struct {
 	prefs fyne.Preferences
@@ -32,16 +60,16 @@ func (r *ConnectionRepositoryImpl) ListConnections(ctx context.Context) ([]*conn
 		return []*connection.Connection{}, nil
 	}
 
-    connections, err := fromJson[[]*connection.Connection](content)
+    dtos, err := fromJson[[]*connectionDTO](content)
     if err != nil {
         return nil, fmt.Errorf("ListConnections: %w", err)
     }
 
     // filter connections to remove those with empty id
     var filteredConnections []*connection.Connection
-    for _, c := range connections {
-        if c.ID != uuid.Nil {
-            filteredConnections = append(filteredConnections, c)
+    for _, dto := range dtos {
+        if dto.ID != uuid.Nil {
+            filteredConnections = append(filteredConnections, dto.toConnection())
         }
     }
 
@@ -74,7 +102,11 @@ func (r *ConnectionRepositoryImpl) SaveConnection(ctx context.Context, c *connec
         connections = append(connections, c)
     }
 
-    content, err := json.Marshal(connections)
+    dtos := make([]*connectionDTO, len(connections))
+    for i, c := range connections {
+        dtos[i] = newConnectionDTO(c)
+    }
+    content, err := json.Marshal(dtos)
     if err != nil {
         return fmt.Errorf("SaveConnection: %w", err)
     }
@@ -105,7 +137,11 @@ func (r *ConnectionRepositoryImpl) DeleteConnection(ctx context.Context, id uuid
         return connection.ErrConnectionNotFound 
     }
 
-    content, err := json.Marshal(connToKeep)
+    dtos := make([]*connectionDTO, len(connToKeep))
+    for i, c := range connToKeep {
+        dtos[i] = newConnectionDTO(c)
+    }
+    content, err := json.Marshal(dtos)
     if err != nil {
         return fmt.Errorf("DeleteConnection: %w", err)
     }
@@ -150,7 +186,11 @@ func (r *ConnectionRepositoryImpl) SetSelectedConnection(ctx context.Context, id
         return connection.ErrConnectionNotFound
     }
 
-    content, err := json.Marshal(connections)
+    dtos := make([]*connectionDTO, len(connections))
+    for i, c := range connections {
+        dtos[i] = newConnectionDTO(c)
+    }
+    content, err := json.Marshal(dtos)
     if err != nil {
         return fmt.Errorf("SetSelectedConnection: %w", err)
     }   
@@ -176,12 +216,4 @@ func (r *ConnectionRepositoryImpl) GetSelectedConnection(ctx context.Context) (*
     return nil, connection.ErrConnectionNotFound
 }
 
-func fromJson[T any](content string) (T, error) {
-    var structType T
-	err := json.Unmarshal([]byte(content), &structType)
-    if err != nil {
-        return structType, fmt.Errorf("fromJson: %w", err)
-    }
-	return structType, nil
-}
 

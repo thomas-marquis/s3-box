@@ -8,6 +8,7 @@ import (
 
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
+	"github.com/thomas-marquis/s3-box/internal/utils"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -330,8 +331,14 @@ func (vm *ExplorerViewModel) PreviewFile(f *explorer.S3File) (string, error) {
 	return string(content), nil
 }
 
+// GetMaxFileSizePreview returns the max file size preview in bytes
 func (vm *ExplorerViewModel) GetMaxFileSizePreview() int64 {
-	return 1024 * 1024
+	val, err := vm.settingsVm.MaxFilePreviewSizeMegaBytes().Get()
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error getting max file size preview: %w", err)
+		return 0
+	}
+	return utils.MegaToBytes(int64(val))
 }
 
 func (vm *ExplorerViewModel) ResetTree() error {

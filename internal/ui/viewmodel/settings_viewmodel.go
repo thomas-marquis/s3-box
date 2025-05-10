@@ -3,6 +3,7 @@ package viewmodel
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -16,12 +17,11 @@ const (
 )
 
 type SettingsViewModel interface {
-	Save(s settings.Settings) error
+	Save() error
 	TimeoutInSeconds() binding.Int
 	CurrentTimeout() time.Duration
-	MaxFilePreviewSizeBytes() binding.Int
-	CurrentColorTheme() settings.ColorTheme
-	ChangeColorTheme(theme settings.ColorTheme) error
+	MaxFilePreviewSizeMegaBytes() binding.Int
+	ColorTheme() binding.String
 }
 
 type settingsViewModelImpl struct {
@@ -30,8 +30,9 @@ type settingsViewModelImpl struct {
 	errChan      chan error
 
 	timeoutInSeconds binding.Int
-	maxFilePreviewSizeBytes binding.Int
+	maxFilePreviewSizeMegaBytes binding.Int
 	fyneSettings     fyne.Settings
+	colorTheme binding.String
 }
 
 var _ SettingsViewModel = &settingsViewModelImpl{}
@@ -46,13 +47,29 @@ func NewSettingsViewModel(settingsRepo settings.Repository, fyneSettings fyne.Se
 		errChan <- fmt.Errorf("error getting settings: %w", err)
 	}
 
+	themeBinding := binding.NewString()
+	themeBinding.AddListener(binding.NewDataListener(func() {
+		currThemeName, err := themeBinding.Get()
+		if err != nil {
+			errChan <- fmt.Errorf("error getting color theme: %w", err)
+			return
+		}
+		currTheme, err := settings.NewColorThemeFromString(currThemeName)
+		if err != nil {
+			errChan <- fmt.Errorf("error converting color theme: %w", err)
+			return
+		}
+		fyneSettings.SetTheme(utils.MapFyneColorTheme(currTheme))
+	}))
+
 	vm := &settingsViewModelImpl{
 		settingsRepo:     settingsRepo,
 		loading:          binding.NewBool(),
 		errChan:          errChan,
 		timeoutInSeconds: binding.NewInt(),
-		maxFilePreviewSizeBytes: binding.NewInt(),
+		maxFilePreviewSizeMegaBytes: binding.NewInt(),
 		fyneSettings:     fyneSettings,
+		colorTheme:       themeBinding,
 	}
 
 	vm.synchronize(s)
@@ -66,7 +83,35 @@ func NewSettingsViewModel(settingsRepo settings.Repository, fyneSettings fyne.Se
 	return vm
 }
 
-func (vm *settingsViewModelImpl) Save(s settings.Settings) error {
+func (vm *settingsViewModelImpl) Save() error {
+	timeout, err := vm.timeoutInSeconds.Get()
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error getting timeout in seconds: %w", err)
+		return err
+	}
+	maxFilePreviewSizeMegaBytes, err := vm.maxFilePreviewSizeMegaBytes.Get()
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error getting max file preview size in mega bytes: %w", err)
+		return err
+	}
+	colorThemeString, err := vm.colorTheme.Get()
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error getting color theme: %w", err)
+		return err
+	}
+	colorTheme, err := settings.NewColorThemeFromString(colorThemeString)
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error converting color theme: %w", err)
+		return err
+	}
+
+	s, err := settings.NewSettings(timeout, utils.MegaToBytes(int64(maxFilePreviewSizeMegaBytes)))
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error creating settings: %w", err)
+		return err
+	}
+	s.Color = colorTheme
+
 	ctx, cancel := context.WithTimeout(context.Background(), settingsTimeout)
 	defer cancel()
 
@@ -93,48 +138,21 @@ func (vm *settingsViewModelImpl) CurrentTimeout() time.Duration {
 	return time.Duration(val) * time.Second
 }
 
-func (vm *settingsViewModelImpl) MaxFilePreviewSizeBytes() binding.Int {
-	return vm.maxFilePreviewSizeBytes
+func (vm *settingsViewModelImpl) MaxFilePreviewSizeMegaBytes() binding.Int {
+	return vm.maxFilePreviewSizeMegaBytes
 }
 
-func (vm *settingsViewModelImpl) currentSettings() (settings.Settings, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.CurrentTimeout())
-	defer cancel()
-	s, err := vm.settingsRepo.Get(ctx)
-	if err != nil {
-		return settings.Settings{}, fmt.Errorf("error getting settings: %w", err)
-	}
-	return s, nil
-}
-
-func (vm *settingsViewModelImpl) ChangeColorTheme(colorTheme settings.ColorTheme) error {
-	vm.fyneSettings.SetTheme(utils.MapFyneColorTheme(colorTheme))
-
-	newSettings, err := vm.currentSettings()
-	if err != nil {
-		return fmt.Errorf("error creating new settings: %w", err)
-	}
-	newSettings.Color = colorTheme
-
-	ctx, cancel := context.WithTimeout(context.Background(), vm.CurrentTimeout())
-	defer cancel()
-	err = vm.settingsRepo.Save(ctx, newSettings)
-	if err != nil {
-		vm.errChan <- fmt.Errorf("error saving settings: %w", err)
-	}
-
-	return nil
-}
-
-func (vm *settingsViewModelImpl) CurrentColorTheme() settings.ColorTheme {
-	s, err := vm.currentSettings()
-	if err != nil {
-		return settings.ColorThemeSystem
-	}
-	return s.Color
+func (vm *settingsViewModelImpl) ColorTheme() binding.String {
+	return vm.colorTheme
 }
 
 func (vm *settingsViewModelImpl) synchronize(s settings.Settings) {
 	vm.timeoutInSeconds.Set(s.TimeoutInSeconds)
-	vm.maxFilePreviewSizeBytes.Set(s.MaxFilePreviewSizeBytes)
+	if s.MaxFilePreviewSizeBytes > math.MaxInt {
+		vm.errChan <- fmt.Errorf("max file preview size exceeds maximum allowed value: clamping to max int")
+		vm.maxFilePreviewSizeMegaBytes.Set(math.MaxInt)
+	} else {
+		vm.maxFilePreviewSizeMegaBytes.Set(int(utils.BytesToMB(s.MaxFilePreviewSizeBytes)))
+	}
+	vm.colorTheme.Set(s.Color.String())
 }

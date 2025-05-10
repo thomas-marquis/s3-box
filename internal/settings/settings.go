@@ -10,14 +10,22 @@ const (
 	ColorThemeSystem
 )
 
+const (
+	ColorThemeLightStr = "light"
+	ColorThemeDarkStr = "dark"
+	ColorThemeSystemStr = "system"
+)
+
+var AllColorThemesStr = []string{ColorThemeLightStr, ColorThemeDarkStr, ColorThemeSystemStr}
+
 func (c ColorTheme) String() string {
 	switch c {
 	case ColorThemeLight:
-		return "light"
+		return ColorThemeLightStr
 	case ColorThemeDark:
-		return "dark"
+		return ColorThemeDarkStr
 	case ColorThemeSystem:
-		return "system"
+		return ColorThemeSystemStr
 	default:
 		return "unknown"
 	}
@@ -25,11 +33,11 @@ func (c ColorTheme) String() string {
 
 func NewColorThemeFromString(s string) (ColorTheme, error) {
 	switch s {
-	case "light":
+	case ColorThemeLightStr:
 		return ColorThemeLight, nil
-	case "dark":
+	case ColorThemeDarkStr:
 		return ColorThemeDark, nil
-	case "system":
+	case ColorThemeSystemStr:
 		return ColorThemeSystem, nil
 	default:
 		return -1, errors.New("invalid color theme")
@@ -39,7 +47,7 @@ func NewColorThemeFromString(s string) (ColorTheme, error) {
 type Settings struct {
 	TimeoutInSeconds int
 	Color            ColorTheme
-	MaxFilePreviewSizeBytes int
+	MaxFilePreviewSizeBytes int64
 }
 
 var ErrInvalidTimeout = errors.New("timeout must be positive")
@@ -49,9 +57,13 @@ const (
 	DefaultMaxFilePreviewSizeBytes = 1024 * 1024 * 5 // 5MB
 )
 
-func NewSettings(timeoutInSeconds int, maxFilePreviewSizeBytes int) (Settings, error) {
+func NewSettings(timeoutInSeconds int, maxFilePreviewSizeBytes int64) (Settings, error) {
 	if timeoutInSeconds <= 0 {
 		return Settings{}, ErrInvalidTimeout
+	}
+
+	if maxFilePreviewSizeBytes == 0 {
+		maxFilePreviewSizeBytes = DefaultMaxFilePreviewSizeBytes
 	}
 
 	return Settings{
