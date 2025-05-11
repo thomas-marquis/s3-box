@@ -29,10 +29,10 @@ type settingsViewModelImpl struct {
 	loading      binding.Bool
 	errChan      chan error
 
-	timeoutInSeconds binding.Int
+	timeoutInSeconds            binding.Int
 	maxFilePreviewSizeMegaBytes binding.Int
-	fyneSettings     fyne.Settings
-	colorTheme binding.String
+	fyneSettings                fyne.Settings
+	colorTheme                  binding.String
 }
 
 var _ SettingsViewModel = &settingsViewModelImpl{}
@@ -63,13 +63,13 @@ func NewSettingsViewModel(settingsRepo settings.Repository, fyneSettings fyne.Se
 	}))
 
 	vm := &settingsViewModelImpl{
-		settingsRepo:     settingsRepo,
-		loading:          binding.NewBool(),
-		errChan:          errChan,
-		timeoutInSeconds: binding.NewInt(),
+		settingsRepo:                settingsRepo,
+		loading:                     binding.NewBool(),
+		errChan:                     errChan,
+		timeoutInSeconds:            binding.NewInt(),
 		maxFilePreviewSizeMegaBytes: binding.NewInt(),
-		fyneSettings:     fyneSettings,
-		colorTheme:       themeBinding,
+		fyneSettings:                fyneSettings,
+		colorTheme:                  themeBinding,
 	}
 
 	vm.synchronize(s)
