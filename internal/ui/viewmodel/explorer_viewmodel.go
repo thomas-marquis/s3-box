@@ -8,6 +8,7 @@ import (
 
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
+	"github.com/thomas-marquis/s3-box/internal/utils"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -55,7 +56,7 @@ func NewExplorerViewModel(dirSvc *explorer.DirectoryService, connRepo connection
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds()*2)
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout()*2)
 	defer cancel()
 
 	_, err := connRepo.GetSelectedConnection(ctx)
@@ -102,7 +103,7 @@ func (vm *ExplorerViewModel) Tree() binding.UntypedTree {
 }
 
 func (vm *ExplorerViewModel) RefreshDir(dirID explorer.S3DirectoryID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
 	dir, err := vm.fetchAndUpdateDirectory(ctx, dirID)
@@ -198,7 +199,7 @@ func (vm *ExplorerViewModel) appendDirectoryNode(parentDirID explorer.S3Director
 
 func (vm *ExplorerViewModel) AppendDirToTree(dirID explorer.S3DirectoryID) error {
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, vm.settingsVm.TimeoutInSeconds())
+	ctx, cancel := context.WithTimeout(ctx, vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
 	di, err := vm.tree.GetValue(dirID.String())
@@ -319,7 +320,7 @@ func (vm *ExplorerViewModel) PreviewFile(f *explorer.S3File) (string, error) {
 		return "", fmt.Errorf("file is too big to PreviewFile")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	content, err := vm.fileSvc.GetContent(ctx, f)
 	if err != nil {
@@ -330,8 +331,14 @@ func (vm *ExplorerViewModel) PreviewFile(f *explorer.S3File) (string, error) {
 	return string(content), nil
 }
 
+// GetMaxFileSizePreview returns the max file size preview in bytes
 func (vm *ExplorerViewModel) GetMaxFileSizePreview() int64 {
-	return 1024 * 1024
+	val, err := vm.settingsVm.MaxFilePreviewSizeMegaBytes().Get()
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error getting max file size preview: %w", err)
+		return 0
+	}
+	return utils.MegaToBytes(int64(val))
 }
 
 func (vm *ExplorerViewModel) ResetTree() error {
@@ -340,7 +347,7 @@ func (vm *ExplorerViewModel) ResetTree() error {
 }
 
 func (vm *ExplorerViewModel) DownloadFile(f *explorer.S3File, dest string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	if err := vm.fileSvc.DownloadFile(ctx, f, dest); err != nil {
 		vm.errChan <- fmt.Errorf("error downloading file: %w", err)
@@ -357,7 +364,7 @@ func (vm *ExplorerViewModel) UploadFile(localPath string, remoteDir *explorer.S3
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
 	if err := vm.fileSvc.UploadFile(ctx, localFile, remoteFile); err != nil {
@@ -369,7 +376,7 @@ func (vm *ExplorerViewModel) UploadFile(localPath string, remoteDir *explorer.S3
 }
 
 func (vm *ExplorerViewModel) DeleteFile(file *explorer.S3File) error {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.TimeoutInSeconds())
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
 	dir, err := vm.dirSvc.GetDirectoryByID(ctx, file.DirectoryID)

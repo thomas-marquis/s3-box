@@ -23,6 +23,7 @@ import (
 type MockAppContext struct {
 	ctrl     *gomock.Controller
 	recorder *MockAppContextMockRecorder
+	isgomock struct{}
 }
 
 // MockAppContextMockRecorder is the mock recorder for MockAppContext.
@@ -40,6 +41,20 @@ func NewMockAppContext(ctrl *gomock.Controller) *MockAppContext {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockAppContext) EXPECT() *MockAppContextMockRecorder {
 	return m.recorder
+}
+
+// ConnectionViewModel mocks base method.
+func (m *MockAppContext) ConnectionViewModel() *viewmodel.ConnectionViewModel {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConnectionViewModel")
+	ret0, _ := ret[0].(*viewmodel.ConnectionViewModel)
+	return ret0
+}
+
+// ConnectionViewModel indicates an expected call of ConnectionViewModel.
+func (mr *MockAppContextMockRecorder) ConnectionViewModel() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionViewModel", reflect.TypeOf((*MockAppContext)(nil).ConnectionViewModel))
 }
 
 // CurrentRoute mocks base method.
@@ -70,6 +85,34 @@ func (mr *MockAppContextMockRecorder) ExitChan() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExitChan", reflect.TypeOf((*MockAppContext)(nil).ExitChan))
 }
 
+// ExplorerViewModel mocks base method.
+func (m *MockAppContext) ExplorerViewModel() *viewmodel.ExplorerViewModel {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExplorerViewModel")
+	ret0, _ := ret[0].(*viewmodel.ExplorerViewModel)
+	return ret0
+}
+
+// ExplorerViewModel indicates an expected call of ExplorerViewModel.
+func (mr *MockAppContextMockRecorder) ExplorerViewModel() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExplorerViewModel", reflect.TypeOf((*MockAppContext)(nil).ExplorerViewModel))
+}
+
+// FyneSettings mocks base method.
+func (m *MockAppContext) FyneSettings() fyne.Settings {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FyneSettings")
+	ret0, _ := ret[0].(fyne.Settings)
+	return ret0
+}
+
+// FyneSettings indicates an expected call of FyneSettings.
+func (mr *MockAppContextMockRecorder) FyneSettings() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FyneSettings", reflect.TypeOf((*MockAppContext)(nil).FyneSettings))
+}
+
 // L mocks base method.
 func (m *MockAppContext) L() *zap.Logger {
 	m.ctrl.T.Helper()
@@ -85,43 +128,43 @@ func (mr *MockAppContextMockRecorder) L() *gomock.Call {
 }
 
 // Navigate mocks base method.
-func (m *MockAppContext) Navigate(arg0 navigation.Route) error {
+func (m *MockAppContext) Navigate(route navigation.Route) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Navigate", arg0)
+	ret := m.ctrl.Call(m, "Navigate", route)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Navigate indicates an expected call of Navigate.
-func (mr *MockAppContextMockRecorder) Navigate(arg0 any) *gomock.Call {
+func (mr *MockAppContextMockRecorder) Navigate(route any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Navigate", reflect.TypeOf((*MockAppContext)(nil).Navigate), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Navigate", reflect.TypeOf((*MockAppContext)(nil).Navigate), route)
 }
 
-// Vm mocks base method.
-func (m *MockAppContext) Vm() *viewmodel.ExplorerViewModel {
+// SettingsViewModel mocks base method.
+func (m *MockAppContext) SettingsViewModel() viewmodel.SettingsViewModel {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Vm")
-	ret0, _ := ret[0].(*viewmodel.ExplorerViewModel)
+	ret := m.ctrl.Call(m, "SettingsViewModel")
+	ret0, _ := ret[0].(viewmodel.SettingsViewModel)
 	return ret0
 }
 
-// Vm indicates an expected call of Vm.
-func (mr *MockAppContextMockRecorder) Vm() *gomock.Call {
+// SettingsViewModel indicates an expected call of SettingsViewModel.
+func (mr *MockAppContextMockRecorder) SettingsViewModel() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Vm", reflect.TypeOf((*MockAppContext)(nil).Vm))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SettingsViewModel", reflect.TypeOf((*MockAppContext)(nil).SettingsViewModel))
 }
 
-// W mocks base method.
-func (m *MockAppContext) W() fyne.Window {
+// Window mocks base method.
+func (m *MockAppContext) Window() fyne.Window {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "W")
+	ret := m.ctrl.Call(m, "Window")
 	ret0, _ := ret[0].(fyne.Window)
 	return ret0
 }
 
-// W indicates an expected call of W.
-func (mr *MockAppContextMockRecorder) W() *gomock.Call {
+// Window indicates an expected call of Window.
+func (mr *MockAppContextMockRecorder) Window() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "W", reflect.TypeOf((*MockAppContext)(nil).W))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Window", reflect.TypeOf((*MockAppContext)(nil).Window))
 }

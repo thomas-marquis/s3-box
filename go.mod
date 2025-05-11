@@ -1,12 +1,14 @@
 module github.com/thomas-marquis/s3-box
 
-go 1.22.5
+go 1.23
+
+toolchain go1.23.8
 
 require (
 	fyne.io/fyne/v2 v2.5.2
 	github.com/aws/aws-sdk-go v1.55.3
-	github.com/stretchr/testify v1.8.4
-	go.uber.org/mock v0.4.0
+	github.com/stretchr/testify v1.10.0
+	go.uber.org/mock v0.5.2
 	go.uber.org/zap v1.27.0
 )
 
@@ -38,8 +40,8 @@ require (
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/mobile v0.0.0-20231127183840-76ac6878050a // indirect
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/net v0.26.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

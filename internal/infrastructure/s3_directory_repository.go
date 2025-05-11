@@ -15,10 +15,10 @@ import (
 )
 
 type S3DirectoryRepositoryImpl struct {
-	log *zap.SugaredLogger
+	log     *zap.SugaredLogger
 	session *session.Session
 	s3      *s3.S3
-	conn *connection.Connection
+	conn    *connection.Connection
 }
 
 var _ explorer.S3DirectoryRepository = &S3DirectoryRepositoryImpl{}
@@ -46,55 +46,55 @@ func NewS3DirectoryRepositoryImpl(logger *zap.Logger, conn *connection.Connectio
 	}
 
 	return &S3DirectoryRepositoryImpl{
-		conn: conn,
+		conn:    conn,
 		session: sess,
 		s3:      s3.New(sess),
 		log:     log,
 	}, nil
 }
 
-func (r *S3DirectoryRepositoryImpl) GetByID(ctx context.Context, id explorer.S3DirectoryID) (*explorer.S3Directory, error) {	
+func (r *S3DirectoryRepositoryImpl) GetByID(ctx context.Context, id explorer.S3DirectoryID) (*explorer.S3Directory, error) {
 	parentID := getParentDirIDFromChildID(id)
 	dirName := id.ToName()
 	dir, err := explorer.NewS3Directory(dirName, parentID)
 	if err != nil {
 		return nil, fmt.Errorf("GetByID: %w", err)
 	}
-	
+
 	queryPath := getQueryPath(id)
 
-    inputs := &s3.ListObjectsInput{
-        Bucket:    aws.String(r.conn.BucketName),
-        Prefix:    aws.String(queryPath),
-        Delimiter: aws.String("/"),
-        MaxKeys:   aws.Int64(1000),
-    }
+	inputs := &s3.ListObjectsInput{
+		Bucket:    aws.String(r.conn.BucketName),
+		Prefix:    aws.String(queryPath),
+		Delimiter: aws.String("/"),
+		MaxKeys:   aws.Int64(1000),
+	}
 
-    pageHandler := func(page *s3.ListObjectsOutput, lastPage bool) bool {
-        for _, obj := range page.Contents {
-            key := *obj.Key
-            if key == queryPath {
-                continue
-            }
-            newFile, _ := dir.CreateFile(getNameFromS3Key(key))
+	pageHandler := func(page *s3.ListObjectsOutput, lastPage bool) bool {
+		for _, obj := range page.Contents {
+			key := *obj.Key
+			if key == queryPath {
+				continue
+			}
+			newFile, _ := dir.CreateFile(getNameFromS3Key(key))
 			newFile.SizeBytes = *obj.Size
 			newFile.LastModified = *obj.LastModified
 			dir.AddFile(newFile)
-        }
+		}
 
-        for _, obj := range page.CommonPrefixes {
-            if *obj.Prefix == queryPath {
-                continue
-            }
-            s3Prefix := *obj.Prefix
-            isDir := strings.HasSuffix(s3Prefix, "/")
-            if isDir {
-                dirName := getNameFromS3Key(s3Prefix)
-                dir.AddSubDirectory(dirName)
-            }
-        }
-        return !lastPage
-    }
+		for _, obj := range page.CommonPrefixes {
+			if *obj.Prefix == queryPath {
+				continue
+			}
+			s3Prefix := *obj.Prefix
+			isDir := strings.HasSuffix(s3Prefix, "/")
+			if isDir {
+				dirName := getNameFromS3Key(s3Prefix)
+				dir.AddSubDirectory(dirName)
+			}
+		}
+		return !lastPage
+	}
 
 	if err := r.s3.ListObjectsPagesWithContext(ctx, inputs, pageHandler); err != nil {
 		r.log.Errorf("Error listing objects: %v\n", err)
@@ -125,11 +125,11 @@ func getParentDirIDFromChildID(id explorer.S3DirectoryID) explorer.S3DirectoryID
 	}
 	dirPathStriped := strings.TrimSuffix(id.String(), "/")
 	dirPathSplit := strings.Split(dirPathStriped, "/")
-	
+
 	if len(dirPathSplit) <= 1 {
 		return explorer.RootDirID
 	}
-	
+
 	parentPath := strings.Join(dirPathSplit[:len(dirPathSplit)-1], "/")
 	return explorer.S3DirectoryID(parentPath)
 }

@@ -4,10 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"fyne.io/fyne/v2"
 	"github.com/google/uuid"
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
+	"github.com/thomas-marquis/s3-box/internal/settings"
+	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"go.uber.org/zap"
 )
 
@@ -51,4 +56,35 @@ func BuildS3FileRepositoryFactory(conn *connection.Connection, log *zap.Logger, 
 		repoById[connID] = repo
 		return repo, nil
 	}
+}
+
+func BuildAppContext(
+	connectionRepository connection.Repository,
+	settingsRepository settings.Repository,
+	directoryRepositoryFactory explorer.DirectoryRepositoryFactory,
+	fileRepositoryFactory explorer.FileRepositoryFactory,
+	logger *zap.Logger,
+	lastSelectedConn *connection.Connection,
+	window fyne.Window,
+	initialRoute navigation.Route,
+	views map[navigation.Route]func(appcontext.AppContext) (*fyne.Container, error),
+	fyneSettings fyne.Settings,
+) appcontext.AppContext {
+	connSvc := connection.NewConnectionService(connectionRepository)
+	dirSvc := explorer.NewDirectoryService(
+		logger,
+		directoryRepositoryFactory,
+		fileRepositoryFactory,
+		connSvc,
+	)
+	fileSvc := explorer.NewFileService(
+		logger,
+		fileRepositoryFactory,
+		connSvc,
+	)
+
+	settingsVm := viewmodel.NewSettingsViewModel(settingsRepository, fyneSettings)
+	connVm := viewmodel.NewConnectionViewModel(connectionRepository, connSvc, settingsVm)
+	explorerVm := viewmodel.NewExplorerViewModel(dirSvc, connectionRepository, fileSvc, settingsVm)
+	return appcontext.New(window, explorerVm, connVm, settingsVm, initialRoute, views, logger, fyneSettings)
 }

@@ -21,6 +21,7 @@ import (
 type MockS3FileRepository struct {
 	ctrl     *gomock.Controller
 	recorder *MockS3FileRepositoryMockRecorder
+	isgomock struct{}
 }
 
 // MockS3FileRepositoryMockRecorder is the mock recorder for MockS3FileRepository.
@@ -41,58 +42,58 @@ func (m *MockS3FileRepository) EXPECT() *MockS3FileRepositoryMockRecorder {
 }
 
 // DeleteFile mocks base method.
-func (m *MockS3FileRepository) DeleteFile(arg0 context.Context, arg1 explorer.S3FileID) error {
+func (m *MockS3FileRepository) DeleteFile(ctx context.Context, id explorer.S3FileID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteFile", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteFile", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteFile indicates an expected call of DeleteFile.
-func (mr *MockS3FileRepositoryMockRecorder) DeleteFile(arg0, arg1 any) *gomock.Call {
+func (mr *MockS3FileRepositoryMockRecorder) DeleteFile(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFile", reflect.TypeOf((*MockS3FileRepository)(nil).DeleteFile), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFile", reflect.TypeOf((*MockS3FileRepository)(nil).DeleteFile), ctx, id)
 }
 
 // DownloadFile mocks base method.
-func (m *MockS3FileRepository) DownloadFile(arg0 context.Context, arg1, arg2 string) error {
+func (m *MockS3FileRepository) DownloadFile(ctx context.Context, key, dest string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DownloadFile", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "DownloadFile", ctx, key, dest)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DownloadFile indicates an expected call of DownloadFile.
-func (mr *MockS3FileRepositoryMockRecorder) DownloadFile(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockS3FileRepositoryMockRecorder) DownloadFile(ctx, key, dest any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownloadFile", reflect.TypeOf((*MockS3FileRepository)(nil).DownloadFile), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownloadFile", reflect.TypeOf((*MockS3FileRepository)(nil).DownloadFile), ctx, key, dest)
 }
 
 // GetContent mocks base method.
-func (m *MockS3FileRepository) GetContent(arg0 context.Context, arg1 explorer.S3FileID) ([]byte, error) {
+func (m *MockS3FileRepository) GetContent(ctx context.Context, id explorer.S3FileID) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetContent", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetContent", ctx, id)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetContent indicates an expected call of GetContent.
-func (mr *MockS3FileRepositoryMockRecorder) GetContent(arg0, arg1 any) *gomock.Call {
+func (mr *MockS3FileRepositoryMockRecorder) GetContent(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContent", reflect.TypeOf((*MockS3FileRepository)(nil).GetContent), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContent", reflect.TypeOf((*MockS3FileRepository)(nil).GetContent), ctx, id)
 }
 
 // UploadFile mocks base method.
-func (m *MockS3FileRepository) UploadFile(arg0 context.Context, arg1 *explorer.LocalFile, arg2 *explorer.S3File) error {
+func (m *MockS3FileRepository) UploadFile(ctx context.Context, local *explorer.LocalFile, remote *explorer.S3File) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UploadFile", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "UploadFile", ctx, local, remote)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UploadFile indicates an expected call of UploadFile.
-func (mr *MockS3FileRepositoryMockRecorder) UploadFile(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockS3FileRepositoryMockRecorder) UploadFile(ctx, local, remote any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadFile", reflect.TypeOf((*MockS3FileRepository)(nil).UploadFile), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadFile", reflect.TypeOf((*MockS3FileRepository)(nil).UploadFile), ctx, local, remote)
 }
