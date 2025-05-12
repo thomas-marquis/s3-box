@@ -23,6 +23,6 @@ type Repository interface {
 
 	GetSelectedConnection(ctx context.Context) (*Connection, error)
 
-	// ExportToJson returns all connections as a JSON byte slice
-	ExportToJson(ctx context.Context) ([]byte, error)
+	// ExportToJson returns all connections as a JSON byte slice and the count
+	ExportToJson(ctx context.Context) (ConnectionExport, error)
 }

@@ -222,14 +222,17 @@ func (r *ConnectionRepositoryImpl) loadConnectionDTOs() ([]*connectionDTO, error
 	return dtos, nil
 }
 
-func (r *ConnectionRepositoryImpl) ExportToJson(ctx context.Context) ([]byte, error) {
+func (r *ConnectionRepositoryImpl) ExportToJson(ctx context.Context) (connection.ConnectionExport, error) {
 	dtos, err := r.loadConnectionDTOs()
 	if err != nil {
-		return nil, fmt.Errorf("ExportToJson: %w", err)
+		return connection.ConnectionExport{}, fmt.Errorf("ExportToJson: %w", err)
 	}
 	content, err := json.Marshal(dtos)
 	if err != nil {
-		return nil, fmt.Errorf("ExportToJson: %w", err)
+		return connection.ConnectionExport{}, fmt.Errorf("ExportToJson: %w", err)
 	}
-	return content, nil
+	return connection.ConnectionExport{
+		JSONData: content,
+		Count:    len(dtos),
+	}, nil
 }

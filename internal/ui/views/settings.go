@@ -1,6 +1,8 @@
 package views
 
 import (
+	"fmt"
+
 	"github.com/thomas-marquis/s3-box/internal/settings"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
@@ -56,7 +58,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		"Export connections as JSON",
 		theme.DocumentSaveIcon(),
 		func() {
-			jsonData, err := ctx.ConnectionViewModel().ExportConnectionsAsJSON()
+			export, err := ctx.ConnectionViewModel().ExportConnectionsAsJSON()
 			if err != nil {
 				dialog.ShowError(err, ctx.Window())
 				return
@@ -70,12 +72,13 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 					return
 				}
 				defer writer.Close()
-				_, writeErr := writer.Write(jsonData)
+				_, writeErr := writer.Write(export.JSONData)
 				if writeErr != nil {
 					dialog.ShowError(writeErr, ctx.Window())
 					return
 				}
-				dialog.ShowInformation("Export", "Connections exported as JSON", ctx.Window())
+				msg := fmt.Sprintf("%d connection(s) exported as JSON", export.Count)
+				dialog.ShowInformation("Export", msg, ctx.Window())
 			}, ctx.Window())
 			saveDialog.SetFileName("connections.json")
 			saveDialog.Show()

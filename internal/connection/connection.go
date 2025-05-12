@@ -26,3 +26,8 @@ func NewConnection(name, server, accessKey, secretKey, bucket string, useTLS boo
 		Region:     region,
 	}
 }
+
+type ConnectionExport struct {
+	JSONData []byte
+	Count    int
+}

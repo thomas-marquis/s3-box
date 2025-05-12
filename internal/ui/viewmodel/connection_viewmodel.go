@@ -115,7 +115,7 @@ func (vm *ConnectionViewModel) SelectConnection(c *connection.Connection) (bool,
 	return c != prevConn, nil
 }
 
-func (vm *ConnectionViewModel) ExportConnectionsAsJSON() ([]byte, error) {
+func (vm *ConnectionViewModel) ExportConnectionsAsJSON() (connection.ConnectionExport, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	return vm.connRepo.ExportToJson(ctx)
