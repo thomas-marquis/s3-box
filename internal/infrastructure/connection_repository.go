@@ -54,12 +54,7 @@ func NewConnectionRepositoryImpl(prefs fyne.Preferences) *ConnectionRepositoryIm
 var _ connection.Repository = &ConnectionRepositoryImpl{}
 
 func (r *ConnectionRepositoryImpl) ListConnections(ctx context.Context) ([]*connection.Connection, error) {
-	content := r.prefs.String(allConnectionsKey)
-	if content == "" || content == "null" {
-		return []*connection.Connection{}, nil
-	}
-
-	dtos, err := fromJson[[]*connectionDTO](content)
+	dtos, err := r.loadConnectionDTOs()
 	if err != nil {
 		return nil, fmt.Errorf("ListConnections: %w", err)
 	}
@@ -212,4 +207,29 @@ func (r *ConnectionRepositoryImpl) GetSelectedConnection(ctx context.Context) (*
 	}
 
 	return nil, connection.ErrConnectionNotFound
+}
+
+// loadConnectionDTOs loads the connectionDTOs directly from preferences
+func (r *ConnectionRepositoryImpl) loadConnectionDTOs() ([]*connectionDTO, error) {
+	content := r.prefs.String(allConnectionsKey)
+	if content == "" || content == "null" {
+		return []*connectionDTO{}, nil
+	}
+	dtos, err := fromJson[[]*connectionDTO](content)
+	if err != nil {
+		return nil, err
+	}
+	return dtos, nil
+}
+
+func (r *ConnectionRepositoryImpl) ExportToJson(ctx context.Context) ([]byte, error) {
+	dtos, err := r.loadConnectionDTOs()
+	if err != nil {
+		return nil, fmt.Errorf("ExportToJson: %w", err)
+	}
+	content, err := json.Marshal(dtos)
+	if err != nil {
+		return nil, fmt.Errorf("ExportToJson: %w", err)
+	}
+	return content, nil
 }

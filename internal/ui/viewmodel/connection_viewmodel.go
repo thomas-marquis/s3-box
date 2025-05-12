@@ -110,11 +110,14 @@ func (vm *ConnectionViewModel) SelectConnection(c *connection.Connection) (bool,
 		return false, err
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
-	defer cancel()
-
 	vm.selectedConnection = c
 	vm.loading.Set(false)
 	return c != prevConn, nil
+}
+
+func (vm *ConnectionViewModel) ExportConnectionsAsJSON() ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
+	defer cancel()
+	return vm.connRepo.ExportToJson(ctx)
 }
 
