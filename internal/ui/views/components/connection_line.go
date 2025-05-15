@@ -58,13 +58,16 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 					hasChanged, err := ctx.ConnectionViewModel().SelectConnection(conn)
 					if err != nil {
 						ctx.L().Error("Failed to select connection", zap.Error(err))
+						dialog.ShowError(err, ctx.Window())
 					}
 					if hasChanged {
 						if err := ctx.ConnectionViewModel().RefreshConnections(); err != nil {
 							ctx.L().Error("Failed to refresh connections", zap.Error(err))
+							dialog.ShowError(err, ctx.Window())
 						}
 						if err := ctx.ExplorerViewModel().ResetTree(); err != nil {
 							ctx.L().Error("Failed to reset tree", zap.Error(err))
+							dialog.ShowError(err, ctx.Window())
 						}
 					}
 				}

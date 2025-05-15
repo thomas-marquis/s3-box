@@ -56,6 +56,21 @@ func (mr *MockRepositoryMockRecorder) DeleteConnection(ctx, id any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteConnection", reflect.TypeOf((*MockRepository)(nil).DeleteConnection), ctx, id)
 }
 
+// ExportToJson mocks base method.
+func (m *MockRepository) ExportToJson(ctx context.Context) (connection.ConnectionExport, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExportToJson", ctx)
+	ret0, _ := ret[0].(connection.ConnectionExport)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExportToJson indicates an expected call of ExportToJson.
+func (mr *MockRepositoryMockRecorder) ExportToJson(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExportToJson", reflect.TypeOf((*MockRepository)(nil).ExportToJson), ctx)
+}
+
 // GetByID mocks base method.
 func (m *MockRepository) GetByID(ctx context.Context, id uuid.UUID) (*connection.Connection, error) {
 	m.ctrl.T.Helper()

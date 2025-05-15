@@ -6,7 +6,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	fyne_test "fyne.io/fyne/v2/test"
-	"fyne.io/fyne/v2/widget"
 	"github.com/google/uuid"
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
@@ -21,9 +20,10 @@ import (
 	"go.uber.org/zap"
 )
 
-func Test_SettingView_ShouldUpdateAndSaveSettings(t *testing.T) {
-	// Given
+
+func Test_GetSettingsView_Nominal(t *testing.T) {
 	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
 	settingsRepo := mocks_settings.NewMockRepository(ctrl)
 	directoryRepo := mocks_explorer.NewMockS3DirectoryRepository(ctrl)
@@ -62,8 +62,15 @@ func Test_SettingView_ShouldUpdateAndSaveSettings(t *testing.T) {
 		testViews,
 		fakeApp.Settings(),
 	)
-	settingsView, _ := views.GetSettingsView(appCtx)
 
-	// When
-	var _ = settingsView.Objects[1].(*widget.Form) // TODO: finish to implement the test
+	settingsView, err := views.GetSettingsView(appCtx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if settingsView == nil {
+		t.Fatal("settingsView should not be nil")
+	}
+	if len(settingsView.Objects) < 2 {
+		t.Fatalf("settingsView should have at least 2 children, got %d", len(settingsView.Objects))
+	}
 }
