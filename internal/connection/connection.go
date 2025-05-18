@@ -20,6 +20,7 @@ func AsAWSConnection(region string) ConnectionOption {
 		c.Type = AWSConnectionType
 		c.Region = region
 		c.UseTls = true
+		c.Server = ""
 	}
 }
 
@@ -28,6 +29,7 @@ func AsS3LikeConnection(server string, useTLS bool) ConnectionOption {
 		c.Type = S3LikeConnectionType
 		c.Server = server
 		c.UseTls = useTLS
+		c.Region = ""
 	}
 }
 

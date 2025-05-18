@@ -91,14 +91,14 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 			*conn,
 			true,
 			func(name, accessKey, secretKey, server, bucket, region string, useTLS bool, connectionType connection.ConnectionType) error {
-				conn.Name = name
-				conn.AccessKey = accessKey
-				conn.SecretKey = secretKey
-				conn.Server = server
-				conn.BucketName = bucket
-				conn.Region = region
-				conn.UseTls = useTLS
-				conn.Type = connectionType
+				var updatedConn *connection.Connection
+				switch connectionType {
+				case connection.AWSConnectionType:
+					updatedConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsAWSConnection(region))
+				case connection.S3LikeConnectionType:
+					updatedConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsS3LikeConnection(server, useTLS))
+				}
+				conn.Update(updatedConn)
 				return ctx.ConnectionViewModel().SaveConnection(conn)
 			}).Show()
 	}
