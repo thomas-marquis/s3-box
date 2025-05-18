@@ -8,7 +8,7 @@ import (
 type S3DirectoryID string
 
 const (
-	rootDirName = ""
+	RootDirName = ""
 	NilParentID = S3DirectoryID("")
 	RootDirID   = S3DirectoryID("/")
 )
@@ -19,7 +19,7 @@ func (id S3DirectoryID) String() string {
 
 func (id S3DirectoryID) ToName() string {
 	if id == RootDirID {
-		return rootDirName
+		return RootDirName
 	}
 	dirPathStriped := strings.TrimSuffix(id.String(), "/")
 	dirPathSplit := strings.Split(dirPathStriped, "/")
@@ -37,7 +37,7 @@ type S3Directory struct {
 
 var (
 	RootDir = &S3Directory{
-		Name:              rootDirName,
+		Name:              RootDirName,
 		ParentID:          NilParentID,
 		SubDirectoriesIDs: make([]S3DirectoryID, 0),
 		Files:             make([]*S3File, 0),
