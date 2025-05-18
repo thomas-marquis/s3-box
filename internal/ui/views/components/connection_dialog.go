@@ -35,74 +35,74 @@ func makeTextInput(label, defaultValue, placeholder string, enableCopy bool, w f
 
 func NewConnectionDialog(
 	ctx appcontext.AppContext,
-	label, name, accessKey, secretKey, server, bucket, region string,
-	useTLS, enableCopy bool,
-	defaultConnectionType connection.ConnectionType,
+	label string,
+	defaultConn connection.Connection,
+	enableCopy bool,
 	onSave func(name, accessKey, secretKey, server, bucket, region string, useTLS bool, connectionType connection.ConnectionType) error,
 ) *dialog.CustomDialog {
 	nameBloc, nameEntry := makeTextInput(
 		"Connection name",
-		name,
+		defaultConn.Name,
 		"My new connection",
 		enableCopy,
 		ctx.Window(),
 	)
 	accessKeyBloc, accessKeyEntry := makeTextInput(
 		"Access key Id",
-		accessKey,
+		defaultConn.AccessKey,
 		"Access key",
 		enableCopy,
 		ctx.Window(),
 	)
 	secretKeyBloc, secretKeyEntry := makeTextInput(
 		"Secret access key",
-		secretKey,
+		defaultConn.SecretKey,
 		"Secret key",
 		enableCopy,
 		ctx.Window(),
 	)
 	serverBloc, serverEntry := makeTextInput(
 		"Server hostname",
-		server,
+		defaultConn.Server,
 		"s3.amazonaws.com",
 		enableCopy,
 		ctx.Window(),
 	)
 	bucketBloc, bucketEntry := makeTextInput(
 		"Bucket name",
-		bucket,
+		defaultConn.BucketName,
 		"my-bucket",
 		enableCopy,
 		ctx.Window(),
 	)
 	regionBloc, regionEntry := makeTextInput(
 		"Region",
-		region,
+		defaultConn.Region,
 		"us-east-1",
 		enableCopy,
 		ctx.Window(),
 	)
 
 	useTlsEntry := widget.NewCheck("Use TLS", nil)
-	useTlsEntry.Checked = useTLS
+	useTlsEntry.Checked = defaultConn.UseTls
 
 	connectionType := binding.NewString()
-	connectionType.Set("AWS")
 	connTypeChoice := widget.NewRadioGroup([]string{"AWS", "Other"}, func(val string) {
 		connectionType.Set(val)
-		if val == "AWS" {
+		switch val {
+		case "AWS":
 			useTlsEntry.Hide()
 			serverEntry.SetText("")
 			serverBloc.Hide()
 			regionBloc.Show()
-		} else {
+		case "Other":
 			useTlsEntry.Show()
 			serverBloc.Show()
 			regionEntry.SetText("")
 			regionBloc.Hide()
 		}
 	})
-	switch defaultConnectionType {
+	switch defaultConn.Type {
 	case connection.AWSConnectionType:
 		connTypeChoice.SetSelected("AWS")
 	case connection.S3LikeConnectionType:

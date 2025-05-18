@@ -67,6 +67,10 @@ func NewConnection(
 	return c
 }
 
+func NewEmptyConnection() *Connection {
+	return NewConnection("", "", "", "", AsAWSConnection("us-east-1"))
+}
+
 func (c *Connection) Update(other *Connection) {
 	c.Name = other.Name
 	c.Server = other.Server
@@ -83,4 +87,3 @@ type ConnectionExport struct {
 	JSONData []byte
 	Count    int
 }
-

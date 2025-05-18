@@ -86,10 +86,10 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 	editBtn := btnGroup.Objects[0].(*widget.Button)
 	editBtn.OnTapped = func() {
 		NewConnectionDialog(
-			ctx, "Edit connection",
-			conn.Name, conn.AccessKey, conn.SecretKey, conn.Server, conn.BucketName, conn.Region, conn.UseTls,
+			ctx,
+			"Edit connection",
+			*conn,
 			true,
-			conn.Type,
 			func(name, accessKey, secretKey, server, bucket, region string, useTLS bool, connectionType connection.ConnectionType) error {
 				conn.Name = name
 				conn.AccessKey = accessKey

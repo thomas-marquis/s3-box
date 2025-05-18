@@ -221,7 +221,6 @@ func (vm *ExplorerViewModel) AppendDirToTree(dirID explorer.S3DirectoryID) error
 	vm.dirsById[dirID] = dir
 	vm.mu.Unlock()
 
-	fmt.Printf("Appending directory to tree: %s\n", dirID)
 	if existingNode != nil {
 		existingNode.SetIsLoaded()
 	} else {
