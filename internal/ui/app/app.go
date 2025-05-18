@@ -59,8 +59,6 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	appctx := BuildAppContext(
 		connRepo,
 		settingsRepo,
-		BuildS3DirectoryRepositoryFactory(lastSelectedConn, logger, connRepo),
-		BuildS3FileRepositoryFactory(lastSelectedConn, logger, connRepo),
 		logger,
 		lastSelectedConn,
 		w,

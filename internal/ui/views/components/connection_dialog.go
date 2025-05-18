@@ -1,10 +1,12 @@
 package components
 
 import (
+	"github.com/thomas-marquis/s3-box/internal/connection"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -35,19 +37,59 @@ func NewConnectionDialog(
 	ctx appcontext.AppContext,
 	label, name, accessKey, secretKey, server, bucket, region string,
 	useTLS, enableCopy bool,
-	onSave func(name, accessKey, secretKey, server, bucket, region string, useTLS bool) error,
+	defaultConnectionType connection.ConnectionType,
+	onSave func(name, accessKey, secretKey, server, bucket, region string, useTLS bool, connectionType connection.ConnectionType) error,
 ) *dialog.CustomDialog {
-	nameBloc, nameEntry := makeTextInput("Connection name", name, "My new connection", enableCopy, ctx.Window())
-	accessKeyBloc, accessKeyEntry := makeTextInput("Access key Id", accessKey, "Access key", enableCopy, ctx.Window())
-	secretKeyBloc, secretKeyEntry := makeTextInput("Secret access key", secretKey, "Secret key", enableCopy, ctx.Window())
-	serverBloc, serverEntry := makeTextInput("Server hostname", server, "s3.amazonaws.com", enableCopy, ctx.Window())
-	bucketBloc, bucketEntry := makeTextInput("Bucket name", bucket, "my-bucket", enableCopy, ctx.Window())
-	regionBloc, regionEntry := makeTextInput("Region", region, "us-east-1", enableCopy, ctx.Window())
+	nameBloc, nameEntry := makeTextInput(
+		"Connection name",
+		name,
+		"My new connection",
+		enableCopy,
+		ctx.Window(),
+	)
+	accessKeyBloc, accessKeyEntry := makeTextInput(
+		"Access key Id",
+		accessKey,
+		"Access key",
+		enableCopy,
+		ctx.Window(),
+	)
+	secretKeyBloc, secretKeyEntry := makeTextInput(
+		"Secret access key",
+		secretKey,
+		"Secret key",
+		enableCopy,
+		ctx.Window(),
+	)
+	serverBloc, serverEntry := makeTextInput(
+		"Server hostname",
+		server,
+		"s3.amazonaws.com",
+		enableCopy,
+		ctx.Window(),
+	)
+	bucketBloc, bucketEntry := makeTextInput(
+		"Bucket name",
+		bucket,
+		"my-bucket",
+		enableCopy,
+		ctx.Window(),
+	)
+	regionBloc, regionEntry := makeTextInput(
+		"Region",
+		region,
+		"us-east-1",
+		enableCopy,
+		ctx.Window(),
+	)
 
 	useTlsEntry := widget.NewCheck("Use TLS", nil)
 	useTlsEntry.Checked = useTLS
 
-	connTypeChoice := widget.NewRadioGroup([]string{"AWS", "Custom"}, func(val string) {
+	connectionType := binding.NewString()
+	connectionType.Set("AWS")
+	connTypeChoice := widget.NewRadioGroup([]string{"AWS", "Other"}, func(val string) {
+		connectionType.Set(val)
 		if val == "AWS" {
 			useTlsEntry.Hide()
 			serverEntry.SetText("")
@@ -60,10 +102,11 @@ func NewConnectionDialog(
 			regionBloc.Hide()
 		}
 	})
-	if region == "" {
-		connTypeChoice.SetSelected("Custom")
-	} else {
+	switch defaultConnectionType {
+	case connection.AWSConnectionType:
 		connTypeChoice.SetSelected("AWS")
+	case connection.S3LikeConnectionType:
+		connTypeChoice.SetSelected("Other")
 	}
 
 	saveBtn := widget.NewButton("Save", func() {})
@@ -88,6 +131,7 @@ func NewConnectionDialog(
 	d.Resize(fyne.NewSize(650, 200))
 
 	saveBtn.OnTapped = func() {
+		selectedConnTyêpe, _ := connectionType.Get()
 		err := onSave(
 			nameEntry.Text,
 			accessKeyEntry.Text,
@@ -96,6 +140,7 @@ func NewConnectionDialog(
 			bucketEntry.Text,
 			regionEntry.Text,
 			useTlsEntry.Checked,
+			connection.ConnectionType(selectedConnTyêpe),
 		)
 		if err == nil {
 			d.Hide()
@@ -106,6 +151,7 @@ func NewConnectionDialog(
 			bucketEntry.Text = ""
 			regionEntry.Text = ""
 			useTlsEntry.Checked = false
+			connectionType.Set("AWS")
 		}
 	}
 

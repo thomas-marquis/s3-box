@@ -89,7 +89,8 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 			ctx, "Edit connection",
 			conn.Name, conn.AccessKey, conn.SecretKey, conn.Server, conn.BucketName, conn.Region, conn.UseTls,
 			true,
-			func(name, accessKey, secretKey, server, bucket, region string, useTLS bool) error {
+			conn.Type,
+			func(name, accessKey, secretKey, server, bucket, region string, useTLS bool, connectionType connection.ConnectionType) error {
 				conn.Name = name
 				conn.AccessKey = accessKey
 				conn.SecretKey = secretKey
@@ -97,6 +98,7 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 				conn.BucketName = bucket
 				conn.Region = region
 				conn.UseTls = useTLS
+				conn.Type = connectionType
 				return ctx.ConnectionViewModel().SaveConnection(conn)
 			}).Show()
 	}

@@ -102,6 +102,7 @@ func (vm *ConnectionViewModel) DeleteConnection(c *connection.Connection) error 
 // and false if the set connection is the same as the current connection
 func (vm *ConnectionViewModel) SelectConnection(c *connection.Connection) (bool, error) {
 	vm.loading.Set(true)
+	defer vm.loading.Set(false)
 	prevConn := vm.selectedConnection
 
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
@@ -111,7 +112,6 @@ func (vm *ConnectionViewModel) SelectConnection(c *connection.Connection) (bool,
 	}
 
 	vm.selectedConnection = c
-	vm.loading.Set(false)
 	return c != prevConn, nil
 }
 
@@ -120,4 +120,3 @@ func (vm *ConnectionViewModel) ExportConnectionsAsJSON() (connection.ConnectionE
 	defer cancel()
 	return vm.connRepo.ExportToJson(ctx)
 }
-

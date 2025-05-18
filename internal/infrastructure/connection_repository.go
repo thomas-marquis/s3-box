@@ -21,15 +21,25 @@ type connectionDTO struct {
 	Server    string    `json:"server"`
 	AccessKey string    `json:"accessKey"`
 	SecretKey string    `json:"secretKey"`
+	Buket     string    `json:"bucket"`
+	Selected  bool      `json:"selected,omitempty"`
+	Region    string    `json:"region,omitempty"`
+	Type      string    `json:"type,omitempty"`
+	UseTls    bool      `json:"useTls,omitempty"`
 }
 
 func (c *connectionDTO) toConnection() *connection.Connection {
 	return &connection.Connection{
-		ID:        c.ID,
-		Name:      c.Name,
-		Server:    c.Server,
-		AccessKey: c.AccessKey,
-		SecretKey: c.SecretKey,
+		ID:         c.ID,
+		Name:       c.Name,
+		Server:     c.Server,
+		AccessKey:  c.AccessKey,
+		SecretKey:  c.SecretKey,
+		IsSelected: c.Selected,
+		BucketName: c.Buket,
+		Region:     c.Region,
+		Type:       connection.ConnectionType(c.Type),
+		UseTls:     c.UseTls,
 	}
 }
 
@@ -40,6 +50,11 @@ func newConnectionDTO(c *connection.Connection) *connectionDTO {
 		Server:    c.Server,
 		AccessKey: c.AccessKey,
 		SecretKey: c.SecretKey,
+		Selected:  c.IsSelected,
+		Buket:     c.BucketName,
+		Region:    c.Region,
+		Type:      c.Type.String(),
+		UseTls:    c.UseTls,
 	}
 }
 
@@ -80,14 +95,7 @@ func (r *ConnectionRepositoryImpl) SaveConnection(ctx context.Context, c *connec
 	for _, conn := range connections {
 		if conn.ID == c.ID {
 			found = true
-			conn.Name = c.Name
-			conn.Server = c.Server
-			conn.AccessKey = c.AccessKey
-			conn.SecretKey = c.SecretKey
-			conn.BucketName = c.BucketName
-			conn.UseTls = c.UseTls
-			conn.IsSelected = c.IsSelected
-			conn.Region = c.Region
+			conn.Update(c)
 			break
 		}
 	}

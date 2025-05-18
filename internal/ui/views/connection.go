@@ -30,10 +30,16 @@ func GetConnectionView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		"New connection",
 		theme.ContentAddIcon(),
 		func() {
-			components.NewConnectionDialog(ctx, "New connection", "", "", "", "", "", "", false, false,
-				func(name, accessKey, secretKey, server, bucket, region string, useTLS bool) error {
-					conn := connection.NewConnection(name, server, accessKey, secretKey, bucket, useTLS, region)
-					return ctx.ConnectionViewModel().SaveConnection(conn)
+			components.NewConnectionDialog(ctx, "New connection", "", "", "", "", "", "", false, false, connection.AWSConnectionType,
+				func(name, accessKey, secretKey, server, bucket, region string, useTLS bool, connectionType connection.ConnectionType) error {
+					var newConn *connection.Connection
+					switch connectionType {
+					case connection.AWSConnectionType:
+						newConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsAWSConnection(region))
+					case connection.S3LikeConnectionType:
+						newConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsS3LikeConnection(server, useTLS))
+					}
+					return ctx.ConnectionViewModel().SaveConnection(newConn)
 				}).Show()
 		})
 
