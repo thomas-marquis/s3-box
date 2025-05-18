@@ -15,11 +15,36 @@ import (
 	"fyne.io/fyne/v2/storage"
 )
 
-type ExplorerViewModel struct {
+type ExplorerViewModel interface {
+	OnDisplayNoConnectionBannerChange(fn func(shouldDisplay bool))
+	ErrorChan() chan error
+	Loading() binding.Bool
+	StartLoading()
+	StopLoading()
+	Tree() binding.UntypedTree
+	RefreshDir(dirID explorer.S3DirectoryID) error
+	AppendDirToTree(dirID explorer.S3DirectoryID) error
+	RemoveDirToTree(dirID explorer.S3DirectoryID) error
+	GetDirByID(dirID explorer.S3DirectoryID) (*explorer.S3Directory, error)
+	GetFileByID(fileID explorer.S3FileID) (*explorer.S3File, error)
+	PreviewFile(f *explorer.S3File) (string, error)
+	// GetMaxFileSizePreview returns the max file size preview in bytes
+	GetMaxFileSizePreview() int64
+	ResetTree() error
+	DownloadFile(f *explorer.S3File, dest string) error
+	UploadFile(localPath string, remoteDir *explorer.S3Directory) error
+	DeleteFile(file *explorer.S3File) error
+	GetLastSaveDir() fyne.ListableURI
+	SetLastSaveDir(filePath string) error
+	GetLastUploadDir() fyne.ListableURI
+	SetLastUploadDir(filePath string) error
+}
+
+type explorerViewModelImpl struct {
 	mu                        sync.Mutex
 	connRepo                  connection.Repository
-	dirSvc                    *explorer.DirectoryService
-	fileSvc                   *explorer.FileService
+	dirSvc                    explorer.DirectoryService
+	fileSvc                   explorer.FileService
 	settingsVm                SettingsViewModel
 	tree                      binding.UntypedTree
 	loading                   binding.Bool
@@ -32,11 +57,18 @@ type ExplorerViewModel struct {
 	dirsById  map[explorer.S3DirectoryID]*explorer.S3Directory
 }
 
-func NewExplorerViewModel(dirSvc *explorer.DirectoryService, connRepo connection.Repository, fileSvc *explorer.FileService, settingsVm SettingsViewModel) *ExplorerViewModel {
+var _ ExplorerViewModel = &explorerViewModelImpl{}
+
+func NewExplorerViewModel(
+	dirSvc explorer.DirectoryService,
+	connRepo connection.Repository,
+	fileSvc explorer.FileService,
+	settingsVm SettingsViewModel,
+) *explorerViewModelImpl {
 	t := binding.NewUntypedTree()
 	errChan := make(chan error)
 
-	vm := &ExplorerViewModel{
+	vm := &explorerViewModelImpl{
 		tree:                      t,
 		dirSvc:                    dirSvc,
 		settingsVm:                settingsVm,
@@ -75,34 +107,34 @@ func NewExplorerViewModel(dirSvc *explorer.DirectoryService, connRepo connection
 	return vm
 }
 
-func (vm *ExplorerViewModel) OnDisplayNoConnectionBannerChange(fn func(shouldDisplay bool)) {
+func (vm *explorerViewModelImpl) OnDisplayNoConnectionBannerChange(fn func(shouldDisplay bool)) {
 	vm.displayNoConnectionBanner.AddListener(binding.NewDataListener(func() {
 		shouldDisplay, _ := vm.displayNoConnectionBanner.Get()
 		fn(shouldDisplay)
 	}))
 }
 
-func (vm *ExplorerViewModel) ErrorChan() chan error {
+func (vm *explorerViewModelImpl) ErrorChan() chan error {
 	return vm.errChan
 }
 
-func (vm *ExplorerViewModel) Loading() binding.Bool {
+func (vm *explorerViewModelImpl) Loading() binding.Bool {
 	return vm.loading
 }
 
-func (vm *ExplorerViewModel) StartLoading() {
+func (vm *explorerViewModelImpl) StartLoading() {
 	vm.loading.Set(true)
 }
 
-func (vm *ExplorerViewModel) StopLoading() {
+func (vm *explorerViewModelImpl) StopLoading() {
 	vm.loading.Set(false)
 }
 
-func (vm *ExplorerViewModel) Tree() binding.UntypedTree {
+func (vm *explorerViewModelImpl) Tree() binding.UntypedTree {
 	return vm.tree
 }
 
-func (vm *ExplorerViewModel) RefreshDir(dirID explorer.S3DirectoryID) error {
+func (vm *explorerViewModelImpl) RefreshDir(dirID explorer.S3DirectoryID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
@@ -118,86 +150,7 @@ func (vm *ExplorerViewModel) RefreshDir(dirID explorer.S3DirectoryID) error {
 	return vm.appendDirectoryContent(dirID, dir)
 }
 
-func (vm *ExplorerViewModel) fetchAndUpdateDirectory(ctx context.Context, dirID explorer.S3DirectoryID) (*explorer.S3Directory, error) {
-	dir, err := vm.dirSvc.GetDirectoryByID(ctx, dirID)
-	if err != nil {
-		vm.errChan <- fmt.Errorf("error getting directory by ID (%s): %w", dirID, err)
-		return nil, err
-	}
-
-	vm.mu.Lock()
-	vm.dirsById[dirID] = dir
-	vm.mu.Unlock()
-
-	return dir, nil
-}
-
-func (vm *ExplorerViewModel) removeDirectoryContent(dirID explorer.S3DirectoryID) error {
-	oldDir, err := vm.GetDirByID(dirID)
-	if err != nil {
-		return nil
-	}
-
-	for _, file := range oldDir.Files {
-		if err := vm.tree.Remove(file.ID.String()); err != nil {
-			vm.errChan <- fmt.Errorf("error removing old file from tree: %w", err)
-		}
-	}
-
-	for _, subDirID := range oldDir.SubDirectoriesIDs {
-		if err := vm.tree.Remove(subDirID.String()); err != nil {
-			vm.errChan <- fmt.Errorf("error removing old subdirectory from tree: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (vm *ExplorerViewModel) appendDirectoryContent(dirID explorer.S3DirectoryID, dir *explorer.S3Directory) error {
-	for _, file := range dir.Files {
-		if err := vm.appendFileNode(dirID, file); err != nil {
-			continue
-		}
-	}
-
-	for _, subDirID := range dir.SubDirectoriesIDs {
-		if err := vm.appendDirectoryNode(dirID, subDirID); err != nil {
-			continue
-		}
-	}
-
-	return nil
-}
-
-func (vm *ExplorerViewModel) appendFileNode(parentDirID explorer.S3DirectoryID, file *explorer.S3File) error {
-	fileNode := NewTreeNode(file.ID.String(), file.Name, TreeNodeTypeFile)
-	fileNode.SetIsLoaded()
-
-	if err := vm.tree.Append(parentDirID.String(), fileNode.ID, fileNode); err != nil {
-		vm.errChan <- fmt.Errorf("error appending file to tree: %w", err)
-		return err
-	}
-
-	vm.mu.Lock()
-	vm.filesById[file.ID] = file
-	vm.mu.Unlock()
-
-	return nil
-}
-
-func (vm *ExplorerViewModel) appendDirectoryNode(parentDirID explorer.S3DirectoryID, dirID explorer.S3DirectoryID) error {
-	dirNode := NewTreeNode(dirID.String(), dirID.ToName(), TreeNodeTypeDirectory)
-	dirNode.SetIsNotLoaded()
-
-	if err := vm.tree.Append(parentDirID.String(), dirNode.ID, dirNode); err != nil {
-		vm.errChan <- fmt.Errorf("error appending subdirectory to tree: %w", err)
-		return err
-	}
-
-	return nil
-}
-
-func (vm *ExplorerViewModel) AppendDirToTree(dirID explorer.S3DirectoryID) error {
+func (vm *explorerViewModelImpl) AppendDirToTree(dirID explorer.S3DirectoryID) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, vm.settingsVm.CurrentTimeout())
 	defer cancel()
@@ -255,7 +208,7 @@ func (vm *ExplorerViewModel) AppendDirToTree(dirID explorer.S3DirectoryID) error
 	return nil
 }
 
-func (vm *ExplorerViewModel) RemoveDirToTree(dirID explorer.S3DirectoryID) error {
+func (vm *explorerViewModelImpl) RemoveDirToTree(dirID explorer.S3DirectoryID) error {
 	item, err := vm.tree.GetValue(dirID.String())
 	if err != nil {
 		return fmt.Errorf("impossible to retreive the direcotry you want to remove: %s", dirID.String())
@@ -294,7 +247,7 @@ func (vm *ExplorerViewModel) RemoveDirToTree(dirID explorer.S3DirectoryID) error
 	return nil
 }
 
-func (vm *ExplorerViewModel) GetDirByID(dirID explorer.S3DirectoryID) (*explorer.S3Directory, error) {
+func (vm *explorerViewModelImpl) GetDirByID(dirID explorer.S3DirectoryID) (*explorer.S3Directory, error) {
 	vm.mu.Lock()
 	dir, ok := vm.dirsById[dirID]
 	vm.mu.Unlock()
@@ -304,7 +257,7 @@ func (vm *ExplorerViewModel) GetDirByID(dirID explorer.S3DirectoryID) (*explorer
 	return dir, nil
 }
 
-func (vm *ExplorerViewModel) GetFileByID(fileID explorer.S3FileID) (*explorer.S3File, error) {
+func (vm *explorerViewModelImpl) GetFileByID(fileID explorer.S3FileID) (*explorer.S3File, error) {
 	vm.mu.Lock()
 	file, ok := vm.filesById[fileID]
 	vm.mu.Unlock()
@@ -314,7 +267,7 @@ func (vm *ExplorerViewModel) GetFileByID(fileID explorer.S3FileID) (*explorer.S3
 	return file, nil
 }
 
-func (vm *ExplorerViewModel) PreviewFile(f *explorer.S3File) (string, error) {
+func (vm *explorerViewModelImpl) PreviewFile(f *explorer.S3File) (string, error) {
 	if f.SizeBytes > vm.GetMaxFileSizePreview() {
 		return "", fmt.Errorf("file is too big to PreviewFile")
 	}
@@ -330,8 +283,7 @@ func (vm *ExplorerViewModel) PreviewFile(f *explorer.S3File) (string, error) {
 	return string(content), nil
 }
 
-// GetMaxFileSizePreview returns the max file size preview in bytes
-func (vm *ExplorerViewModel) GetMaxFileSizePreview() int64 {
+func (vm *explorerViewModelImpl) GetMaxFileSizePreview() int64 {
 	val, err := vm.settingsVm.MaxFilePreviewSizeMegaBytes().Get()
 	if err != nil {
 		vm.errChan <- fmt.Errorf("error getting max file size preview: %w", err)
@@ -340,12 +292,12 @@ func (vm *ExplorerViewModel) GetMaxFileSizePreview() int64 {
 	return utils.MegaToBytes(int64(val))
 }
 
-func (vm *ExplorerViewModel) ResetTree() error {
+func (vm *explorerViewModelImpl) ResetTree() error {
 	vm.resetTreeContent()
 	return vm.initializeTreeData(context.Background())
 }
 
-func (vm *ExplorerViewModel) DownloadFile(f *explorer.S3File, dest string) error {
+func (vm *explorerViewModelImpl) DownloadFile(f *explorer.S3File, dest string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	if err := vm.fileSvc.DownloadFile(ctx, f, dest); err != nil {
@@ -355,7 +307,7 @@ func (vm *ExplorerViewModel) DownloadFile(f *explorer.S3File, dest string) error
 	return nil
 }
 
-func (vm *ExplorerViewModel) UploadFile(localPath string, remoteDir *explorer.S3Directory) error {
+func (vm *explorerViewModelImpl) UploadFile(localPath string, remoteDir *explorer.S3Directory) error {
 	localFile := explorer.NewLocalFile(localPath)
 	remoteFile, err := explorer.NewS3File(localFile.FileName(), remoteDir)
 	if err != nil {
@@ -374,7 +326,7 @@ func (vm *ExplorerViewModel) UploadFile(localPath string, remoteDir *explorer.S3
 	return vm.RefreshDir(remoteDir.ID)
 }
 
-func (vm *ExplorerViewModel) DeleteFile(file *explorer.S3File) error {
+func (vm *explorerViewModelImpl) DeleteFile(file *explorer.S3File) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
@@ -401,11 +353,11 @@ func (vm *ExplorerViewModel) DeleteFile(file *explorer.S3File) error {
 	return nil
 }
 
-func (vm *ExplorerViewModel) GetLastSaveDir() fyne.ListableURI {
+func (vm *explorerViewModelImpl) GetLastSaveDir() fyne.ListableURI {
 	return vm.lastSaveDir
 }
 
-func (vm *ExplorerViewModel) SetLastSaveDir(filePath string) error {
+func (vm *explorerViewModelImpl) SetLastSaveDir(filePath string) error {
 	dirPath := filepath.Dir(filePath)
 	uri := storage.NewFileURI(dirPath)
 	uriLister, err := storage.ListerForURI(uri)
@@ -416,11 +368,11 @@ func (vm *ExplorerViewModel) SetLastSaveDir(filePath string) error {
 	return nil
 }
 
-func (vm *ExplorerViewModel) GetLastUploadDir() fyne.ListableURI {
+func (vm *explorerViewModelImpl) GetLastUploadDir() fyne.ListableURI {
 	return vm.lastUploadDir
 }
 
-func (vm *ExplorerViewModel) SetLastUploadDir(filePath string) error {
+func (vm *explorerViewModelImpl) SetLastUploadDir(filePath string) error {
 	dirPath := filepath.Dir(filePath)
 	uri := storage.NewFileURI(dirPath)
 	uriLister, err := storage.ListerForURI(uri)
@@ -431,11 +383,11 @@ func (vm *ExplorerViewModel) SetLastUploadDir(filePath string) error {
 	return nil
 }
 
-func (vm *ExplorerViewModel) resetTreeContent() {
+func (vm *explorerViewModelImpl) resetTreeContent() {
 	vm.tree = binding.NewUntypedTree()
 }
 
-func (vm *ExplorerViewModel) initializeTreeData(ctx context.Context) error {
+func (vm *explorerViewModelImpl) initializeTreeData(ctx context.Context) error {
 	rootDir, err := vm.dirSvc.GetRootDirectory(ctx)
 	if err != nil {
 		return fmt.Errorf("error getting root directory: %w", err)
@@ -453,6 +405,85 @@ func (vm *ExplorerViewModel) initializeTreeData(ctx context.Context) error {
 	if err := vm.AppendDirToTree(rootDir.ID); err != nil {
 		return fmt.Errorf("error appending root directory to tree: %w", err)
 	}
+
+	return nil
+}
+
+func (vm *explorerViewModelImpl) fetchAndUpdateDirectory(ctx context.Context, dirID explorer.S3DirectoryID) (*explorer.S3Directory, error) {
+	dir, err := vm.dirSvc.GetDirectoryByID(ctx, dirID)
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error getting directory by ID (%s): %w", dirID, err)
+		return nil, err
+	}
+
+	vm.mu.Lock()
+	vm.dirsById[dirID] = dir
+	vm.mu.Unlock()
+
+	return dir, nil
+}
+
+func (vm *explorerViewModelImpl) removeDirectoryContent(dirID explorer.S3DirectoryID) error {
+	oldDir, err := vm.GetDirByID(dirID)
+	if err != nil {
+		return nil
+	}
+
+	for _, file := range oldDir.Files {
+		if err := vm.tree.Remove(file.ID.String()); err != nil {
+			vm.errChan <- fmt.Errorf("error removing old file from tree: %w", err)
+		}
+	}
+
+	for _, subDirID := range oldDir.SubDirectoriesIDs {
+		if err := vm.tree.Remove(subDirID.String()); err != nil {
+			vm.errChan <- fmt.Errorf("error removing old subdirectory from tree: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (vm *explorerViewModelImpl) appendDirectoryContent(dirID explorer.S3DirectoryID, dir *explorer.S3Directory) error {
+	for _, file := range dir.Files {
+		if err := vm.appendFileNode(dirID, file); err != nil {
+			continue
+		}
+	}
+
+	for _, subDirID := range dir.SubDirectoriesIDs {
+		if err := vm.appendDirectoryNode(dirID, subDirID); err != nil {
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (vm *explorerViewModelImpl) appendDirectoryNode(parentDirID explorer.S3DirectoryID, dirID explorer.S3DirectoryID) error {
+	dirNode := NewTreeNode(dirID.String(), dirID.ToName(), TreeNodeTypeDirectory)
+	dirNode.SetIsNotLoaded()
+
+	if err := vm.tree.Append(parentDirID.String(), dirNode.ID, dirNode); err != nil {
+		vm.errChan <- fmt.Errorf("error appending subdirectory to tree: %w", err)
+		return err
+	}
+
+	return nil
+}
+
+func (vm *explorerViewModelImpl) appendFileNode(parentDirID explorer.S3DirectoryID, file *explorer.S3File) error {
+	fileNode := NewTreeNode(file.ID.String(), file.Name, TreeNodeTypeFile)
+	fileNode.SetIsLoaded()
+
+	if err := vm.tree.Append(parentDirID.String(), fileNode.ID, fileNode); err != nil {
+		vm.errChan <- fmt.Errorf("error appending file to tree: %w", err)
+		return err
+	}
+
+	vm.mu.Lock()
+	vm.filesById[file.ID] = file
+	vm.mu.Unlock()
 
 	return nil
 }

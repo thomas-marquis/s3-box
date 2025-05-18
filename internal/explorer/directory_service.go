@@ -9,12 +9,20 @@ import (
 	"go.uber.org/zap"
 )
 
-type DirectoryService struct {
+type DirectoryService interface {
+	GetRootDirectory(ctx context.Context) (*S3Directory, error)
+	GetDirectoryByID(ctx context.Context, id S3DirectoryID) (*S3Directory, error)
+	DeleteFile(ctx context.Context, dir *S3Directory, fileID S3FileID) error
+}
+
+type directoryServiceImpl struct {
 	logger          *zap.Logger
 	repoFactory     DirectoryRepositoryFactory
 	fileRepoFactory FileRepositoryFactory
 	connSvc         connection.ConnectionService
 }
+
+var _ DirectoryService = &directoryServiceImpl{}
 
 type DirectoryRepositoryFactory func(ctx context.Context, connID uuid.UUID) (S3DirectoryRepository, error)
 
@@ -23,8 +31,8 @@ func NewDirectoryService(
 	repoFactory DirectoryRepositoryFactory,
 	fileRepoFactory FileRepositoryFactory,
 	connSvc connection.ConnectionService,
-) *DirectoryService {
-	return &DirectoryService{
+) *directoryServiceImpl {
+	return &directoryServiceImpl{
 		logger:          logger,
 		repoFactory:     repoFactory,
 		fileRepoFactory: fileRepoFactory,
@@ -32,7 +40,7 @@ func NewDirectoryService(
 	}
 }
 
-func (s *DirectoryService) GetRootDirectory(ctx context.Context) (*S3Directory, error) {
+func (s *directoryServiceImpl) GetRootDirectory(ctx context.Context) (*S3Directory, error) {
 	repo, err := s.getActiveRepository(ctx)
 	if err != nil {
 		return nil, err
@@ -48,7 +56,7 @@ func (s *DirectoryService) GetRootDirectory(ctx context.Context) (*S3Directory, 
 	return dir, nil
 }
 
-func (s *DirectoryService) GetDirectoryByID(ctx context.Context, id S3DirectoryID) (*S3Directory, error) {
+func (s *directoryServiceImpl) GetDirectoryByID(ctx context.Context, id S3DirectoryID) (*S3Directory, error) {
 	repo, err := s.getActiveRepository(ctx)
 	if err != nil {
 		return nil, err
@@ -57,21 +65,10 @@ func (s *DirectoryService) GetDirectoryByID(ctx context.Context, id S3DirectoryI
 	return repo.GetByID(ctx, id)
 }
 
-func (s *DirectoryService) getActiveRepository(ctx context.Context) (S3DirectoryRepository, error) {
-	connId, err := s.connSvc.GetActiveConnectionID(ctx)
-	if connId == uuid.Nil || err == ErrConnectionNoSet {
-		return nil, ErrConnectionNoSet
-	}
-	if err != nil {
-		return nil, fmt.Errorf("error whe getting directory repository: %w", err)
-	}
-	return s.repoFactory(ctx, connId)
-}
-
 // DeleteFile deletes a file from a directory
 // It ensures the directory aggregate consistency by removing the file from the directory
 // before deleting it from the repository
-func (s *DirectoryService) DeleteFile(ctx context.Context, dir *S3Directory, fileID S3FileID) error {
+func (s *directoryServiceImpl) DeleteFile(ctx context.Context, dir *S3Directory, fileID S3FileID) error {
 	// First verify that the file belongs to the directory
 	if !dir.HasFile(fileID) {
 		return fmt.Errorf("file %s does not belong to directory %s", fileID, dir.ID)
@@ -127,7 +124,7 @@ func (s *DirectoryService) DeleteFile(ctx context.Context, dir *S3Directory, fil
 }
 
 // getFileRepository returns the file repository for the active connection
-func (s *DirectoryService) getFileRepository(ctx context.Context) (S3FileRepository, error) {
+func (s *directoryServiceImpl) getFileRepository(ctx context.Context) (S3FileRepository, error) {
 	connId, err := s.connSvc.GetActiveConnectionID(ctx)
 	if connId == uuid.Nil || err == ErrConnectionNoSet {
 		return nil, ErrConnectionNoSet
@@ -136,4 +133,15 @@ func (s *DirectoryService) getFileRepository(ctx context.Context) (S3FileReposit
 		return nil, fmt.Errorf("error when getting file repository: %w", err)
 	}
 	return s.fileRepoFactory(ctx, connId)
+}
+
+func (s *directoryServiceImpl) getActiveRepository(ctx context.Context) (S3DirectoryRepository, error) {
+	connId, err := s.connSvc.GetActiveConnectionID(ctx)
+	if connId == uuid.Nil || err == ErrConnectionNoSet {
+		return nil, ErrConnectionNoSet
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error whe getting directory repository: %w", err)
+	}
+	return s.repoFactory(ctx, connId)
 }

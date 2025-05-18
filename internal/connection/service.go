@@ -11,17 +11,17 @@ type ConnectionService interface {
 	GetActiveConnectionID(ctx context.Context) (uuid.UUID, error)
 }
 
-type ConnectionServiceImpl struct {
+type connectionServiceImpl struct {
 	repository Repository
 }
 
-var _ ConnectionService = &ConnectionServiceImpl{}
+var _ ConnectionService = &connectionServiceImpl{}
 
-func NewConnectionService(repository Repository) *ConnectionServiceImpl {
-	return &ConnectionServiceImpl{repository}
+func NewConnectionService(repository Repository) *connectionServiceImpl {
+	return &connectionServiceImpl{repository}
 }
 
-func (s *ConnectionServiceImpl) GetActiveConnectionID(ctx context.Context) (uuid.UUID, error) {
+func (s *connectionServiceImpl) GetActiveConnectionID(ctx context.Context) (uuid.UUID, error) {
 	conn, err := s.repository.GetSelectedConnection(ctx)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("error while getting selected connection: %w", err)

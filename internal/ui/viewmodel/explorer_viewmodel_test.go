@@ -9,6 +9,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	mocks_connection "github.com/thomas-marquis/s3-box/mocks/connection"
 	mocks_explorer "github.com/thomas-marquis/s3-box/mocks/explorer"
+	mocks_viewmodel "github.com/thomas-marquis/s3-box/mocks/viewmodel"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -21,22 +22,11 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := zap.NewNop()
-	dirRepo := mocks_explorer.NewMockS3DirectoryRepository(ctrl)
-	fileRepo := mocks_explorer.NewMockS3FileRepository(ctrl)
-	connSvc := mocks_connection.NewMockConnectionService(ctrl)
-	connRepo := mocks_connection.NewMockRepository(ctrl)
-	dirSvc := explorer.NewDirectoryService(
-		logger,
-		func(ctx context.Context, connID uuid.UUID) (explorer.S3DirectoryRepository, error) {
-			return dirRepo, nil
-		},
-		func(ctx context.Context, connID uuid.UUID) (explorer.S3FileRepository, error) {
-			return fileRepo, nil
-		},
-		connSvc,
-	)
-	vm := viewmodel.NewExplorerViewModel(dirSvc, connRepo, nil, viewmodel.NewSettingsViewModel(nil))
+	mockConnRepo := mocks_connection.NewMockRepository(ctrl)
+	mockDirSvc := mocks_explorer.NewMockDirectoryService(ctrl)
+	mockFileSvc := mocks_explorer.NewMockFileService(ctrl)
+	mockSettingsVm := mocks_viewmodel.NewMockSettingsViewModel(ctrl)
+	vm := viewmodel.NewExplorerViewModel(mockDirSvc, mockConnRepo, mockFileSvc, mockSettingsVm)
 
 	dirID := explorer.S3DirectoryID("/test")
 	newDir := &explorer.S3Directory{
@@ -57,22 +47,10 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 	}
 
 	// Expectations
-	connRepo.EXPECT().
+	mockConnRepo.EXPECT().
 		GetSelectedConnection(gomock.Any()).
 		Return(conn, nil).
 		Times(2)
-	connSvc.EXPECT().
-		GetActiveConnectionID(gomock.Any()).
-		Return(connID, nil).
-		Times(3)
-	dirRepo.EXPECT().
-		GetByID(gomock.Any(), explorer.RootDirID).
-		Return(rootDir, nil).
-		Times(2)
-	dirRepo.EXPECT().
-		GetByID(gomock.Any(), dirID).
-		Return(newDir, nil).
-		Times(1)
 
 	// When
 	err := vm.RefreshDir(dirID)
@@ -204,4 +182,3 @@ func Test_RefreshDir_ShouldHandleErrorFromTreeOperations(t *testing.T) {
 	// Then
 	assert.NoError(t, err) // Les erreurs d'arbre sont loggées mais ne font pas échouer l'opération
 }
-
