@@ -20,26 +20,152 @@ import (
 )
 
 func areTreesEqual(actual binding.UntypedTree, expected binding.UntypedTree) bool {
-	res := true
-	for _, i := range actual.ChildIDs("") {
-		actualNode, _ := actual.GetValue(i)
-		expectedNode, err := expected.GetValue(i)
-		if actualNode != expectedNode || err != nil {
-			fmt.Printf("Node with id %s mismatch: actual: %v, expected: %v\n", i, actualNode, expectedNode)
-			res = false
+	compare := func(a, b binding.UntypedTree, aLabel, bLabel string) bool {
+		res := true
+		_, aTreeContent, _ := a.Get()
+		for i := range aTreeContent {
+			val, _ := a.GetValue(i)
+			aNode, aOk := val.(*viewmodel.TreeNode)
+			if !aOk {
+				fmt.Printf("Error casting %s node (ID=%s; Value=%v) as a pointer of viewmodel.TreeNode\n", aLabel, i, val)
+				res = false
+				continue
+			}
+			val, err := b.GetValue(i)
+			bNode, bOk := val.(*viewmodel.TreeNode)
+			if !bOk {
+				fmt.Printf("Error casting %s node (ID=%s; Value=%v) as a pointer of viewmodel.TreeNode\n", bLabel, i, val)
+				res = false
+			} else if err != nil {
+				fmt.Printf("Error getting %s node: %v\n", bLabel, err)
+				res = false
+			} else if *aNode != *bNode {
+				fmt.Printf("Node with id %s mismatch: %s: %v, %s: %v\n", i, aLabel, aNode, bLabel, bNode)
+				res = false
+			}
 		}
+		return res
 	}
 
-	for _, i := range expected.ChildIDs("") {
-		expectedNode, _ := expected.GetValue(i)
-		actualNode, err := actual.GetValue(i)
-		if expectedNode != actualNode || err != nil {
-			fmt.Printf("Node with id %s mismatch: actual: %v, expected: %v\n", i, actualNode, expectedNode)
-			res = false
-		}
-	}
+	return compare(actual, expected, "actual", "expected") && compare(expected, actual, "expected", "actual")
+}
 
-	return res
+func Test_areTreesEqual_ShouldReturnTrueWhenTreesAreEqual(t *testing.T) {
+	// Given a first tree
+	tree1 := binding.NewUntypedTree()
+	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree1.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+	tree1.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+
+	// Given a second tree
+	tree2 := binding.NewUntypedTree()
+	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree2.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+
+	// When
+	result := areTreesEqual(tree1, tree2)
+
+	// Then
+	assert.True(t, result, "The trees should be equal")
+}
+
+func Test_assertTreeContent_ShouldReturnFalseWhenATreeNotContainsPointers(t *testing.T) {
+	// Given a first tree
+	tree1 := binding.NewUntypedTree()
+	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree1.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+	tree1.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+
+	// Given a second tree
+	tree2 := binding.NewUntypedTree()
+	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree2.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+	tree2.Append("/", "/file.txt", *viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+
+	// When
+	result := areTreesEqual(tree1, tree2)
+
+	// Then
+	assert.False(t, result, "The trees should not be equal")
+}
+
+func Test_areTreesEqual_SHouldReturnFalseWhenTreesAreNotEqual(t *testing.T) {
+	// Given a first tree
+	tree1 := binding.NewUntypedTree()
+	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree1.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+	tree1.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+
+	// Given a second tree with different content
+	tree2 := binding.NewUntypedTree()
+	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree2.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "differentFile.txt", viewmodel.TreeNodeTypeFile))
+
+	// When
+	result := areTreesEqual(tree1, tree2)
+
+	// Then
+	assert.False(t, result, "The trees should not be equal")
+}
+
+func Test_areTreesEqual_ShouldReturnFalseWhenLessNodesInSecondTree(t *testing.T) {
+	// Given a first tree
+	tree1 := binding.NewUntypedTree()
+	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree1.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+	tree1.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+
+	// Given a second tree with less nodes
+	tree2 := binding.NewUntypedTree()
+	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree2.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+
+	// When
+	result := areTreesEqual(tree1, tree2)
+
+	// Then
+	assert.False(t, result, "The trees should not be equal")
+}
+
+func Test_areTreesEqual_ShouldReturnFalseWhenLessNodesInFirstTree(t *testing.T) {
+	// Given a first tree with less nodes
+	tree1 := binding.NewUntypedTree()
+	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree1.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+
+	// Given a second tree
+	tree2 := binding.NewUntypedTree()
+	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree2.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+
+	// When
+	result := areTreesEqual(tree1, tree2)
+
+	// Then
+	assert.False(t, result, "The trees should not be equal")
+}
+
+func Test_areTreesEqual_ShouldReturnTrueWhenSameTreesButDifferentOrder(t *testing.T) {
+	// Given a first tree
+	tree1 := binding.NewUntypedTree()
+	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree1.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+	tree1.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+
+	// Given a second tree with different order
+	tree2 := binding.NewUntypedTree()
+	tree2.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
+	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
+	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+
+	// When
+	result := areTreesEqual(tree1, tree2)
+
+	// Then
+	assert.True(t, result, "The trees should be equal")
 }
 
 func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
@@ -97,7 +223,7 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 		AnyTimes()
 
 	expectedTree := binding.NewUntypedTree()
-	expectedTree.Append("", "/", viewmodel.TreeNodeTypeBucketRoot)
+	expectedTree.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
 	expectedTree.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
 	expectedTree.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
 
@@ -107,6 +233,7 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 
 	// Then
 	assert.NoError(t, err)
+	assert.True(t, areTreesEqual(vm.Tree(), expectedTree), "The tree structure should be equal to the expected one")
 }
 
 // func Test_RefreshDir_ShouldHandleErrorFromDirectoryService(t *testing.T) {
