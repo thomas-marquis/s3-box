@@ -8,7 +8,18 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/connection"
 )
 
-type ConnectionViewModel struct {
+type ConnectionViewModel interface {
+	Connections() binding.UntypedList
+	RefreshConnections() error
+	SaveConnection(c *connection.Connection) error
+	DeleteConnection(c *connection.Connection) error
+	// SelectConnection selects a connection and returns true if a new connection was successfully selected
+	// and false if the set connection is the same as the current connection
+	SelectConnection(c *connection.Connection) (bool, error)
+	ExportConnectionsAsJSON() (connection.ConnectionExport, error)
+}
+
+type connectionViewModelImpl struct {
 	connRepo           connection.Repository
 	connSvc            connection.ConnectionService
 	settingsVm         SettingsViewModel
@@ -17,10 +28,16 @@ type ConnectionViewModel struct {
 	loading            binding.Bool
 }
 
-func NewConnectionViewModel(connRepo connection.Repository, connSvc connection.ConnectionService, settingsVm SettingsViewModel) *ConnectionViewModel {
+var _ ConnectionViewModel = &connectionViewModelImpl{}
+
+func NewConnectionViewModel(
+	connRepo connection.Repository,
+	connSvc connection.ConnectionService,
+	settingsVm SettingsViewModel,
+) *connectionViewModelImpl {
 	c := binding.NewUntypedList()
 
-	vm := &ConnectionViewModel{
+	vm := &connectionViewModelImpl{
 		connRepo:    connRepo,
 		connSvc:     connSvc,
 		settingsVm:  settingsVm,
@@ -39,11 +56,11 @@ func NewConnectionViewModel(connRepo connection.Repository, connSvc connection.C
 	return vm
 }
 
-func (c *ConnectionViewModel) Connections() binding.UntypedList {
+func (c *connectionViewModelImpl) Connections() binding.UntypedList {
 	return c.connections
 }
 
-func (vm *ConnectionViewModel) RefreshConnections() error {
+func (vm *connectionViewModelImpl) RefreshConnections() error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	conns, err := vm.connRepo.ListConnections(ctx)
@@ -72,7 +89,7 @@ func (vm *ConnectionViewModel) RefreshConnections() error {
 	return nil
 }
 
-func (vm *ConnectionViewModel) SaveConnection(c *connection.Connection) error {
+func (vm *connectionViewModelImpl) SaveConnection(c *connection.Connection) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	if err := vm.connRepo.SaveConnection(ctx, c); err != nil {
@@ -85,7 +102,7 @@ func (vm *ConnectionViewModel) SaveConnection(c *connection.Connection) error {
 	return vm.RefreshConnections()
 }
 
-func (vm *ConnectionViewModel) DeleteConnection(c *connection.Connection) error {
+func (vm *connectionViewModelImpl) DeleteConnection(c *connection.Connection) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	if err := vm.connRepo.DeleteConnection(ctx, c.ID); err != nil {
@@ -98,10 +115,9 @@ func (vm *ConnectionViewModel) DeleteConnection(c *connection.Connection) error 
 	return vm.RefreshConnections()
 }
 
-// SelectConnection selects a connection and returns true if a new connection was successfully selected
-// and false if the set connection is the same as the current connection
-func (vm *ConnectionViewModel) SelectConnection(c *connection.Connection) (bool, error) {
+func (vm *connectionViewModelImpl) SelectConnection(c *connection.Connection) (bool, error) {
 	vm.loading.Set(true)
+	defer vm.loading.Set(false)
 	prevConn := vm.selectedConnection
 
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
@@ -110,11 +126,12 @@ func (vm *ConnectionViewModel) SelectConnection(c *connection.Connection) (bool,
 		return false, err
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
-	defer cancel()
-
 	vm.selectedConnection = c
-	vm.loading.Set(false)
 	return c != prevConn, nil
 }
 
+func (vm *connectionViewModelImpl) ExportConnectionsAsJSON() (connection.ConnectionExport, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
+	defer cancel()
+	return vm.connRepo.ExportToJson(ctx)
+}

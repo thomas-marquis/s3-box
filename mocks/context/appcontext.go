@@ -44,10 +44,10 @@ func (m *MockAppContext) EXPECT() *MockAppContextMockRecorder {
 }
 
 // ConnectionViewModel mocks base method.
-func (m *MockAppContext) ConnectionViewModel() *viewmodel.ConnectionViewModel {
+func (m *MockAppContext) ConnectionViewModel() viewmodel.ConnectionViewModel {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConnectionViewModel")
-	ret0, _ := ret[0].(*viewmodel.ConnectionViewModel)
+	ret0, _ := ret[0].(viewmodel.ConnectionViewModel)
 	return ret0
 }
 
@@ -86,10 +86,10 @@ func (mr *MockAppContextMockRecorder) ExitChan() *gomock.Call {
 }
 
 // ExplorerViewModel mocks base method.
-func (m *MockAppContext) ExplorerViewModel() *viewmodel.ExplorerViewModel {
+func (m *MockAppContext) ExplorerViewModel() viewmodel.ExplorerViewModel {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExplorerViewModel")
-	ret0, _ := ret[0].(*viewmodel.ExplorerViewModel)
+	ret0, _ := ret[0].(viewmodel.ExplorerViewModel)
 	return ret0
 }
 

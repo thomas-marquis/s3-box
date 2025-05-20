@@ -58,13 +58,16 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 					hasChanged, err := ctx.ConnectionViewModel().SelectConnection(conn)
 					if err != nil {
 						ctx.L().Error("Failed to select connection", zap.Error(err))
+						dialog.ShowError(err, ctx.Window())
 					}
 					if hasChanged {
 						if err := ctx.ConnectionViewModel().RefreshConnections(); err != nil {
 							ctx.L().Error("Failed to refresh connections", zap.Error(err))
+							dialog.ShowError(err, ctx.Window())
 						}
 						if err := ctx.ExplorerViewModel().ResetTree(); err != nil {
 							ctx.L().Error("Failed to reset tree", zap.Error(err))
+							dialog.ShowError(err, ctx.Window())
 						}
 					}
 				}
@@ -83,17 +86,19 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 	editBtn := btnGroup.Objects[0].(*widget.Button)
 	editBtn.OnTapped = func() {
 		NewConnectionDialog(
-			ctx, "Edit connection",
-			conn.Name, conn.AccessKey, conn.SecretKey, conn.Server, conn.BucketName, conn.Region, conn.UseTls,
+			ctx,
+			"Edit connection",
+			*conn,
 			true,
-			func(name, accessKey, secretKey, server, bucket, region string, useTLS bool) error {
-				conn.Name = name
-				conn.AccessKey = accessKey
-				conn.SecretKey = secretKey
-				conn.Server = server
-				conn.BucketName = bucket
-				conn.Region = region
-				conn.UseTls = useTLS
+			func(name, accessKey, secretKey, server, bucket, region string, useTLS bool, connectionType connection.ConnectionType) error {
+				var updatedConn *connection.Connection
+				switch connectionType {
+				case connection.AWSConnectionType:
+					updatedConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsAWSConnection(region))
+				case connection.S3LikeConnectionType:
+					updatedConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsS3LikeConnection(server, useTLS))
+				}
+				conn.Update(updatedConn)
 				return ctx.ConnectionViewModel().SaveConnection(conn)
 			}).Show()
 	}

@@ -21,15 +21,25 @@ type connectionDTO struct {
 	Server    string    `json:"server"`
 	AccessKey string    `json:"accessKey"`
 	SecretKey string    `json:"secretKey"`
+	Buket     string    `json:"bucket"`
+	Selected  bool      `json:"selected,omitempty"`
+	Region    string    `json:"region,omitempty"`
+	Type      string    `json:"type,omitempty"`
+	UseTls    bool      `json:"useTls,omitempty"`
 }
 
 func (c *connectionDTO) toConnection() *connection.Connection {
 	return &connection.Connection{
-		ID:        c.ID,
-		Name:      c.Name,
-		Server:    c.Server,
-		AccessKey: c.AccessKey,
-		SecretKey: c.SecretKey,
+		ID:         c.ID,
+		Name:       c.Name,
+		Server:     c.Server,
+		AccessKey:  c.AccessKey,
+		SecretKey:  c.SecretKey,
+		IsSelected: c.Selected,
+		BucketName: c.Buket,
+		Region:     c.Region,
+		Type:       connection.ConnectionType(c.Type),
+		UseTls:     c.UseTls,
 	}
 }
 
@@ -40,6 +50,11 @@ func newConnectionDTO(c *connection.Connection) *connectionDTO {
 		Server:    c.Server,
 		AccessKey: c.AccessKey,
 		SecretKey: c.SecretKey,
+		Selected:  c.IsSelected,
+		Buket:     c.BucketName,
+		Region:    c.Region,
+		Type:      c.Type.String(),
+		UseTls:    c.UseTls,
 	}
 }
 
@@ -54,12 +69,7 @@ func NewConnectionRepositoryImpl(prefs fyne.Preferences) *ConnectionRepositoryIm
 var _ connection.Repository = &ConnectionRepositoryImpl{}
 
 func (r *ConnectionRepositoryImpl) ListConnections(ctx context.Context) ([]*connection.Connection, error) {
-	content := r.prefs.String(allConnectionsKey)
-	if content == "" || content == "null" {
-		return []*connection.Connection{}, nil
-	}
-
-	dtos, err := fromJson[[]*connectionDTO](content)
+	dtos, err := r.loadConnectionDTOs()
 	if err != nil {
 		return nil, fmt.Errorf("ListConnections: %w", err)
 	}
@@ -85,14 +95,7 @@ func (r *ConnectionRepositoryImpl) SaveConnection(ctx context.Context, c *connec
 	for _, conn := range connections {
 		if conn.ID == c.ID {
 			found = true
-			conn.Name = c.Name
-			conn.Server = c.Server
-			conn.AccessKey = c.AccessKey
-			conn.SecretKey = c.SecretKey
-			conn.BucketName = c.BucketName
-			conn.UseTls = c.UseTls
-			conn.IsSelected = c.IsSelected
-			conn.Region = c.Region
+			conn.Update(c)
 			break
 		}
 	}
@@ -212,4 +215,32 @@ func (r *ConnectionRepositoryImpl) GetSelectedConnection(ctx context.Context) (*
 	}
 
 	return nil, connection.ErrConnectionNotFound
+}
+
+// loadConnectionDTOs loads the connectionDTOs directly from preferences
+func (r *ConnectionRepositoryImpl) loadConnectionDTOs() ([]*connectionDTO, error) {
+	content := r.prefs.String(allConnectionsKey)
+	if content == "" || content == "null" {
+		return []*connectionDTO{}, nil
+	}
+	dtos, err := fromJson[[]*connectionDTO](content)
+	if err != nil {
+		return nil, err
+	}
+	return dtos, nil
+}
+
+func (r *ConnectionRepositoryImpl) ExportToJson(ctx context.Context) (connection.ConnectionExport, error) {
+	dtos, err := r.loadConnectionDTOs()
+	if err != nil {
+		return connection.ConnectionExport{}, fmt.Errorf("ExportToJson: %w", err)
+	}
+	content, err := json.Marshal(dtos)
+	if err != nil {
+		return connection.ConnectionExport{}, fmt.Errorf("ExportToJson: %w", err)
+	}
+	return connection.ConnectionExport{
+		JSONData: content,
+		Count:    len(dtos),
+	}, nil
 }

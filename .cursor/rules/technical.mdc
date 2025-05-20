@@ -1,7 +1,7 @@
 ---
-description: Read this rule when you want edit the code or the tests
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 # S3-Box Technical Rules
 

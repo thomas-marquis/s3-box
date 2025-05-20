@@ -22,4 +22,7 @@ type Repository interface {
 	SetSelectedConnection(ctx context.Context, id uuid.UUID) error
 
 	GetSelectedConnection(ctx context.Context) (*Connection, error)
+
+	// ExportToJson returns all connections as a JSON byte slice and the count
+	ExportToJson(ctx context.Context) (ConnectionExport, error)
 }

@@ -34,11 +34,11 @@ func NewS3File(name string, dir *S3Directory) (*S3File, error) {
 	if name == "/" {
 		return nil, errors.New("file name is not valid")
 	}
-	
+
 	return &S3File{
-		ID:           makeFileID(name, dir),
-		Name:         name,
-		DirectoryID:  dir.ID,
+		ID:          makeFileID(name, dir),
+		Name:        name,
+		DirectoryID: dir.ID,
 	}, nil
 }
 
@@ -48,5 +48,5 @@ func NewS3File(name string, dir *S3Directory) (*S3File, error) {
 // TODO: download -> LocalFile
 
 func makeFileID(name string, dir *S3Directory) S3FileID {
-	return S3FileID(dir.ID.String() + "/" + name)
+	return S3FileID(dir.ID.String() + name)
 }

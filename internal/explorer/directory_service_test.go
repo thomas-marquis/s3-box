@@ -298,8 +298,8 @@ func Test_DeleteFile_ShouldRestoreDirectoryWhenSavingFails(t *testing.T) {
 		Name: "file.txt",
 	}
 	dir := &explorer.S3Directory{
-		ID:   dirID,
-		Name: "dir",
+		ID:    dirID,
+		Name:  "dir",
 		Files: []*explorer.S3File{file},
 	}
 	ctx := context.TODO()
@@ -349,8 +349,8 @@ func Test_DeleteFile_ShouldRestoreDirectoryWhenGettingFileRepositoryFails(t *tes
 		Name: "file.txt",
 	}
 	dir := &explorer.S3Directory{
-		ID:   dirID,
-		Name: "dir",
+		ID:    dirID,
+		Name:  "dir",
 		Files: []*explorer.S3File{file},
 	}
 	ctx := context.TODO()
@@ -400,8 +400,8 @@ func Test_DeleteFile_ShouldRestoreDirectoryWhenDeletingFileFails(t *testing.T) {
 		Name: "file.txt",
 	}
 	dir := &explorer.S3Directory{
-		ID:   dirID,
-		Name: "dir",
+		ID:    dirID,
+		Name:  "dir",
 		Files: []*explorer.S3File{file},
 	}
 	ctx := context.TODO()

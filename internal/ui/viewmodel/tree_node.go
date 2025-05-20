@@ -1,6 +1,8 @@
 package viewmodel
 
 import (
+	"fmt"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 )
@@ -60,3 +62,6 @@ func (n *TreeNode) IsLoaded() bool {
 	return n.loaded
 }
 
+func (n *TreeNode) String() string {
+	return fmt.Sprintf("TreeNode{ID: %s, DisplayName: %s, Type: %s, loaded: %v}", n.ID, n.DisplayName, n.Type, n.loaded)
+}

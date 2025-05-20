@@ -1,6 +1,8 @@
 package views
 
 import (
+	"fmt"
+
 	"github.com/thomas-marquis/s3-box/internal/settings"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
@@ -52,8 +54,40 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		},
 	)
 
+	exportConnectionsBtn := widget.NewButtonWithIcon(
+		"Export connections as JSON",
+		theme.DocumentSaveIcon(),
+		func() {
+			export, err := ctx.ConnectionViewModel().ExportConnectionsAsJSON()
+			if err != nil {
+				dialog.ShowError(err, ctx.Window())
+				return
+			}
+			saveDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
+				if err != nil {
+					dialog.ShowError(err, ctx.Window())
+					return
+				}
+				if writer == nil {
+					return
+				}
+				defer writer.Close()
+				_, writeErr := writer.Write(export.JSONData)
+				if writeErr != nil {
+					dialog.ShowError(writeErr, ctx.Window())
+					return
+				}
+				msg := fmt.Sprintf("%d connection(s) exported as JSON", export.Count)
+				dialog.ShowInformation("Export", msg, ctx.Window())
+			}, ctx.Window())
+			saveDialog.SetFileName("connections.json")
+			saveDialog.Show()
+		},
+	)
+	exportConnectionsBtn.Resize(fyne.NewSize(100, 100))
+
 	return container.NewVBox(
 		container.NewHBox(goToExplorerBtn),
-		form,
+		container.NewVBox(form, container.NewCenter(exportConnectionsBtn)),
 	), nil
 }

@@ -2,43 +2,58 @@ package views_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"fyne.io/fyne/v2"
 	fyne_test "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
-	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/thomas-marquis/s3-box/internal/connection"
-	"github.com/thomas-marquis/s3-box/internal/explorer"
+	"github.com/thomas-marquis/s3-box/internal/settings"
 	"github.com/thomas-marquis/s3-box/internal/ui/app"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	"github.com/thomas-marquis/s3-box/internal/ui/views"
 	mocks_connection "github.com/thomas-marquis/s3-box/mocks/connection"
-	mocks_explorer "github.com/thomas-marquis/s3-box/mocks/explorer"
 	mocks_settings "github.com/thomas-marquis/s3-box/mocks/settings"
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
 
-func Test_SettingView_ShouldUpdateAndSaveSettings(t *testing.T) {
+func Test_GetSettingsView_ShouldBuildViewWithoutError(t *testing.T) {
 	// Given
 	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
+	var ctxType = reflect.TypeOf((*context.Context)(nil)).Elem()
+
+	// Setup settings
 	settingsRepo := mocks_settings.NewMockRepository(ctrl)
-	directoryRepo := mocks_explorer.NewMockS3DirectoryRepository(ctrl)
-	fileRepo := mocks_explorer.NewMockS3FileRepository(ctrl)
+	fakeSettings, _ := settings.NewSettings(10, 2)
+	settingsRepo.EXPECT().
+		Get(gomock.AssignableToTypeOf(ctxType)).
+		Return(fakeSettings, nil).
+		Times(1)
+
+	// Setup connection
 	connRepo := mocks_connection.NewMockRepository(ctrl)
 
-	lastConnection := connection.NewConnection(
-		"test_connection",
-		"localhost",
-		"access_key",
-		"secret_key",
-		"myBucket",
-		false,
-		"",
-	)
+	fakeConnection := connection.NewConnection("demo", "AZERTY", "123456", "MyBucket", connection.AsAWSConnection("eu-west-3"))
+	connRepo.EXPECT().
+		ListConnections(gomock.AssignableToTypeOf(ctxType)).
+		Return([]*connection.Connection{fakeConnection}, nil).
+		Times(1)
+
+	connRepo.EXPECT().
+		GetSelectedConnection(gomock.AssignableToTypeOf(ctxType)).
+		Return(fakeConnection, nil).
+		Times(2)
+
+	connRepo.EXPECT().
+		GetByID(gomock.AssignableToTypeOf(ctxType), gomock.Eq(fakeConnection.ID)).
+		Return(fakeConnection, nil).
+		Times(1)
 
 	fakeApp := fyne_test.NewTempApp(t)
 	fakeWindow := fakeApp.NewWindow("Test")
@@ -49,21 +64,29 @@ func Test_SettingView_ShouldUpdateAndSaveSettings(t *testing.T) {
 	appCtx := app.BuildAppContext(
 		connRepo,
 		settingsRepo,
-		func(ctx context.Context, connID uuid.UUID) (explorer.S3DirectoryRepository, error) {
-			return directoryRepo, nil
-		},
-		func(ctx context.Context, connID uuid.UUID) (explorer.S3FileRepository, error) {
-			return fileRepo, nil
-		},
 		zap.NewExample(),
-		lastConnection,
+		fakeConnection,
 		fakeWindow,
 		navigation.SettingsRoute,
 		testViews,
 		fakeApp.Settings(),
 	)
-	settingsView, _ := views.GetSettingsView(appCtx)
 
 	// When
-	var _ = settingsView.Objects[1].(*widget.Form) // TODO: finish to implement the test
+	v, err := views.GetSettingsView(appCtx)
+
+	// Then
+	assert.NoError(t, err, "no error should be returned")
+	assert.NotNil(t, v, "settingsView should not be nil")
+
+	// Assert structure
+	var ok bool
+	contentBloc, ok := v.Objects[1].(*fyne.Container)
+	assert.True(t, ok, "Content block should be a fyne.Container")
+
+	form, ok := contentBloc.Objects[0].(*widget.Form)
+	assert.True(t, ok, "Form should be a widget.Form")
+
+	formItems := form.Items
+	assert.Len(t, formItems, 3, "Invalid number of form items")
 }

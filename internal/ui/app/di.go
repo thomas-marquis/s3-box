@@ -61,8 +61,6 @@ func BuildS3FileRepositoryFactory(conn *connection.Connection, log *zap.Logger, 
 func BuildAppContext(
 	connectionRepository connection.Repository,
 	settingsRepository settings.Repository,
-	directoryRepositoryFactory explorer.DirectoryRepositoryFactory,
-	fileRepositoryFactory explorer.FileRepositoryFactory,
 	logger *zap.Logger,
 	lastSelectedConn *connection.Connection,
 	window fyne.Window,
@@ -71,15 +69,17 @@ func BuildAppContext(
 	fyneSettings fyne.Settings,
 ) appcontext.AppContext {
 	connSvc := connection.NewConnectionService(connectionRepository)
+	dirFactory := BuildS3DirectoryRepositoryFactory(lastSelectedConn, logger, connectionRepository)
+	fileFactory := BuildS3FileRepositoryFactory(lastSelectedConn, logger, connectionRepository)
 	dirSvc := explorer.NewDirectoryService(
 		logger,
-		directoryRepositoryFactory,
-		fileRepositoryFactory,
+		dirFactory,
+		fileFactory,
 		connSvc,
 	)
 	fileSvc := explorer.NewFileService(
 		logger,
-		fileRepositoryFactory,
+		fileFactory,
 		connSvc,
 	)
 
