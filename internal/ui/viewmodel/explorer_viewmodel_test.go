@@ -19,7 +19,8 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func areTreesEqual(actual binding.UntypedTree, expected binding.UntypedTree) bool {
+func areTreesEqual(actual binding.UntypedTree, expected binding.UntypedTree) (bool, string) {
+	report := ""
 	compare := func(a, b binding.UntypedTree, aLabel, bLabel string) bool {
 		res := true
 		_, aTreeContent, _ := a.Get()
@@ -27,27 +28,27 @@ func areTreesEqual(actual binding.UntypedTree, expected binding.UntypedTree) boo
 			val, _ := a.GetValue(i)
 			aNode, aOk := val.(*viewmodel.TreeNode)
 			if !aOk {
-				fmt.Printf("Error casting %s node (ID=%s; Value=%v) as a pointer of viewmodel.TreeNode\n", aLabel, i, val)
+				report = fmt.Sprintf("%sError casting %s node (ID=%s; Value=%v) as a pointer of viewmodel.TreeNode\n", report, aLabel, i, val)
 				res = false
 				continue
 			}
 			val, err := b.GetValue(i)
 			bNode, bOk := val.(*viewmodel.TreeNode)
-			if !bOk {
-				fmt.Printf("Error casting %s node (ID=%s; Value=%v) as a pointer of viewmodel.TreeNode\n", bLabel, i, val)
+			if val == nil || err != nil {
+				report = fmt.Sprintf("%sThe %s node with id %s (%s) does not exists in the %s nodes\n", report, aLabel, i, aNode, bLabel)
 				res = false
-			} else if err != nil {
-				fmt.Printf("Error getting %s node: %v\n", bLabel, err)
+			} else if !bOk {
+				report = fmt.Sprintf("%sError casting %s node (ID=%s) as a pointer of viewmodel.TreeNode\n", report, bLabel, i)
 				res = false
 			} else if *aNode != *bNode {
-				fmt.Printf("Node with id %s mismatch: %s: %v, %s: %v\n", i, aLabel, aNode, bLabel, bNode)
+				report = fmt.Sprintf("%sNode with id %s mismatch: %s: %s, %s: %s\n", report, i, aLabel, aNode, bLabel, bNode)
 				res = false
 			}
 		}
 		return res
 	}
 
-	return compare(actual, expected, "actual", "expected") && compare(expected, actual, "expected", "actual")
+	return compare(actual, expected, "actual", "expected") && compare(expected, actual, "expected", "actual"), report
 }
 
 func Test_areTreesEqual_ShouldReturnTrueWhenTreesAreEqual(t *testing.T) {
@@ -64,13 +65,14 @@ func Test_areTreesEqual_ShouldReturnTrueWhenTreesAreEqual(t *testing.T) {
 	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
 
 	// When
-	result := areTreesEqual(tree1, tree2)
+	result, report := areTreesEqual(tree1, tree2)
 
 	// Then
 	assert.True(t, result, "The trees should be equal")
+	assert.Equal(t, "", report, "The report should be empty")
 }
 
-func Test_assertTreeContent_ShouldReturnFalseWhenATreeNotContainsPointers(t *testing.T) {
+func Test_areTreesEqual_ShouldReturnFalseWhenATreeNotContainsPointers(t *testing.T) {
 	// Given a first tree
 	tree1 := binding.NewUntypedTree()
 	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
@@ -84,10 +86,16 @@ func Test_assertTreeContent_ShouldReturnFalseWhenATreeNotContainsPointers(t *tes
 	tree2.Append("/", "/file.txt", *viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
 
 	// When
-	result := areTreesEqual(tree1, tree2)
+	result, report := areTreesEqual(tree1, tree2)
 
 	// Then
 	assert.False(t, result, "The trees should not be equal")
+	assert.Equal(t,
+		`Error casting expected node (ID=/file.txt) as a pointer of viewmodel.TreeNode
+`,
+		report,
+		"The report should contain the error message",
+	)
 }
 
 func Test_areTreesEqual_SHouldReturnFalseWhenTreesAreNotEqual(t *testing.T) {
@@ -104,10 +112,15 @@ func Test_areTreesEqual_SHouldReturnFalseWhenTreesAreNotEqual(t *testing.T) {
 	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "differentFile.txt", viewmodel.TreeNodeTypeFile))
 
 	// When
-	result := areTreesEqual(tree1, tree2)
+	result, report := areTreesEqual(tree1, tree2)
 
 	// Then
 	assert.False(t, result, "The trees should not be equal")
+	assert.Equal(t,
+		`Node with id /file.txt mismatch: actual: TreeNode{ID: /file.txt, DisplayName: file.txt, Type: file, loaded: false}, expected: TreeNode{ID: /file.txt, DisplayName: differentFile.txt, Type: file, loaded: false}
+`,
+		report, "The report should contain the correct error message",
+	)
 }
 
 func Test_areTreesEqual_ShouldReturnFalseWhenLessNodesInSecondTree(t *testing.T) {
@@ -123,10 +136,13 @@ func Test_areTreesEqual_ShouldReturnFalseWhenLessNodesInSecondTree(t *testing.T)
 	tree2.Append("/", "/someDir", viewmodel.NewTreeNode("/someDir", "someDir", viewmodel.TreeNodeTypeDirectory))
 
 	// When
-	result := areTreesEqual(tree1, tree2)
+	result, report := areTreesEqual(tree1, tree2)
 
 	// Then
 	assert.False(t, result, "The trees should not be equal")
+	assert.Equal(t, `The actual node with id /file.txt (TreeNode{ID: /file.txt, DisplayName: file.txt, Type: file, loaded: false}) does not exists in the expected nodes
+`,
+		report, "The report should contain the correct error message")
 }
 
 func Test_areTreesEqual_ShouldReturnFalseWhenLessNodesInFirstTree(t *testing.T) {
@@ -142,10 +158,13 @@ func Test_areTreesEqual_ShouldReturnFalseWhenLessNodesInFirstTree(t *testing.T) 
 	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
 
 	// When
-	result := areTreesEqual(tree1, tree2)
+	result, report := areTreesEqual(tree1, tree2)
 
 	// Then
 	assert.False(t, result, "The trees should not be equal")
+	assert.Equal(t, `The expected node with id /file.txt (TreeNode{ID: /file.txt, DisplayName: file.txt, Type: file, loaded: false}) does not exists in the actual nodes
+`,
+		report, "The report should contain the correct error message")
 }
 
 func Test_areTreesEqual_ShouldReturnTrueWhenSameTreesButDifferentOrder(t *testing.T) {
@@ -162,10 +181,11 @@ func Test_areTreesEqual_ShouldReturnTrueWhenSameTreesButDifferentOrder(t *testin
 	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
 
 	// When
-	result := areTreesEqual(tree1, tree2)
+	result, report := areTreesEqual(tree1, tree2)
 
 	// Then
 	assert.True(t, result, "The trees should be equal")
+	assert.Equal(t, "", report)
 }
 
 func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
@@ -233,7 +253,9 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 
 	// Then
 	assert.NoError(t, err)
-	assert.True(t, areTreesEqual(vm.Tree(), expectedTree), "The tree structure should be equal to the expected one")
+	ok, report := areTreesEqual(vm.Tree(), expectedTree)
+	fmt.Println(report)
+	assert.True(t, ok, "The tree structure should be equal to the expected one")
 }
 
 // func Test_RefreshDir_ShouldHandleErrorFromDirectoryService(t *testing.T) {
