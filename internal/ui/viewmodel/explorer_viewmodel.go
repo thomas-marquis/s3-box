@@ -426,7 +426,7 @@ func (vm *explorerViewModelImpl) fetchAndUpdateDirectory(ctx context.Context, di
 func (vm *explorerViewModelImpl) removeDirectoryContent(dirID explorer.S3DirectoryID) error {
 	oldDir, err := vm.GetDirByID(dirID)
 	if err != nil {
-		return nil
+		return nil // TODO: handle error properly
 	}
 
 	for _, file := range oldDir.Files {

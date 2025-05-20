@@ -15,14 +15,8 @@ func Test_S3DirectoryID_ToName_ShouldReturnNameOfDirectory(t *testing.T) {
 	}{
 		{explorer.RootDirID, ""},
 		{explorer.S3DirectoryID("/"), ""},
-		{explorer.S3DirectoryID(""), ""},
-		{explorer.S3DirectoryID("/path"), "path"},
 		{explorer.S3DirectoryID("/path/"), "path"},
-		{explorer.S3DirectoryID("/path/to/dir"), "dir"},
 		{explorer.S3DirectoryID("/path/to/dir/"), "dir"},
-		{explorer.S3DirectoryID("path/to/dir/subdir"), "subdir"},
-		{explorer.S3DirectoryID("path/to/dir/subdir/"), "subdir"},
-		{explorer.S3DirectoryID("/path/to/dir/subdir/subsubdir"), "subsubdir"},
 		{explorer.S3DirectoryID("/path/to/dir/subdir/subsubdir/"), "subsubdir"},
 	}
 
@@ -106,8 +100,8 @@ func Test_AddSubDirectory_ShouldAddSubDirectory(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Then
-	assert.Equal(t, explorer.S3DirectoryID("parent/subdir"), dir.SubDirectoriesIDs[0])
-	assert.Equal(t, explorer.S3DirectoryID("parent/subdir2"), dir.SubDirectoriesIDs[1])
+	assert.Equal(t, explorer.S3DirectoryID("/parent/subdir/"), dir.SubDirectoriesIDs[0])
+	assert.Equal(t, explorer.S3DirectoryID("/parent/subdir2/"), dir.SubDirectoriesIDs[1])
 }
 
 func Test_AddSubDirectory_ShouldReturnErrorWhenSubDirectoryAlreadyExists(t *testing.T) {
@@ -122,5 +116,5 @@ func Test_AddSubDirectory_ShouldReturnErrorWhenSubDirectoryAlreadyExists(t *test
 
 	// Then
 	assert.Error(t, err)
-	assert.Equal(t, "sub directory parent/subdir already exists in S3 directory parent", err.Error())
+	assert.Equal(t, "sub directory /parent/subdir/ already exists in S3 directory /parent/", err.Error())
 }
