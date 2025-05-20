@@ -10,13 +10,11 @@ import (
 
 func Test_S3FileID_ToName_ShouldReturnNameOfFile(t *testing.T) {
 	testCases := []struct {
-		id explorer.S3FileID
+		id           explorer.S3FileID
 		expectedName string
 	}{
-		{explorer.S3FileID("file.txt"), "file.txt"},
 		{explorer.S3FileID("/file.txt"), "file.txt"},
 		{explorer.S3FileID("/path/to/file.txt"), "file.txt"},
-		{explorer.S3FileID("path/to/file.txt"), "file.txt"},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.id.String(), func(t *testing.T) {
@@ -41,13 +39,13 @@ func Test_NewS3File_ShouldBuildNewFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, fileName, file.Name)
 	assert.Equal(t, parentDir.ID, file.DirectoryID)
-	assert.Equal(t, explorer.S3FileID("path/file.txt"), file.ID)
+	assert.Equal(t, explorer.S3FileID("/path/file.txt"), file.ID)
 }
 
 func Test_NewS3File_ShouldBuildNewFileWithNonRootParent(t *testing.T) {
 	// Given
 	fileName := "file.txt"
-	parentDir, _ := explorer.NewS3Directory("a_directory", explorer.S3DirectoryID("/path/to/parent"))
+	parentDir, _ := explorer.NewS3Directory("a_directory", explorer.S3DirectoryID("/path/to/parent/"))
 
 	// When
 	file, err := explorer.NewS3File(fileName, parentDir)

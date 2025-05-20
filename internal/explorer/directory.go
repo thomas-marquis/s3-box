@@ -47,7 +47,7 @@ var (
 // NewS3Directory creates a new S3 directory
 // returns an error when the directory name is not valid
 func NewS3Directory(name string, parentID S3DirectoryID) (*S3Directory, error) {
-	if name == "" && parentID != NilParentID {
+	if name == RootDirName && parentID != NilParentID {
 		return nil, fmt.Errorf("directory name is empty")
 	}
 	if name == "/" {
@@ -124,8 +124,5 @@ func (d *S3Directory) HasFile(fileID S3FileID) bool {
 }
 
 func buildID(dirName string, parentID S3DirectoryID) S3DirectoryID {
-	if parentID == RootDirID {
-		return S3DirectoryID(dirName)
-	}
-	return S3DirectoryID(parentID.String() + "/" + dirName)
+	return S3DirectoryID(parentID.String() + dirName + "/")
 }
