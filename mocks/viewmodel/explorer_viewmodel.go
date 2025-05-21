@@ -56,6 +56,21 @@ func (mr *MockExplorerViewModelMockRecorder) AppendDirToTree(dirID any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AppendDirToTree", reflect.TypeOf((*MockExplorerViewModel)(nil).AppendDirToTree), dirID)
 }
 
+// CreateEmptyDirectory mocks base method.
+func (m *MockExplorerViewModel) CreateEmptyDirectory(parent *explorer.S3Directory, name string) (*explorer.S3Directory, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateEmptyDirectory", parent, name)
+	ret0, _ := ret[0].(*explorer.S3Directory)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateEmptyDirectory indicates an expected call of CreateEmptyDirectory.
+func (mr *MockExplorerViewModelMockRecorder) CreateEmptyDirectory(parent, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEmptyDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).CreateEmptyDirectory), parent, name)
+}
+
 // DeleteFile mocks base method.
 func (m *MockExplorerViewModel) DeleteFile(file *explorer.S3File) error {
 	m.ctrl.T.Helper()

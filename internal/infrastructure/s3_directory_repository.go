@@ -105,6 +105,14 @@ func (r *S3DirectoryRepositoryImpl) GetByID(ctx context.Context, id explorer.S3D
 }
 
 func (r *S3DirectoryRepositoryImpl) Save(ctx context.Context, d *explorer.S3Directory) error {
+	_, err := r.s3.PutObject(&s3.PutObjectInput{
+		Bucket: aws.String(r.conn.BucketName),
+		Key:    aws.String(d.ID.String()),
+		Body:   strings.NewReader(""),
+	})
+	if err != nil {
+		return fmt.Errorf("Save: %w", err)
+	}
 	return nil
 }
 

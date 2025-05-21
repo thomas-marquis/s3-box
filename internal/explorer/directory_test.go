@@ -118,3 +118,57 @@ func Test_AddSubDirectory_ShouldReturnErrorWhenSubDirectoryAlreadyExists(t *test
 	assert.Error(t, err)
 	assert.Equal(t, "sub directory /parent/subdir/ already exists in S3 directory /parent/", err.Error())
 }
+
+func Test_CreateEmptyS3Directory_ShouldReturnEmptyDirectory(t *testing.T) {
+	// Given
+	dir, _ := explorer.NewS3Directory("dir", explorer.RootDirID)
+
+	// When
+	newDir, err := dir.CreateEmptySubDirectory("subdir")
+
+	// Then
+	assert.NoError(t, err)
+	assert.Equal(t, "subdir", newDir.Name, "Name should be 'subdir'")
+	assert.Equal(t, explorer.S3DirectoryID("/dir/subdir/"), newDir.ID, "ID should be '/dir/subdir/'")
+	assert.Len(t, dir.SubDirectoriesIDs, 1, "SubDirectoriesIDs should contain one element")
+}
+
+func Test_CreateEmptyS3Directory_ShouldReturnErrorWhenSubDirectoryAlreadyExists(t *testing.T) {
+	// Given
+	dir, _ := explorer.NewS3Directory("dir", explorer.RootDirID)
+	_, _ = dir.CreateEmptySubDirectory("subdir")
+
+	// When
+	newDir, err := dir.CreateEmptySubDirectory("subdir")
+
+	// Then
+	assert.Error(t, err)
+	assert.Equal(t, "sub directory /dir/subdir/ already exists in S3 directory /dir/", err.Error())
+	assert.Nil(t, newDir)
+}
+
+func Test_RemoveSubDirectory_ShouldRemoveSubDirectoryWhenExists(t *testing.T) {
+	// Given
+	dir, _ := explorer.NewS3Directory("dir", explorer.RootDirID)
+	subDir, _ := dir.CreateEmptySubDirectory("subdir")
+
+	// When
+	err := dir.RemoveSubDirectory(subDir.ID)
+
+	// Then
+	assert.NoError(t, err)
+	assert.Len(t, dir.SubDirectoriesIDs, 0, "SubDirectoriesIDs should be empty")
+}
+
+func Test_RemoveSubDirecotry_ShoudlReturnErrorWhenSubDirNotExists(t *testing.T) {
+	// Given
+	dir, _ := explorer.NewS3Directory("dir", explorer.RootDirID)
+	dir.CreateEmptySubDirectory("subdir")
+
+	// When
+	err := dir.RemoveSubDirectory(explorer.S3DirectoryID("/bin/"))
+
+	// Then
+	assert.Error(t, err)
+	assert.Equal(t, explorer.ErrObjectNotFoundInDirectory, err)
+}

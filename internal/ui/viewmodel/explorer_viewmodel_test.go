@@ -19,6 +19,85 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+var ctxType = reflect.TypeOf((*context.Context)(nil)).Elem()
+
+type nodeRef struct {
+	ID       string
+	ParentID string
+	TreeNode any
+}
+
+type untypedTreeBuilder struct {
+	nodes     map[string]nodeRef
+	isRootSet bool
+}
+
+func newUntypedTreeBuilder() *untypedTreeBuilder {
+	return &untypedTreeBuilder{
+		nodes: make(map[string]nodeRef),
+	}
+}
+
+func (b *untypedTreeBuilder) WithDirNode(ID, parentID string, displayName string) *untypedTreeBuilder {
+	b.nodes[ID] = nodeRef{ID, parentID, viewmodel.NewTreeNode(ID, displayName, viewmodel.TreeNodeTypeDirectory)}
+	return b
+}
+
+func (b *untypedTreeBuilder) WithLoadedDirNode(ID, parentID string, displayName string) *untypedTreeBuilder {
+	node := viewmodel.NewTreeNode(ID, displayName, viewmodel.TreeNodeTypeDirectory)
+	node.SetIsLoaded()
+	b.nodes[ID] = nodeRef{ID, parentID, node}
+	return b
+}
+
+func (b *untypedTreeBuilder) WithFileNode(ID, parentID string, displayName string) *untypedTreeBuilder {
+	b.nodes[ID] = nodeRef{ID, parentID, viewmodel.NewTreeNode(ID, displayName, viewmodel.TreeNodeTypeFile)}
+	return b
+}
+
+func (b *untypedTreeBuilder) WithLoadedFileNode(ID, parentID string, displayName string) *untypedTreeBuilder {
+	node := viewmodel.NewTreeNode(ID, displayName, viewmodel.TreeNodeTypeFile)
+	node.SetIsLoaded()
+	b.nodes[ID] = nodeRef{ID, parentID, node}
+	return b
+}
+
+func (b *untypedTreeBuilder) WithRootNode(displayName string) *untypedTreeBuilder {
+	if b.isRootSet {
+		panic("Only one root node can be set")
+	}
+	b.nodes[explorer.RootDirID.String()] = nodeRef{explorer.RootDirID.String(), "", viewmodel.NewTreeNode(explorer.RootDirID.String(), displayName, viewmodel.TreeNodeTypeBucketRoot)}
+	b.isRootSet = true
+	return b
+}
+
+func (b *untypedTreeBuilder) WithLoadedRootNode(displayName string) *untypedTreeBuilder {
+	if b.isRootSet {
+		panic("Only one root node can be set")
+	}
+	node := viewmodel.NewTreeNode(explorer.RootDirID.String(), displayName, viewmodel.TreeNodeTypeBucketRoot)
+	node.SetIsLoaded()
+	b.nodes[explorer.RootDirID.String()] = nodeRef{explorer.RootDirID.String(), "", node}
+	b.isRootSet = true
+	return b
+}
+
+func (b *untypedTreeBuilder) WithNonPointerFileNode(ID, parentID string, displayName string) *untypedTreeBuilder {
+	b.nodes[ID] = nodeRef{ID, parentID, *viewmodel.NewTreeNode(ID, displayName, viewmodel.TreeNodeTypeFile)}
+	return b
+}
+
+func (b *untypedTreeBuilder) Build() binding.UntypedTree {
+	if !b.isRootSet {
+		panic("Root node must be set before building the tree")
+	}
+	t := binding.NewUntypedTree()
+	for id, node := range b.nodes {
+		t.Append(node.ParentID, id, node.TreeNode)
+	}
+	return t
+}
+
 func areTreesEqual(actual binding.UntypedTree, expected binding.UntypedTree) (bool, string) {
 	report := ""
 	compare := func(a, b binding.UntypedTree, aLabel, bLabel string) bool {
@@ -52,17 +131,18 @@ func areTreesEqual(actual binding.UntypedTree, expected binding.UntypedTree) (bo
 }
 
 func Test_areTreesEqual_ShouldReturnTrueWhenTreesAreEqual(t *testing.T) {
-	// Given a first tree
-	tree1 := binding.NewUntypedTree()
-	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree1.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
-	tree1.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+	// Given
+	tree1 := newUntypedTreeBuilder().
+		WithRootNode("Bucket: MyBucket").
+		WithDirNode("/someDir/", "/", "somedir").
+		WithFileNode("/file.txt", "/", "file.txt").
+		Build()
 
-	// Given a second tree
-	tree2 := binding.NewUntypedTree()
-	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree2.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
-	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+	tree2 := newUntypedTreeBuilder().
+		WithRootNode("Bucket: MyBucket").
+		WithDirNode("/someDir/", "/", "somedir").
+		WithFileNode("/file.txt", "/", "file.txt").
+		Build()
 
 	// When
 	result, report := areTreesEqual(tree1, tree2)
@@ -73,17 +153,18 @@ func Test_areTreesEqual_ShouldReturnTrueWhenTreesAreEqual(t *testing.T) {
 }
 
 func Test_areTreesEqual_ShouldReturnFalseWhenATreeNotContainsPointers(t *testing.T) {
-	// Given a first tree
-	tree1 := binding.NewUntypedTree()
-	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree1.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
-	tree1.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+	// Given
+	tree1 := newUntypedTreeBuilder().
+		WithRootNode("Bucket: MyBucket").
+		WithDirNode("/someDir/", "/", "somedir").
+		WithFileNode("/file.txt", "/", "file.txt").
+		Build()
 
-	// Given a second tree
-	tree2 := binding.NewUntypedTree()
-	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree2.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
-	tree2.Append("/", "/file.txt", *viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+	tree2 := newUntypedTreeBuilder().
+		WithRootNode("Bucket: MyBucket").
+		WithDirNode("/someDir/", "/", "somedir").
+		WithNonPointerFileNode("/file.txt", "/", "file.txt").
+		Build()
 
 	// When
 	result, report := areTreesEqual(tree1, tree2)
@@ -99,17 +180,18 @@ func Test_areTreesEqual_ShouldReturnFalseWhenATreeNotContainsPointers(t *testing
 }
 
 func Test_areTreesEqual_ShouldReturnFalseWhenTreesAreNotEqual(t *testing.T) {
-	// Given a first tree
-	tree1 := binding.NewUntypedTree()
-	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree1.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
-	tree1.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+	// Given
+	tree1 := newUntypedTreeBuilder().
+		WithRootNode("Bucket: MyBucket").
+		WithDirNode("/someDir/", "/", "somedir").
+		WithFileNode("/file.txt", "/", "file.txt").
+		Build()
 
-	// Given a second tree with different content
-	tree2 := binding.NewUntypedTree()
-	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree2.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
-	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "differentFile.txt", viewmodel.TreeNodeTypeFile))
+	tree2 := newUntypedTreeBuilder().
+		WithRootNode("Bucket: MyBucket").
+		WithDirNode("/someDir/", "/", "somedir").
+		WithFileNode("/file.txt", "/", "differentFile.txt").
+		Build()
 
 	// When
 	result, report := areTreesEqual(tree1, tree2)
@@ -124,16 +206,17 @@ func Test_areTreesEqual_ShouldReturnFalseWhenTreesAreNotEqual(t *testing.T) {
 }
 
 func Test_areTreesEqual_ShouldReturnFalseWhenLessNodesInSecondTree(t *testing.T) {
-	// Given a first tree
-	tree1 := binding.NewUntypedTree()
-	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree1.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
-	tree1.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+	// Given
+	tree1 := newUntypedTreeBuilder().
+		WithRootNode("Bucket: MyBucket").
+		WithDirNode("/someDir/", "/", "somedir").
+		WithFileNode("/file.txt", "/", "file.txt").
+		Build()
 
-	// Given a second tree with less nodes
-	tree2 := binding.NewUntypedTree()
-	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree2.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
+	tree2 := newUntypedTreeBuilder().
+		WithRootNode("Bucket: MyBucket").
+		WithDirNode("/someDir/", "/", "somedir").
+		Build()
 
 	// When
 	result, report := areTreesEqual(tree1, tree2)
@@ -146,16 +229,17 @@ func Test_areTreesEqual_ShouldReturnFalseWhenLessNodesInSecondTree(t *testing.T)
 }
 
 func Test_areTreesEqual_ShouldReturnFalseWhenLessNodesInFirstTree(t *testing.T) {
-	// Given a first tree with less nodes
-	tree1 := binding.NewUntypedTree()
-	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree1.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
+	// Given
+	tree1 := newUntypedTreeBuilder().
+		WithRootNode("Bucket: MyBucket").
+		WithDirNode("/someDir/", "/", "somedir").
+		Build()
 
-	// Given a second tree
-	tree2 := binding.NewUntypedTree()
-	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree2.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
-	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+	tree2 := newUntypedTreeBuilder().
+		WithRootNode("Bucket: MyBucket").
+		WithDirNode("/someDir/", "/", "somedir").
+		WithFileNode("/file.txt", "/", "file.txt").
+		Build()
 
 	// When
 	result, report := areTreesEqual(tree1, tree2)
@@ -168,17 +252,18 @@ func Test_areTreesEqual_ShouldReturnFalseWhenLessNodesInFirstTree(t *testing.T) 
 }
 
 func Test_areTreesEqual_ShouldReturnTrueWhenSameTreesButDifferentOrder(t *testing.T) {
-	// Given a first tree
-	tree1 := binding.NewUntypedTree()
-	tree1.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree1.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
-	tree1.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
+	// Given
+	tree1 := newUntypedTreeBuilder().
+		WithRootNode("Bucket: MyBucket").
+		WithFileNode("/file.txt", "/", "file.txt").
+		WithDirNode("/someDir/", "/", "somedir").
+		Build()
 
-	// Given a second tree with different order
-	tree2 := binding.NewUntypedTree()
-	tree2.Append("/", "/someDir/", viewmodel.NewTreeNode("/someDir/", "someDir", viewmodel.TreeNodeTypeDirectory))
-	tree2.Append("", "/", viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot))
-	tree2.Append("/", "/file.txt", viewmodel.NewTreeNode("/file.txt", "file.txt", viewmodel.TreeNodeTypeFile))
+	tree2 := newUntypedTreeBuilder().
+		WithDirNode("/someDir/", "/", "somedir").
+		WithRootNode("Bucket: MyBucket").
+		WithFileNode("/file.txt", "/", "file.txt").
+		Build()
 
 	// When
 	result, report := areTreesEqual(tree1, tree2)
@@ -192,8 +277,6 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 	// Given
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
-	var ctxType = reflect.TypeOf((*context.Context)(nil)).Elem()
 
 	// setup viewmodel
 	mockConnRepo := mocks_connection.NewMockRepository(ctrl)
@@ -222,9 +305,12 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 		Times(1)
 
 	fakeSubdir, _ := explorer.NewS3Directory("subdir", fakeRootDir.ID)
+	fakeSubFile, _ := explorer.NewS3File("subfile.txt", fakeSubdir)
+	fakeSubdir.AddFile(fakeSubFile)
+	fakeSubdir.AddSubDirectory("demo")
 
 	mockDirSvc.EXPECT().
-		GetDirectoryByID(gomock.AssignableToTypeOf(ctxType), gomock.Eq(explorer.S3DirectoryID("/subdir"))).
+		GetDirectoryByID(gomock.AssignableToTypeOf(ctxType), gomock.Eq(explorer.S3DirectoryID("/subdir/"))).
 		Return(fakeSubdir, nil).
 		Times(1)
 
@@ -242,19 +328,18 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 		Return(fakeConn, nil).
 		AnyTimes()
 
-	rootTreeNode := viewmodel.NewTreeNode("/", "Bucket: MyBucket", viewmodel.TreeNodeTypeBucketRoot)
-	rootTreeNode.SetIsLoaded()
-	fileTreeNode := viewmodel.NewTreeNode("/config.txt", "config.txt", viewmodel.TreeNodeTypeFile)
-	fileTreeNode.SetIsLoaded()
-
-	expectedTree := binding.NewUntypedTree()
-	expectedTree.Append("", "/", rootTreeNode)
-	expectedTree.Append("/", "/subdir/", viewmodel.NewTreeNode("/subdir/", "subdir", viewmodel.TreeNodeTypeDirectory))
-	expectedTree.Append("/", "/config.txt", fileTreeNode)
+	expectedTree := newUntypedTreeBuilder().
+		WithLoadedRootNode("Bucket: MyBucket").
+		WithLoadedFileNode("/config.txt", "/", "config.txt").
+		WithLoadedDirNode("/subdir/", "/", "subdir").
+		WithLoadedFileNode("/subdir/subfile.txt", "/subdir/", "subfile.txt").
+		WithDirNode("/subdir/demo/", "/subdir/", "demo").
+		Build()
 
 	// When
 	vm := viewmodel.NewExplorerViewModel(mockDirSvc, mockConnRepo, mockFileSvc, mockSettingsVm)
-	err := vm.RefreshDir(explorer.S3DirectoryID("/subdir"))
+	// vm.RefreshDir(explorer.RootDirID)
+	err := vm.RefreshDir(explorer.S3DirectoryID("/subdir/"))
 
 	// Then
 	assert.NoError(t, err)

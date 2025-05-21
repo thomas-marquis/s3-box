@@ -12,7 +12,14 @@ import (
 type DirectoryService interface {
 	GetRootDirectory(ctx context.Context) (*S3Directory, error)
 	GetDirectoryByID(ctx context.Context, id S3DirectoryID) (*S3Directory, error)
+
+	// DeleteFile deletes a file from a directory
+	// It ensures the directory aggregate consistency by removing the file from the directory
+	// before deleting it from the repository
 	DeleteFile(ctx context.Context, dir *S3Directory, fileID S3FileID) error
+
+	// CreateSubDirectory creates a new subdirectory in the given parent directory
+	CreateSubDirectory(ctx context.Context, parent *S3Directory, name string) (*S3Directory, error)
 }
 
 type directoryServiceImpl struct {
@@ -65,9 +72,6 @@ func (s *directoryServiceImpl) GetDirectoryByID(ctx context.Context, id S3Direct
 	return repo.GetByID(ctx, id)
 }
 
-// DeleteFile deletes a file from a directory
-// It ensures the directory aggregate consistency by removing the file from the directory
-// before deleting it from the repository
 func (s *directoryServiceImpl) DeleteFile(ctx context.Context, dir *S3Directory, fileID S3FileID) error {
 	// First verify that the file belongs to the directory
 	if !dir.HasFile(fileID) {
@@ -121,6 +125,25 @@ func (s *directoryServiceImpl) DeleteFile(ctx context.Context, dir *S3Directory,
 	}
 
 	return nil
+}
+
+func (s *directoryServiceImpl) CreateSubDirectory(ctx context.Context, parent *S3Directory, name string) (*S3Directory, error) {
+	repo, err := s.getActiveRepository(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	newSubDirectory, err := parent.CreateEmptySubDirectory(name)
+	if err != nil {
+		return nil, fmt.Errorf("error creating subdirectory: %w", err)
+	}
+
+	if err := repo.Save(ctx, newSubDirectory); err != nil {
+		parent.RemoveSubDirectory(newSubDirectory.ID)
+		return nil, fmt.Errorf("error saving subdirectory: %w", err)
+	}
+
+	return newSubDirectory, nil
 }
 
 // getFileRepository returns the file repository for the active connection
