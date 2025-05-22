@@ -13,10 +13,15 @@ type ConnectionViewModel interface {
 	RefreshConnections() error
 	SaveConnection(c *connection.Connection) error
 	DeleteConnection(c *connection.Connection) error
+
 	// SelectConnection selects a connection and returns true if a new connection was successfully selected
 	// and false if the set connection is the same as the current connection
 	SelectConnection(c *connection.Connection) (bool, error)
+
 	ExportConnectionsAsJSON() (connection.ConnectionExport, error)
+
+	// IsLoading returns true if the current selected connection is in read only mode
+	IsReadOnly() bool
 }
 
 type connectionViewModelImpl struct {
@@ -84,6 +89,9 @@ func (vm *connectionViewModelImpl) RefreshConnections() error {
 
 	for _, c := range conns {
 		vm.connections.Append(c)
+		if c.IsSelected {
+			vm.selectedConnection = c
+		}
 	}
 
 	return nil
@@ -134,4 +142,11 @@ func (vm *connectionViewModelImpl) ExportConnectionsAsJSON() (connection.Connect
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	return vm.connRepo.ExportToJson(ctx)
+}
+
+func (vm *connectionViewModelImpl) IsReadOnly() bool {
+	if vm.selectedConnection == nil {
+		return false
+	}
+	return vm.selectedConnection.ReadOnly
 }

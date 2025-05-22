@@ -104,7 +104,6 @@ func (c *Connection) Update(other *Connection) {
 	c.AccessKey = other.AccessKey
 	c.BucketName = other.BucketName
 	c.UseTls = other.UseTls
-	c.IsSelected = other.IsSelected
 	c.Region = other.Region
 	c.Type = other.Type
 	c.ReadOnly = other.ReadOnly

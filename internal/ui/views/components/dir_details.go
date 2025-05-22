@@ -71,16 +71,14 @@ func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory
 				dialog.ShowError(err, ctx.Window()) // TODO better error handling
 				return
 			}
-
-			// if err := ctx.Vm().RefreshDir(dir); err != nil {
-			// 	dialog.ShowError(err, ctx.W()) // TODO better error handling
-			// 	return
-			// }
 			dialog.ShowInformation("Upload", "File uploaded", ctx.Window())
 		}, ctx.Window())
 
 		selectDialog.SetLocation(ctx.ExplorerViewModel().GetLastUploadDir())
 		selectDialog.Show()
+	}
+	if ctx.ConnectionViewModel().IsReadOnly() {
+		d.uploadBtn.Disable()
 	}
 
 	d.newEmptyDirBtn.OnTapped = func() {
@@ -105,5 +103,8 @@ func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory
 			},
 			ctx.Window(),
 		)
+	}
+	if ctx.ConnectionViewModel().IsReadOnly() {
+		d.newEmptyDirBtn.Disable()
 	}
 }

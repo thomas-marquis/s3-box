@@ -55,6 +55,8 @@ func GetConnectionView(ctx appcontext.AppContext) (*fyne.Container, error) {
 							connection.AsS3LikeConnection(server, useTLS),
 							connection.WithReadOnlyOption(readOnly),
 						)
+					default:
+						panic("Unknown connection type")
 					}
 					return ctx.ConnectionViewModel().SaveConnection(newConn)
 				}).Show()
