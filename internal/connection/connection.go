@@ -49,6 +49,12 @@ func AsS3LikeConnection(server string, useTLS bool) ConnectionOption {
 	}
 }
 
+func WithReadOnlyOption(readOnly bool) ConnectionOption {
+	return func(c *Connection) {
+		c.ReadOnly = readOnly
+	}
+}
+
 type Connection struct {
 	ID         uuid.UUID
 	Name       string
@@ -60,6 +66,7 @@ type Connection struct {
 	IsSelected bool
 	Region     string
 	Type       ConnectionType
+	ReadOnly   bool
 }
 
 func NewConnection(
@@ -72,6 +79,7 @@ func NewConnection(
 		AccessKey:  accessKey,
 		SecretKey:  secretKey,
 		BucketName: bucket,
+		ReadOnly:   false,
 	}
 
 	for _, opt := range options {
@@ -99,6 +107,7 @@ func (c *Connection) Update(other *Connection) {
 	c.IsSelected = other.IsSelected
 	c.Region = other.Region
 	c.Type = other.Type
+	c.ReadOnly = other.ReadOnly
 }
 
 type ConnectionExport struct {

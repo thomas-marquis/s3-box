@@ -1,8 +1,6 @@
 package components
 
 import (
-	"fmt"
-
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
@@ -40,7 +38,7 @@ func NewConnectionDialog(
 	label string,
 	defaultConn connection.Connection,
 	enableCopy bool,
-	onSave func(name, accessKey, secretKey, server, bucket, region string, useTLS bool, connectionType connection.ConnectionType) error,
+	onSave func(name, accessKey, secretKey, server, bucket, region string, useTLS, readOnly bool, connectionType connection.ConnectionType) error,
 ) *dialog.CustomDialog {
 	nameBloc, nameEntry := makeTextInput(
 		"Connection name",
@@ -88,6 +86,12 @@ func NewConnectionDialog(
 	useTlsEntry := widget.NewCheck("Use TLS", nil)
 	useTlsEntry.Checked = defaultConn.UseTls
 
+	readOnlyData := binding.NewBool()
+	readOnlyData.Set(defaultConn.ReadOnly)
+	readOnlyCheckbox := widget.NewCheck("Read only", func(checked bool) {
+		readOnlyData.Set(checked)
+	})
+
 	connectionType := binding.NewString()
 	connTypeChoice := widget.NewRadioGroup([]string{"AWS", "Other"}, func(val string) {
 		connectionType.Set(val)
@@ -104,10 +108,8 @@ func NewConnectionDialog(
 			regionBloc.Hide()
 		}
 	})
-	fmt.Println("defaultConn.Type", defaultConn.Type)
 	switch defaultConn.Type {
 	case connection.AWSConnectionType:
-		fmt.Println("AWS")
 		connTypeChoice.SetSelected("AWS")
 	case connection.S3LikeConnectionType:
 		connTypeChoice.SetSelected("Other")
@@ -128,6 +130,7 @@ func NewConnectionDialog(
 			bucketBloc,
 			regionBloc,
 			useTlsEntry,
+			readOnlyCheckbox,
 			container.NewHBox(saveBtn),
 		),
 		ctx.Window(),
@@ -135,7 +138,8 @@ func NewConnectionDialog(
 	d.Resize(fyne.NewSize(650, 200))
 
 	saveBtn.OnTapped = func() {
-		selectedConnTyêpe, _ := connectionType.Get()
+		selectedConnType, _ := connectionType.Get()
+		isReadOnlySelected, _ := readOnlyData.Get()
 		err := onSave(
 			nameEntry.Text,
 			accessKeyEntry.Text,
@@ -144,7 +148,8 @@ func NewConnectionDialog(
 			bucketEntry.Text,
 			regionEntry.Text,
 			useTlsEntry.Checked,
-			connection.ConnectionType(selectedConnTyêpe),
+			isReadOnlySelected,
+			connection.NewConnectionTypeFromString(selectedConnType),
 		)
 		if err == nil {
 			d.Hide()
@@ -156,6 +161,7 @@ func NewConnectionDialog(
 			regionEntry.Text = ""
 			useTlsEntry.Checked = false
 			connectionType.Set("AWS")
+			readOnlyData.Set(false)
 		}
 	}
 

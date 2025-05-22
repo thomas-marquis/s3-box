@@ -34,13 +34,27 @@ func GetConnectionView(ctx appcontext.AppContext) (*fyne.Container, error) {
 				"New connection",
 				*connection.NewEmptyConnection(),
 				false,
-				func(name, accessKey, secretKey, server, bucket, region string, useTLS bool, connectionType connection.ConnectionType) error {
+				func(name, accessKey, secretKey, server, bucket, region string, useTLS, readOnly bool, connectionType connection.ConnectionType) error {
 					var newConn *connection.Connection
 					switch connectionType {
 					case connection.AWSConnectionType:
-						newConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsAWSConnection(region))
+						newConn = connection.NewConnection(
+							name,
+							accessKey,
+							secretKey,
+							bucket,
+							connection.AsAWSConnection(region),
+							connection.WithReadOnlyOption(readOnly),
+						)
 					case connection.S3LikeConnectionType:
-						newConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsS3LikeConnection(server, useTLS))
+						newConn = connection.NewConnection(
+							name,
+							accessKey,
+							secretKey,
+							bucket,
+							connection.AsS3LikeConnection(server, useTLS),
+							connection.WithReadOnlyOption(readOnly),
+						)
 					}
 					return ctx.ConnectionViewModel().SaveConnection(newConn)
 				}).Show()
