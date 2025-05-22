@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-type S3DirectoryID string
-
 var ErrObjectNotFoundInDirectory = fmt.Errorf("object not found in the directory")
 
 const (
@@ -14,20 +12,6 @@ const (
 	NilParentID = S3DirectoryID("")
 	RootDirID   = S3DirectoryID("/")
 )
-
-func (id S3DirectoryID) String() string {
-	return string(id)
-}
-
-func (id S3DirectoryID) ToName() string {
-	if id == RootDirID {
-		return RootDirName
-	}
-	dirPathStriped := strings.TrimSuffix(id.String(), "/")
-	dirPathSplit := strings.Split(dirPathStriped, "/")
-	dirName := dirPathSplit[len(dirPathSplit)-1]
-	return dirName
-}
 
 type S3Directory struct {
 	ID                S3DirectoryID

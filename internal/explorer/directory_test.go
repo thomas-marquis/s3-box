@@ -8,29 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_S3DirectoryID_ToName_ShouldReturnNameOfDirectory(t *testing.T) {
-	testCases := []struct {
-		id           explorer.S3DirectoryID
-		expectedName string
-	}{
-		{explorer.RootDirID, ""},
-		{explorer.S3DirectoryID("/"), ""},
-		{explorer.S3DirectoryID("/path/"), "path"},
-		{explorer.S3DirectoryID("/path/to/dir/"), "dir"},
-		{explorer.S3DirectoryID("/path/to/dir/subdir/subsubdir/"), "subsubdir"},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.id.String(), func(t *testing.T) {
-			// When
-			name := testCase.id.ToName()
-
-			// Then
-			assert.Equal(t, testCase.expectedName, name)
-		})
-	}
-}
-
 func Test_NewS3Directory_ShouldBuildDirectoryWithNonRootParent(t *testing.T) {
 	// Given
 	parentID := explorer.S3DirectoryID("/path/to/parent/")

@@ -23,7 +23,11 @@ type ExplorerViewModel interface {
 	StopLoading()
 	Tree() binding.UntypedTree
 	RefreshDir(dirID explorer.S3DirectoryID) error
-	AppendDirToTree(dirID explorer.S3DirectoryID) error
+
+	// OpenDirectory opens a directory in the tree and loads its content.
+	// If the directory is already open, it will refresh its content.
+	OpenDirectory(dirID explorer.S3DirectoryID) error
+
 	RemoveDirToTree(dirID explorer.S3DirectoryID) error
 	GetDirByID(dirID explorer.S3DirectoryID) (*explorer.S3Directory, error)
 	GetFileByID(fileID explorer.S3FileID) (*explorer.S3File, error)
@@ -165,7 +169,7 @@ func (vm *explorerViewModelImpl) RefreshDir(dirID explorer.S3DirectoryID) error 
 	return vm.appendDirectoryContent(dirID, dir)
 }
 
-func (vm *explorerViewModelImpl) AppendDirToTree(dirID explorer.S3DirectoryID) error {
+func (vm *explorerViewModelImpl) OpenDirectory(dirID explorer.S3DirectoryID) error {
 	di, err := vm.tree.GetValue(dirID.String())
 	var existingNode *TreeNode = nil
 	if err == nil {
@@ -408,10 +412,12 @@ func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *explorer.S3Directo
 		return nil, err
 	}
 
-	if err := vm.AppendDirToTree(subDir.ID); err != nil {
+	newNode := NewTreeNode(subDir.ID.String(), subDir.ID.ToName(), TreeNodeTypeDirectory)
+	if err := vm.tree.Append(parent.ID.String(), subDir.ID.String(), newNode); err != nil {
 		vm.errChan <- fmt.Errorf("error appending new subdirectory to tree: %w", err)
 		return nil, err
 	}
+
 	return subDir, nil
 }
 
@@ -434,7 +440,7 @@ func (vm *explorerViewModelImpl) initializeTreeData(ctx context.Context) error {
 		return fmt.Errorf("error appending root directory to tree: %w", err)
 	}
 
-	if err := vm.AppendDirToTree(rootDir.ID); err != nil {
+	if err := vm.OpenDirectory(rootDir.ID); err != nil {
 		return fmt.Errorf("error appending root directory to tree: %w", err)
 	}
 
@@ -495,7 +501,6 @@ func (vm *explorerViewModelImpl) appendDirectoryContent(dirID explorer.S3Directo
 func (vm *explorerViewModelImpl) appendDirectoryNode(parentDirID explorer.S3DirectoryID, dirID explorer.S3DirectoryID) error {
 	dirNode := NewTreeNode(dirID.String(), dirID.ToName(), TreeNodeTypeDirectory)
 	dirNode.SetIsNotLoaded()
-	panic("COUCOU")
 
 	if err := vm.tree.Append(parentDirID.String(), dirNode.ID, dirNode); err != nil {
 		vm.errChan <- fmt.Errorf("error appending subdirectory to tree: %w", err)

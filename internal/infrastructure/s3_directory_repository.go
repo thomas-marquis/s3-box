@@ -54,7 +54,7 @@ func NewS3DirectoryRepositoryImpl(logger *zap.Logger, conn *connection.Connectio
 }
 
 func (r *S3DirectoryRepositoryImpl) GetByID(ctx context.Context, id explorer.S3DirectoryID) (*explorer.S3Directory, error) {
-	parentID := getParentDirIDFromChildID(id)
+	parentID := id.InferParentID()
 	dirName := id.ToName()
 	dir, err := explorer.NewS3Directory(dirName, parentID)
 	if err != nil {
@@ -125,21 +125,6 @@ func getQueryPath(id explorer.S3DirectoryID) string {
 		queryPath = strings.TrimSuffix(queryPath, "/") + "/"
 	}
 	return queryPath
-}
-
-func getParentDirIDFromChildID(id explorer.S3DirectoryID) explorer.S3DirectoryID {
-	if id == explorer.RootDirID || id == explorer.NilParentID {
-		return explorer.NilParentID
-	}
-	dirPathStriped := strings.TrimSuffix(id.String(), "/")
-	dirPathSplit := strings.Split(dirPathStriped, "/")
-
-	if len(dirPathSplit) <= 1 {
-		return explorer.RootDirID
-	}
-
-	parentPath := strings.Join(dirPathSplit[:len(dirPathSplit)-1], "/")
-	return explorer.S3DirectoryID(parentPath)
 }
 
 func getNameFromS3Key(path string) string {

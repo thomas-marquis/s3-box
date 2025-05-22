@@ -102,10 +102,6 @@ func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory
 					dialog.ShowError(err, ctx.Window())
 					return
 				}
-				if err := ctx.ExplorerViewModel().RefreshDir(dir.ID); err != nil {
-					dialog.ShowError(err, ctx.Window())
-					return
-				}
 			},
 			ctx.Window(),
 		)
