@@ -77,7 +77,11 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 	}
 
 	name := leftGroup.Objects[1].(*widget.Label)
-	name.SetText(conn.Name)
+	if conn.ReadOnly {
+		name.SetText(fmt.Sprintf("%s (read-only)", conn.Name))
+	} else {
+		name.SetText(conn.Name)
+	}
 
 	bucket := leftGroup.Objects[3].(*widget.Label)
 	bucket.SetText(fmt.Sprintf("%s/%s", conn.Server, conn.BucketName))
