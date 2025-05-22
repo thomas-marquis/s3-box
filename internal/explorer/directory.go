@@ -5,27 +5,13 @@ import (
 	"strings"
 )
 
-type S3DirectoryID string
+var ErrObjectNotFoundInDirectory = fmt.Errorf("object not found in the directory")
 
 const (
 	RootDirName = ""
 	NilParentID = S3DirectoryID("")
 	RootDirID   = S3DirectoryID("/")
 )
-
-func (id S3DirectoryID) String() string {
-	return string(id)
-}
-
-func (id S3DirectoryID) ToName() string {
-	if id == RootDirID {
-		return RootDirName
-	}
-	dirPathStriped := strings.TrimSuffix(id.String(), "/")
-	dirPathSplit := strings.Split(dirPathStriped, "/")
-	dirName := dirPathSplit[len(dirPathSplit)-1]
-	return dirName
-}
 
 type S3Directory struct {
 	ID                S3DirectoryID
@@ -121,6 +107,33 @@ func (d *S3Directory) HasFile(fileID S3FileID) bool {
 		}
 	}
 	return false
+}
+
+func (d *S3Directory) CreateEmptySubDirectory(name string) (*S3Directory, error) {
+	subDir, err := NewS3Directory(name, d.ID)
+	if err != nil {
+		return nil, err
+	}
+	err = d.AddSubDirectory(name)
+	if err != nil {
+		return nil, err
+	}
+	return subDir, nil
+}
+
+func (d *S3Directory) RemoveSubDirectory(subDirID S3DirectoryID) error {
+	found := false
+	for i, sdID := range d.SubDirectoriesIDs {
+		if sdID == subDirID {
+			d.SubDirectoriesIDs = append(d.SubDirectoriesIDs[:i], d.SubDirectoriesIDs[i+1:]...)
+			found = true
+			break
+		}
+	}
+	if !found {
+		return ErrObjectNotFoundInDirectory
+	}
+	return nil
 }
 
 func buildID(dirName string, parentID S3DirectoryID) S3DirectoryID {

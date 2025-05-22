@@ -41,6 +41,21 @@ func (m *MockDirectoryService) EXPECT() *MockDirectoryServiceMockRecorder {
 	return m.recorder
 }
 
+// CreateSubDirectory mocks base method.
+func (m *MockDirectoryService) CreateSubDirectory(ctx context.Context, parent *explorer.S3Directory, name string) (*explorer.S3Directory, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSubDirectory", ctx, parent, name)
+	ret0, _ := ret[0].(*explorer.S3Directory)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateSubDirectory indicates an expected call of CreateSubDirectory.
+func (mr *MockDirectoryServiceMockRecorder) CreateSubDirectory(ctx, parent, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSubDirectory", reflect.TypeOf((*MockDirectoryService)(nil).CreateSubDirectory), ctx, parent, name)
+}
+
 // DeleteFile mocks base method.
 func (m *MockDirectoryService) DeleteFile(ctx context.Context, dir *explorer.S3Directory, fileID explorer.S3FileID) error {
 	m.ctrl.T.Helper()

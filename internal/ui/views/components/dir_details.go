@@ -1,6 +1,8 @@
 package components
 
 import (
+	"fmt"
+
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
@@ -14,8 +16,9 @@ import (
 type DirDetials struct {
 	c *fyne.Container
 
-	pathLabel *widget.Label
-	uploadBtn *widget.Button
+	pathLabel      *widget.Label
+	uploadBtn      *widget.Button
+	newEmptyDirBtn *widget.Button
 }
 
 func NewDirDetails() *DirDetials {
@@ -23,18 +26,21 @@ func NewDirDetails() *DirDetials {
 
 	uploadBtn := widget.NewButton("Upload file", func() {})
 
+	newEmptyDirBtn := widget.NewButtonWithIcon("New sub directory", theme.ContentAddIcon(), func() {})
+
 	top := container.NewHBox(
 		widget.NewIcon(theme.FolderIcon()),
 		pathLabel,
 	)
 	c := container.NewBorder(
-		top, uploadBtn,
+		top, container.NewVBox(uploadBtn, newEmptyDirBtn),
 		nil, nil,
 	)
 	return &DirDetials{
-		c:         c,
-		pathLabel: pathLabel,
-		uploadBtn: uploadBtn,
+		c:              c,
+		pathLabel:      pathLabel,
+		uploadBtn:      uploadBtn,
+		newEmptyDirBtn: newEmptyDirBtn,
 	}
 }
 
@@ -75,5 +81,29 @@ func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory
 
 		selectDialog.SetLocation(ctx.ExplorerViewModel().GetLastUploadDir())
 		selectDialog.Show()
+	}
+
+	d.newEmptyDirBtn.OnTapped = func() {
+		nameEntry := widget.NewEntry()
+		dialog.ShowForm(
+			fmt.Sprintf("New directory under %s", dir.Name),
+			"Create",
+			"Cancel",
+			[]*widget.FormItem{
+				widget.NewFormItem("Name", nameEntry),
+			},
+			func(ok bool) {
+				if !ok {
+					return
+				}
+				name := nameEntry.Text
+				_, err := ctx.ExplorerViewModel().CreateEmptyDirectory(dir, name)
+				if err != nil {
+					dialog.ShowError(err, ctx.Window())
+					return
+				}
+			},
+			ctx.Window(),
+		)
 	}
 }

@@ -73,7 +73,7 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		}
 
 		if (nodeItem.Type == viewmodel.TreeNodeTypeDirectory || nodeItem.Type == viewmodel.TreeNodeTypeBucketRoot) && !nodeItem.IsLoaded() {
-			if err := ctx.ExplorerViewModel().AppendDirToTree(explorer.S3DirectoryID(nodeItem.ID)); err != nil {
+			if err := ctx.ExplorerViewModel().OpenDirectory(explorer.S3DirectoryID(nodeItem.ID)); err != nil {
 				ctx.ExplorerViewModel().ErrorChan() <- err
 				return
 			}

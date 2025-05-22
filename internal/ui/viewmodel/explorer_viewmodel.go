@@ -23,13 +23,19 @@ type ExplorerViewModel interface {
 	StopLoading()
 	Tree() binding.UntypedTree
 	RefreshDir(dirID explorer.S3DirectoryID) error
-	AppendDirToTree(dirID explorer.S3DirectoryID) error
+
+	// OpenDirectory opens a directory in the tree and loads its content.
+	// If the directory is already open, it will refresh its content.
+	OpenDirectory(dirID explorer.S3DirectoryID) error
+
 	RemoveDirToTree(dirID explorer.S3DirectoryID) error
 	GetDirByID(dirID explorer.S3DirectoryID) (*explorer.S3Directory, error)
 	GetFileByID(fileID explorer.S3FileID) (*explorer.S3File, error)
 	PreviewFile(f *explorer.S3File) (string, error)
+
 	// GetMaxFileSizePreview returns the max file size preview in bytes
 	GetMaxFileSizePreview() int64
+
 	ResetTree() error
 	DownloadFile(f *explorer.S3File, dest string) error
 	UploadFile(localPath string, remoteDir *explorer.S3Directory) error
@@ -38,6 +44,9 @@ type ExplorerViewModel interface {
 	SetLastSaveDir(filePath string) error
 	GetLastUploadDir() fyne.ListableURI
 	SetLastUploadDir(filePath string) error
+
+	// CreateEmptySubDirectory creates an empty subdirectory in the given parent directory
+	CreateEmptyDirectory(parent *explorer.S3Directory, name string) (*explorer.S3Directory, error)
 }
 
 type explorerViewModelImpl struct {
@@ -143,6 +152,16 @@ func (vm *explorerViewModelImpl) RefreshDir(dirID explorer.S3DirectoryID) error 
 		return err
 	}
 
+	dirTreeNodeItem, err := vm.tree.GetValue(dirID.String())
+	if err != nil {
+		return fmt.Errorf("impossible to retreive the direcotry you want to refresh: %s", dirID.String())
+	}
+	dirTreeNode, ok := dirTreeNodeItem.(*TreeNode)
+	if !ok {
+		panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", dirID.String()))
+	}
+	dirTreeNode.SetIsLoaded()
+
 	if err := vm.removeDirectoryContent(dirID); err != nil {
 		return err
 	}
@@ -150,11 +169,7 @@ func (vm *explorerViewModelImpl) RefreshDir(dirID explorer.S3DirectoryID) error 
 	return vm.appendDirectoryContent(dirID, dir)
 }
 
-func (vm *explorerViewModelImpl) AppendDirToTree(dirID explorer.S3DirectoryID) error {
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, vm.settingsVm.CurrentTimeout())
-	defer cancel()
-
+func (vm *explorerViewModelImpl) OpenDirectory(dirID explorer.S3DirectoryID) error {
 	di, err := vm.tree.GetValue(dirID.String())
 	var existingNode *TreeNode = nil
 	if err == nil {
@@ -164,6 +179,10 @@ func (vm *explorerViewModelImpl) AppendDirToTree(dirID explorer.S3DirectoryID) e
 			panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", dirID.String()))
 		}
 	}
+
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, vm.settingsVm.CurrentTimeout())
+	defer cancel()
 
 	dir, err := vm.dirSvc.GetDirectoryByID(ctx, dirID)
 	if err != nil {
@@ -383,6 +402,25 @@ func (vm *explorerViewModelImpl) SetLastUploadDir(filePath string) error {
 	return nil
 }
 
+func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *explorer.S3Directory, name string) (*explorer.S3Directory, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
+	defer cancel()
+
+	subDir, err := vm.dirSvc.CreateSubDirectory(ctx, parent, name)
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error creating subdirectory: %w", err)
+		return nil, err
+	}
+
+	newNode := NewTreeNode(subDir.ID.String(), subDir.ID.ToName(), TreeNodeTypeDirectory)
+	if err := vm.tree.Append(parent.ID.String(), subDir.ID.String(), newNode); err != nil {
+		vm.errChan <- fmt.Errorf("error appending new subdirectory to tree: %w", err)
+		return nil, err
+	}
+
+	return subDir, nil
+}
+
 func (vm *explorerViewModelImpl) resetTreeContent() {
 	vm.tree = binding.NewUntypedTree()
 }
@@ -402,7 +440,7 @@ func (vm *explorerViewModelImpl) initializeTreeData(ctx context.Context) error {
 		return fmt.Errorf("error appending root directory to tree: %w", err)
 	}
 
-	if err := vm.AppendDirToTree(rootDir.ID); err != nil {
+	if err := vm.OpenDirectory(rootDir.ID); err != nil {
 		return fmt.Errorf("error appending root directory to tree: %w", err)
 	}
 
