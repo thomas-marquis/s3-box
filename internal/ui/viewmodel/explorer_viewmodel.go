@@ -47,9 +47,6 @@ type ExplorerViewModel interface {
 
 	// CreateEmptySubDirectory creates an empty subdirectory in the given parent directory
 	CreateEmptyDirectory(parent *explorer.S3Directory, name string) (*explorer.S3Directory, error)
-
-	// IsReadOnly checks if the current connection is read-only
-	// IsReadOnly() bool
 }
 
 type explorerViewModelImpl struct {
@@ -423,17 +420,6 @@ func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *explorer.S3Directo
 
 	return subDir, nil
 }
-
-// func (vm *explorerViewModelImpl) IsReadOnly() bool {
-// 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
-// 	defer cancel()
-// 	currentConn, err := vm.connRepo.GetSelectedConnection(ctx)
-// 	if err != nil {
-// 		vm.errChan <- fmt.Errorf("error getting selected connection: %w", err)
-// 		return false
-// 	}
-// 	return currentConn.ReadOnly
-// }
 
 func (vm *explorerViewModelImpl) resetTreeContent() {
 	vm.tree = binding.NewUntypedTree()
