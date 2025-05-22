@@ -88,9 +88,7 @@ func NewConnectionDialog(
 
 	readOnlyData := binding.NewBool()
 	readOnlyData.Set(defaultConn.ReadOnly)
-	readOnlyCheckbox := widget.NewCheck("Read only", func(checked bool) {
-		readOnlyData.Set(checked)
-	})
+	readOnlyCheckbox := widget.NewCheckWithData("Read only", readOnlyData)
 
 	connectionType := binding.NewString()
 	connTypeChoice := widget.NewRadioGroup([]string{"AWS", "Other"}, func(val string) {
