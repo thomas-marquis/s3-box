@@ -1,6 +1,10 @@
 package connection
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 type ConnectionType string
 
@@ -9,9 +13,21 @@ func (c ConnectionType) String() string {
 }
 
 const (
-	AWSConnectionType    ConnectionType = "aws"
-	S3LikeConnectionType ConnectionType = "s3-like"
+	AWSConnectionType     ConnectionType = "aws"
+	S3LikeConnectionType  ConnectionType = "s3-like"
+	DefaultConnectionType ConnectionType = S3LikeConnectionType
 )
+
+func NewConnectionTypeFromString(s string) ConnectionType {
+	switch strings.ToLower(s) {
+	case AWSConnectionType.String():
+		return AWSConnectionType
+	case S3LikeConnectionType.String():
+		return S3LikeConnectionType
+	default:
+		return DefaultConnectionType
+	}
+}
 
 type ConnectionOption func(*Connection)
 

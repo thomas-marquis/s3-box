@@ -38,7 +38,7 @@ func (c *connectionDTO) toConnection() *connection.Connection {
 		IsSelected: c.Selected,
 		BucketName: c.Buket,
 		Region:     c.Region,
-		Type:       connection.ConnectionType(c.Type),
+		Type:       connection.NewConnectionTypeFromString(c.Type),
 		UseTls:     c.UseTls,
 	}
 }

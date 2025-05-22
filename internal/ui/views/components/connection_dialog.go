@@ -1,6 +1,8 @@
 package components
 
 import (
+	"fmt"
+
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
@@ -102,8 +104,10 @@ func NewConnectionDialog(
 			regionBloc.Hide()
 		}
 	})
+	fmt.Println("defaultConn.Type", defaultConn.Type)
 	switch defaultConn.Type {
 	case connection.AWSConnectionType:
+		fmt.Println("AWS")
 		connTypeChoice.SetSelected("AWS")
 	case connection.S3LikeConnectionType:
 		connTypeChoice.SetSelected("Other")
