@@ -38,7 +38,7 @@ func NewConnectionDialog(
 	label string,
 	defaultConn connection.Connection,
 	enableCopy bool,
-	onSave func(name, accessKey, secretKey, server, bucket, region string, useTLS, readOnly bool, connectionType connection.ConnectionType) error,
+	onSave func(conn *connection.Connection) error,
 ) *dialog.CustomDialog {
 	nameBloc, nameEntry := makeTextInput(
 		"Connection name",
@@ -138,18 +138,32 @@ func NewConnectionDialog(
 	saveBtn.OnTapped = func() {
 		selectedConnType, _ := connectionType.Get()
 		isReadOnlySelected, _ := readOnlyData.Get()
-		err := onSave(
-			nameEntry.Text,
-			accessKeyEntry.Text,
-			secretKeyEntry.Text,
-			serverEntry.Text,
-			bucketEntry.Text,
-			regionEntry.Text,
-			useTlsEntry.Checked,
-			isReadOnlySelected,
-			connection.NewConnectionTypeFromString(selectedConnType),
-		)
-		if err == nil {
+
+		var newConn *connection.Connection
+		switch connection.NewConnectionTypeFromString(selectedConnType) {
+		case connection.AWSConnectionType:
+			newConn = connection.NewConnection(
+				nameEntry.Text,
+				accessKeyEntry.Text,
+				secretKeyEntry.Text,
+				bucketEntry.Text,
+				connection.AsAWSConnection(regionEntry.Text),
+				connection.WithReadOnlyOption(isReadOnlySelected),
+			)
+		case connection.S3LikeConnectionType:
+			newConn = connection.NewConnection(
+				nameEntry.Text,
+				accessKeyEntry.Text,
+				secretKeyEntry.Text,
+				bucketEntry.Text,
+				connection.AsS3LikeConnection(serverEntry.Text, useTlsEntry.Checked),
+				connection.WithReadOnlyOption(isReadOnlySelected),
+			)
+		default:
+			panic("Unknown connection type")
+		}
+
+		if err := onSave(newConn); err == nil {
 			d.Hide()
 			nameEntry.Text = ""
 			accessKeyEntry.Text = ""

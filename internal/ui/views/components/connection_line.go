@@ -94,28 +94,7 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 			"Edit connection",
 			*conn,
 			true,
-			func(name, accessKey, secretKey, server, bucket, region string, useTLS, readOnly bool, connectionType connection.ConnectionType) error {
-				var updatedConn *connection.Connection
-				switch connectionType {
-				case connection.AWSConnectionType:
-					updatedConn = connection.NewConnection(
-						name,
-						accessKey,
-						secretKey,
-						bucket,
-						connection.WithReadOnlyOption(readOnly),
-						connection.AsAWSConnection(region),
-					)
-				case connection.S3LikeConnectionType:
-					updatedConn = connection.NewConnection(
-						name,
-						accessKey,
-						secretKey,
-						bucket,
-						connection.WithReadOnlyOption(readOnly),
-						connection.AsS3LikeConnection(server, useTLS),
-					)
-				}
+			func(updatedConn *connection.Connection) error {
 				conn.Update(updatedConn)
 				return ctx.ConnectionViewModel().SaveConnection(conn)
 			}).Show()
