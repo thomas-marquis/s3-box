@@ -26,6 +26,7 @@ type connectionDTO struct {
 	Region    string    `json:"region,omitempty"`
 	Type      string    `json:"type,omitempty"`
 	UseTls    bool      `json:"useTls,omitempty"`
+	ReadOnly  bool      `json:"readOnly,omitempty"`
 }
 
 func (c *connectionDTO) toConnection() *connection.Connection {
@@ -38,8 +39,9 @@ func (c *connectionDTO) toConnection() *connection.Connection {
 		IsSelected: c.Selected,
 		BucketName: c.Buket,
 		Region:     c.Region,
-		Type:       connection.ConnectionType(c.Type),
+		Type:       connection.NewConnectionTypeFromString(c.Type),
 		UseTls:     c.UseTls,
+		ReadOnly:   c.ReadOnly,
 	}
 }
 
@@ -55,6 +57,7 @@ func newConnectionDTO(c *connection.Connection) *connectionDTO {
 		Region:    c.Region,
 		Type:      c.Type.String(),
 		UseTls:    c.UseTls,
+		ReadOnly:  c.ReadOnly,
 	}
 }
 

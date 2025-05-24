@@ -1,6 +1,10 @@
 package connection
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 type ConnectionType string
 
@@ -9,9 +13,21 @@ func (c ConnectionType) String() string {
 }
 
 const (
-	AWSConnectionType    ConnectionType = "aws"
-	S3LikeConnectionType ConnectionType = "s3-like"
+	AWSConnectionType     ConnectionType = "aws"
+	S3LikeConnectionType  ConnectionType = "s3-like"
+	DefaultConnectionType ConnectionType = S3LikeConnectionType
 )
+
+func NewConnectionTypeFromString(s string) ConnectionType {
+	switch strings.ToLower(s) {
+	case AWSConnectionType.String():
+		return AWSConnectionType
+	case S3LikeConnectionType.String():
+		return S3LikeConnectionType
+	default:
+		return DefaultConnectionType
+	}
+}
 
 type ConnectionOption func(*Connection)
 
@@ -33,6 +49,12 @@ func AsS3LikeConnection(server string, useTLS bool) ConnectionOption {
 	}
 }
 
+func WithReadOnlyOption(readOnly bool) ConnectionOption {
+	return func(c *Connection) {
+		c.ReadOnly = readOnly
+	}
+}
+
 type Connection struct {
 	ID         uuid.UUID
 	Name       string
@@ -44,6 +66,7 @@ type Connection struct {
 	IsSelected bool
 	Region     string
 	Type       ConnectionType
+	ReadOnly   bool
 }
 
 func NewConnection(
@@ -56,6 +79,7 @@ func NewConnection(
 		AccessKey:  accessKey,
 		SecretKey:  secretKey,
 		BucketName: bucket,
+		ReadOnly:   false,
 	}
 
 	for _, opt := range options {
@@ -80,9 +104,9 @@ func (c *Connection) Update(other *Connection) {
 	c.AccessKey = other.AccessKey
 	c.BucketName = other.BucketName
 	c.UseTls = other.UseTls
-	c.IsSelected = other.IsSelected
 	c.Region = other.Region
 	c.Type = other.Type
+	c.ReadOnly = other.ReadOnly
 }
 
 type ConnectionExport struct {

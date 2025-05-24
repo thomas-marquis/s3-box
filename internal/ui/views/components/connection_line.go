@@ -77,7 +77,11 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 	}
 
 	name := leftGroup.Objects[1].(*widget.Label)
-	name.SetText(conn.Name)
+	if conn.ReadOnly {
+		name.SetText(fmt.Sprintf("%s (read-only)", conn.Name))
+	} else {
+		name.SetText(conn.Name)
+	}
 
 	bucket := leftGroup.Objects[3].(*widget.Label)
 	bucket.SetText(fmt.Sprintf("%s/%s", conn.Server, conn.BucketName))
@@ -90,14 +94,7 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 			"Edit connection",
 			*conn,
 			true,
-			func(name, accessKey, secretKey, server, bucket, region string, useTLS bool, connectionType connection.ConnectionType) error {
-				var updatedConn *connection.Connection
-				switch connectionType {
-				case connection.AWSConnectionType:
-					updatedConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsAWSConnection(region))
-				case connection.S3LikeConnectionType:
-					updatedConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsS3LikeConnection(server, useTLS))
-				}
+			func(updatedConn *connection.Connection) error {
 				conn.Update(updatedConn)
 				return ctx.ConnectionViewModel().SaveConnection(conn)
 			}).Show()

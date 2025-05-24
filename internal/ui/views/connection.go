@@ -34,16 +34,7 @@ func GetConnectionView(ctx appcontext.AppContext) (*fyne.Container, error) {
 				"New connection",
 				*connection.NewEmptyConnection(),
 				false,
-				func(name, accessKey, secretKey, server, bucket, region string, useTLS bool, connectionType connection.ConnectionType) error {
-					var newConn *connection.Connection
-					switch connectionType {
-					case connection.AWSConnectionType:
-						newConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsAWSConnection(region))
-					case connection.S3LikeConnectionType:
-						newConn = connection.NewConnection(name, accessKey, secretKey, bucket, connection.AsS3LikeConnection(server, useTLS))
-					}
-					return ctx.ConnectionViewModel().SaveConnection(newConn)
-				}).Show()
+				ctx.ConnectionViewModel().SaveConnection).Show()
 		})
 
 	goToExplorerBtn := widget.NewButtonWithIcon(

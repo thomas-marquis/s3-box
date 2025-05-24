@@ -159,4 +159,7 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 			}
 		}, ctx.Window())
 	}
+	if ctx.ConnectionViewModel().IsReadOnly() {
+		f.deleteBtn.Disable()
+	}
 }
