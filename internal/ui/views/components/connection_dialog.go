@@ -3,6 +3,7 @@ package components
 import (
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -11,32 +12,6 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
-
-// TODO: move it to utility module
-func getString(data binding.String) string {
-	value, err := data.Get()
-	if err != nil {
-		panic("error while getting string from binding")
-	}
-	return value
-}
-
-func getBool(data binding.Bool) bool {
-	value, err := data.Get()
-	if err != nil {
-		panic("error while getting string from binding")
-	}
-	return value
-}
-
-func getUntypedOrPanic[T any](data binding.Untyped) T {
-	di, _ := data.Get()
-	value, ok := di.(T)
-	if !ok {
-		panic("Invalid connection type")
-	}
-	return value
-}
 
 func makeCopyBtnWithData(enableCopy bool, data binding.String, w fyne.Window) *widget.Button {
 	return widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
@@ -58,18 +33,6 @@ func makeTextFormItemWithData(data binding.String, label, placeholder string, en
 	}
 
 	return formItem
-}
-
-func makeTextInputWithData(data binding.String, label, placeholder string, enableCopy bool, w fyne.Window) (*fyne.Container, *widget.Entry) {
-	entry := widget.NewEntryWithData(data)
-	entry.SetPlaceHolder(placeholder)
-	copyBtn := makeCopyBtnWithData(enableCopy, data, w)
-	if !enableCopy {
-		copyBtn.Hide()
-	}
-	entryLabel := widget.NewLabel(label)
-	c := container.NewBorder(nil, nil, entryLabel, copyBtn, entry)
-	return c, entry
 }
 
 func buildAWSForm(
@@ -148,12 +111,12 @@ func buildAWSForm(
 	)
 	f.OnSubmit = func() {
 		newConn := connection.NewConnection(
-			getString(nameData),
-			getString(accessKeyData),
-			getString(secretKeyData),
-			getString(bucketData),
-			connection.AsAWSConnection(getString(regionData)),
-			connection.WithReadOnlyOption(getBool(readOnlyData)),
+			uiutils.GetString(nameData),
+			uiutils.GetString(accessKeyData),
+			uiutils.GetString(secretKeyData),
+			uiutils.GetString(bucketData),
+			connection.AsAWSConnection(uiutils.GetString(regionData)),
+			connection.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
 		)
 
 		if err := onSubmit(newConn); err == nil {
@@ -165,7 +128,6 @@ func buildAWSForm(
 			readOnlyData.Set(false)
 		}
 	}
-	f.SubmitText = "Save"
 
 	return f
 }
@@ -252,12 +214,12 @@ func buildS3LikeForm(
 	)
 	f.OnSubmit = func() {
 		newConn := connection.NewConnection(
-			getString(nameData),
-			getString(accessKeyData),
-			getString(secretKeyData),
-			getString(bucketData),
-			connection.AsS3LikeConnection(getString(serverData), getBool(useTlsData)),
-			connection.WithReadOnlyOption(getBool(readOnlyData)),
+			uiutils.GetString(nameData),
+			uiutils.GetString(accessKeyData),
+			uiutils.GetString(secretKeyData),
+			uiutils.GetString(bucketData),
+			connection.AsS3LikeConnection(uiutils.GetString(serverData), uiutils.GetBool(useTlsData)),
+			connection.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
 		)
 
 		if err := onSubmit(newConn); err == nil {
@@ -270,7 +232,6 @@ func buildS3LikeForm(
 			readOnlyData.Set(false)
 		}
 	}
-	f.SubmitText = "Save"
 
 	return f
 }
@@ -290,19 +251,25 @@ func NewConnectionDialog(
 		return err
 	}
 
+	awsForm := buildAWSForm(ctx, defaultConn, enableCopy, handleOnSubmit)
+	awsForm.SubmitText = "Save"
+
+	s3LikeForm := buildS3LikeForm(ctx, defaultConn, enableCopy, handleOnSubmit)
+	s3LikeForm.SubmitText = "Save"
+
 	tabs := container.NewAppTabs(
 		container.NewTabItem(
 			"AWS",
 			container.NewVBox(
 				widget.NewLabel(""),
-				buildAWSForm(ctx, defaultConn, enableCopy, handleOnSubmit),
+				awsForm,
 			),
 		),
 		container.NewTabItem(
 			"Other (S3 Like)",
 			container.NewVBox(
 				widget.NewLabel(""),
-				buildS3LikeForm(ctx, defaultConn, enableCopy, handleOnSubmit),
+				s3LikeForm,
 			),
 		),
 	)
