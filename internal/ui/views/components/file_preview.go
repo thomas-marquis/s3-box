@@ -36,24 +36,26 @@ func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.S3File) {
 	nbLines := binding.NewInt()
 
 	go func() {
-		loading.Set(true)
-		defer loading.Set(false)
-		fileContent, err := ctx.ExplorerViewModel().PreviewFile(file)
-		if err != nil {
-			dialog.ShowError(err, ctx.Window())
-			return
-		}
-		if !isStringPrintable(fileContent) {
-			fileContent = "Binary file, no preview available."
-		}
-		if err = nbLines.Set(strings.Count(fileContent, "\n") + 1); err != nil {
-			dialog.ShowError(fmt.Errorf("impossible to display line number: %s", err), ctx.Window())
-			return
-		}
-		if err = previewData.Set(fileContent); err != nil {
-			dialog.ShowError(fmt.Errorf("file preview impossible: %s", err), ctx.Window())
-			return
-		}
+		fyne.Do(func() {
+			loading.Set(true)
+			defer loading.Set(false)
+			fileContent, err := ctx.ExplorerViewModel().PreviewFile(file)
+			if err != nil {
+				dialog.ShowError(err, ctx.Window())
+				return
+			}
+			if !isStringPrintable(fileContent) {
+				fileContent = "Binary file, no preview available."
+			}
+			if err = nbLines.Set(strings.Count(fileContent, "\n") + 1); err != nil {
+				dialog.ShowError(fmt.Errorf("impossible to display line number: %s", err), ctx.Window())
+				return
+			}
+			if err = previewData.Set(fileContent); err != nil {
+				dialog.ShowError(fmt.Errorf("file preview impossible: %s", err), ctx.Window())
+				return
+			}
+		})
 	}()
 
 	preview := widget.NewEntryWithData(previewData)
