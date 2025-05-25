@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2/data/binding"
+	_ "fyne.io/fyne/v2/test"
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
