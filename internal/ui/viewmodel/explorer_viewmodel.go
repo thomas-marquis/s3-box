@@ -77,6 +77,13 @@ func NewExplorerViewModel(
 	t := binding.NewUntypedTree()
 	errChan := make(chan error)
 
+	// Start error handler
+	go func() {
+		for err := range errChan {
+			fmt.Printf("Error in ExplorerViewModel: %v\n", err)
+		}
+	}()
+
 	vm := &explorerViewModelImpl{
 		tree:                      t,
 		dirSvc:                    dirSvc,
@@ -89,13 +96,6 @@ func NewExplorerViewModel(
 		connRepo:                  connRepo,
 		displayNoConnectionBanner: binding.NewBool(),
 	}
-
-	// Start error handler
-	go func() {
-		for err := range errChan {
-			fmt.Printf("Error in ExplorerViewModel: %v\n", err)
-		}
-	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout()*2)
 	defer cancel()

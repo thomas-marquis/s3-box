@@ -40,6 +40,12 @@ var _ SettingsViewModel = &settingsViewModelImpl{}
 func NewSettingsViewModel(settingsRepo settings.Repository, fyneSettings fyne.Settings) SettingsViewModel {
 	errChan := make(chan error)
 
+	go func() {
+		for err := range errChan {
+			fmt.Printf("Error in SettingsViewModel: %v\n", err)
+		}
+	}()
+
 	ctx, cancel := context.WithTimeout(context.Background(), settingsTimeout)
 	defer cancel()
 	s, err := settingsRepo.Get(ctx)
@@ -48,6 +54,7 @@ func NewSettingsViewModel(settingsRepo settings.Repository, fyneSettings fyne.Se
 	}
 
 	themeBinding := binding.NewString()
+
 	themeBinding.AddListener(binding.NewDataListener(func() {
 		currThemeName, err := themeBinding.Get()
 		if err != nil {
@@ -73,12 +80,6 @@ func NewSettingsViewModel(settingsRepo settings.Repository, fyneSettings fyne.Se
 	}
 
 	vm.synchronize(s)
-
-	go func() {
-		for err := range errChan {
-			fmt.Printf("Error in SettingsViewModel: %v\n", err)
-		}
-	}()
 
 	return vm
 }

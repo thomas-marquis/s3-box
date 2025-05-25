@@ -1,8 +1,11 @@
 all:
-	@go build -o s3box main.go
+	@echo "Building...."
+	@go build -v -o s3box main.go
+	@echo "Build complete."
 
 .PHONY: run
 run: all
+	@echo "Running..."
 	@./s3box
 
 .PHONY: clean
