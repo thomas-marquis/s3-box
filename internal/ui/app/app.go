@@ -42,7 +42,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	// TODO: setup the last connection in other part of the app
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // TODO get this from the user's settings
 	defer cancel()
-	lastSelectedConn, err := connRepo.GetSelectedConnection(ctx)
+	lastSelectedConn, err := connRepo.GetSelected(ctx)
 	if err != nil && err != connection.ErrConnectionNotFound {
 		sugarLog.Error("Error getting selected connection", err)
 		return nil, err

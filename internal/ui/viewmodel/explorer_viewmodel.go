@@ -100,7 +100,7 @@ func NewExplorerViewModel(
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout()*2)
 	defer cancel()
 
-	_, err := connRepo.GetSelectedConnection(ctx)
+	_, err := connRepo.GetSelected(ctx)
 	if err != nil && err != connection.ErrConnectionNotFound {
 		vm.errChan <- fmt.Errorf("error getting selected connection: %w", err)
 	}
@@ -430,7 +430,7 @@ func (vm *explorerViewModelImpl) initializeTreeData(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("error getting root directory: %w", err)
 	}
-	currentConn, err := vm.connRepo.GetSelectedConnection(ctx)
+	currentConn, err := vm.connRepo.GetSelected(ctx)
 	if err != nil {
 		return fmt.Errorf("error getting selected connection: %w", err)
 	}

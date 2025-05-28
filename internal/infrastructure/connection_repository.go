@@ -17,6 +17,7 @@ const (
 
 type connectionDTO struct {
 	ID        uuid.UUID `json:"id"`
+	Revision  int       `json:"revision,omitempty"`
 	Name      string    `json:"name"`
 	Server    string    `json:"server"`
 	AccessKey string    `json:"accessKey"`
@@ -30,7 +31,7 @@ type connectionDTO struct {
 }
 
 func (c *connectionDTO) toConnection() *connection.Connection {
-	return &connection.Connection{
+	conn := &connection.Connection{
 		ID:         c.ID,
 		Name:       c.Name,
 		Server:     c.Server,
@@ -43,6 +44,8 @@ func (c *connectionDTO) toConnection() *connection.Connection {
 		UseTls:     c.UseTls,
 		ReadOnly:   c.ReadOnly,
 	}
+	conn.SetRevision(c.Revision)
+	return conn
 }
 
 func newConnectionDTO(c *connection.Connection) *connectionDTO {
@@ -58,6 +61,7 @@ func newConnectionDTO(c *connection.Connection) *connectionDTO {
 		Type:      c.Type.String(),
 		UseTls:    c.UseTls,
 		ReadOnly:  c.ReadOnly,
+		Revision:  c.Revision(),
 	}
 }
 
@@ -71,7 +75,7 @@ func NewConnectionRepositoryImpl(prefs fyne.Preferences) *ConnectionRepositoryIm
 
 var _ connection.Repository = &ConnectionRepositoryImpl{}
 
-func (r *ConnectionRepositoryImpl) ListConnections(ctx context.Context) ([]*connection.Connection, error) {
+func (r *ConnectionRepositoryImpl) List(ctx context.Context) ([]*connection.Connection, error) {
 	dtos, err := r.loadConnectionDTOs()
 	if err != nil {
 		return nil, fmt.Errorf("ListConnections: %w", err)
@@ -88,8 +92,8 @@ func (r *ConnectionRepositoryImpl) ListConnections(ctx context.Context) ([]*conn
 	return filteredConnections, nil
 }
 
-func (r *ConnectionRepositoryImpl) SaveConnection(ctx context.Context, c *connection.Connection) error {
-	connections, err := r.ListConnections(ctx)
+func (r *ConnectionRepositoryImpl) Save(ctx context.Context, c *connection.Connection) error {
+	connections, err := r.List(ctx)
 	if err != nil {
 		return fmt.Errorf("SaveConnection: %w", err)
 	}
@@ -121,8 +125,8 @@ func (r *ConnectionRepositoryImpl) SaveConnection(ctx context.Context, c *connec
 	return nil
 }
 
-func (r *ConnectionRepositoryImpl) DeleteConnection(ctx context.Context, id uuid.UUID) error {
-	connections, err := r.ListConnections(ctx)
+func (r *ConnectionRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
+	connections, err := r.List(ctx)
 	if err != nil {
 		return fmt.Errorf("DeleteConnection: %w", err)
 	}
@@ -156,7 +160,7 @@ func (r *ConnectionRepositoryImpl) DeleteConnection(ctx context.Context, id uuid
 }
 
 func (r *ConnectionRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*connection.Connection, error) {
-	connections, err := r.ListConnections(ctx)
+	connections, err := r.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("GetByID: %w", err)
 	}
@@ -170,8 +174,8 @@ func (r *ConnectionRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*
 	return nil, connection.ErrConnectionNotFound
 }
 
-func (r *ConnectionRepositoryImpl) SetSelectedConnection(ctx context.Context, id uuid.UUID) error {
-	connections, err := r.ListConnections(ctx)
+func (r *ConnectionRepositoryImpl) SetSelected(ctx context.Context, id uuid.UUID) error {
+	connections, err := r.List(ctx)
 	if err != nil {
 		return fmt.Errorf("SetSelectedConnection: %w", err)
 	}
@@ -204,8 +208,8 @@ func (r *ConnectionRepositoryImpl) SetSelectedConnection(ctx context.Context, id
 	return nil
 }
 
-func (r *ConnectionRepositoryImpl) GetSelectedConnection(ctx context.Context) (*connection.Connection, error) {
-	connections, err := r.ListConnections(ctx)
+func (r *ConnectionRepositoryImpl) GetSelected(ctx context.Context) (*connection.Connection, error) {
+	connections, err := r.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("GetSelectedConnection: %w", err)
 	}

@@ -84,6 +84,20 @@ func (mr *MockConnectionViewModelMockRecorder) ExportConnectionsAsJSON() *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExportConnectionsAsJSON", reflect.TypeOf((*MockConnectionViewModel)(nil).ExportConnectionsAsJSON))
 }
 
+// IsReadOnly mocks base method.
+func (m *MockConnectionViewModel) IsReadOnly() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsReadOnly")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsReadOnly indicates an expected call of IsReadOnly.
+func (mr *MockConnectionViewModelMockRecorder) IsReadOnly() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReadOnly", reflect.TypeOf((*MockConnectionViewModel)(nil).IsReadOnly))
+}
+
 // RefreshConnections mocks base method.
 func (m *MockConnectionViewModel) RefreshConnections() error {
 	m.ctrl.T.Helper()

@@ -67,6 +67,8 @@ type Connection struct {
 	Region     string
 	Type       ConnectionType
 	ReadOnly   bool
+
+	revision int
 }
 
 func NewConnection(
@@ -107,6 +109,34 @@ func (c *Connection) Update(other *Connection) {
 	c.Region = other.Region
 	c.Type = other.Type
 	c.ReadOnly = other.ReadOnly
+	c.revision++
+}
+
+func (c *Connection) Compare(other *Connection) bool {
+	return c.Name == other.Name &&
+		c.Server == other.Server &&
+		c.SecretKey == other.SecretKey &&
+		c.AccessKey == other.AccessKey &&
+		c.BucketName == other.BucketName &&
+		c.UseTls == other.UseTls &&
+		c.Region == other.Region &&
+		c.Type == other.Type &&
+		c.ReadOnly == other.ReadOnly &&
+		c.revision == other.revision
+}
+
+// Revision returns the current revision number of the connection.
+// This number is incremented each time the connection is updated.
+func (c *Connection) Revision() int {
+	return c.revision
+}
+
+// SetRevision sets the revision number of the connection only if no version has been set yet.
+// It's useful for initializing the revision number when the connection is first created.
+func (c *Connection) SetRevision(version int) {
+	if c.revision > 0 {
+		c.revision = version
+	}
 }
 
 type ConnectionExport struct {

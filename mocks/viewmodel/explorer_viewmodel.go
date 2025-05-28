@@ -42,20 +42,6 @@ func (m *MockExplorerViewModel) EXPECT() *MockExplorerViewModelMockRecorder {
 	return m.recorder
 }
 
-// AppendDirToTree mocks base method.
-func (m *MockExplorerViewModel) AppendDirToTree(dirID explorer.S3DirectoryID) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AppendDirToTree", dirID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AppendDirToTree indicates an expected call of AppendDirToTree.
-func (mr *MockExplorerViewModelMockRecorder) AppendDirToTree(dirID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AppendDirToTree", reflect.TypeOf((*MockExplorerViewModel)(nil).AppendDirToTree), dirID)
-}
-
 // CreateEmptyDirectory mocks base method.
 func (m *MockExplorerViewModel) CreateEmptyDirectory(parent *explorer.S3Directory, name string) (*explorer.S3Directory, error) {
 	m.ctrl.T.Helper()
@@ -209,6 +195,20 @@ func (m *MockExplorerViewModel) OnDisplayNoConnectionBannerChange(fn func(bool))
 func (mr *MockExplorerViewModelMockRecorder) OnDisplayNoConnectionBannerChange(fn any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnDisplayNoConnectionBannerChange", reflect.TypeOf((*MockExplorerViewModel)(nil).OnDisplayNoConnectionBannerChange), fn)
+}
+
+// OpenDirectory mocks base method.
+func (m *MockExplorerViewModel) OpenDirectory(dirID explorer.S3DirectoryID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OpenDirectory", dirID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// OpenDirectory indicates an expected call of OpenDirectory.
+func (mr *MockExplorerViewModelMockRecorder) OpenDirectory(dirID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).OpenDirectory), dirID)
 }
 
 // PreviewFile mocks base method.

@@ -41,12 +41,12 @@ func Test_GetSettingsView_ShouldBuildViewWithoutError(t *testing.T) {
 
 	fakeConnection := connection.NewConnection("demo", "AZERTY", "123456", "MyBucket", connection.AsAWSConnection("eu-west-3"))
 	connRepo.EXPECT().
-		ListConnections(gomock.AssignableToTypeOf(ctxType)).
+		List(gomock.AssignableToTypeOf(ctxType)).
 		Return([]*connection.Connection{fakeConnection}, nil).
 		Times(1)
 
 	connRepo.EXPECT().
-		GetSelectedConnection(gomock.AssignableToTypeOf(ctxType)).
+		GetSelected(gomock.AssignableToTypeOf(ctxType)).
 		Return(fakeConnection, nil).
 		Times(2)
 

@@ -68,7 +68,7 @@ func (c *connectionViewModelImpl) Connections() binding.UntypedList {
 func (vm *connectionViewModelImpl) RefreshConnections() error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
-	conns, err := vm.connRepo.ListConnections(ctx)
+	conns, err := vm.connRepo.List(ctx)
 	if err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error listing connections: %w", err)
@@ -100,7 +100,7 @@ func (vm *connectionViewModelImpl) RefreshConnections() error {
 func (vm *connectionViewModelImpl) SaveConnection(c *connection.Connection) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
-	if err := vm.connRepo.SaveConnection(ctx, c); err != nil {
+	if err := vm.connRepo.Save(ctx, c); err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error saving connection: %w", err)
 		fmt.Printf("error saving connection: %v", err)
@@ -113,7 +113,7 @@ func (vm *connectionViewModelImpl) SaveConnection(c *connection.Connection) erro
 func (vm *connectionViewModelImpl) DeleteConnection(c *connection.Connection) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
-	if err := vm.connRepo.DeleteConnection(ctx, c.ID); err != nil {
+	if err := vm.connRepo.Delete(ctx, c.ID); err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error deleting connection: %w", err)
 		fmt.Printf("error deleting connection: %v", err)
@@ -130,7 +130,7 @@ func (vm *connectionViewModelImpl) SelectConnection(c *connection.Connection) (b
 
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
-	if err := vm.connRepo.SetSelectedConnection(ctx, c.ID); err != nil {
+	if err := vm.connRepo.SetSelected(ctx, c.ID); err != nil {
 		return false, err
 	}
 

@@ -11,8 +11,8 @@ const (
 )
 
 const (
-	ColorThemeLightStr = "light"
-	ColorThemeDarkStr = "dark"
+	ColorThemeLightStr  = "light"
+	ColorThemeDarkStr   = "dark"
 	ColorThemeSystemStr = "system"
 )
 
@@ -45,15 +45,15 @@ func NewColorThemeFromString(s string) (ColorTheme, error) {
 }
 
 type Settings struct {
-	TimeoutInSeconds int
-	Color            ColorTheme
+	TimeoutInSeconds        int
+	Color                   ColorTheme
 	MaxFilePreviewSizeBytes int64
 }
 
 var ErrInvalidTimeout = errors.New("timeout must be positive")
 
 const (
-	DefaultTimeoutInSeconds = 15
+	DefaultTimeoutInSeconds        = 15
 	DefaultMaxFilePreviewSizeBytes = 1024 * 1024 * 5 // 5MB
 )
 
@@ -67,14 +67,14 @@ func NewSettings(timeoutInSeconds int, maxFilePreviewSizeBytes int64) (Settings,
 	}
 
 	return Settings{
-		TimeoutInSeconds: timeoutInSeconds,
+		TimeoutInSeconds:        timeoutInSeconds,
 		MaxFilePreviewSizeBytes: maxFilePreviewSizeBytes,
 	}, nil
 }
 
 func DefaultSettings() Settings {
 	return Settings{
-		TimeoutInSeconds: DefaultTimeoutInSeconds,
+		TimeoutInSeconds:        DefaultTimeoutInSeconds,
 		MaxFilePreviewSizeBytes: DefaultMaxFilePreviewSizeBytes,
 	}
 }

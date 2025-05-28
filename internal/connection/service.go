@@ -22,7 +22,7 @@ func NewConnectionService(repository Repository) *connectionServiceImpl {
 }
 
 func (s *connectionServiceImpl) GetActiveConnectionID(ctx context.Context) (uuid.UUID, error) {
-	conn, err := s.repository.GetSelectedConnection(ctx)
+	conn, err := s.repository.GetSelected(ctx)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("error while getting selected connection: %w", err)
 	}

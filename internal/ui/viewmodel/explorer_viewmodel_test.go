@@ -325,7 +325,7 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 	)
 
 	mockConnRepo.EXPECT().
-		GetSelectedConnection(gomock.AssignableToTypeOf(ctxType)).
+		GetSelected(gomock.AssignableToTypeOf(ctxType)).
 		Return(fakeConn, nil).
 		AnyTimes()
 
@@ -390,7 +390,7 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirAtRootAndAddItToTree(t *testing
 	)
 
 	mockConnRepo.EXPECT().
-		GetSelectedConnection(gomock.AssignableToTypeOf(ctxType)).
+		GetSelected(gomock.AssignableToTypeOf(ctxType)).
 		Return(fakeConn, nil).
 		AnyTimes()
 
@@ -468,7 +468,7 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirUnderOtherDirAndAddItToTree(t *
 	)
 
 	mockConnRepo.EXPECT().
-		GetSelectedConnection(gomock.AssignableToTypeOf(ctxType)).
+		GetSelected(gomock.AssignableToTypeOf(ctxType)).
 		Return(fakeConn, nil).
 		AnyTimes()
 
@@ -486,7 +486,7 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirUnderOtherDirAndAddItToTree(t *
 		WithDirNode("/subdir/newDir/", "/subdir/", "newDir").
 		Build()
 
-	// When
+		// When
 	vm := viewmodel.NewExplorerViewModel(mockDirSvc, mockConnRepo, mockFileSvc, mockSettingsVm)
 	// Navigate to subdir
 	errNav := vm.OpenDirectory(fakeSubDir.ID)
