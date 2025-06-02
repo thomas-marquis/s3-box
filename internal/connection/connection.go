@@ -109,9 +109,10 @@ func (c *Connection) Update(other *Connection) {
 	c.Region = other.Region
 	c.Type = other.Type
 	c.ReadOnly = other.ReadOnly
-	c.revision++
+	c.IncRevision()
 }
 
+// Compare checks if the current connection is equal to another connection.
 func (c *Connection) Compare(other *Connection) bool {
 	return c.Name == other.Name &&
 		c.Server == other.Server &&
@@ -133,10 +134,15 @@ func (c *Connection) Revision() int {
 
 // SetRevision sets the revision number of the connection only if no version has been set yet.
 // It's useful for initializing the revision number when the connection is first created.
-func (c *Connection) SetRevision(version int) {
+func (c *Connection) SetRevision(newRevision int) {
 	if c.revision > 0 {
-		c.revision = version
+		c.revision = newRevision
 	}
+}
+
+// IncRevision increments the revision number of the connection.
+func (c *Connection) IncRevision() {
+	c.revision++
 }
 
 type ConnectionExport struct {

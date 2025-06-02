@@ -1,6 +1,10 @@
 package uiutils
 
-import "fyne.io/fyne/v2/data/binding"
+import (
+	"fmt"
+
+	"fyne.io/fyne/v2/data/binding"
+)
 
 // GetString retrieves a string value from a binding.String.
 // This fnction panics if there is an error while getting the value.
@@ -35,4 +39,40 @@ func GetUntypedOrPanic[T any](data binding.Untyped) T {
 		panic("Invalid casting type for binding.Untyped")
 	}
 	return value
+}
+
+func GetUntypedListOrPanic[T any](data binding.UntypedList) []T {
+	dis, err := data.Get()
+	if err != nil {
+		panic("error while getting value from binding")
+	}
+
+	values := make([]T, len(dis))
+	for i, di := range dis {
+		value, ok := di.(T)
+		if !ok {
+			panic("Invalid casting type for binding.UntypedList")
+		}
+		values[i] = value
+	}
+
+	return values
+}
+
+func GetUntypedList[T any](data binding.UntypedList) ([]T, error) {
+	dis, err := data.Get()
+	if err != nil {
+		return nil, err
+	}
+
+	values := make([]T, len(dis))
+	for i, di := range dis {
+		value, ok := di.(T)
+		if !ok {
+			return nil, fmt.Errorf("invalid casting type for binding.UntypedList: expected %T, got %T", value, di)
+		}
+		values[i] = value
+	}
+
+	return values, nil
 }

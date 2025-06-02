@@ -113,7 +113,7 @@ func (mr *MockConnectionViewModelMockRecorder) RefreshConnections() *gomock.Call
 }
 
 // SaveConnection mocks base method.
-func (m *MockConnectionViewModel) SaveConnection(c *connection.Connection) error {
+func (m *MockConnectionViewModel) SaveConnection(c connection.Connection) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveConnection", c)
 	ret0, _ := ret[0].(error)

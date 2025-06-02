@@ -93,6 +93,7 @@ func (r *ConnectionRepositoryImpl) List(ctx context.Context) ([]*connection.Conn
 }
 
 func (r *ConnectionRepositoryImpl) Save(ctx context.Context, c *connection.Connection) error {
+	fmt.Printf("SaveConnection: %v\n", c) // TODO remove it
 	connections, err := r.List(ctx)
 	if err != nil {
 		return fmt.Errorf("SaveConnection: %w", err)
@@ -103,6 +104,7 @@ func (r *ConnectionRepositoryImpl) Save(ctx context.Context, c *connection.Conne
 		if conn.ID == c.ID {
 			found = true
 			conn.Update(c)
+			fmt.Printf("Update connection (during): %v\n", conn) // TODO remove it
 			break
 		}
 	}

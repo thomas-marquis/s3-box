@@ -6,12 +6,13 @@ import (
 
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
 type ConnectionViewModel interface {
 	Connections() binding.UntypedList
 	RefreshConnections() error
-	SaveConnection(c *connection.Connection) error
+	SaveConnection(c connection.Connection) error
 	DeleteConnection(c *connection.Connection) error
 
 	// SelectConnection selects a connection and returns true if a new connection was successfully selected
@@ -97,17 +98,36 @@ func (vm *connectionViewModelImpl) RefreshConnections() error {
 	return nil
 }
 
-func (vm *connectionViewModelImpl) SaveConnection(c *connection.Connection) error {
+func (vm *connectionViewModelImpl) SaveConnection(c connection.Connection) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
-	if err := vm.connRepo.Save(ctx, c); err != nil {
+	if err := vm.connRepo.Save(ctx, &c); err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error saving connection: %w", err)
 		fmt.Printf("error saving connection: %v", err)
 		return err
 	}
 
-	return vm.RefreshConnections()
+	existingConns, err := uiutils.GetUntypedList[*connection.Connection](vm.connections)
+	if err != nil {
+		// TOOD: send to global logging chan
+		// vm.errChan <- fmt.Errorf("error getting existing connections: %w", err)
+		fmt.Printf("error getting existing connections: %v", err)
+		return err
+	}
+
+	for _, existingConn := range existingConns {
+		if existingConn.ID == c.ID {
+			fmt.Printf("Update connection (view data): %v\n", existingConn) // TODO remove it
+			vm.connections.Remove(existingConn)
+			vm.connections.Append(&c)
+		}
+		// vm.connections.Remove(existingConn)
+		// vm.connections.Append(c)
+	}
+
+	return nil
+	// return vm.RefreshConnections()
 }
 
 func (vm *connectionViewModelImpl) DeleteConnection(c *connection.Connection) error {
@@ -120,7 +140,27 @@ func (vm *connectionViewModelImpl) DeleteConnection(c *connection.Connection) er
 		return err
 	}
 
-	return vm.RefreshConnections()
+	prevConns, err := uiutils.GetUntypedList[*connection.Connection](vm.connections)
+	if err != nil {
+		// TOOD: send to global logging chan
+		// vm.errChan <- fmt.Errorf("error getting previous connections: %w", err)
+		fmt.Printf("error getting previous connections: %v", err)
+		return err
+	}
+
+	found := false
+	for _, prevConn := range prevConns {
+		if prevConn.ID == c.ID {
+			found = vm.connections.Remove(prevConn) == nil
+		}
+	}
+
+	if !found {
+		// Is this case possible? If so, we should handle it gracefully.
+		return fmt.Errorf("connection with ID %s not found", c.ID)
+	}
+
+	return nil
 }
 
 func (vm *connectionViewModelImpl) SelectConnection(c *connection.Connection) (bool, error) {

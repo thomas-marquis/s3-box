@@ -94,9 +94,11 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 			"Edit connection",
 			*conn,
 			true,
-			func(updatedConn *connection.Connection) error {
-				conn.Update(updatedConn)
-				return ctx.ConnectionViewModel().SaveConnection(conn)
+			func(updatedConn connection.Connection) error {
+				conn.Update(&updatedConn)
+				err := ctx.ConnectionViewModel().SaveConnection(*conn)
+				fmt.Printf("Update connection (after): %v\n", conn) // TODO remove it
+				return err
 			}).Show()
 	}
 

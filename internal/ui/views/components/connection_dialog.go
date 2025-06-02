@@ -241,12 +241,12 @@ func NewConnectionDialog(
 	label string,
 	defaultConn connection.Connection,
 	enableCopy bool,
-	onSave func(conn *connection.Connection) error,
+	onSave func(conn connection.Connection) error,
 ) dialog.Dialog {
 	var d dialog.Dialog
 
 	handleOnSubmit := func(c *connection.Connection) error {
-		err := onSave(c)
+		err := onSave(*c)
 		d.Hide()
 		return err
 	}
