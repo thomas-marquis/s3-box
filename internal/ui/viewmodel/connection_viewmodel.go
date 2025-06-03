@@ -122,12 +122,9 @@ func (vm *connectionViewModelImpl) SaveConnection(c connection.Connection) error
 			vm.connections.Remove(existingConn)
 			vm.connections.Append(&c)
 		}
-		// vm.connections.Remove(existingConn)
-		// vm.connections.Append(c)
 	}
 
 	return nil
-	// return vm.RefreshConnections()
 }
 
 func (vm *connectionViewModelImpl) DeleteConnection(c *connection.Connection) error {
@@ -166,7 +163,7 @@ func (vm *connectionViewModelImpl) DeleteConnection(c *connection.Connection) er
 func (vm *connectionViewModelImpl) SelectConnection(c *connection.Connection) (bool, error) {
 	vm.loading.Set(true)
 	defer vm.loading.Set(false)
-	prevConn := vm.selectedConnection
+	prevSelectedConn := vm.selectedConnection
 
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
@@ -174,8 +171,36 @@ func (vm *connectionViewModelImpl) SelectConnection(c *connection.Connection) (b
 		return false, err
 	}
 
-	vm.selectedConnection = c
-	return c != prevConn, nil
+	allConns, err := uiutils.GetUntypedList[*connection.Connection](vm.connections)
+	if err != nil {
+		// TOOD: send to global logging chan
+		// vm.errChan <- fmt.Errorf("error getting previous connections: %w", err)
+		fmt.Printf("error getting previous connections: %v", err)
+		return false, err
+	}
+
+	found := false
+	for i, conn := range allConns {
+		if conn.ID == c.ID {
+			found = true
+			selectedConn := *conn // Create a copy to have a new ref in the binding
+			selectedConn.IsSelected = true
+			prevSelectedConn.IsSelected = false
+			fmt.Printf("old conn pointer (before): %p | new conn pointer: %p\n", prevSelectedConn, &selectedConn) // TODO remove it
+			vm.connections.SetValue(i, &selectedConn)
+			vm.selectedConnection = &selectedConn
+		}
+		if conn.ID == prevSelectedConn.ID {
+			conn.IsSelected = false
+		}
+	}
+
+	if !found {
+		// Is this case possible? If so, we should handle it gracefully.
+		return false, fmt.Errorf("connection with ID %s not found", c.ID)
+	}
+
+	return c.ID != prevSelectedConn.ID, nil
 }
 
 func (vm *connectionViewModelImpl) ExportConnectionsAsJSON() (connection.ConnectionExport, error) {

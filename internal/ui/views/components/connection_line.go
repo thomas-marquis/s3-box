@@ -53,22 +53,24 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 		dialog.ShowConfirm(
 			"Select connection",
 			fmt.Sprintf("Are you sure you want to select the connection '%s'?", conn.Name),
-			func(b bool) {
-				if b {
-					hasChanged, err := ctx.ConnectionViewModel().SelectConnection(conn)
-					if err != nil {
-						ctx.L().Error("Failed to select connection", zap.Error(err))
+			func(confirmed bool) {
+				if !confirmed {
+					return
+				}
+
+				hasChanged, err := ctx.ConnectionViewModel().SelectConnection(conn)
+				if err != nil {
+					ctx.L().Error("Failed to select connection", zap.Error(err))
+					dialog.ShowError(err, ctx.Window())
+				}
+				if hasChanged {
+					// if err := ctx.ConnectionViewModel().RefreshConnections(); err != nil {
+					// 	ctx.L().Error("Failed to refresh connections", zap.Error(err))
+					// 	dialog.ShowError(err, ctx.Window())
+					// }
+					if err := ctx.ExplorerViewModel().ResetTree(); err != nil {
+						ctx.L().Error("Failed to reset tree", zap.Error(err))
 						dialog.ShowError(err, ctx.Window())
-					}
-					if hasChanged {
-						if err := ctx.ConnectionViewModel().RefreshConnections(); err != nil {
-							ctx.L().Error("Failed to refresh connections", zap.Error(err))
-							dialog.ShowError(err, ctx.Window())
-						}
-						if err := ctx.ExplorerViewModel().ResetTree(); err != nil {
-							ctx.L().Error("Failed to reset tree", zap.Error(err))
-							dialog.ShowError(err, ctx.Window())
-						}
 					}
 				}
 			},
