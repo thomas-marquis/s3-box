@@ -60,16 +60,16 @@ func GetUntypedListOrPanic[T any](data binding.UntypedList) []T {
 }
 
 func GetUntypedList[T any](data binding.UntypedList) ([]T, error) {
-	dis, err := data.Get()
+	items, err := data.Get()
 	if err != nil {
 		return nil, err
 	}
 
-	values := make([]T, len(dis))
-	for i, di := range dis {
-		value, ok := di.(T)
+	values := make([]T, len(items))
+	for i, item := range items {
+		value, ok := item.(T)
 		if !ok {
-			return nil, fmt.Errorf("invalid casting type for binding.UntypedList: expected %T, got %T", value, di)
+			return nil, fmt.Errorf("invalid casting type for binding.UntypedList: expected %T, got %T", value, item)
 		}
 		values[i] = value
 	}
