@@ -13,18 +13,18 @@ type ConnectionViewModel interface {
 	// Connections returns the list of connections as a binding.UntypedList
 	Connections() binding.UntypedList
 
-	// SaveConnection saves a connection to the repository and updates the binding list
-	SaveConnection(c connection.Connection) error
+	// Save saves a connection to the repository and updates the binding list
+	Save(c connection.Connection) error
 
-	// DeleteConnection deletes a connection from the repository and updates the binding list
-	DeleteConnection(c *connection.Connection) error
+	// Delete deletes a connection from the repository and updates the binding list
+	Delete(c *connection.Connection) error
 
-	// SelectConnection selects a connection and returns true if a new connection was successfully selected
+	// Select selects a connection and returns true if a new connection was successfully selected
 	// and false if the set connection is the same as the current connection
-	SelectConnection(c *connection.Connection) (bool, error)
+	Select(c *connection.Connection) (bool, error)
 
-	// ExportConnectionsAsJSON exports all connections as a JSON object (byte slice)
-	ExportConnectionsAsJSON() (connection.ConnectionExport, error)
+	// ExportAsJSON exports all connections as a JSON object (byte slice)
+	ExportAsJSON() (connection.ConnectionExport, error)
 
 	// IsLoading returns true if the current selected connection is in read only mode
 	IsReadOnly() bool
@@ -71,7 +71,7 @@ func (c *connectionViewModelImpl) Connections() binding.UntypedList {
 	return c.connections
 }
 
-func (vm *connectionViewModelImpl) SaveConnection(c connection.Connection) error {
+func (vm *connectionViewModelImpl) Save(c connection.Connection) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	if err := vm.connRepo.Save(ctx, &c); err != nil {
@@ -88,7 +88,7 @@ func (vm *connectionViewModelImpl) SaveConnection(c connection.Connection) error
 	return nil
 }
 
-func (vm *connectionViewModelImpl) DeleteConnection(c *connection.Connection) error {
+func (vm *connectionViewModelImpl) Delete(c *connection.Connection) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	if err := vm.connRepo.Delete(ctx, c.ID); err != nil {
@@ -121,7 +121,7 @@ func (vm *connectionViewModelImpl) DeleteConnection(c *connection.Connection) er
 	return nil
 }
 
-func (vm *connectionViewModelImpl) SelectConnection(c *connection.Connection) (bool, error) {
+func (vm *connectionViewModelImpl) Select(c *connection.Connection) (bool, error) {
 	vm.loading.Set(true)
 	defer vm.loading.Set(false)
 	prevSelectedConn := vm.selectedConnection
@@ -145,7 +145,7 @@ func (vm *connectionViewModelImpl) SelectConnection(c *connection.Connection) (b
 	return true, nil
 }
 
-func (vm *connectionViewModelImpl) ExportConnectionsAsJSON() (connection.ConnectionExport, error) {
+func (vm *connectionViewModelImpl) ExportAsJSON() (connection.ConnectionExport, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	return vm.connRepo.ExportToJson(ctx)

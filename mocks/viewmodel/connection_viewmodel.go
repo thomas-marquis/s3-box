@@ -55,33 +55,33 @@ func (mr *MockConnectionViewModelMockRecorder) Connections() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connections", reflect.TypeOf((*MockConnectionViewModel)(nil).Connections))
 }
 
-// DeleteConnection mocks base method.
-func (m *MockConnectionViewModel) DeleteConnection(c *connection.Connection) error {
+// Delete mocks base method.
+func (m *MockConnectionViewModel) Delete(c *connection.Connection) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteConnection", c)
+	ret := m.ctrl.Call(m, "Delete", c)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// DeleteConnection indicates an expected call of DeleteConnection.
-func (mr *MockConnectionViewModelMockRecorder) DeleteConnection(c any) *gomock.Call {
+// Delete indicates an expected call of Delete.
+func (mr *MockConnectionViewModelMockRecorder) Delete(c any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteConnection", reflect.TypeOf((*MockConnectionViewModel)(nil).DeleteConnection), c)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockConnectionViewModel)(nil).Delete), c)
 }
 
-// ExportConnectionsAsJSON mocks base method.
-func (m *MockConnectionViewModel) ExportConnectionsAsJSON() (connection.ConnectionExport, error) {
+// ExportAsJSON mocks base method.
+func (m *MockConnectionViewModel) ExportAsJSON() (connection.ConnectionExport, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExportConnectionsAsJSON")
+	ret := m.ctrl.Call(m, "ExportAsJSON")
 	ret0, _ := ret[0].(connection.ConnectionExport)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ExportConnectionsAsJSON indicates an expected call of ExportConnectionsAsJSON.
-func (mr *MockConnectionViewModelMockRecorder) ExportConnectionsAsJSON() *gomock.Call {
+// ExportAsJSON indicates an expected call of ExportAsJSON.
+func (mr *MockConnectionViewModelMockRecorder) ExportAsJSON() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExportConnectionsAsJSON", reflect.TypeOf((*MockConnectionViewModel)(nil).ExportConnectionsAsJSON))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExportAsJSON", reflect.TypeOf((*MockConnectionViewModel)(nil).ExportAsJSON))
 }
 
 // IsReadOnly mocks base method.
@@ -98,45 +98,31 @@ func (mr *MockConnectionViewModelMockRecorder) IsReadOnly() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReadOnly", reflect.TypeOf((*MockConnectionViewModel)(nil).IsReadOnly))
 }
 
-// RefreshConnections mocks base method.
-func (m *MockConnectionViewModel) RefreshConnections() error {
+// Save mocks base method.
+func (m *MockConnectionViewModel) Save(c connection.Connection) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RefreshConnections")
+	ret := m.ctrl.Call(m, "Save", c)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// RefreshConnections indicates an expected call of RefreshConnections.
-func (mr *MockConnectionViewModelMockRecorder) RefreshConnections() *gomock.Call {
+// Save indicates an expected call of Save.
+func (mr *MockConnectionViewModelMockRecorder) Save(c any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshConnections", reflect.TypeOf((*MockConnectionViewModel)(nil).RefreshConnections))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockConnectionViewModel)(nil).Save), c)
 }
 
-// SaveConnection mocks base method.
-func (m *MockConnectionViewModel) SaveConnection(c connection.Connection) error {
+// Select mocks base method.
+func (m *MockConnectionViewModel) Select(c *connection.Connection) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveConnection", c)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SaveConnection indicates an expected call of SaveConnection.
-func (mr *MockConnectionViewModelMockRecorder) SaveConnection(c any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveConnection", reflect.TypeOf((*MockConnectionViewModel)(nil).SaveConnection), c)
-}
-
-// SelectConnection mocks base method.
-func (m *MockConnectionViewModel) SelectConnection(c *connection.Connection) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectConnection", c)
+	ret := m.ctrl.Call(m, "Select", c)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SelectConnection indicates an expected call of SelectConnection.
-func (mr *MockConnectionViewModelMockRecorder) SelectConnection(c any) *gomock.Call {
+// Select indicates an expected call of Select.
+func (mr *MockConnectionViewModelMockRecorder) Select(c any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectConnection", reflect.TypeOf((*MockConnectionViewModel)(nil).SelectConnection), c)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Select", reflect.TypeOf((*MockConnectionViewModel)(nil).Select), c)
 }

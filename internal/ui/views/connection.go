@@ -34,7 +34,7 @@ func GetConnectionView(ctx appcontext.AppContext) (*fyne.Container, error) {
 				"New connection",
 				*connection.NewEmptyConnection(),
 				false,
-				ctx.ConnectionViewModel().SaveConnection).Show()
+				ctx.ConnectionViewModel().Save).Show()
 		})
 
 	goToExplorerBtn := widget.NewButtonWithIcon(

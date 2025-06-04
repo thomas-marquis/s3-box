@@ -58,7 +58,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		"Export connections as JSON",
 		theme.DocumentSaveIcon(),
 		func() {
-			export, err := ctx.ConnectionViewModel().ExportConnectionsAsJSON()
+			export, err := ctx.ConnectionViewModel().ExportAsJSON()
 			if err != nil {
 				dialog.ShowError(err, ctx.Window())
 				return
@@ -91,3 +91,4 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		container.NewVBox(form, container.NewCenter(exportConnectionsBtn)),
 	), nil
 }
+

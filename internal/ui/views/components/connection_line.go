@@ -58,7 +58,7 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 					return
 				}
 
-				hasChanged, err := ctx.ConnectionViewModel().SelectConnection(conn)
+				hasChanged, err := ctx.ConnectionViewModel().Select(conn)
 				if err != nil {
 					ctx.L().Error("Failed to select connection", zap.Error(err))
 					dialog.ShowError(err, ctx.Window())
@@ -98,7 +98,7 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 			true,
 			func(updatedConn connection.Connection) error {
 				conn.Update(&updatedConn)
-				err := ctx.ConnectionViewModel().SaveConnection(*conn)
+				err := ctx.ConnectionViewModel().Save(*conn)
 				fmt.Printf("Update connection (after): %v\n", conn) // TODO remove it
 				return err
 			}).Show()
@@ -108,7 +108,7 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 	deleteBtn.OnTapped = func() {
 		dialog.ShowConfirm("Delete connection", fmt.Sprintf("Are you sure you want to delete the connection '%s'?", conn.Name), func(b bool) {
 			if b {
-				if err := ctx.ConnectionViewModel().DeleteConnection(conn); err != nil {
+				if err := ctx.ConnectionViewModel().Delete(conn); err != nil {
 					ctx.L().Error("Failed to delete connection", zap.Error(err))
 				}
 			}
