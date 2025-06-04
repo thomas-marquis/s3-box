@@ -13,9 +13,6 @@ type ConnectionViewModel interface {
 	// Connections returns the list of connections as a binding.UntypedList
 	Connections() binding.UntypedList
 
-	// RefreshConnections is a deprecated method that refreshes the connections from the repository
-	RefreshConnections() error
-
 	// SaveConnection saves a connection to the repository and updates the binding list
 	SaveConnection(c connection.Connection) error
 
@@ -59,7 +56,7 @@ func NewConnectionViewModel(
 		loading:     binding.NewBool(),
 	}
 
-	if err := vm.RefreshConnections(); err != nil {
+	if err := vm.loadInitialConnections(); err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error refreshing connections: %w", err)
 		fmt.Printf("error refreshing connections: %v", err)
@@ -72,38 +69,6 @@ func NewConnectionViewModel(
 
 func (c *connectionViewModelImpl) Connections() binding.UntypedList {
 	return c.connections
-}
-
-func (vm *connectionViewModelImpl) RefreshConnections() error {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
-	defer cancel()
-	conns, err := vm.connRepo.List(ctx)
-	if err != nil {
-		// TOOD: send to global logging chan
-		// vm.errChan <- fmt.Errorf("error listing connections: %w", err)
-		fmt.Printf("error listing connections: %v", err)
-		return err
-	}
-
-	prevConns, err := vm.connections.Get()
-	if err != nil {
-		// TOOD: send to global logging chan
-		// vm.errChan <- fmt.Errorf("error getting previous connections: %w", err)
-		fmt.Printf("error getting previous connections: %v", err)
-		return err
-	}
-	for _, c := range prevConns {
-		vm.connections.Remove(c)
-	}
-
-	for _, c := range conns {
-		vm.connections.Append(c)
-		if c.IsSelected {
-			vm.selectedConnection = c
-		}
-	}
-
-	return nil
 }
 
 func (vm *connectionViewModelImpl) SaveConnection(c connection.Connection) error {
@@ -225,6 +190,27 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection.Connection) error
 
 	if !found {
 		return fmt.Errorf("connection with ID %s not found", c.ID)
+	}
+
+	return nil
+}
+
+func (vm *connectionViewModelImpl) loadInitialConnections() error {
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
+	defer cancel()
+	conns, err := vm.connRepo.List(ctx)
+	if err != nil {
+		// TOOD: send to global logging chan
+		// vm.errChan <- fmt.Errorf("error listing connections: %w", err)
+		fmt.Printf("error listing connections: %v", err)
+		return err
+	}
+
+	for _, c := range conns {
+		vm.connections.Append(c)
+		if c.IsSelected {
+			vm.selectedConnection = c
+		}
 	}
 
 	return nil
