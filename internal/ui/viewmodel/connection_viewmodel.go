@@ -9,6 +9,8 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
+var connNotInBindingErr = fmt.Errorf("connection not found in binding list")
+
 type ConnectionViewModel interface {
 	// Connections returns the list of connections as a binding.UntypedList
 	Connections() binding.UntypedList
@@ -32,7 +34,6 @@ type ConnectionViewModel interface {
 
 type connectionViewModelImpl struct {
 	connRepo           connection.Repository
-	connSvc            connection.ConnectionService
 	settingsVm         SettingsViewModel
 	connections        binding.UntypedList
 	selectedConnection *connection.Connection
@@ -43,14 +44,12 @@ var _ ConnectionViewModel = &connectionViewModelImpl{}
 
 func NewConnectionViewModel(
 	connRepo connection.Repository,
-	connSvc connection.ConnectionService,
 	settingsVm SettingsViewModel,
 ) *connectionViewModelImpl {
 	c := binding.NewUntypedList()
 
 	vm := &connectionViewModelImpl{
 		connRepo:    connRepo,
-		connSvc:     connSvc,
 		settingsVm:  settingsVm,
 		connections: c,
 		loading:     binding.NewBool(),
@@ -82,7 +81,11 @@ func (vm *connectionViewModelImpl) Save(c connection.Connection) error {
 	}
 
 	if err := vm.updateBinding(&c); err != nil {
-		return err
+		if err == connNotInBindingErr {
+			vm.connections.Append(&c)
+		} else {
+			return err
+		}
 	}
 
 	return nil
@@ -189,7 +192,7 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection.Connection) error
 	}
 
 	if !found {
-		return fmt.Errorf("connection with ID %s not found", c.ID)
+		return connNotInBindingErr
 	}
 
 	return nil

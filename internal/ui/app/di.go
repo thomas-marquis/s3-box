@@ -84,7 +84,7 @@ func BuildAppContext(
 	)
 
 	settingsVm := viewmodel.NewSettingsViewModel(settingsRepository, fyneSettings)
-	connVm := viewmodel.NewConnectionViewModel(connectionRepository, connSvc, settingsVm)
+	connVm := viewmodel.NewConnectionViewModel(connectionRepository, settingsVm)
 	explorerVm := viewmodel.NewExplorerViewModel(dirSvc, connectionRepository, fileSvc, settingsVm)
 
 	return appcontext.New(window, explorerVm, connVm, settingsVm, initialRoute, views, logger, fyneSettings)
