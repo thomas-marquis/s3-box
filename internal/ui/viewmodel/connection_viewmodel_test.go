@@ -89,6 +89,15 @@ func Test_Save_ShouldUpdateExistingConnection(t *testing.T) {
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
 	)
+	conn1Updated := connection.NewConnection(
+		"connection 1 updated",
+		"AZERTY",
+		"1234",
+		"MyBucket",
+		connection.AsAWSConnection("eu-west-1"),
+	)
+	conn1Updated.ID = conn1.ID // Ensure the ID remains the same for update
+
 	conn2 := connection.NewConnection(
 		"connection 2",
 		"QWERTY",
@@ -103,7 +112,7 @@ func Test_Save_ShouldUpdateExistingConnection(t *testing.T) {
 		Times(1)
 
 	mockConnRepo.EXPECT().
-		Save(gomock.AssignableToTypeOf(ctxType), gomock.AssignableToTypeOf(conn1)).
+		Save(gomock.AssignableToTypeOf(ctxType), EqDeref(*conn1Updated)).
 		Return(nil).
 		Times(1)
 
@@ -111,11 +120,11 @@ func Test_Save_ShouldUpdateExistingConnection(t *testing.T) {
 	vm := viewmodel.NewConnectionViewModel(mockConnRepo, mockSettingsVm)
 
 	// When
-	err := vm.Save(*newConn)
+	err := vm.Save(*conn1Updated)
 
 	// Then after updating conn1
 	assert.NoError(t, err)
-	assert.Equal(t, 3, vm.Connections().Length(), "Expected 3 connections in the list after saving a new connection")
-	obj, _ := vm.Connections().GetValue(2)
-	assert.Equal(t, *newConn, *obj.(*connection.Connection), "Expected the new connection to be the last one in the list")
+	assert.Equal(t, 2, vm.Connections().Length(), "Expected 3 connections in the list after saving a new connection")
+	obj, _ := vm.Connections().GetValue(0)
+	assert.Equal(t, *conn1Updated, *obj.(*connection.Connection), "Expected the updated connection replacing the old one in the list")
 }

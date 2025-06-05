@@ -174,7 +174,7 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection.Connection) error
 	for i, conn := range allConns {
 		if conn.ID == c.ID {
 			found = true
-			selectedConn := *conn // Create a copy to have a new ref in the binding
+			selectedConn := *c // Create a copy to have a new ref in the binding
 			if err := vm.connections.SetValue(i, &selectedConn); err != nil {
 				// TOOD: send to global logging chan
 				// vm.errChan <- fmt.Errorf("error setting selected connection: %w", err)
