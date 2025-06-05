@@ -130,8 +130,11 @@ func (vm *connectionViewModelImpl) Select(c *connection.Connection) (bool, error
 	prevSelectedConn := vm.selectedConnection
 
 	if prevSelectedConn != nil && prevSelectedConn.ID == c.ID {
+		fmt.Println("Connection is already selected, no change made.") // TODO: remove
 		return false, nil
 	}
+
+	fmt.Println("COUCOU") // TODO: remove
 
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
@@ -140,8 +143,12 @@ func (vm *connectionViewModelImpl) Select(c *connection.Connection) (bool, error
 	}
 	prevSelectedConn.IsSelected = false
 	c.IsSelected = true
+	vm.selectedConnection = c
 
 	if err := vm.updateBinding(c); err != nil {
+		prevSelectedConn.IsSelected = true
+		c.IsSelected = false
+		vm.selectedConnection = prevSelectedConn
 		return false, err
 	}
 
@@ -174,8 +181,8 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection.Connection) error
 	for i, conn := range allConns {
 		if conn.ID == c.ID {
 			found = true
-			selectedConn := *c // Create a copy to have a new ref in the binding
-			if err := vm.connections.SetValue(i, &selectedConn); err != nil {
+			updatedConn := *c // Create a copy to have a new ref in the binding
+			if err := vm.connections.SetValue(i, &updatedConn); err != nil {
 				// TOOD: send to global logging chan
 				// vm.errChan <- fmt.Errorf("error setting selected connection: %w", err)
 				fmt.Printf("error updating connection: %v", err)
@@ -186,8 +193,6 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection.Connection) error
 			placeholcerConn := connection.NewEmptyConnection()
 			vm.connections.Append(placeholcerConn)
 			vm.connections.Remove(placeholcerConn)
-
-			vm.selectedConnection = &selectedConn
 		}
 	}
 
