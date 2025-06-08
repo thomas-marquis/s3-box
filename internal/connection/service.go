@@ -8,7 +8,11 @@ import (
 )
 
 type ConnectionService interface {
-	GetActiveConnectionID(ctx context.Context) (uuid.UUID, error)
+	GetActiveConnectionID(ctx context.Context) (uuid.UUID, error) // TODO
+
+	// Select a connection by its ID.
+	// Return an error if the connection ID does not exist or if the selection fails.
+	Select(ctx context.Context, ID uuid.UUID) error
 }
 
 type connectionServiceImpl struct {
@@ -28,4 +32,8 @@ func (s *connectionServiceImpl) GetActiveConnectionID(ctx context.Context) (uuid
 	}
 
 	return conn.ID, nil
+}
+
+func (s *connectionServiceImpl) Select(ctx context.Context, ID uuid.UUID) error {
+	return nil
 }

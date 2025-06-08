@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/tests"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	mocks_connection "github.com/thomas-marquis/s3-box/mocks/connection"
 	mocks_viewmodel "github.com/thomas-marquis/s3-box/mocks/viewmodel"
@@ -41,7 +42,7 @@ func Test_Save_ShouldSaveTheNewConnection(t *testing.T) {
 	)
 
 	mockConnRepo.EXPECT().
-		List(gomock.AssignableToTypeOf(ctxType)).
+		List(gomock.AssignableToTypeOf(tests.ContextType)).
 		Return([]*connection.Connection{conn1, conn2}, nil).
 		Times(1)
 
@@ -54,7 +55,7 @@ func Test_Save_ShouldSaveTheNewConnection(t *testing.T) {
 	)
 
 	mockConnRepo.EXPECT().
-		Save(gomock.AssignableToTypeOf(ctxType), gomock.AssignableToTypeOf(newConn)).
+		Save(gomock.AssignableToTypeOf(tests.ContextType), gomock.AssignableToTypeOf(newConn)).
 		Return(nil).
 		Times(1)
 
@@ -107,12 +108,12 @@ func Test_Save_ShouldUpdateExistingConnection(t *testing.T) {
 	)
 
 	mockConnRepo.EXPECT().
-		List(gomock.AssignableToTypeOf(ctxType)).
+		List(gomock.AssignableToTypeOf(tests.ContextType)).
 		Return([]*connection.Connection{conn1, conn2}, nil).
 		Times(1)
 
 	mockConnRepo.EXPECT().
-		Save(gomock.AssignableToTypeOf(ctxType), EqDeref(*conn1Updated)).
+		Save(gomock.AssignableToTypeOf(tests.ContextType), tests.EqDeref(*conn1Updated)).
 		Return(nil).
 		Times(1)
 

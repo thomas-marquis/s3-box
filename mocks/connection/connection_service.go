@@ -55,3 +55,17 @@ func (mr *MockConnectionServiceMockRecorder) GetActiveConnectionID(ctx any) *gom
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveConnectionID", reflect.TypeOf((*MockConnectionService)(nil).GetActiveConnectionID), ctx)
 }
+
+// Select mocks base method.
+func (m *MockConnectionService) Select(ctx context.Context, ID uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Select", ctx, ID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Select indicates an expected call of Select.
+func (mr *MockConnectionServiceMockRecorder) Select(ctx, ID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Select", reflect.TypeOf((*MockConnectionService)(nil).Select), ctx, ID)
+}

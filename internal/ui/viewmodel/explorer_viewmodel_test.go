@@ -8,6 +8,7 @@ import (
 	_ "fyne.io/fyne/v2/test"
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
+	"github.com/thomas-marquis/s3-box/internal/tests"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	mocks_connection "github.com/thomas-marquis/s3-box/mocks/connection"
 	mocks_explorer "github.com/thomas-marquis/s3-box/mocks/explorer"
@@ -40,11 +41,11 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 	fakeRootDir.AddFile(fakeFile)
 
 	mockDirSvc.EXPECT().
-		GetRootDirectory(gomock.AssignableToTypeOf(ctxType)).
+		GetRootDirectory(gomock.AssignableToTypeOf(tests.ContextType)).
 		Return(fakeRootDir, nil).
 		Times(1)
 	mockDirSvc.EXPECT().
-		GetDirectoryByID(gomock.AssignableToTypeOf(ctxType), gomock.Eq(explorer.RootDirID)).
+		GetDirectoryByID(gomock.AssignableToTypeOf(tests.ContextType), gomock.Eq(explorer.RootDirID)).
 		Return(fakeRootDir, nil).
 		Times(1)
 
@@ -54,7 +55,7 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 	fakeSubdir.AddSubDirectory("demo")
 
 	mockDirSvc.EXPECT().
-		GetDirectoryByID(gomock.AssignableToTypeOf(ctxType), gomock.Eq(explorer.S3DirectoryID("/subdir/"))).
+		GetDirectoryByID(gomock.AssignableToTypeOf(tests.ContextType), gomock.Eq(explorer.S3DirectoryID("/subdir/"))).
 		Return(fakeSubdir, nil).
 		Times(1)
 
@@ -68,11 +69,11 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 	)
 
 	mockConnRepo.EXPECT().
-		GetSelected(gomock.AssignableToTypeOf(ctxType)).
+		GetSelected(gomock.AssignableToTypeOf(tests.ContextType)).
 		Return(fakeConn, nil).
 		AnyTimes()
 
-	expectedTree := newUntypedTreeBuilder().
+	expectedTree := tests.NewUntypedTreeBuilder().
 		WithLoadedRootNode("Bucket: MyBucket").
 		WithLoadedFileNode("/config.txt", "/", "config.txt").
 		WithLoadedDirNode("/subdir/", "/", "subdir").
@@ -87,7 +88,7 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 
 	// Then
 	assert.NoError(t, err)
-	ok, report := areTreesEqual(vm.Tree(), expectedTree)
+	ok, report := tests.AreTreesEqual(vm.Tree(), expectedTree)
 	fmt.Println(report)
 	assert.True(t, ok, "The tree structure should be equal to the expected one")
 }
@@ -115,11 +116,11 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirAtRootAndAddItToTree(t *testing
 	fakeRootDir.AddFile(fakeFile)
 
 	mockDirSvc.EXPECT().
-		GetRootDirectory(gomock.AssignableToTypeOf(ctxType)).
+		GetRootDirectory(gomock.AssignableToTypeOf(tests.ContextType)).
 		Return(fakeRootDir, nil).
 		Times(1)
 	mockDirSvc.EXPECT().
-		GetDirectoryByID(gomock.AssignableToTypeOf(ctxType), gomock.Eq(explorer.RootDirID)).
+		GetDirectoryByID(gomock.AssignableToTypeOf(tests.ContextType), gomock.Eq(explorer.RootDirID)).
 		Return(fakeRootDir, nil).
 		Times(1)
 
@@ -133,18 +134,18 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirAtRootAndAddItToTree(t *testing
 	)
 
 	mockConnRepo.EXPECT().
-		GetSelected(gomock.AssignableToTypeOf(ctxType)).
+		GetSelected(gomock.AssignableToTypeOf(tests.ContextType)).
 		Return(fakeConn, nil).
 		AnyTimes()
 
 	fakeNewDir, _ := explorer.NewS3Directory("newDir", fakeRootDir.ID)
 
 	mockDirSvc.EXPECT().
-		CreateSubDirectory(gomock.AssignableToTypeOf(ctxType), gomock.Eq(fakeRootDir), gomock.Eq("newDir")).
+		CreateSubDirectory(gomock.AssignableToTypeOf(tests.ContextType), gomock.Eq(fakeRootDir), gomock.Eq("newDir")).
 		Return(fakeNewDir, nil).
 		Times(1)
 
-	expectedTree := newUntypedTreeBuilder().
+	expectedTree := tests.NewUntypedTreeBuilder().
 		WithLoadedRootNode("Bucket: MyBucket").
 		WithLoadedFileNode("/config.txt", "/", "config.txt").
 		WithDirNode("/subdir/", "/", "subdir").
@@ -158,7 +159,7 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirAtRootAndAddItToTree(t *testing
 	// Then
 	assert.NoError(t, err, "Unexpected error when creating new directory")
 	assert.Equal(t, fakeNewDir, res, "The created directory should be the same as the returned one")
-	treesEqual, report := areTreesEqual(vm.Tree(), expectedTree)
+	treesEqual, report := tests.AreTreesEqual(vm.Tree(), expectedTree)
 	fmt.Println(report)
 	assert.True(t, treesEqual, "The tree structure should be equal to the expected one")
 }
@@ -186,18 +187,18 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirUnderOtherDirAndAddItToTree(t *
 	fakeRootDir.AddFile(fakeFile)
 
 	mockDirSvc.EXPECT().
-		GetRootDirectory(gomock.AssignableToTypeOf(ctxType)).
+		GetRootDirectory(gomock.AssignableToTypeOf(tests.ContextType)).
 		Return(fakeRootDir, nil).
 		Times(1)
 	mockDirSvc.EXPECT().
-		GetDirectoryByID(gomock.AssignableToTypeOf(ctxType), gomock.Eq(explorer.RootDirID)).
+		GetDirectoryByID(gomock.AssignableToTypeOf(tests.ContextType), gomock.Eq(explorer.RootDirID)).
 		Return(fakeRootDir, nil).
 		Times(1)
 
 	fakeSubDir, _ := explorer.NewS3Directory("subdir", explorer.RootDirID)
 
 	mockDirSvc.EXPECT().
-		GetDirectoryByID(gomock.AssignableToTypeOf(ctxType), gomock.Eq(explorer.S3DirectoryID("/subdir/"))).
+		GetDirectoryByID(gomock.AssignableToTypeOf(tests.ContextType), gomock.Eq(explorer.S3DirectoryID("/subdir/"))).
 		Return(fakeSubDir, nil).
 		Times(1)
 
@@ -211,18 +212,18 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirUnderOtherDirAndAddItToTree(t *
 	)
 
 	mockConnRepo.EXPECT().
-		GetSelected(gomock.AssignableToTypeOf(ctxType)).
+		GetSelected(gomock.AssignableToTypeOf(tests.ContextType)).
 		Return(fakeConn, nil).
 		AnyTimes()
 
 	fakeNewDir, _ := explorer.NewS3Directory("newDir", fakeSubDir.ID)
 
 	mockDirSvc.EXPECT().
-		CreateSubDirectory(gomock.AssignableToTypeOf(ctxType), gomock.Eq(fakeSubDir), gomock.Eq("newDir")).
+		CreateSubDirectory(gomock.AssignableToTypeOf(tests.ContextType), gomock.Eq(fakeSubDir), gomock.Eq("newDir")).
 		Return(fakeNewDir, nil).
 		Times(1)
 
-	expectedTree := newUntypedTreeBuilder().
+	expectedTree := tests.NewUntypedTreeBuilder().
 		WithLoadedRootNode("Bucket: MyBucket").
 		WithLoadedFileNode("/config.txt", "/", "config.txt").
 		WithLoadedDirNode("/subdir/", "/", "subdir").
@@ -240,7 +241,7 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirUnderOtherDirAndAddItToTree(t *
 	assert.NoError(t, errNav, "Should not return an error when navigating to subdir")
 	assert.NoError(t, err, "Unexpected error when creating new directory")
 	assert.Equal(t, fakeNewDir, res, "The created directory should be the same as the returned one")
-	treesEqual, report := areTreesEqual(vm.Tree(), expectedTree)
+	treesEqual, report := tests.AreTreesEqual(vm.Tree(), expectedTree)
 	fmt.Println(report)
 	assert.True(t, treesEqual, "The tree structure should be equal to the expected one")
 }
