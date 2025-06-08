@@ -43,7 +43,7 @@ func (c *Connections) Delete(connID uuid.UUID) error {
 	return ErrConnectionNotFound
 }
 
-func (c *Connections) List() []*Connection {
+func (c *Connections) Connections() []*Connection {
 	return c.connections
 }
 
