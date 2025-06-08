@@ -9,7 +9,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
-var connNotInBindingErr = fmt.Errorf("connection not found in binding list")
+var errConnNotInBinding = fmt.Errorf("connection not found in binding list")
 
 type ConnectionViewModel interface {
 	// Connections returns the list of connections as a binding.UntypedList
@@ -81,7 +81,7 @@ func (vm *connectionViewModelImpl) Save(c connection.Connection) error {
 	}
 
 	if err := vm.updateBinding(&c); err != nil {
-		if err == connNotInBindingErr {
+		if err == errConnNotInBinding {
 			vm.connections.Append(&c)
 		} else {
 			return err
@@ -197,7 +197,7 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection.Connection) error
 	}
 
 	if !found {
-		return connNotInBindingErr
+		return errConnNotInBinding
 	}
 
 	return nil

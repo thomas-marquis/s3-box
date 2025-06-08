@@ -35,5 +35,18 @@ func (s *connectionServiceImpl) GetActiveConnectionID(ctx context.Context) (uuid
 }
 
 func (s *connectionServiceImpl) Select(ctx context.Context, ID uuid.UUID) error {
+	allConns, err := s.repository.List(ctx)
+	if err != nil {
+		return err
+	}
+	for _, c := range allConns {
+		if c.ID == ID {
+			c.IsSelected = true
+			if err := s.repository.Save(ctx, c); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
