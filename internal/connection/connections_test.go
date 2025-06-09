@@ -67,16 +67,16 @@ func Test_Select_ShouldSelectConnection(t *testing.T) {
 		"1234",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
+		connection.WithSelected(true),
 	)
-	conn1.Select()
 	conn2 := connection.NewConnection(
 		"connection 2",
 		"QWERTY",
 		"5678",
 		"OurBucket",
 		connection.AsS3LikeConnection("localhost:9000", false),
+		connection.WithSelected(false),
 	)
-	conn2.Unselect()
 
 	conns := connection.NewConnections(connection.WithConnections(
 		[]*connection.Connection{conn1, conn2},
@@ -89,7 +89,7 @@ func Test_Select_ShouldSelectConnection(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, conn2.Selected())
 	assert.False(t, conn1.Selected())
-	assert.Equal(t, conns.Selected().ID(), conn2.ID(), "Expected the selected connection to be conn2")
+	assert.True(t, conns.Selected().Is(conn2), "Expected the selected connection to be conn2")
 }
 
 func Test_Select_ShouldReturnErrorWhenConnectionNotFound(t *testing.T) {
@@ -100,8 +100,9 @@ func Test_Select_ShouldReturnErrorWhenConnectionNotFound(t *testing.T) {
 		"1234",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
+		connection.WithSelected(true),
 	)
-	conn1.Select()
+
 	conns := connection.NewConnections(connection.WithConnections(
 		[]*connection.Connection{conn1},
 	))

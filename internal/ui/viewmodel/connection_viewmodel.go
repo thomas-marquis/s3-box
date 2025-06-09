@@ -111,7 +111,7 @@ func (vm *connectionViewModelImpl) Delete(c *connection.Connection) error {
 
 	found := false
 	for _, prevConn := range prevConns {
-		if prevConn.ID() == c.ID() {
+		if prevConn.Is(c) {
 			found = vm.connections.Remove(prevConn) == nil
 		}
 	}
@@ -129,7 +129,7 @@ func (vm *connectionViewModelImpl) Select(c *connection.Connection) (bool, error
 	defer vm.loading.Set(false)
 	prevSelectedConn := vm.selectedConnection
 
-	if prevSelectedConn != nil && prevSelectedConn.ID() == c.ID() {
+	if prevSelectedConn != nil && prevSelectedConn.Is(c) {
 		fmt.Println("Connection is already selected, no change made.") // TODO: remove
 		return false, nil
 	}
@@ -179,7 +179,7 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection.Connection) error
 
 	found := false
 	for i, conn := range allConns {
-		if conn.ID() == c.ID() {
+		if conn.Is(c) {
 			found = true
 			updatedConn := *c // Create a copy to have a new ref in the binding
 			if err := vm.connections.SetValue(i, &updatedConn); err != nil {

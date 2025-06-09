@@ -49,17 +49,26 @@ func (c *Connections) Connections() []*Connection {
 
 func (c *Connections) Select(connID uuid.UUID) error {
 	found := false
-	for _, conn := range c.connections {
-		if conn.ID() == connID {
-			conn.Select()
-			found = true
-		} else if conn.Selected() {
-			conn.Unselect()
+	idxToSelect := -1
+	for i, conn := range c.connections {
+		if conn.Selected() {
+			idxToSelect = i
 		}
+		if conn.ID() == connID {
+			idxToSelect = i
+			found = true
+		}
+		conn.Unselect()
 	}
 	if !found {
+		if idxToSelect > -1 {
+			c.connections[idxToSelect].Select()
+		}
 		return ErrConnectionNotFound
 	}
+
+	c.connections[idxToSelect].Select()
+
 	return nil
 }
 
@@ -74,7 +83,7 @@ func (c *Connections) Selected() *Connection {
 
 func (c *Connections) Update(conn Connection) error {
 	for i, existingConn := range c.connections {
-		if existingConn.ID() == conn.ID() {
+		if existingConn.Is(&conn) {
 			c.connections[i].Update(&conn)
 			return nil
 		}

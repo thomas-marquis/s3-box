@@ -133,6 +133,13 @@ func (c *Connection) ID() uuid.UUID {
 	return c.id
 }
 
+func (c *Connection) Is(other *Connection) bool {
+	if other == nil {
+		return false
+	}
+	return c.id == other.id
+}
+
 func (c *Connection) Update(other *Connection) {
 	c.Name = other.Name
 	c.Server = other.Server

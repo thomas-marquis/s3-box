@@ -96,7 +96,7 @@ func (r *ConnectionRepositoryImpl) Save(ctx context.Context, c *connection.Conne
 
 	var found bool
 	for _, conn := range connections {
-		if conn.ID() == c.ID() {
+		if conn.Is(c) {
 			found = true
 			conn.Update(c)
 			fmt.Printf("Update connection (during): %v\n", conn) // TODO remove it
