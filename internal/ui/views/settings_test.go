@@ -51,7 +51,7 @@ func Test_GetSettingsView_ShouldBuildViewWithoutError(t *testing.T) {
 		Times(2)
 
 	connRepo.EXPECT().
-		GetByID(gomock.AssignableToTypeOf(ctxType), gomock.Eq(fakeConnection.ID)).
+		GetByID(gomock.AssignableToTypeOf(ctxType), gomock.Eq(fakeConnection.ID())).
 		Return(fakeConnection, nil).
 		Times(1)
 

@@ -33,9 +33,9 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenNonAlreadySelected(t *testing
 		"12345",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
+		connection.WithID(conn1.ID()),
+		connection.WithSelected(true),
 	)
-	conn1Selected.ID = conn1.ID
-	conn1Selected.IsSelected = true
 
 	conn2 := connection.NewConnection(
 		"Connection 2",
@@ -58,7 +58,7 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenNonAlreadySelected(t *testing
 
 	// When
 	ctx := context.Background()
-	err := service.Select(ctx, conn1.ID)
+	err := service.Select(ctx, conn1.ID())
 
 	// Then
 	assert.NoError(t, err)
@@ -84,9 +84,9 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenOneAlreadySelected(t *testing
 		"12345",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
+		connection.WithID(conn1.ID()),
+		connection.WithSelected(true),
 	)
-	conn1Selected.ID = conn1.ID
-	conn1Selected.IsSelected = true
 
 	conn2 := connection.NewConnection(
 		"Connection 2",
@@ -95,16 +95,16 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenOneAlreadySelected(t *testing
 		"MyBucket2",
 		connection.AsAWSConnection("eu-west-2"),
 	)
-	conn2.IsSelected = true
+	conn2.Select()
 	conn2NotSelected := connection.NewConnection(
 		"Connection 2",
 		"POIUYT",
 		"09876",
 		"MyBucket2",
 		connection.AsAWSConnection("eu-west-2"),
+		connection.WithID(conn2.ID()),
+		connection.WithSelected(false),
 	)
-	conn2NotSelected.ID = conn2.ID
-	conn2NotSelected.IsSelected = false
 
 	mockConnRepo.EXPECT().
 		List(gomock.AssignableToTypeOf(tests.ContextType)).
@@ -124,7 +124,7 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenOneAlreadySelected(t *testing
 
 	// When
 	ctx := context.Background()
-	err := service.Select(ctx, conn1.ID)
+	err := service.Select(ctx, conn1.ID())
 
 	// Then
 	assert.NoError(t, err)

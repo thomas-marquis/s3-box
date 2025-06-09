@@ -41,13 +41,13 @@ func (*ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, co
 
 	leftGroup := c.Objects[0].(*fyne.Container)
 	selected := leftGroup.Objects[0].(*widget.Button)
-	if conn.IsSelected {
+	if conn.Selected() {
 		selected.SetIcon(theme.RadioButtonCheckedIcon())
 	} else {
 		selected.SetIcon(theme.RadioButtonIcon())
 	}
 	selected.OnTapped = func() {
-		if conn.IsSelected {
+		if conn.Selected() {
 			return
 		}
 		dialog.ShowConfirm(

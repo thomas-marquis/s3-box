@@ -96,8 +96,8 @@ func Test_Save_ShouldUpdateExistingConnection(t *testing.T) {
 		"1234",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
+		connection.WithID(conn1.ID()), // Ensure the ID remains the same for update
 	)
-	conn1Updated.ID = conn1.ID // Ensure the ID remains the same for update
 
 	conn2 := connection.NewConnection(
 		"connection 2",

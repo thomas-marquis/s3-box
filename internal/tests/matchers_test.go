@@ -28,8 +28,8 @@ func Test_eqDeref_Matches_ShouldReturnTrueForEqualValues(t *testing.T) {
 		"1234",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
+		connection.WithID(conn1.ID()), // Ensure the ID remains the same for comparison
 	)
-	conn2.ID = conn1.ID // Ensure the ID remains the same for comparison
 
 	testCases := []struct {
 		actual   any

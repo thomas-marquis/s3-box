@@ -3,7 +3,6 @@ package connection_test
 import (
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/thomas-marquis/s3-box/internal/connection"
 )
@@ -56,27 +55,15 @@ func Test_Connection_Compare(t *testing.T) {
 		expected bool
 	}{
 		{
-			name: "Equal connections",
-			conn1: &connection.Connection{
-				ID:   uuid.New(),
-				Name: "Test Connection",
-			},
-			conn2: &connection.Connection{
-				ID:   uuid.New(),
-				Name: "Test Connection",
-			},
+			name:     "Equal connections",
+			conn1:    connection.NewConnection("Test Connection", "AccessKey1", "SecretKey1", "Bucket1"),
+			conn2:    connection.NewConnection("Test Connection", "AccessKey1", "SecretKey1", "Bucket1"),
 			expected: true,
 		},
 		{
-			name: "Different connections",
-			conn1: &connection.Connection{
-				ID:   uuid.New(),
-				Name: "Connection 1",
-			},
-			conn2: &connection.Connection{
-				ID:   uuid.New(),
-				Name: "Connection 2",
-			},
+			name:     "Different connections",
+			conn1:    connection.NewConnection("Connection 1", "AccessKey1", "SecretKey1", "Bucket1"),
+			conn2:    connection.NewConnection("Connection 2", "AccessKey2", "SecretKey2", "Bucket2"),
 			expected: false,
 		},
 	}

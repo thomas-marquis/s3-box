@@ -33,6 +33,9 @@ type ConnectionOption func(*Connection)
 
 func AsAWSConnection(region string) ConnectionOption {
 	return func(c *Connection) {
+		if region == "" {
+			return
+		}
 		c.Type = AWSConnectionType
 		c.Region = region
 		c.UseTls = true
@@ -42,6 +45,9 @@ func AsAWSConnection(region string) ConnectionOption {
 
 func AsS3LikeConnection(server string, useTLS bool) ConnectionOption {
 	return func(c *Connection) {
+		if server == "" {
+			return
+		}
 		c.Type = S3LikeConnectionType
 		c.Server = server
 		c.UseTls = useTLS
@@ -55,19 +61,43 @@ func WithReadOnlyOption(readOnly bool) ConnectionOption {
 	}
 }
 
+func WithRevision(revision int) ConnectionOption {
+	return func(c *Connection) {
+		c.revision = revision
+	}
+}
+
+func WithSelected(selected bool) ConnectionOption {
+	return func(c *Connection) {
+		c.selected = selected
+	}
+}
+
+func WithUseTLS(useTLS bool) ConnectionOption {
+	return func(c *Connection) {
+		c.UseTls = useTLS
+	}
+}
+
+func WithID(id uuid.UUID) ConnectionOption {
+	return func(c *Connection) {
+		c.id = id
+	}
+}
+
 type Connection struct {
-	ID         uuid.UUID
 	Name       string
 	Server     string
 	SecretKey  string
 	AccessKey  string
 	BucketName string
 	UseTls     bool
-	IsSelected bool
 	Region     string
 	Type       ConnectionType
 	ReadOnly   bool
 
+	id       uuid.UUID
+	selected bool
 	revision int
 }
 
@@ -76,7 +106,7 @@ func NewConnection(
 	options ...ConnectionOption,
 ) *Connection {
 	c := &Connection{
-		ID:         uuid.New(),
+		id:         uuid.New(),
 		Name:       name,
 		AccessKey:  accessKey,
 		SecretKey:  secretKey,
@@ -95,8 +125,12 @@ func NewConnection(
 	return c
 }
 
-func NewEmptyConnection() *Connection {
-	return NewConnection("", "", "", "", AsAWSConnection("us-east-1"))
+func NewEmptyConnection(options ...ConnectionOption) *Connection {
+	return NewConnection("", "", "", "", options...)
+}
+
+func (c *Connection) ID() uuid.UUID {
+	return c.id
 }
 
 func (c *Connection) Update(other *Connection) {
@@ -143,6 +177,18 @@ func (c *Connection) SetRevision(newRevision int) {
 // IncRevision increments the revision number of the connection.
 func (c *Connection) IncRevision() {
 	c.revision++
+}
+
+func (c *Connection) Select() {
+	c.selected = true
+}
+
+func (c *Connection) Selected() bool {
+	return c.selected
+}
+
+func (c *Connection) Unselect() {
+	c.selected = false
 }
 
 type ConnectionExport struct {

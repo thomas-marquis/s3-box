@@ -31,31 +31,26 @@ type connectionDTO struct {
 }
 
 func (c *connectionDTO) toConnection() *connection.Connection {
-	conn := &connection.Connection{
-		ID:         c.ID,
-		Name:       c.Name,
-		Server:     c.Server,
-		AccessKey:  c.AccessKey,
-		SecretKey:  c.SecretKey,
-		IsSelected: c.Selected,
-		BucketName: c.Buket,
-		Region:     c.Region,
-		Type:       connection.NewConnectionTypeFromString(c.Type),
-		UseTls:     c.UseTls,
-		ReadOnly:   c.ReadOnly,
-	}
-	conn.SetRevision(c.Revision)
-	return conn
+	return connection.NewConnection(
+		c.Name, c.AccessKey, c.SecretKey, c.Buket,
+		connection.WithRevision(c.Revision),
+		connection.WithSelected(c.Selected),
+		connection.WithUseTLS(c.UseTls),
+		connection.WithID(c.ID),
+		connection.WithReadOnlyOption(c.ReadOnly),
+		connection.AsS3LikeConnection(c.Server, c.UseTls),
+		connection.AsAWSConnection(c.Region),
+	)
 }
 
 func newConnectionDTO(c *connection.Connection) *connectionDTO {
 	return &connectionDTO{
-		ID:        c.ID,
+		ID:        c.ID(),
 		Name:      c.Name,
 		Server:    c.Server,
 		AccessKey: c.AccessKey,
 		SecretKey: c.SecretKey,
-		Selected:  c.IsSelected,
+		Selected:  c.Selected(),
 		Buket:     c.BucketName,
 		Region:    c.Region,
 		Type:      c.Type.String(),
@@ -101,7 +96,7 @@ func (r *ConnectionRepositoryImpl) Save(ctx context.Context, c *connection.Conne
 
 	var found bool
 	for _, conn := range connections {
-		if conn.ID == c.ID {
+		if conn.ID() == c.ID() {
 			found = true
 			conn.Update(c)
 			fmt.Printf("Update connection (during): %v\n", conn) // TODO remove it
@@ -136,7 +131,7 @@ func (r *ConnectionRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) err
 	var connToKeep []*connection.Connection
 	var found bool
 	for _, c := range connections {
-		if c.ID != id {
+		if c.ID() != id {
 			connToKeep = append(connToKeep, c)
 		} else {
 			found = true
@@ -168,7 +163,7 @@ func (r *ConnectionRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*
 	}
 
 	for _, c := range connections {
-		if c.ID == id {
+		if c.ID() == id {
 			return c, nil
 		}
 	}
@@ -184,11 +179,11 @@ func (r *ConnectionRepositoryImpl) SetSelected(ctx context.Context, id uuid.UUID
 
 	var found bool
 	for _, c := range connections {
-		if c.ID == id {
-			c.IsSelected = true
+		if c.ID() == id {
+			c.Select()
 			found = true
 		} else {
-			c.IsSelected = false
+			c.Unselect()
 		}
 	}
 
@@ -218,7 +213,7 @@ func (r *ConnectionRepositoryImpl) GetSelected(ctx context.Context) (*connection
 
 	for _, c := range connections {
 
-		if c.IsSelected {
+		if c.Selected() {
 			return c, nil
 		}
 	}
