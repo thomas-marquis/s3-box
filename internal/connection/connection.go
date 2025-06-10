@@ -85,6 +85,27 @@ func WithID(id uuid.UUID) ConnectionOption {
 	}
 }
 
+func WithCredentials(
+	accessKey, secretKey string,
+) ConnectionOption {
+	return func(c *Connection) {
+		c.AccessKey = accessKey
+		c.SecretKey = secretKey
+	}
+}
+
+func WithName(name string) ConnectionOption {
+	return func(c *Connection) {
+		c.Name = name
+	}
+}
+
+func WithBucket(bucket string) ConnectionOption {
+	return func(c *Connection) {
+		c.BucketName = bucket
+	}
+}
+
 type Connection struct {
 	Name       string
 	Server     string
@@ -101,7 +122,7 @@ type Connection struct {
 	revision int
 }
 
-func NewConnection(
+func New(
 	name, accessKey, secretKey, bucket string,
 	options ...ConnectionOption,
 ) *Connection {
@@ -126,7 +147,7 @@ func NewConnection(
 }
 
 func NewEmptyConnection(options ...ConnectionOption) *Connection {
-	return NewConnection("", "", "", "", options...)
+	return New("", "", "", "", options...)
 }
 
 func (c *Connection) ID() uuid.UUID {
@@ -140,16 +161,10 @@ func (c *Connection) Is(other *Connection) bool {
 	return c.id == other.id
 }
 
-func (c *Connection) Update(other *Connection) {
-	c.Name = other.Name
-	c.Server = other.Server
-	c.SecretKey = other.SecretKey
-	c.AccessKey = other.AccessKey
-	c.BucketName = other.BucketName
-	c.UseTls = other.UseTls
-	c.Region = other.Region
-	c.Type = other.Type
-	c.ReadOnly = other.ReadOnly
+func (c *Connection) Update(options ...ConnectionOption) {
+	for _, opt := range options {
+		opt(c)
+	}
 	c.IncRevision()
 }
 

@@ -31,7 +31,7 @@ type connectionDTO struct {
 }
 
 func (c *connectionDTO) toConnection() *connection.Connection {
-	return connection.NewConnection(
+	return connection.New(
 		c.Name, c.AccessKey, c.SecretKey, c.Buket,
 		connection.WithRevision(c.Revision),
 		connection.WithSelected(c.Selected),
@@ -87,26 +87,36 @@ func (r *ConnectionRepositoryImpl) List(ctx context.Context) ([]*connection.Conn
 	return filteredConnections, nil
 }
 
-func (r *ConnectionRepositoryImpl) Save(ctx context.Context, c *connection.Connection) error {
-	fmt.Printf("SaveConnection: %v\n", c) // TODO remove it
-	connections, err := r.List(ctx)
+func (r *ConnectionRepositoryImpl) Get(ctx context.Context) (*connection.Set, error) {
+	connections, err := r.listConnections()
 	if err != nil {
-		return fmt.Errorf("SaveConnection: %w", err)
+		return nil, fmt.Errorf("GetConnections: %w", err)
 	}
+	return connection.NewSet(connection.WithConnections(connections)), nil
+}
 
-	var found bool
-	for _, conn := range connections {
-		if conn.Is(c) {
-			found = true
-			conn.Update(c)
-			fmt.Printf("Update connection (during): %v\n", conn) // TODO remove it
-			break
-		}
-	}
-
-	if !found {
-		connections = append(connections, c)
-	}
+func (r *ConnectionRepositoryImpl) Save(ctx context.Context, s *connection.Set) error {
+	connections := s.Connections()
+	// prevConns, err := r.List(ctx)
+	// connections, err := r.List(ctx)
+	// if err != nil {
+	// 	return fmt.Errorf("SaveConnection: %w", err)
+	// }
+	//
+	// var found bool
+	// for _, conn := range prevConns {
+	// 	for _, c := range updatedConns {
+	// 		if conn.Is(c) {
+	// 			found = true
+	// 			conn.Update(c)
+	// 			break
+	// 		}
+	// 	}
+	// }
+	//
+	// if !found {
+	// 	connections = append(connections, c)
+	// }
 
 	dtos := make([]*connectionDTO, len(connections))
 	for i, c := range connections {
@@ -120,6 +130,23 @@ func (r *ConnectionRepositoryImpl) Save(ctx context.Context, c *connection.Conne
 	r.prefs.SetString(allConnectionsKey, string(content))
 
 	return nil
+}
+
+func (r *ConnectionRepositoryImpl) listConnections() ([]*connection.Connection, error) {
+	dtos, err := r.loadConnectionDTOs()
+	if err != nil {
+		return nil, fmt.Errorf("ListConnections: %w", err)
+	}
+
+	// filter connections to remove those with empty id
+	var filteredConnections []*connection.Connection
+	for _, dto := range dtos {
+		if dto.ID != uuid.Nil {
+			filteredConnections = append(filteredConnections, dto.toConnection())
+		}
+	}
+
+	return filteredConnections, nil
 }
 
 func (r *ConnectionRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {

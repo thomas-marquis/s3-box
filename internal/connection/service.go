@@ -42,7 +42,7 @@ func (s *connectionServiceImpl) Select(ctx context.Context, ID uuid.UUID) error 
 	for _, c := range allConns {
 		if c.ID() == ID {
 			c.Select()
-			if err := s.repository.Save(ctx, c); err != nil {
+			if err := s.repository.Save(ctx, nil); err != nil {
 				return err
 			}
 		}

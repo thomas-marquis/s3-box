@@ -117,17 +117,17 @@ func (mr *MockRepositoryMockRecorder) List(ctx any) *gomock.Call {
 }
 
 // Save mocks base method.
-func (m *MockRepository) Save(ctx context.Context, c *connection.Connection) error {
+func (m *MockRepository) Save(ctx context.Context, s *connection.Set) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", ctx, c)
+	ret := m.ctrl.Call(m, "Save", ctx, s)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockRepositoryMockRecorder) Save(ctx, c any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Save(ctx, s any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockRepository)(nil).Save), ctx, c)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockRepository)(nil).Save), ctx, s)
 }
 
 // SetSelected mocks base method.

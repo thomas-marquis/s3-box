@@ -39,7 +39,7 @@ func Test_GetSettingsView_ShouldBuildViewWithoutError(t *testing.T) {
 	// Setup connection
 	connRepo := mocks_connection.NewMockRepository(ctrl)
 
-	fakeConnection := connection.NewConnection("demo", "AZERTY", "123456", "MyBucket", connection.AsAWSConnection("eu-west-3"))
+	fakeConnection := connection.New("demo", "AZERTY", "123456", "MyBucket", connection.AsAWSConnection("eu-west-3"))
 	connRepo.EXPECT().
 		List(gomock.AssignableToTypeOf(ctxType)).
 		Return([]*connection.Connection{fakeConnection}, nil).

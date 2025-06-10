@@ -15,14 +15,14 @@ func Test_eqDeref_Matches_ShouldReturnTrueForEqualValues(t *testing.T) {
 		Field1 string
 	}
 
-	conn1 := connection.NewConnection(
+	conn1 := connection.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
 	)
-	conn2 := connection.NewConnection(
+	conn2 := connection.New(
 		"connection 1",
 		"AZERTY",
 		"1234",

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2/data/binding"
+	"github.com/google/uuid"
 	"github.com/thomas-marquis/s3-box/internal/connection"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
@@ -15,8 +16,9 @@ type ConnectionViewModel interface {
 	// Connections returns the list of connections as a binding.UntypedList
 	Connections() binding.UntypedList
 
-	// Save saves a connection to the repository and updates the binding list
-	Save(c connection.Connection) error
+	Create(name, accessKey, secretKey, bucket string, options ...connection.ConnectionOption) error
+
+	Update(c *connection.Connection, options ...connection.ConnectionOption) error
 
 	// Delete deletes a connection from the repository and updates the binding list
 	Delete(c *connection.Connection) error
@@ -33,11 +35,12 @@ type ConnectionViewModel interface {
 }
 
 type connectionViewModelImpl struct {
-	connRepo           connection.Repository
-	settingsVm         SettingsViewModel
-	connections        binding.UntypedList
-	selectedConnection *connection.Connection
-	loading            binding.Bool
+	connRepo     connection.Repository
+	settingsVm   SettingsViewModel
+	connBindings binding.UntypedList
+	// selectedConnection *connection.Connection
+	loading        binding.Bool
+	connectionsSet *connection.Set
 }
 
 var _ ConnectionViewModel = &connectionViewModelImpl{}
@@ -49,10 +52,10 @@ func NewConnectionViewModel(
 	c := binding.NewUntypedList()
 
 	vm := &connectionViewModelImpl{
-		connRepo:    connRepo,
-		settingsVm:  settingsVm,
-		connections: c,
-		loading:     binding.NewBool(),
+		connRepo:     connRepo,
+		settingsVm:   settingsVm,
+		connBindings: c,
+		loading:      binding.NewBool(),
 	}
 
 	if err := vm.loadInitialConnections(); err != nil {
@@ -67,43 +70,68 @@ func NewConnectionViewModel(
 }
 
 func (c *connectionViewModelImpl) Connections() binding.UntypedList {
-	return c.connections
+	return c.connBindings
 }
 
-func (vm *connectionViewModelImpl) Save(c connection.Connection) error {
+func (vm *connectionViewModelImpl) Create(name, accessKey, secretKey, bucket string, options ...connection.ConnectionOption) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
-	if err := vm.connRepo.Save(ctx, &c); err != nil {
-		// TOOD: send to global logging chan
-		// vm.errChan <- fmt.Errorf("error saving connection: %w", err)
-		fmt.Printf("error saving connection: %v", err)
-		return err
+
+	if err := vm.connectionsSet.Create(name, accessKey, secretKey, bucket, options...); err != nil {
+		return fmt.Errorf("error creating connection: %w", err)
 	}
 
-	if err := vm.updateBinding(&c); err != nil {
-		if err == errConnNotInBinding {
-			vm.connections.Append(&c)
-		} else {
-			return err
-		}
+	if err := vm.connRepo.Save(ctx, vm.connectionsSet); err != nil {
+		// TODO: send to global logging chan
+		// vm.errChan <- fmt.Errorf("error saving connection set: %w", err)
+		fmt.Printf("error saving connection set: %v", err)
+		return fmt.Errorf("error saving connection set after creation: %w", err)
 	}
 
 	return nil
 }
 
+func (vm *connectionViewModelImpl) Update(c *connection.Connection, options ...connection.ConnectionOption) error {
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
+	defer cancel()
+
+	if err := vm.connectionsSet.Update(c.ID(), options...); err != nil {
+		// TODO: send to global logging chan
+		// vm.errChan <- fmt.Errorf("error updating connection: %w", err)
+		fmt.Printf("error updating connection: %v", err)
+		return fmt.Errorf("error updating connection: %w", err)
+	}
+
+	if err := vm.connRepo.Save(ctx, vm.connectionsSet); err != nil {
+		// TODO: send to global logging chan
+		// vm.errChan <- fmt.Errorf("error saving connection set: %w", err)
+		fmt.Printf("error saving connection set after update: %v", err)
+		return fmt.Errorf("error saving connection set after update: %w", err)
+	}
+	return nil
+}
+
 func (vm *connectionViewModelImpl) Delete(c *connection.Connection) error {
+	if err := vm.connectionsSet.Delete(c.ID()); err != nil {
+		// TODO: send to global logging chan
+		// vm.errChan <- fmt.Errorf("error deleting connection: %w", err)
+		fmt.Printf("error deleting connection from set: %v", err)
+		return fmt.Errorf("error deleting connection from set: %w", err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	if err := vm.connRepo.Delete(ctx, c.ID()); err != nil {
-		// TOOD: send to global logging chan
+		// TODO: rollback the save event here
+		// TODO: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error deleting connection: %w", err)
 		fmt.Printf("error deleting connection: %v", err)
 		return err
 	}
 
-	prevConns, err := uiutils.GetUntypedList[*connection.Connection](vm.connections)
+	prevConns, err := uiutils.GetUntypedList[*connection.Connection](vm.connBindings)
 	if err != nil {
-		// TOOD: send to global logging chan
+		// TODO: send to global logging chan.
 		// vm.errChan <- fmt.Errorf("error getting previous connections: %w", err)
 		fmt.Printf("error getting previous connections: %v", err)
 		return err
@@ -112,7 +140,7 @@ func (vm *connectionViewModelImpl) Delete(c *connection.Connection) error {
 	found := false
 	for _, prevConn := range prevConns {
 		if prevConn.Is(c) {
-			found = vm.connections.Remove(prevConn) == nil
+			found = vm.connBindings.Remove(prevConn) == nil
 		}
 	}
 
@@ -127,28 +155,35 @@ func (vm *connectionViewModelImpl) Delete(c *connection.Connection) error {
 func (vm *connectionViewModelImpl) Select(c *connection.Connection) (bool, error) {
 	vm.loading.Set(true)
 	defer vm.loading.Set(false)
-	prevSelectedConn := vm.selectedConnection
 
-	if prevSelectedConn != nil && prevSelectedConn.Is(c) {
-		fmt.Println("Connection is already selected, no change made.") // TODO: remove
-		return false, nil
+	prevSelected := vm.connectionsSet.Selected()
+
+	if err := vm.connectionsSet.Select(c.ID()); err != nil {
+		return false, fmt.Errorf("error selecting connection: %w", err)
 	}
-
-	fmt.Println("COUCOU") // TODO: remove
 
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
-	if err := vm.connRepo.SetSelected(ctx, c.ID()); err != nil {
-		return false, err
+	if err := vm.connRepo.Save(ctx, vm.connectionsSet); err != nil {
+		// TOOD: send to global logging chan
+		// vm.errChan <- fmt.Errorf("error saving connection set: %w", err)
+		if prevSelected != nil {
+			vm.connectionsSet.Select(prevSelected.ID())
+		}
+		return false, fmt.Errorf("error saving connection set after selection: %w", err)
 	}
-	prevSelectedConn.Unselect()
-	c.Select()
-	vm.selectedConnection = c
 
 	if err := vm.updateBinding(c); err != nil {
-		prevSelectedConn.Select()
-		c.Unselect()
-		vm.selectedConnection = prevSelectedConn
+		if prevSelected != nil {
+			newSelected := vm.connectionsSet.Selected()
+			vm.connectionsSet.Select(prevSelected.ID())
+			if err := vm.connRepo.Save(ctx, vm.connectionsSet); err != nil {
+				// TOOD: send to global logging chan
+				// vm.errChan <- fmt.Errorf("error saving connection set: %w", err)
+				vm.connectionsSet.Select(newSelected.ID())
+				return false, fmt.Errorf("error saving connection set after selection: %w", err)
+			}
+		}
 		return false, err
 	}
 
@@ -162,14 +197,14 @@ func (vm *connectionViewModelImpl) ExportAsJSON() (connection.ConnectionExport, 
 }
 
 func (vm *connectionViewModelImpl) IsReadOnly() bool {
-	if vm.selectedConnection == nil {
+	if vm.connectionsSet.Selected() == nil {
 		return false
 	}
-	return vm.selectedConnection.ReadOnly
+	return vm.connectionsSet.Selected().ReadOnly
 }
 
 func (vm *connectionViewModelImpl) updateBinding(c *connection.Connection) error {
-	allConns, err := uiutils.GetUntypedList[*connection.Connection](vm.connections)
+	allConns, err := uiutils.GetUntypedList[*connection.Connection](vm.connBindings)
 	if err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error getting previous connections: %w", err)
@@ -182,7 +217,7 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection.Connection) error
 		if conn.Is(c) {
 			found = true
 			updatedConn := *c // Create a copy to have a new ref in the binding
-			if err := vm.connections.SetValue(i, &updatedConn); err != nil {
+			if err := vm.connBindings.SetValue(i, &updatedConn); err != nil {
 				// TOOD: send to global logging chan
 				// vm.errChan <- fmt.Errorf("error setting selected connection: %w", err)
 				fmt.Printf("error updating connection: %v", err)
@@ -191,8 +226,8 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection.Connection) error
 
 			// Necessary workaround to trigger the refresh in the UI
 			placeholcerConn := connection.NewEmptyConnection()
-			vm.connections.Append(placeholcerConn)
-			vm.connections.Remove(placeholcerConn)
+			vm.connBindings.Append(placeholcerConn)
+			vm.connBindings.Remove(placeholcerConn)
 		}
 	}
 
@@ -206,19 +241,18 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection.Connection) error
 func (vm *connectionViewModelImpl) loadInitialConnections() error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
-	conns, err := vm.connRepo.List(ctx)
+	s, err := vm.connRepo.Get(ctx)
 	if err != nil {
 		// TOOD: send to global logging chan
 		// vm.errChan <- fmt.Errorf("error listing connections: %w", err)
-		fmt.Printf("error listing connections: %v", err)
+		fmt.Printf("error loading connections: %v", err)
 		return err
 	}
 
-	for _, c := range conns {
-		vm.connections.Append(c)
-		if c.Selected() {
-			vm.selectedConnection = c
-		}
+	vm.connectionsSet = s
+
+	for _, c := range s.Connections() {
+		vm.connBindings.Append(c)
 	}
 
 	return nil

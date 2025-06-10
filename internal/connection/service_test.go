@@ -20,14 +20,14 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenNonAlreadySelected(t *testing
 
 	mockConnRepo := mocks_connection.NewMockRepository(ctrl)
 
-	conn1 := connection.NewConnection(
+	conn1 := connection.New(
 		"Connection 1",
 		"AZERTY",
 		"12345",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
 	)
-	conn1Selected := connection.NewConnection(
+	conn1Selected := connection.New(
 		"Connection 1",
 		"AZERTY",
 		"12345",
@@ -37,7 +37,7 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenNonAlreadySelected(t *testing
 		connection.WithSelected(true),
 	)
 
-	conn2 := connection.NewConnection(
+	conn2 := connection.New(
 		"Connection 2",
 		"POIUYT",
 		"09876",
@@ -71,14 +71,14 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenOneAlreadySelected(t *testing
 
 	mockConnRepo := mocks_connection.NewMockRepository(ctrl)
 
-	conn1 := connection.NewConnection(
+	conn1 := connection.New(
 		"Connection 1",
 		"AZERTY",
 		"12345",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
 	)
-	conn1Selected := connection.NewConnection(
+	conn1Selected := connection.New(
 		"Connection 1",
 		"AZERTY",
 		"12345",
@@ -88,7 +88,7 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenOneAlreadySelected(t *testing
 		connection.WithSelected(true),
 	)
 
-	conn2 := connection.NewConnection(
+	conn2 := connection.New(
 		"Connection 2",
 		"POIUYT",
 		"09876",
@@ -96,7 +96,7 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenOneAlreadySelected(t *testing
 		connection.AsAWSConnection("eu-west-2"),
 	)
 	conn2.Select()
-	conn2NotSelected := connection.NewConnection(
+	conn2NotSelected := connection.New(
 		"Connection 2",
 		"POIUYT",
 		"09876",

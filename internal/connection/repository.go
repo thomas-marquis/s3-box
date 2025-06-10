@@ -7,11 +7,13 @@ import (
 )
 
 type Repository interface {
+	Get(ctx context.Context) (*Set, error)
+
+	// Save create or update a set of connections
+	Save(ctx context.Context, s *Set) error
+
 	// List returns all existing connections
 	List(ctx context.Context) ([]*Connection, error)
-
-	// Save create or update a connection
-	Save(ctx context.Context, c *Connection) error
 
 	// Delete deletes given connection
 	Delete(ctx context.Context, id uuid.UUID) error

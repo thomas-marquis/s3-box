@@ -10,14 +10,14 @@ import (
 
 func Test_Delete_ShouldDeleteConnection(t *testing.T) {
 	// Given
-	conn1 := connection.NewConnection(
+	conn1 := connection.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
 	)
-	conn2 := connection.NewConnection(
+	conn2 := connection.New(
 		"connection 2",
 		"QWERTY",
 		"5678",
@@ -25,7 +25,7 @@ func Test_Delete_ShouldDeleteConnection(t *testing.T) {
 		connection.AsS3LikeConnection("localhost:9000", false),
 	)
 
-	conns := connection.NewConnections(connection.WithConnections(
+	conns := connection.NewSet(connection.WithConnections(
 		[]*connection.Connection{conn1, conn2},
 	))
 
@@ -39,14 +39,14 @@ func Test_Delete_ShouldDeleteConnection(t *testing.T) {
 
 func Test_Delete_ShouldReturnErrorIfConnectionNotFound(t *testing.T) {
 	// Given
-	conn1 := connection.NewConnection(
+	conn1 := connection.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
 	)
-	conns := connection.NewConnections(connection.WithConnections(
+	conns := connection.NewSet(connection.WithConnections(
 		[]*connection.Connection{conn1},
 	))
 
@@ -61,7 +61,7 @@ func Test_Delete_ShouldReturnErrorIfConnectionNotFound(t *testing.T) {
 
 func Test_Select_ShouldSelectConnection(t *testing.T) {
 	// Given
-	conn1 := connection.NewConnection(
+	conn1 := connection.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
@@ -69,7 +69,7 @@ func Test_Select_ShouldSelectConnection(t *testing.T) {
 		connection.AsAWSConnection("eu-west-1"),
 		connection.WithSelected(true),
 	)
-	conn2 := connection.NewConnection(
+	conn2 := connection.New(
 		"connection 2",
 		"QWERTY",
 		"5678",
@@ -78,7 +78,7 @@ func Test_Select_ShouldSelectConnection(t *testing.T) {
 		connection.WithSelected(false),
 	)
 
-	conns := connection.NewConnections(connection.WithConnections(
+	conns := connection.NewSet(connection.WithConnections(
 		[]*connection.Connection{conn1, conn2},
 	))
 
@@ -94,7 +94,7 @@ func Test_Select_ShouldSelectConnection(t *testing.T) {
 
 func Test_Select_ShouldReturnErrorWhenConnectionNotFound(t *testing.T) {
 	// Given
-	conn1 := connection.NewConnection(
+	conn1 := connection.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
@@ -103,7 +103,7 @@ func Test_Select_ShouldReturnErrorWhenConnectionNotFound(t *testing.T) {
 		connection.WithSelected(true),
 	)
 
-	conns := connection.NewConnections(connection.WithConnections(
+	conns := connection.NewSet(connection.WithConnections(
 		[]*connection.Connection{conn1},
 	))
 

@@ -56,14 +56,14 @@ func Test_Connection_Compare(t *testing.T) {
 	}{
 		{
 			name:     "Equal connections",
-			conn1:    connection.NewConnection("Test Connection", "AccessKey1", "SecretKey1", "Bucket1"),
-			conn2:    connection.NewConnection("Test Connection", "AccessKey1", "SecretKey1", "Bucket1"),
+			conn1:    connection.New("Test Connection", "AccessKey1", "SecretKey1", "Bucket1"),
+			conn2:    connection.New("Test Connection", "AccessKey1", "SecretKey1", "Bucket1"),
 			expected: true,
 		},
 		{
 			name:     "Different connections",
-			conn1:    connection.NewConnection("Connection 1", "AccessKey1", "SecretKey1", "Bucket1"),
-			conn2:    connection.NewConnection("Connection 2", "AccessKey2", "SecretKey2", "Bucket2"),
+			conn1:    connection.New("Connection 1", "AccessKey1", "SecretKey1", "Bucket1"),
+			conn2:    connection.New("Connection 2", "AccessKey2", "SecretKey2", "Bucket2"),
 			expected: false,
 		},
 	}

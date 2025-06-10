@@ -26,14 +26,14 @@ func Test_Save_ShouldSaveTheNewConnection(t *testing.T) {
 		Return(time.Duration(10)).
 		AnyTimes()
 
-	conn1 := connection.NewConnection(
+	conn1 := connection.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
 	)
-	conn2 := connection.NewConnection(
+	conn2 := connection.New(
 		"connection 2",
 		"QWERTY",
 		"5678",
@@ -46,7 +46,7 @@ func Test_Save_ShouldSaveTheNewConnection(t *testing.T) {
 		Return([]*connection.Connection{conn1, conn2}, nil).
 		Times(1)
 
-	newConn := connection.NewConnection(
+	newConn := connection.New(
 		"connection 3",
 		"POIUY",
 		"98765",
@@ -83,14 +83,14 @@ func Test_Save_ShouldUpdateExistingConnection(t *testing.T) {
 		Return(time.Duration(10)).
 		AnyTimes()
 
-	conn1 := connection.NewConnection(
+	conn1 := connection.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
 		connection.AsAWSConnection("eu-west-1"),
 	)
-	conn1Updated := connection.NewConnection(
+	conn1Updated := connection.New(
 		"connection 1 updated",
 		"AZERTY",
 		"1234",
@@ -99,7 +99,7 @@ func Test_Save_ShouldUpdateExistingConnection(t *testing.T) {
 		connection.WithID(conn1.ID()), // Ensure the ID remains the same for update
 	)
 
-	conn2 := connection.NewConnection(
+	conn2 := connection.New(
 		"connection 2",
 		"QWERTY",
 		"5678",

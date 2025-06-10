@@ -60,7 +60,7 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 		Times(1)
 
 	// setup fake connection
-	fakeConn := connection.NewConnection(
+	fakeConn := connection.New(
 		"my connection",
 		"12345",
 		"AZERTY",
@@ -125,7 +125,7 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirAtRootAndAddItToTree(t *testing
 		Times(1)
 
 	// setup fake connection
-	fakeConn := connection.NewConnection(
+	fakeConn := connection.New(
 		"my connection",
 		"12345",
 		"AZERTY",
@@ -203,7 +203,7 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirUnderOtherDirAndAddItToTree(t *
 		Times(1)
 
 	// setup fake connection
-	fakeConn := connection.NewConnection(
+	fakeConn := connection.New(
 		"my connection",
 		"12345",
 		"AZERTY",

@@ -13,6 +13,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+type ConnDialogOnSubmitFunc func(name, accessKey, secretKey, bucket string, options ...connection.ConnectionOption) error
+
 func makeCopyBtnWithData(enableCopy bool, data binding.String, w fyne.Window) *widget.Button {
 	return widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
 		if enableCopy {
@@ -39,7 +41,7 @@ func buildAWSForm(
 	ctx appcontext.AppContext,
 	defaultConn connection.Connection,
 	enableCopy bool,
-	onSubmit func(conn *connection.Connection) error,
+	onSubmit ConnDialogOnSubmitFunc,
 ) *widget.Form {
 	// Init data bindings
 	nameData := binding.NewString()
@@ -110,16 +112,14 @@ func buildAWSForm(
 		readOnlyFormItem,
 	)
 	f.OnSubmit = func() {
-		newConn := connection.NewConnection(
+		if err := onSubmit(
 			uiutils.GetString(nameData),
 			uiutils.GetString(accessKeyData),
 			uiutils.GetString(secretKeyData),
 			uiutils.GetString(bucketData),
 			connection.AsAWSConnection(uiutils.GetString(regionData)),
 			connection.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
-		)
-
-		if err := onSubmit(newConn); err == nil {
+		); err == nil {
 			nameData.Set("")
 			accessKeyData.Set("")
 			secretKeyData.Set("")
@@ -136,7 +136,7 @@ func buildS3LikeForm(
 	ctx appcontext.AppContext,
 	defaultConn connection.Connection,
 	enableCopy bool,
-	onSubmit func(conn *connection.Connection) error,
+	onSubmit ConnDialogOnSubmitFunc,
 ) *widget.Form {
 	// Init data bindings
 	nameData := binding.NewString()
@@ -213,16 +213,14 @@ func buildS3LikeForm(
 		readOnlyFormItem,
 	)
 	f.OnSubmit = func() {
-		newConn := connection.NewConnection(
+		if err := onSubmit(
 			uiutils.GetString(nameData),
 			uiutils.GetString(accessKeyData),
 			uiutils.GetString(secretKeyData),
 			uiutils.GetString(bucketData),
 			connection.AsS3LikeConnection(uiutils.GetString(serverData), uiutils.GetBool(useTlsData)),
 			connection.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
-		)
-
-		if err := onSubmit(newConn); err == nil {
+		); err == nil {
 			nameData.Set("")
 			accessKeyData.Set("")
 			secretKeyData.Set("")
@@ -241,12 +239,12 @@ func NewConnectionDialog(
 	label string,
 	defaultConn connection.Connection,
 	enableCopy bool,
-	onSave func(conn connection.Connection) error,
+	onSave ConnDialogOnSubmitFunc,
 ) dialog.Dialog {
 	var d dialog.Dialog
 
-	handleOnSubmit := func(c *connection.Connection) error {
-		err := onSave(*c)
+	handleOnSubmit := func(name, accessKey, secretKey, bucket string, options ...connection.ConnectionOption) error {
+		err := onSave(name, accessKey, secretKey, bucket, options...)
 		d.Hide()
 		return err
 	}
