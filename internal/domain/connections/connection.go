@@ -6,7 +6,7 @@ import (
 
 type ConnectionID uuid.UUID
 
-var NilConnectionID ConnectionID = ConnectionID(uuid.Nil)
+var nilConnectionID ConnectionID = ConnectionID(uuid.Nil)
 
 func NewConnectionID() ConnectionID {
 	return ConnectionID(uuid.New())
