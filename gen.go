@@ -7,8 +7,8 @@ import _ "go.uber.org/mock/gomock"
 //go:generate mockgen -package mocks_explorer -destination mocks/explorer/directory_service.go github.com/thomas-marquis/s3-box/internal/explorer DirectoryService
 //go:generate mockgen -package mocks_explorer -destination mocks/explorer/file_service.go github.com/thomas-marquis/s3-box/internal/explorer FileService
 
-//go:generate mockgen -package mocks_connection -destination mocks/connection/connection_repository.go github.com/thomas-marquis/s3-box/internal/connection Repository
-//go:generate mockgen -package mocks_connection -destination mocks/connection/connection_service.go github.com/thomas-marquis/s3-box/internal/connection ConnectionService
+//go:generate mockgen -package mocks_connections -destination mocks/connections/repository.go github.com/thomas-marquis/s3-box/internal/connections Repository
+//go:generate mockgen -package mocks_connections -destination mocks/connections/connection_service.go github.com/thomas-marquis/s3-box/internal/connections ConnectionService
 
 //go:generate mockgen -package mocks_viewmodel -destination mocks/viewmodel/explorer_viewmodel.go github.com/thomas-marquis/s3-box/internal/ui/viewmodel ExplorerViewModel
 //go:generate mockgen -package mocks_viewmodel -destination mocks/viewmodel/connection_viewmodel.go github.com/thomas-marquis/s3-box/internal/ui/viewmodel ConnectionViewModel

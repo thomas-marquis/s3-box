@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"go.uber.org/zap"
 )
@@ -18,12 +18,12 @@ type S3DirectoryRepositoryImpl struct {
 	log     *zap.SugaredLogger
 	session *session.Session
 	s3      *s3.S3
-	conn    *connection.Connection
+	conn    *connections.Connection
 }
 
 var _ explorer.S3DirectoryRepository = &S3DirectoryRepositoryImpl{}
 
-func NewS3DirectoryRepositoryImpl(logger *zap.Logger, conn *connection.Connection) (*S3DirectoryRepositoryImpl, error) {
+func NewS3DirectoryRepositoryImpl(logger *zap.Logger, conn *connections.Connection) (*S3DirectoryRepositoryImpl, error) {
 	log := logger.Sugar()
 
 	region := conn.Region

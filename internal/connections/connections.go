@@ -1,37 +1,6 @@
-package connection
+package connections
 
 import "github.com/google/uuid"
-
-type Set struct {
-	connections []*Connection
-}
-
-type SetOption func(*Set)
-
-func WithConnections(connections []*Connection) SetOption {
-	return func(s *Set) {
-		s.connections = connections
-	}
-}
-
-func NewSet(opts ...SetOption) *Set {
-	s := &Set{
-		connections: make([]*Connection, 0),
-	}
-	for _, opt := range opts {
-		opt(s)
-	}
-	return s
-}
-
-func (s *Set) Create(
-	name, accessKey, secretKey, bucket string,
-	options ...ConnectionOption,
-) *Connection {
-	conn := New(name, accessKey, secretKey, bucket, options...)
-	s.connections = append(s.connections, conn)
-	return conn
-}
 
 func (s *Set) Update(ID uuid.UUID, options ...ConnectionOption) error {
 	for i, existingConn := range s.connections {
@@ -51,10 +20,6 @@ func (s *Set) Delete(connID uuid.UUID) error {
 		}
 	}
 	return ErrConnectionNotFound
-}
-
-func (s *Set) Connections() []*Connection {
-	return s.connections
 }
 
 func (s *Set) Select(connID uuid.UUID) error {

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/thomas-marquis/s3-box/internal/explorer"
-	mocks_connection "github.com/thomas-marquis/s3-box/mocks/connection"
+	mocks_connection "github.com/thomas-marquis/s3-box/mocks/connections"
 	mocks_explorer "github.com/thomas-marquis/s3-box/mocks/explorer"
 
 	"github.com/google/uuid"
@@ -123,4 +123,5 @@ func Test_GetContent_ShouldReturnErrorWhenRepositoryError(t *testing.T) {
 	// Then
 	assert.Equal(t, expectedErr, err)
 	assert.Nil(t, content)
-} 
+}
+

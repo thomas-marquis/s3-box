@@ -1,4 +1,4 @@
-package connection
+package connections
 
 type Bucket struct {
 	Name string

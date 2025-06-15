@@ -1,32 +1,32 @@
-package connection_test
+package connections_test
 
 import (
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 )
 
 func Test_Delete_ShouldDeleteConnection(t *testing.T) {
 	// Given
-	conn1 := connection.New(
+	conn1 := connections.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-1"),
+		connections.AsAWSConnection("eu-west-1"),
 	)
-	conn2 := connection.New(
+	conn2 := connections.New(
 		"connection 2",
 		"QWERTY",
 		"5678",
 		"OurBucket",
-		connection.AsS3LikeConnection("localhost:9000", false),
+		connections.AsS3LikeConnection("localhost:9000", false),
 	)
 
-	conns := connection.NewSet(connection.WithConnections(
-		[]*connection.Connection{conn1, conn2},
+	conns := connections.NewSet(connections.WithConnections(
+		[]*connections.Connection{conn1, conn2},
 	))
 
 	// When
@@ -39,15 +39,15 @@ func Test_Delete_ShouldDeleteConnection(t *testing.T) {
 
 func Test_Delete_ShouldReturnErrorIfConnectionNotFound(t *testing.T) {
 	// Given
-	conn1 := connection.New(
+	conn1 := connections.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-1"),
+		connections.AsAWSConnection("eu-west-1"),
 	)
-	conns := connection.NewSet(connection.WithConnections(
-		[]*connection.Connection{conn1},
+	conns := connections.NewSet(connections.WithConnections(
+		[]*connections.Connection{conn1},
 	))
 
 	// When
@@ -55,31 +55,31 @@ func Test_Delete_ShouldReturnErrorIfConnectionNotFound(t *testing.T) {
 
 	// Then
 	assert.Error(t, res)
-	assert.Equal(t, connection.ErrConnectionNotFound, res)
+	assert.Equal(t, connections.ErrConnectionNotFound, res)
 	assert.Len(t, conns.Connections(), 1)
 }
 
 func Test_Select_ShouldSelectConnection(t *testing.T) {
 	// Given
-	conn1 := connection.New(
+	conn1 := connections.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-1"),
-		connection.WithSelected(true),
+		connections.AsAWSConnection("eu-west-1"),
+		connections.WithSelected(true),
 	)
-	conn2 := connection.New(
+	conn2 := connections.New(
 		"connection 2",
 		"QWERTY",
 		"5678",
 		"OurBucket",
-		connection.AsS3LikeConnection("localhost:9000", false),
-		connection.WithSelected(false),
+		connections.AsS3LikeConnection("localhost:9000", false),
+		connections.WithSelected(false),
 	)
 
-	conns := connection.NewSet(connection.WithConnections(
-		[]*connection.Connection{conn1, conn2},
+	conns := connections.NewSet(connections.WithConnections(
+		[]*connections.Connection{conn1, conn2},
 	))
 
 	// When
@@ -94,17 +94,17 @@ func Test_Select_ShouldSelectConnection(t *testing.T) {
 
 func Test_Select_ShouldReturnErrorWhenConnectionNotFound(t *testing.T) {
 	// Given
-	conn1 := connection.New(
+	conn1 := connections.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-1"),
-		connection.WithSelected(true),
+		connections.AsAWSConnection("eu-west-1"),
+		connections.WithSelected(true),
 	)
 
-	conns := connection.NewSet(connection.WithConnections(
-		[]*connection.Connection{conn1},
+	conns := connections.NewSet(connections.WithConnections(
+		[]*connections.Connection{conn1},
 	))
 
 	// When
@@ -112,6 +112,6 @@ func Test_Select_ShouldReturnErrorWhenConnectionNotFound(t *testing.T) {
 
 	// Then
 	assert.Error(t, err)
-	assert.Equal(t, connection.ErrConnectionNotFound, err)
+	assert.Equal(t, connections.ErrConnectionNotFound, err)
 	assert.True(t, conn1.Selected(), "Expected conn1 to remain selected")
 }

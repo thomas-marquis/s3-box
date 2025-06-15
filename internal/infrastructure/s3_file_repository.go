@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"go.uber.org/zap"
 )
@@ -20,12 +20,12 @@ type S3FileRepositoryImpl struct {
 	log     *zap.SugaredLogger
 	session *session.Session
 	s3      *s3.S3
-	conn    *connection.Connection
+	conn    *connections.Connection
 }
 
 var _ explorer.S3FileRepository = &S3FileRepositoryImpl{}
 
-func NewS3FileRepository(logger *zap.Logger, conn *connection.Connection) (*S3FileRepositoryImpl, error) {
+func NewS3FileRepository(logger *zap.Logger, conn *connections.Connection) (*S3FileRepositoryImpl, error) {
 	log := logger.Sugar()
 
 	region := conn.Region

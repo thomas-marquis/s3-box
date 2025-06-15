@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"github.com/thomas-marquis/s3-box/internal/utils"
 
@@ -51,7 +51,7 @@ type ExplorerViewModel interface {
 
 type explorerViewModelImpl struct {
 	mu                        sync.Mutex
-	connRepo                  connection.Repository
+	connRepo                  connections.Repository
 	dirSvc                    explorer.DirectoryService
 	fileSvc                   explorer.FileService
 	settingsVm                SettingsViewModel
@@ -70,7 +70,7 @@ var _ ExplorerViewModel = &explorerViewModelImpl{}
 
 func NewExplorerViewModel(
 	dirSvc explorer.DirectoryService,
-	connRepo connection.Repository,
+	connRepo connections.Repository,
 	fileSvc explorer.FileService,
 	settingsVm SettingsViewModel,
 ) *explorerViewModelImpl {
@@ -101,10 +101,10 @@ func NewExplorerViewModel(
 	defer cancel()
 
 	_, err := connRepo.GetSelected(ctx)
-	if err != nil && err != connection.ErrConnectionNotFound {
+	if err != nil && err != connections.ErrConnectionNotFound {
 		vm.errChan <- fmt.Errorf("error getting selected connection: %w", err)
 	}
-	if err == connection.ErrConnectionNotFound {
+	if err == connections.ErrConnectionNotFound {
 		vm.displayNoConnectionBanner.Set(true)
 	} else {
 		vm.displayNoConnectionBanner.Set(false)

@@ -1,7 +1,7 @@
 package views
 
 import (
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/components"

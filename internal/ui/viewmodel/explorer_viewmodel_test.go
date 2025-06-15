@@ -6,11 +6,11 @@ import (
 	"time"
 
 	_ "fyne.io/fyne/v2/test"
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"github.com/thomas-marquis/s3-box/internal/tests"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
-	mocks_connection "github.com/thomas-marquis/s3-box/mocks/connection"
+	mocks_connection "github.com/thomas-marquis/s3-box/mocks/connections"
 	mocks_explorer "github.com/thomas-marquis/s3-box/mocks/explorer"
 	mocks_viewmodel "github.com/thomas-marquis/s3-box/mocks/viewmodel"
 
@@ -60,12 +60,12 @@ func Test_RefreshDir_ShouldRefreshDirectoryContent(t *testing.T) {
 		Times(1)
 
 	// setup fake connection
-	fakeConn := connection.New(
+	fakeConn := connections.New(
 		"my connection",
 		"12345",
 		"AZERTY",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-3"),
+		connections.AsAWSConnection("eu-west-3"),
 	)
 
 	mockConnRepo.EXPECT().
@@ -125,12 +125,12 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirAtRootAndAddItToTree(t *testing
 		Times(1)
 
 	// setup fake connection
-	fakeConn := connection.New(
+	fakeConn := connections.New(
 		"my connection",
 		"12345",
 		"AZERTY",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-3"),
+		connections.AsAWSConnection("eu-west-3"),
 	)
 
 	mockConnRepo.EXPECT().
@@ -203,12 +203,12 @@ func Test_CreateEmptyDirectory_ShouldCreateNewDirUnderOtherDirAndAddItToTree(t *
 		Times(1)
 
 	// setup fake connection
-	fakeConn := connection.New(
+	fakeConn := connections.New(
 		"my connection",
 		"12345",
 		"AZERTY",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-3"),
+		connections.AsAWSConnection("eu-west-3"),
 	)
 
 	mockConnRepo.EXPECT().

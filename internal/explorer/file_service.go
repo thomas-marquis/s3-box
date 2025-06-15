@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	"go.uber.org/zap"
 )
 
@@ -18,7 +18,7 @@ type FileService interface {
 type fileServiceImpl struct {
 	logger      *zap.Logger
 	repoFactory FileRepositoryFactory
-	connSvc     connection.ConnectionService
+	connSvc     connections.ConnectionService
 }
 
 var _ FileService = &fileServiceImpl{}
@@ -28,7 +28,7 @@ type FileRepositoryFactory func(ctx context.Context, connID uuid.UUID) (S3FileRe
 func NewFileService(
 	logger *zap.Logger,
 	repoFactory FileRepositoryFactory,
-	connSvc connection.ConnectionService,
+	connSvc connections.ConnectionService,
 ) *fileServiceImpl {
 	return &fileServiceImpl{
 		logger:      logger,

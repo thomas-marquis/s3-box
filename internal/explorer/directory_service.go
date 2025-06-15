@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	"go.uber.org/zap"
 )
 
@@ -26,7 +26,7 @@ type directoryServiceImpl struct {
 	logger          *zap.Logger
 	repoFactory     DirectoryRepositoryFactory
 	fileRepoFactory FileRepositoryFactory
-	connSvc         connection.ConnectionService
+	connSvc         connections.ConnectionService
 }
 
 var _ DirectoryService = &directoryServiceImpl{}
@@ -37,7 +37,7 @@ func NewDirectoryService(
 	logger *zap.Logger,
 	repoFactory DirectoryRepositoryFactory,
 	fileRepoFactory FileRepositoryFactory,
-	connSvc connection.ConnectionService,
+	connSvc connections.ConnectionService,
 ) *directoryServiceImpl {
 	return &directoryServiceImpl{
 		logger:          logger,

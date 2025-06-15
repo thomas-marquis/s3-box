@@ -3,7 +3,7 @@ package components
 import (
 	"fmt"
 
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
 	"fyne.io/fyne/v2"

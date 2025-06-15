@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	"github.com/thomas-marquis/s3-box/internal/tests"
 )
 
@@ -15,20 +15,20 @@ func Test_eqDeref_Matches_ShouldReturnTrueForEqualValues(t *testing.T) {
 		Field1 string
 	}
 
-	conn1 := connection.New(
+	conn1 := connections.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-1"),
+		connections.AsAWSConnection("eu-west-1"),
 	)
-	conn2 := connection.New(
+	conn2 := connections.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-1"),
-		connection.WithID(conn1.ID()), // Ensure the ID remains the same for comparison
+		connections.AsAWSConnection("eu-west-1"),
+		connections.WithID(conn1.ID()), // Ensure the ID remains the same for comparison
 	)
 
 	testCases := []struct {

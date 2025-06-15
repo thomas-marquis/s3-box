@@ -6,7 +6,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"github.com/google/uuid"
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	"github.com/thomas-marquis/s3-box/internal/settings"
@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func BuildS3DirectoryRepositoryFactory(conn *connection.Connection, log *zap.Logger, connRepository connection.Repository) explorer.DirectoryRepositoryFactory {
+func BuildS3DirectoryRepositoryFactory(conn *connections.Connection, log *zap.Logger, connRepository connections.Repository) explorer.DirectoryRepositoryFactory {
 	repoById := make(map[uuid.UUID]explorer.S3DirectoryRepository)
 
 	return func(ctx context.Context, connID uuid.UUID) (explorer.S3DirectoryRepository, error) {
@@ -37,7 +37,7 @@ func BuildS3DirectoryRepositoryFactory(conn *connection.Connection, log *zap.Log
 	}
 }
 
-func BuildS3FileRepositoryFactory(conn *connection.Connection, log *zap.Logger, connRepository connection.Repository) explorer.FileRepositoryFactory {
+func BuildS3FileRepositoryFactory(conn *connections.Connection, log *zap.Logger, connRepository connections.Repository) explorer.FileRepositoryFactory {
 	repoById := make(map[uuid.UUID]explorer.S3FileRepository)
 
 	return func(ctx context.Context, connID uuid.UUID) (explorer.S3FileRepository, error) {
@@ -59,16 +59,16 @@ func BuildS3FileRepositoryFactory(conn *connection.Connection, log *zap.Logger, 
 }
 
 func BuildAppContext(
-	connectionRepository connection.Repository,
+	connectionRepository connections.Repository,
 	settingsRepository settings.Repository,
 	logger *zap.Logger,
-	lastSelectedConn *connection.Connection,
+	lastSelectedConn *connections.Connection,
 	window fyne.Window,
 	initialRoute navigation.Route,
 	views map[navigation.Route]func(appcontext.AppContext) (*fyne.Container, error),
 	fyneSettings fyne.Settings,
 ) appcontext.AppContext {
-	connSvc := connection.NewConnectionService(connectionRepository)
+	connSvc := connections.NewConnectionService(connectionRepository)
 	dirFactory := BuildS3DirectoryRepositoryFactory(lastSelectedConn, logger, connectionRepository)
 	fileFactory := BuildS3FileRepositoryFactory(lastSelectedConn, logger, connectionRepository)
 	dirSvc := explorer.NewDirectoryService(

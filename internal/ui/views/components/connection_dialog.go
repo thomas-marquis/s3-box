@@ -1,7 +1,7 @@
 package components
 
 import (
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 
@@ -13,7 +13,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-type ConnDialogOnSubmitFunc func(name, accessKey, secretKey, bucket string, options ...connection.ConnectionOption) error
+type ConnDialogOnSubmitFunc func(name, accessKey, secretKey, bucket string, options ...connections.ConnectionOption) error
 
 func makeCopyBtnWithData(enableCopy bool, data binding.String, w fyne.Window) *widget.Button {
 	return widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
@@ -39,7 +39,7 @@ func makeTextFormItemWithData(data binding.String, label, placeholder string, en
 
 func buildAWSForm(
 	ctx appcontext.AppContext,
-	defaultConn connection.Connection,
+	defaultConn connections.Connection,
 	enableCopy bool,
 	onSubmit ConnDialogOnSubmitFunc,
 ) *widget.Form {
@@ -117,8 +117,8 @@ func buildAWSForm(
 			uiutils.GetString(accessKeyData),
 			uiutils.GetString(secretKeyData),
 			uiutils.GetString(bucketData),
-			connection.AsAWSConnection(uiutils.GetString(regionData)),
-			connection.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
+			connections.AsAWSConnection(uiutils.GetString(regionData)),
+			connections.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
 		); err == nil {
 			nameData.Set("")
 			accessKeyData.Set("")
@@ -134,7 +134,7 @@ func buildAWSForm(
 
 func buildS3LikeForm(
 	ctx appcontext.AppContext,
-	defaultConn connection.Connection,
+	defaultConn connections.Connection,
 	enableCopy bool,
 	onSubmit ConnDialogOnSubmitFunc,
 ) *widget.Form {
@@ -218,8 +218,8 @@ func buildS3LikeForm(
 			uiutils.GetString(accessKeyData),
 			uiutils.GetString(secretKeyData),
 			uiutils.GetString(bucketData),
-			connection.AsS3LikeConnection(uiutils.GetString(serverData), uiutils.GetBool(useTlsData)),
-			connection.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
+			connections.AsS3LikeConnection(uiutils.GetString(serverData), uiutils.GetBool(useTlsData)),
+			connections.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
 		); err == nil {
 			nameData.Set("")
 			accessKeyData.Set("")
@@ -237,13 +237,13 @@ func buildS3LikeForm(
 func NewConnectionDialog(
 	ctx appcontext.AppContext,
 	label string,
-	defaultConn connection.Connection,
+	defaultConn connections.Connection,
 	enableCopy bool,
 	onSave ConnDialogOnSubmitFunc,
 ) dialog.Dialog {
 	var d dialog.Dialog
 
-	handleOnSubmit := func(name, accessKey, secretKey, bucket string, options ...connection.ConnectionOption) error {
+	handleOnSubmit := func(name, accessKey, secretKey, bucket string, options ...connections.ConnectionOption) error {
 		err := onSave(name, accessKey, secretKey, bucket, options...)
 		d.Hide()
 		return err
@@ -273,9 +273,9 @@ func NewConnectionDialog(
 	)
 
 	switch defaultConn.Type {
-	case connection.AWSConnectionType:
+	case connections.AWSConnectionType:
 		tabs.SelectIndex(0)
-	case connection.S3LikeConnectionType:
+	case connections.S3LikeConnectionType:
 		tabs.SelectIndex(1)
 	}
 

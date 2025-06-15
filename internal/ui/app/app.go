@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
@@ -43,7 +43,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // TODO get this from the user's settings
 	defer cancel()
 	lastSelectedConn, err := connRepo.GetSelected(ctx)
-	if err != nil && err != connection.ErrConnectionNotFound {
+	if err != nil && err != connections.ErrConnectionNotFound {
 		sugarLog.Error("Error getting selected connection", err)
 		return nil, err
 	}

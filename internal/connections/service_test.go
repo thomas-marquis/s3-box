@@ -1,4 +1,4 @@
-package connection_test
+package connections_test
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"github.com/thomas-marquis/s3-box/internal/connections"
 	"github.com/thomas-marquis/s3-box/internal/tests"
-	mocks_connection "github.com/thomas-marquis/s3-box/mocks/connection"
+	mocks_connection "github.com/thomas-marquis/s3-box/mocks/connections"
 	"go.uber.org/mock/gomock"
 )
 
@@ -20,41 +20,41 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenNonAlreadySelected(t *testing
 
 	mockConnRepo := mocks_connection.NewMockRepository(ctrl)
 
-	conn1 := connection.New(
+	conn1 := connections.New(
 		"Connection 1",
 		"AZERTY",
 		"12345",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-1"),
+		connections.AsAWSConnection("eu-west-1"),
 	)
-	conn1Selected := connection.New(
+	conn1Selected := connections.New(
 		"Connection 1",
 		"AZERTY",
 		"12345",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-1"),
-		connection.WithID(conn1.ID()),
-		connection.WithSelected(true),
+		connections.AsAWSConnection("eu-west-1"),
+		connections.WithID(conn1.ID()),
+		connections.WithSelected(true),
 	)
 
-	conn2 := connection.New(
+	conn2 := connections.New(
 		"Connection 2",
 		"POIUYT",
 		"09876",
 		"MyBucket2",
-		connection.AsAWSConnection("eu-west-2"),
+		connections.AsAWSConnection("eu-west-2"),
 	)
 
 	mockConnRepo.EXPECT().
 		List(gomock.AssignableToTypeOf(tests.ContextType)).
-		Return([]*connection.Connection{conn1, conn2}, nil).
+		Return([]*connections.Connection{conn1, conn2}, nil).
 		Times(1)
 	mockConnRepo.EXPECT().
 		Save(gomock.AssignableToTypeOf(tests.ContextType), tests.EqDeref(*conn1Selected)).
 		Return(nil).
 		Times(1)
 
-	service := connection.NewConnectionService(mockConnRepo)
+	service := connections.NewConnectionService(mockConnRepo)
 
 	// When
 	ctx := context.Background()
@@ -71,44 +71,44 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenOneAlreadySelected(t *testing
 
 	mockConnRepo := mocks_connection.NewMockRepository(ctrl)
 
-	conn1 := connection.New(
+	conn1 := connections.New(
 		"Connection 1",
 		"AZERTY",
 		"12345",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-1"),
+		connections.AsAWSConnection("eu-west-1"),
 	)
-	conn1Selected := connection.New(
+	conn1Selected := connections.New(
 		"Connection 1",
 		"AZERTY",
 		"12345",
 		"MyBucket",
-		connection.AsAWSConnection("eu-west-1"),
-		connection.WithID(conn1.ID()),
-		connection.WithSelected(true),
+		connections.AsAWSConnection("eu-west-1"),
+		connections.WithID(conn1.ID()),
+		connections.WithSelected(true),
 	)
 
-	conn2 := connection.New(
+	conn2 := connections.New(
 		"Connection 2",
 		"POIUYT",
 		"09876",
 		"MyBucket2",
-		connection.AsAWSConnection("eu-west-2"),
+		connections.AsAWSConnection("eu-west-2"),
 	)
 	conn2.Select()
-	conn2NotSelected := connection.New(
+	conn2NotSelected := connections.New(
 		"Connection 2",
 		"POIUYT",
 		"09876",
 		"MyBucket2",
-		connection.AsAWSConnection("eu-west-2"),
-		connection.WithID(conn2.ID()),
-		connection.WithSelected(false),
+		connections.AsAWSConnection("eu-west-2"),
+		connections.WithID(conn2.ID()),
+		connections.WithSelected(false),
 	)
 
 	mockConnRepo.EXPECT().
 		List(gomock.AssignableToTypeOf(tests.ContextType)).
-		Return([]*connection.Connection{conn1, conn2}, nil).
+		Return([]*connections.Connection{conn1, conn2}, nil).
 		Times(1)
 	mockConnRepo.EXPECT().
 		Save(gomock.AssignableToTypeOf(tests.ContextType), tests.EqDeref(*conn1Selected)).
@@ -120,7 +120,7 @@ func Test_Select_ShouldSelectConnectionIfExistsWhenOneAlreadySelected(t *testing
 		Return(nil).
 		Times(1)
 
-	service := connection.NewConnectionService(mockConnRepo)
+	service := connections.NewConnectionService(mockConnRepo)
 
 	// When
 	ctx := context.Background()
@@ -147,7 +147,7 @@ func Test_Select_ShouldReturnErrorWhenFailedToListConenctions(t *testing.T) {
 		Save(gomock.Any(), gomock.Any()).
 		Times(0)
 
-	service := connection.NewConnectionService(mockConnRepo)
+	service := connections.NewConnectionService(mockConnRepo)
 
 	// When
 	ctx := context.Background()
