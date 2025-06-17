@@ -15,51 +15,6 @@ const (
 	allConnectionsKey = "allConnections"
 )
 
-type connectionDTO struct {
-	ID        uuid.UUID `json:"id"`
-	Revision  int       `json:"revision,omitempty"`
-	Name      string    `json:"name"`
-	Server    string    `json:"server"`
-	AccessKey string    `json:"accessKey"`
-	SecretKey string    `json:"secretKey"`
-	Buket     string    `json:"bucket"`
-	Selected  bool      `json:"selected,omitempty"`
-	Region    string    `json:"region,omitempty"`
-	Type      string    `json:"type,omitempty"`
-	UseTls    bool      `json:"useTls,omitempty"`
-	ReadOnly  bool      `json:"readOnly,omitempty"`
-}
-
-func (c *connectionDTO) toConnection() *connections.Connection {
-	return connections.New(
-		c.Name, c.AccessKey, c.SecretKey, c.Buket,
-		connections.WithRevision(c.Revision),
-		connections.WithSelected(c.Selected),
-		connections.WithUseTLS(c.UseTls),
-		connections.WithID(c.ID),
-		connections.WithReadOnlyOption(c.ReadOnly),
-		connections.AsS3LikeConnection(c.Server, c.UseTls),
-		connections.AsAWSConnection(c.Region),
-	)
-}
-
-func newConnectionDTO(c *connections.Connection) *connectionDTO {
-	return &connectionDTO{
-		ID:        c.ID(),
-		Name:      c.Name,
-		Server:    c.Server,
-		AccessKey: c.AccessKey,
-		SecretKey: c.SecretKey,
-		Selected:  c.Selected(),
-		Buket:     c.BucketName,
-		Region:    c.Region,
-		Type:      c.Type.String(),
-		UseTls:    c.UseTls,
-		ReadOnly:  c.ReadOnly,
-		Revision:  c.Revision(),
-	}
-}
-
 type ConnectionRepositoryImpl struct {
 	prefs fyne.Preferences
 }

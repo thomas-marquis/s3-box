@@ -47,31 +47,6 @@ func NewDirectoryService(
 	}
 }
 
-func (s *directoryServiceImpl) GetRootDirectory(ctx context.Context) (*S3Directory, error) {
-	repo, err := s.getActiveRepository(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	dir, err := repo.GetByID(ctx, RootDirID)
-	if err == ErrObjectNotFound {
-		return nil, err
-	} else if err != nil {
-		return nil, fmt.Errorf("impossible to get root directory: %s", err)
-	}
-
-	return dir, nil
-}
-
-func (s *directoryServiceImpl) GetDirectoryByID(ctx context.Context, id S3DirectoryID) (*S3Directory, error) {
-	repo, err := s.getActiveRepository(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return repo.GetByID(ctx, id)
-}
-
 func (s *directoryServiceImpl) DeleteFile(ctx context.Context, dir *S3Directory, fileID S3FileID) error {
 	// First verify that the file belongs to the directory
 	if !dir.HasFile(fileID) {

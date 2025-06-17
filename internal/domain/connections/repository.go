@@ -1,6 +1,8 @@
 package connections
 
+import "context"
+
 type Repository interface {
-	Get() (*Connections, error)
-	Save(conn *Connections) error
+	Get(ctx context.Context) (*Connections, error)
+	Save(ctx context.Context, conn *Connections) error
 }

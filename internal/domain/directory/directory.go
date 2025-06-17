@@ -3,6 +3,8 @@ package directory
 import (
 	"fmt"
 	"strings"
+
+	"github.com/thomas-marquis/s3-box/internal/domain/connections"
 )
 
 const (
@@ -12,6 +14,7 @@ const (
 )
 
 type Directory struct {
+	connectionID   connections.ConnectionID
 	path           Path
 	name           string
 	parentPath     Path
@@ -21,7 +24,12 @@ type Directory struct {
 
 // Directory creates a new S3 directory
 // returns an error when the directory name is not valid
-func New(name string, parentPath Path) (*Directory, error) {
+func New(
+	connectionID connections.ConnectionID,
+	name string,
+	parentPath Path,
+	opts ...DirectoryOption,
+) (*Directory, error) {
 	if name == RootDirName && parentPath != NilParentPath {
 		return nil, fmt.Errorf("directory name is empty")
 	}
@@ -32,13 +40,38 @@ func New(name string, parentPath Path) (*Directory, error) {
 		return nil, fmt.Errorf("directory name should not contain '/'s")
 	}
 
-	return &Directory{
+	d := &Directory{
+		connectionID:   connectionID,
 		name:           name,
 		parentPath:     parentPath,
 		path:           parentPath.NewSubPath(name),
 		subDirectories: make([]Path, 0),
 		files:          make([]*File, 0),
-	}, nil
+	}
+
+	for _, opt := range opts {
+		opt(d)
+	}
+
+	return d, nil
+}
+
+func (d *Directory) IsFileExists(name FileName) bool {
+	for _, file := range d.files {
+		if file.Name() == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *Directory) GetFile(name FileName) (*File, error) { // TODO: rename to FileWithName
+	for _, file := range d.files {
+		if file.Name() == name {
+			return file, nil
+		}
+	}
+	return nil, ErrNotFound
 }
 
 func (d *Directory) Path() Path {
@@ -69,7 +102,7 @@ func (d *Directory) NewSubDirectory(name string) (*Directory, error) {
 			return nil, fmt.Errorf("subdirectory %s already exists", path)
 		}
 	}
-	newDir, err := New(name, d.parentPath)
+	newDir, err := New(d.connectionID, name, d.parentPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sudirectory: %w", err)
 	}
@@ -78,16 +111,39 @@ func (d *Directory) NewSubDirectory(name string) (*Directory, error) {
 	return newDir, nil
 }
 
+// NewFile creates a new file in the current directory
+// returns an error when the file name is not valid or if the file already exists
 func (d *Directory) NewFile(name string) (*File, error) {
 	file, err := NewFile(name, d)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create file: %w", err)
 	}
 	for _, f := range d.files {
-		if f.Name() == name {
+		if f.Is(file) {
 			return nil, fmt.Errorf("file %s already exists in directory %s", name, d.path)
 		}
 	}
 	d.files = append(d.files, file)
 	return file, nil
+}
+
+func (d *Directory) RemoveFile(name FileName) error {
+	for i, file := range d.files {
+		if file.Name() == name {
+			d.files = append(d.files[:i], d.files[i+1:]...)
+			return nil
+		}
+	}
+	return ErrNotFound
+}
+
+func (d *Directory) RemoveSubDirectory(name string) error {
+	path := d.parentPath.NewSubPath(name)
+	for i, subDir := range d.subDirectories {
+		if subDir == path {
+			d.subDirectories = append(d.subDirectories[:i], d.subDirectories[i+1:]...)
+			return nil
+		}
+	}
+	return ErrNotFound
 }
