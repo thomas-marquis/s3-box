@@ -1,5 +1,7 @@
 package connections
 
+import "encoding/json"
+
 type Connections struct {
 	connections []*Connection
 	selectedID  ConnectionID
@@ -27,6 +29,15 @@ func (c *Connections) NewConnection(
 
 func (c *Connections) Get() []*Connection {
 	return c.connections
+}
+
+func (c *Connections) GetByID(id ConnectionID) (*Connection, error) {
+	for _, conn := range c.connections {
+		if id.Is(conn) {
+			return conn, nil
+		}
+	}
+	return nil, ErrNotFound
 }
 
 func (c *Connections) Select(connID ConnectionID) error {

@@ -68,10 +68,6 @@ func (f *File) LastModified() time.Time {
 	return f.lastModified
 }
 
-func (f *File) SetSizeBytes(size int64) {
-	f.sizeBytes = size
-}
-
 func (f *File) FullPath() string {
 	return f.directoryPath.String() + f.name.String()
 }

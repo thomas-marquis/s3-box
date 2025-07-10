@@ -140,7 +140,7 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 			if err := ctx.ExplorerViewModel().SetLastSaveDir(localDestFilePath); err != nil {
 				ctx.L().Error("Error setting last save dir", zap.Error(err))
 			}
-			dialog.ShowInformation("Download", "File downloaded", ctx.Window())
+			dialog.ShowInformation("Download", "AttachedFile downloaded", ctx.Window())
 		}, ctx.Window())
 		saveDialog.SetFileName(file.Name)
 		saveDialog.SetLocation(ctx.ExplorerViewModel().GetLastSaveDir())
@@ -154,7 +154,7 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 					ctx.L().Error("Error deleting file", zap.Error(err))
 					dialog.ShowError(err, ctx.Window())
 				} else {
-					dialog.ShowInformation("Delete", "File deleted", ctx.Window())
+					dialog.ShowInformation("Delete", "AttachedFile deleted", ctx.Window())
 				}
 			}
 		}, ctx.Window())

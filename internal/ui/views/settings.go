@@ -33,7 +33,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		Items: []*widget.FormItem{
 			{Text: "Timeout (seconde)", Widget: timeoutEntry},
 			{Text: "Color theme", Widget: themeSelector},
-			{Text: "File size limit for preview (MB)", Widget: maxFilePreviewSizeEntry},
+			{Text: "AttachedFile size limit for preview (MB)", Widget: maxFilePreviewSizeEntry},
 		},
 		OnSubmit: func() {
 			if err := ctx.SettingsViewModel().Save(); err != nil {
@@ -91,4 +91,3 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		container.NewVBox(form, container.NewCenter(exportConnectionsBtn)),
 	), nil
 }
-

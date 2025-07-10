@@ -20,14 +20,16 @@ type Directory struct {
 	parentPath     Path
 	subDirectories []Path
 	files          []*File
+	updates        chan Update
 }
 
-// Directory creates a new S3 directory
-// returns an error when the directory name is not valid
+// New creates a new S3 directory entity.
+// An error is returned when the directory name is not valid
 func New(
 	connectionID connections.ConnectionID,
 	name string,
 	parentPath Path,
+	updates chan Update,
 	opts ...DirectoryOption,
 ) (*Directory, error) {
 	if name == RootDirName && parentPath != NilParentPath {
@@ -47,6 +49,7 @@ func New(
 		path:           parentPath.NewSubPath(name),
 		subDirectories: make([]Path, 0),
 		files:          make([]*File, 0),
+		updates:        updates,
 	}
 
 	for _, opt := range opts {
@@ -93,6 +96,10 @@ func (d *Directory) Files() []*File {
 	return d.files
 }
 
+func (d *Directory) ConnectionID() connections.ConnectionID {
+	return d.connectionID
+}
+
 // NewSubDirectory reference a new subdirectory in the current one
 // returns an error when the subdirectory already exists
 func (d *Directory) NewSubDirectory(name string) (*Directory, error) {
@@ -102,12 +109,17 @@ func (d *Directory) NewSubDirectory(name string) (*Directory, error) {
 			return nil, fmt.Errorf("subdirectory %s already exists", path)
 		}
 	}
-	newDir, err := New(d.connectionID, name, d.parentPath)
+	newDir, err := New(d.connectionID, name, d.parentPath, d.updates)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sudirectory: %w", err)
 	}
 
 	d.subDirectories = append(d.subDirectories, newDir.path)
+
+	evt := NewUpdate(d, UpdateTypeCreated)
+	evt.AttachDirectory(newDir.Path())
+	d.updates <- evt
+
 	return newDir, nil
 }
 
@@ -124,6 +136,11 @@ func (d *Directory) NewFile(name string) (*File, error) {
 		}
 	}
 	d.files = append(d.files, file)
+
+	evt := NewUpdate(d, UpdateTypeFileCreated)
+	evt.AttachFile(file)
+	d.updates <- evt
+
 	return file, nil
 }
 
@@ -131,6 +148,11 @@ func (d *Directory) RemoveFile(name FileName) error {
 	for i, file := range d.files {
 		if file.Name() == name {
 			d.files = append(d.files[:i], d.files[i+1:]...)
+
+			evt := NewUpdate(d, UpdateTypeFileDeleted)
+			evt.AttachFile(file)
+			d.updates <- evt
+
 			return nil
 		}
 	}
@@ -139,9 +161,14 @@ func (d *Directory) RemoveFile(name FileName) error {
 
 func (d *Directory) RemoveSubDirectory(name string) error {
 	path := d.parentPath.NewSubPath(name)
-	for i, subDir := range d.subDirectories {
-		if subDir == path {
+	for i, subDirPath := range d.subDirectories {
+		if subDirPath == path {
 			d.subDirectories = append(d.subDirectories[:i], d.subDirectories[i+1:]...)
+
+			evt := NewUpdate(d, UpdateTypeDeleted)
+			evt.AttachDirectory(subDirPath)
+			d.updates <- evt
+
 			return nil
 		}
 	}

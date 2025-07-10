@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2/data/binding"
-	"github.com/thomas-marquis/s3-box/internal/connections"
+	"github.com/thomas-marquis/s3-box/internal/domain/connections"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
@@ -34,12 +34,11 @@ type ConnectionViewModel interface {
 }
 
 type connectionViewModelImpl struct {
-	connRepo     connections.Repository
-	settingsVm   SettingsViewModel
-	connBindings binding.UntypedList
-	// selectedConnection *connection.Connection
+	connRepo       connections.Repository
+	settingsVm     SettingsViewModel
+	connBindings   binding.UntypedList
 	loading        binding.Bool
-	connectionsSet *connections.Set
+	connectionsSet *connections.Connections
 }
 
 var _ ConnectionViewModel = &connectionViewModelImpl{}

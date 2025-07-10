@@ -42,7 +42,7 @@ func NewConnectionsDTO(c *connections.Connections) *ConnectionsDTO {
 			Selected:  false,
 			Region:    conn.Region(),
 			Type:      conn.Provider().String(),
-			UseTls:    conn.UseTLS(),
+			UseTls:    conn.IsTLSActivated(),
 			ReadOnly:  conn.ReadOnly(),
 		}
 		if selectedID != nil && selectedID.Is(conn) {
@@ -56,11 +56,22 @@ func NewConnectionsDTO(c *connections.Connections) *ConnectionsDTO {
 	}
 }
 
+func NewConnectionsDTOFromJSON(content []byte) (*ConnectionsDTO, error) {
+	var dtos []*connectionDTO
+	if err := json.Unmarshal(content, &dtos); err != nil {
+		return nil, err
+	}
+	return &ConnectionsDTO{connections: dtos}, nil
+}
+
 func (c *ConnectionsDTO) ToConnections() *connections.Connections {
 	conns := connections.New()
-	nilDI := connections.ConnectionID(uuid.Nil)
-	selectedID := nilDI
+	nilID := connections.ConnectionID(uuid.Nil)
+	selectedID := nilID
 	for _, dto := range c.connections {
+		if dto.ID == uuid.Nil {
+			continue
+		}
 		connID := connections.ConnectionID(dto.ID)
 		conns.NewConnection(
 			dto.Name, dto.AccessKey, dto.SecretKey, dto.Buket,
@@ -75,7 +86,7 @@ func (c *ConnectionsDTO) ToConnections() *connections.Connections {
 			selectedID = connID
 		}
 	}
-	if selectedID != nilDI {
+	if selectedID != nilID {
 		conns.Select(selectedID)
 	}
 	return conns

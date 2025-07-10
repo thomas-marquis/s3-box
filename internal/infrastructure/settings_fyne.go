@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/thomas-marquis/s3-box/internal/settings"
+	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 
 	"fyne.io/fyne/v2"
 )

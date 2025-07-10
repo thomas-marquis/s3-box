@@ -60,11 +60,12 @@ func newConnection(
 	return conn
 }
 
+// Is return ture if the connection is EXACTLY the same as the provided one
 func (c *Connection) Is(other *Connection) bool {
 	if other == nil {
 		return false
 	}
-	return c.id == other.id
+	return c.id == other.id && c.revision == other.revision
 }
 
 func (c *Connection) ID() ConnectionID {
@@ -75,7 +76,7 @@ func (c *Connection) Name() string {
 	return c.name
 }
 
-func (c *Connection) SetName(name string) {
+func (c *Connection) Rename(name string) {
 	if name != c.name {
 		c.revision++
 		c.name = name
@@ -86,7 +87,7 @@ func (c *Connection) AccessKey() string {
 	return c.accessKey
 }
 
-func (c *Connection) SetAccessKey(accessKey string) {
+func (c *Connection) UpdateAccessKey(accessKey string) {
 	if accessKey != c.accessKey {
 		c.revision++
 		c.accessKey = accessKey
@@ -97,7 +98,7 @@ func (c *Connection) SecretKey() string {
 	return c.secretKey
 }
 
-func (c *Connection) SetSecretKey(secretKey string) {
+func (c *Connection) UpdateSecretKey(secretKey string) {
 	if secretKey != c.secretKey {
 		c.revision++
 		c.secretKey = secretKey
@@ -108,7 +109,7 @@ func (c *Connection) Bucket() string {
 	return c.bucket
 }
 
-func (c *Connection) SetBucket(bucket string) {
+func (c *Connection) UpdateBucket(bucket string) {
 	if bucket != c.bucket {
 		c.revision++
 		c.bucket = bucket
@@ -119,7 +120,7 @@ func (c *Connection) Server() string {
 	return c.server
 }
 
-func (c *Connection) SetServer(server string) {
+func (c *Connection) UpdateServer(server string) {
 	if server != c.server {
 		c.revision++
 		c.server = server
@@ -130,7 +131,7 @@ func (c *Connection) Region() string {
 	return c.region
 }
 
-func (c *Connection) SetRegion(region string) {
+func (c *Connection) ChangeRegion(region string) {
 	if region == c.region || c.provider != AWSProvider {
 		return
 	}
@@ -138,16 +139,24 @@ func (c *Connection) SetRegion(region string) {
 	c.region = region
 }
 
-func (c *Connection) UseTLS() bool {
+func (c *Connection) IsTLSActivated() bool {
 	return c.useTLS
 }
 
-func (c *Connection) SetUseTLS(useTLS bool) {
-	if useTLS == c.useTLS || c.provider != S3LikeProvider {
+func (c *Connection) TurnTLSOn() {
+	if !c.useTLS || c.provider != S3LikeProvider {
 		return
 	}
 	c.revision++
-	c.useTLS = useTLS
+	c.useTLS = true
+}
+
+func (c *Connection) TurnTLSOff() {
+	if c.useTLS || c.provider != S3LikeProvider {
+		return
+	}
+	c.revision++
+	c.useTLS = false
 }
 
 // Revision returns the current revision number of the connection.
@@ -171,7 +180,7 @@ func (c *Connection) Provider() Provider {
 	return c.provider
 }
 
-func (c *Connection) ASAWS(region string) {
+func (c *Connection) AsAWS(region string) {
 	if c.provider == AWSProvider {
 		return
 	}
@@ -179,7 +188,7 @@ func (c *Connection) ASAWS(region string) {
 	AsAWS(region)(c)
 }
 
-func (c *Connection) ASS3Like(server string, useTLS bool) {
+func (c *Connection) AsS3Like(server string, useTLS bool) {
 	if c.provider == S3LikeProvider {
 		return
 	}

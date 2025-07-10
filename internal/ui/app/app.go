@@ -99,7 +99,7 @@ func getMainMenu(ctx appcontext.AppContext) *fyne.MainMenu {
 			ctx.Navigate(navigation.SettingsRoute)
 		}),
 	)
-	fileMenu := fyne.NewMenu("File",
+	fileMenu := fyne.NewMenu("AttachedFile",
 		fyne.NewMenuItem("Explorer view", func() {
 			ctx.Navigate(navigation.ExplorerRoute)
 		}),

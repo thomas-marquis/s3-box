@@ -11,9 +11,10 @@ import (
 func Test_New_ShouldBuildDirectoryWithNonRootParent(t *testing.T) {
 	// Given
 	parentPath := directory.NewPath("/path/to/parent/")
+	updates := make(chan directory.Update, 10)
 
 	// When
-	currDir, err := directory.New(connections.NewConnectionID(), "dir", parentPath)
+	currDir, err := directory.New(connections.NewConnectionID(), "dir", parentPath, updates)
 
 	// Then
 	assert.NoError(t, err)
@@ -22,7 +23,8 @@ func Test_New_ShouldBuildDirectoryWithNonRootParent(t *testing.T) {
 
 func Test_New_ShouldBuildDirectoryWithRootParent(t *testing.T) {
 	// When
-	currDir, err := directory.New(connections.NewConnectionID(), "dir", directory.RootPath)
+	updates := make(chan directory.Update, 10)
+	currDir, err := directory.New(connections.NewConnectionID(), "dir", directory.RootPath, updates)
 
 	// Then
 	assert.NoError(t, err)
@@ -32,7 +34,8 @@ func Test_New_ShouldBuildDirectoryWithRootParent(t *testing.T) {
 
 func Test_New_ShouldReturnErrorWhenDirectoryNameIsEmpty(t *testing.T) {
 	// When
-	_, err := directory.New(connections.NewConnectionID(), "", directory.RootPath)
+	updates := make(chan directory.Update, 10)
+	_, err := directory.New(connections.NewConnectionID(), "", directory.RootPath, updates)
 
 	// Then
 	assert.Error(t, err)
@@ -40,7 +43,8 @@ func Test_New_ShouldReturnErrorWhenDirectoryNameIsEmpty(t *testing.T) {
 
 func Test_New_ShouldBuildNewWhenEmptyNameAndNoParentID(t *testing.T) {
 	// When
-	dir, err := directory.New(connections.NewConnectionID(), "", directory.NilParentPath)
+	updates := make(chan directory.Update, 10)
+	dir, err := directory.New(connections.NewConnectionID(), "", directory.NilParentPath, updates)
 
 	// Then
 	assert.NoError(t, err)
@@ -51,7 +55,8 @@ func Test_New_ShouldBuildNewWhenEmptyNameAndNoParentID(t *testing.T) {
 
 func Test_New_ShouldReturnErrorWhenDirectoryNameIsSlash(t *testing.T) {
 	// When
-	_, err := directory.New(connections.NewConnectionID(), "/", directory.RootPath)
+	updates := make(chan directory.Update, 10)
+	_, err := directory.New(connections.NewConnectionID(), "/", directory.RootPath, updates)
 
 	// Then
 	assert.Error(t, err)
@@ -59,7 +64,8 @@ func Test_New_ShouldReturnErrorWhenDirectoryNameIsSlash(t *testing.T) {
 
 func Test_New_ShouldReturnErrorWhenDirectoryNameContainsSlash(t *testing.T) {
 	// When
-	_, err := directory.New(connections.NewConnectionID(), "path/to/dir", directory.RootPath)
+	updates := make(chan directory.Update, 10)
+	_, err := directory.New(connections.NewConnectionID(), "path/to/dir", directory.RootPath, updates)
 
 	// Then
 	assert.Error(t, err)
@@ -67,7 +73,8 @@ func Test_New_ShouldReturnErrorWhenDirectoryNameContainsSlash(t *testing.T) {
 
 func Test_AddSubDirectory_ShouldAddSubDirectory(t *testing.T) {
 	// Given
-	dir, err := directory.New(connections.NewConnectionID(), "parent", directory.RootPath)
+	updates := make(chan directory.Update, 10)
+	dir, err := directory.New(connections.NewConnectionID(), "parent", directory.RootPath, updates)
 	assert.NoError(t, err)
 
 	// When
@@ -86,7 +93,8 @@ func Test_AddSubDirectory_ShouldAddSubDirectory(t *testing.T) {
 
 func Test_NewSubDirectory_ShouldReturnEmptyDirectory(t *testing.T) {
 	// Given
-	dir, _ := directory.New(connections.NewConnectionID(), "dir", directory.RootPath)
+	updates := make(chan directory.Update, 10)
+	dir, _ := directory.New(connections.NewConnectionID(), "dir", directory.RootPath, updates)
 
 	// When
 	newDir, err := dir.NewSubDirectory("subdir")
@@ -100,7 +108,8 @@ func Test_NewSubDirectory_ShouldReturnEmptyDirectory(t *testing.T) {
 
 func Test_NewSubDirectory_ShouldReturnErrorWhenSubDirectoryAlreadyExists(t *testing.T) {
 	// Given
-	dir, _ := directory.New(connections.NewConnectionID(), "dir", directory.RootPath)
+	updates := make(chan directory.Update, 10)
+	dir, _ := directory.New(connections.NewConnectionID(), "dir", directory.RootPath, updates)
 	_, _ = dir.NewSubDirectory("subdir")
 
 	// When
@@ -114,7 +123,8 @@ func Test_NewSubDirectory_ShouldReturnErrorWhenSubDirectoryAlreadyExists(t *test
 
 func Test_RemoveSubDirectory_ShouldRemoveSubDirectoryWhenExists(t *testing.T) {
 	// Given
-	dir, _ := directory.New(connections.NewConnectionID(), "dir", directory.RootPath)
+	updates := make(chan directory.Update, 10)
+	dir, _ := directory.New(connections.NewConnectionID(), "dir", directory.RootPath, updates)
 	subDir, _ := dir.NewSubDirectory("subdir")
 
 	// When
@@ -127,7 +137,8 @@ func Test_RemoveSubDirectory_ShouldRemoveSubDirectoryWhenExists(t *testing.T) {
 
 func Test_RemoveSubDirecotry_ShoudlReturnErrorWhenSubDirNotExists(t *testing.T) {
 	// Given
-	dir, _ := directory.New(connections.NewConnectionID(), "dir", directory.RootPath)
+	updates := make(chan directory.Update, 10)
+	dir, _ := directory.New(connections.NewConnectionID(), "dir", directory.RootPath, updates)
 	dir.NewSubDirectory("subdir")
 
 	// When
