@@ -12,12 +12,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/thomas-marquis/s3-box/internal/domain/connections"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
 type s3Session struct {
-	connection *connections.Connection
+	connection *connection_deck.Connection
 	client     *s3.S3
 	session    *session.Session
 }
@@ -26,82 +26,87 @@ type S3DirectoryRepository struct {
 	sync.Mutex
 	connectionRepository FyneConnectionsRepository
 	logger               *log.Logger
-	cache                map[connections.ConnectionID]*s3Session
-	updates              chan directory.Update
+	cache                map[connection_deck.ConnectionID]*s3Session
+	events               chan directory.Event
 	errors               chan error
+	terminate            chan struct{}
 }
 
 var _ directory.Repository = &S3DirectoryRepository{}
 
 func NewS3DirectoryRepository(
 	connectionsRepository FyneConnectionsRepository,
-	updatesStream chan directory.Update,
+	eventStream chan directory.Event,
 	errorStream chan error,
+	terminate chan struct{},
 ) (*S3DirectoryRepository, error) {
 
 	r := &S3DirectoryRepository{
 		connectionRepository: connectionsRepository,
 		logger:               log.New(os.Stdout, "S3Repository: ", log.LstdFlags),
-		updates:              updatesStream,
+		events:               eventStream,
 		errors:               errorStream,
+		terminate:            terminate,
 	}
 
-	r.listenUpdates()
+	r.listen()
 
 	return r, nil
 }
 
-func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connections.ConnectionID, path directory.Path) (*directory.Directory, error) {
+func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connection_deck.ConnectionID, path directory.Path) (*directory.Directory, error) {
 	// Implementation for retrieving a directory by its path
 	return nil, nil
 }
 
-func (r *S3DirectoryRepository) DownloadFile(ctx context.Context, connID connections.ConnectionID, file *directory.File, destPath string) error {
+func (r *S3DirectoryRepository) DownloadFile(ctx context.Context, connID connection_deck.ConnectionID, file *directory.File, destPath string) error {
 	// Implementation for downloading a file from S3
 	return nil
 }
 
-func (r *S3DirectoryRepository) LoadContent(ctx context.Context, connID connections.ConnectionID, file *directory.File) ([]byte, error) {
+func (r *S3DirectoryRepository) LoadContent(ctx context.Context, connID connection_deck.ConnectionID, file *directory.File) ([]byte, error) {
 	// Implementation for loading content of a file from S3
 	return nil, nil
 }
 
-func (r *S3DirectoryRepository) listenUpdates() {
+func (r *S3DirectoryRepository) listen() {
 	go func() {
 		for {
 			select {
-			case evt := <-r.updates:
+			case <-r.terminate:
+				return
+			case evt := <-r.events:
 				ctx := context.Background() // TODO: handle timeout here
-				if evt.Type() == directory.UpdateTypeNone {
-					continue
-				}
 
-				dir := evt.Object()
+				dir := evt.Directory()
 				s, err := r.getSession(ctx, dir.ConnectionID())
 				if err != nil {
 					r.errors <- err
 				}
 
-				switch evt.Type() {
-				case directory.UpdateTypeCreated:
-					createdDirPath := evt.AttachedDirPath()
-					if createdDirPath == "" {
+				switch evt.Name() {
+				case directory.CreatedEventName:
+					newDir := (evt.(directory.Event)).Directory()
+					if newDir == nil {
 						r.errors <- fmt.Errorf("directory path is empty for created event")
 					}
 					_, err := s.client.PutObject(&s3.PutObjectInput{
 						Bucket: aws.String(s.connection.Bucket()),
-						Key:    aws.String(createdDirPath.String()),
+						Key:    aws.String(newDir.Path().String()),
 						Body:   strings.NewReader(""),
 					})
 					if err != nil {
 						r.errors <- fmt.Errorf("failed to save empty directory: %w", err)
 					}
-				case directory.UpdateTypeDeleted:
+
+				case directory.SubDirectoryDeletedEventName:
 					r.errors <- fmt.Errorf("deleting directories is not yet implemented")
-				case directory.UpdateTypeFileCreated:
+
+				case directory.FileCreatedEventName:
 					r.errors <- fmt.Errorf("file creation is not yest implemented")
-				case directory.UpdateTypeFileDeleted:
-					file := evt.AttachedFile()
+
+				case directory.FileDeletedEventName:
+					file := (evt.(directory.FileEvent)).File()
 					if file == nil {
 						r.errors <- fmt.Errorf("file is nil for deletion event")
 					}
@@ -110,19 +115,19 @@ func (r *S3DirectoryRepository) listenUpdates() {
 						Key:    aws.String(file.FullPath()),
 					}
 
-					_, err := s.client.DeleteObjectWithContext(ctx, input)
-					if err != nil {
+					if _, err := s.client.DeleteObjectWithContext(ctx, input); err != nil {
 						r.errors <- fmt.Errorf("failed deleting file: %w", err)
 					}
+
 				default:
-					r.errors <- fmt.Errorf("unknown event type: %s", evt.Type())
+					r.errors <- fmt.Errorf("unknown event: %s", evt.Name())
 				}
 			}
 		}
 	}()
 }
 
-func (r *S3DirectoryRepository) getSession(ctx context.Context, id connections.ConnectionID) (*s3Session, error) {
+func (r *S3DirectoryRepository) getSession(ctx context.Context, id connection_deck.ConnectionID) (*s3Session, error) {
 	conn, err := r.connectionRepository.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -162,7 +167,7 @@ func (r *S3DirectoryRepository) getSession(ctx context.Context, id connections.C
 	return s, nil
 }
 
-func (r *S3DirectoryRepository) getFromCache(c *connections.Connection) *s3Session {
+func (r *S3DirectoryRepository) getFromCache(c *connection_deck.Connection) *s3Session {
 	r.Lock()
 	defer r.Unlock()
 	found, ok := r.cache[c.ID()]

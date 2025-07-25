@@ -1,8 +1,8 @@
 module github.com/thomas-marquis/s3-box
 
-go 1.23
+go 1.24
 
-toolchain go1.23.8
+toolchain go1.24.5
 
 require (
 	fyne.io/fyne/v2 v2.6.0-alpha1

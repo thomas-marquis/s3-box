@@ -117,7 +117,7 @@ func (mr *MockExplorerViewModelMockRecorder) GetDirByID(dirID any) *gomock.Call 
 // GetFileByID mocks base method.
 func (m *MockExplorerViewModel) GetFileByID(fileID explorer.S3FileID) (*explorer.S3File, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFileByID", fileID)
+	ret := m.ctrl.Call(m, "GetFileByName", fileID)
 	ret0, _ := ret[0].(*explorer.S3File)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -126,7 +126,7 @@ func (m *MockExplorerViewModel) GetFileByID(fileID explorer.S3FileID) (*explorer
 // GetFileByID indicates an expected call of GetFileByID.
 func (mr *MockExplorerViewModelMockRecorder) GetFileByID(fileID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileByID", reflect.TypeOf((*MockExplorerViewModel)(nil).GetFileByID), fileID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileByName", reflect.TypeOf((*MockExplorerViewModel)(nil).GetFileByID), fileID)
 }
 
 // GetLastSaveDir mocks base method.

@@ -6,7 +6,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"github.com/google/uuid"
-	"github.com/thomas-marquis/s3-box/internal/domain/connections"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
@@ -57,16 +57,16 @@ import (
 // }
 
 func BuildAppContext(
-	connectionRepository connections.Repository,
+	connectionRepository connection_deck.Repository,
 	settingsRepository settings.Repository,
 	logger *zap.Logger,
-	lastSelectedConn *connections.Connection,
+	lastSelectedConn *connection_deck.Connection,
 	window fyne.Window,
 	initialRoute navigation.Route,
 	views map[navigation.Route]func(appcontext.AppContext) (*fyne.Container, error),
 	fyneSettings fyne.Settings,
 ) appcontext.AppContext {
-	connSvc := connections.NewConnectionService(connectionRepository)
+	connSvc := connection_deck.NewConnectionService(connectionRepository)
 	dirFactory := BuildS3DirectoryRepositoryFactory(lastSelectedConn, logger, connectionRepository)
 	fileFactory := BuildS3FileRepositoryFactory(lastSelectedConn, logger, connectionRepository)
 	dirSvc := explorer.NewDirectoryService(

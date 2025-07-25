@@ -1,28 +1,28 @@
-package connections_test
+package connection_deck_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thomas-marquis/s3-box/internal/domain/connections"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 )
 
 func Test_RemoveAConnection_ShouldRemoveTheGivenConnection(t *testing.T) {
 	// Given
-	conns := connections.New()
-	conn1 := conns.NewConnection(
+	conns := connection_deck.New()
+	conn1 := conns.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
-		connections.AsAWS("eu-west-1"),
+		connection_deck.AsAWS("eu-west-1"),
 	)
-	conns.NewConnection(
+	conns.New(
 		"connection 2",
 		"QWERTY",
 		"5678",
 		"OurBucket",
-		connections.AsS3Like("localhost:9000", false),
+		connection_deck.AsS3Like("localhost:9000", false),
 	)
 
 	// When
@@ -35,40 +35,40 @@ func Test_RemoveAConnection_ShouldRemoveTheGivenConnection(t *testing.T) {
 
 func Test_RemoveAConnection_ShouldReturnErrorIfConnectionNotFound(t *testing.T) {
 	// Given
-	conns := connections.New()
-	conns.NewConnection(
+	conns := connection_deck.New()
+	conns.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
-		connections.AsAWS("eu-west-1"),
+		connection_deck.AsAWS("eu-west-1"),
 	)
 
 	// When
-	res := conns.RemoveAConnection(connections.NewConnectionID())
+	res := conns.RemoveAConnection(connection_deck.NewConnectionID())
 
 	// Then
 	assert.Error(t, res)
-	assert.Equal(t, connections.ErrNotFound, res)
+	assert.Equal(t, connection_deck.ErrNotFound, res)
 	assert.Len(t, conns.Get(), 1)
 }
 
 func Test_Select_ShouldSelectConnection(t *testing.T) {
 	// Given
-	conns := connections.New()
-	conns.NewConnection(
+	conns := connection_deck.New()
+	conns.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
-		connections.AsAWS("eu-west-1"),
+		connection_deck.AsAWS("eu-west-1"),
 	)
-	conn2 := conns.NewConnection(
+	conn2 := conns.New(
 		"connection 2",
 		"QWERTY",
 		"5678",
 		"OurBucket",
-		connections.AsS3Like("localhost:9000", false),
+		connection_deck.AsS3Like("localhost:9000", false),
 	)
 
 	// When
@@ -81,20 +81,20 @@ func Test_Select_ShouldSelectConnection(t *testing.T) {
 
 func Test_Select_ShouldReturnErrorWhenConnectionNotFound(t *testing.T) {
 	// Given
-	conns := connections.New()
-	conns.NewConnection(
+	conns := connection_deck.New()
+	conns.New(
 		"connection 1",
 		"AZERTY",
 		"1234",
 		"MyBucket",
-		connections.AsAWS("eu-west-1"),
+		connection_deck.AsAWS("eu-west-1"),
 	)
 
 	// When
-	err := conns.Select(connections.NewConnectionID())
+	err := conns.Select(connection_deck.NewConnectionID())
 
 	// Then
 	assert.Error(t, err)
-	assert.Equal(t, connections.ErrNotFound, err)
+	assert.Equal(t, connection_deck.ErrNotFound, err)
 	assert.Nil(t, conns.SelectedConnection())
 }

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/thomas-marquis/s3-box/internal/domain/connections"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 )
 
 type connectionDTO struct {
@@ -26,7 +26,7 @@ type ConnectionsDTO struct {
 	connections []*connectionDTO
 }
 
-func NewConnectionsDTO(c *connections.Connections) *ConnectionsDTO {
+func NewConnectionsDTO(c *connection_deck.Deck) *ConnectionsDTO {
 	dtos := make([]*connectionDTO, 0, len(c.Get()))
 	selectedID := c.SelectedConnection()
 
@@ -64,23 +64,23 @@ func NewConnectionsDTOFromJSON(content []byte) (*ConnectionsDTO, error) {
 	return &ConnectionsDTO{connections: dtos}, nil
 }
 
-func (c *ConnectionsDTO) ToConnections() *connections.Connections {
-	conns := connections.New()
-	nilID := connections.ConnectionID(uuid.Nil)
+func (c *ConnectionsDTO) ToConnections() *connection_deck.Deck {
+	conns := connection_deck.New()
+	nilID := connection_deck.ConnectionID(uuid.Nil)
 	selectedID := nilID
 	for _, dto := range c.connections {
 		if dto.ID == uuid.Nil {
 			continue
 		}
-		connID := connections.ConnectionID(dto.ID)
-		conns.NewConnection(
+		connID := connection_deck.ConnectionID(dto.ID)
+		conns.New(
 			dto.Name, dto.AccessKey, dto.SecretKey, dto.Buket,
-			connections.WithRevision(dto.Revision),
-			connections.WithUseTLS(dto.UseTls),
-			connections.WithID(connID),
-			connections.WithReadOnlyOption(dto.ReadOnly),
-			connections.AsS3Like(dto.Server, dto.UseTls),
-			connections.AsAWS(dto.Region),
+			connection_deck.WithRevision(dto.Revision),
+			connection_deck.WithUseTLS(dto.UseTls),
+			connection_deck.WithID(connID),
+			connection_deck.WithReadOnlyOption(dto.ReadOnly),
+			connection_deck.AsS3Like(dto.Server, dto.UseTls),
+			connection_deck.AsAWS(dto.Region),
 		)
 		if dto.Selected {
 			selectedID = connID

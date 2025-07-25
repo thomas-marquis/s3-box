@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/thomas-marquis/s3-box/internal/domain/connections"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 )
 
 const (
@@ -14,22 +14,20 @@ const (
 )
 
 type Directory struct {
-	connectionID   connections.ConnectionID
+	connectionID   connection_deck.ConnectionID
 	path           Path
 	name           string
 	parentPath     Path
 	subDirectories []Path
 	files          []*File
-	updates        chan Update
 }
 
 // New creates a new S3 directory entity.
 // An error is returned when the directory name is not valid
 func New(
-	connectionID connections.ConnectionID,
+	connectionID connection_deck.ConnectionID,
 	name string,
 	parentPath Path,
-	updates chan Update,
 	opts ...DirectoryOption,
 ) (*Directory, error) {
 	if name == RootDirName && parentPath != NilParentPath {
@@ -49,7 +47,6 @@ func New(
 		path:           parentPath.NewSubPath(name),
 		subDirectories: make([]Path, 0),
 		files:          make([]*File, 0),
-		updates:        updates,
 	}
 
 	for _, opt := range opts {
@@ -84,6 +81,7 @@ func (d *Directory) Path() Path {
 func (d *Directory) Name() string {
 	return d.name
 }
+
 func (d *Directory) ParentPath() Path {
 	return d.parentPath
 }
@@ -96,36 +94,32 @@ func (d *Directory) Files() []*File {
 	return d.files
 }
 
-func (d *Directory) ConnectionID() connections.ConnectionID {
+func (d *Directory) ConnectionID() connection_deck.ConnectionID {
 	return d.connectionID
 }
 
 // NewSubDirectory reference a new subdirectory in the current one
 // returns an error when the subdirectory already exists
-func (d *Directory) NewSubDirectory(name string) (*Directory, error) {
+func (d *Directory) NewSubDirectory(name string) (Event, error) {
 	path := d.parentPath.NewSubPath(name)
 	for _, subDir := range d.subDirectories {
 		if subDir == path {
 			return nil, fmt.Errorf("subdirectory %s already exists", path)
 		}
 	}
-	newDir, err := New(d.connectionID, name, d.parentPath, d.updates)
+	newDir, err := New(d.connectionID, name, d.parentPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sudirectory: %w", err)
 	}
 
 	d.subDirectories = append(d.subDirectories, newDir.path)
 
-	evt := NewUpdate(d, UpdateTypeCreated)
-	evt.AttachDirectory(newDir.Path())
-	d.updates <- evt
-
-	return newDir, nil
+	return newDirectoryCreatedEvent(newDir), nil
 }
 
 // NewFile creates a new file in the current directory
 // returns an error when the file name is not valid or if the file already exists
-func (d *Directory) NewFile(name string) (*File, error) {
+func (d *Directory) NewFile(name string) (FileEvent, error) {
 	file, err := NewFile(name, d)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create file: %w", err)
@@ -137,40 +131,27 @@ func (d *Directory) NewFile(name string) (*File, error) {
 	}
 	d.files = append(d.files, file)
 
-	evt := NewUpdate(d, UpdateTypeFileCreated)
-	evt.AttachFile(file)
-	d.updates <- evt
-
-	return file, nil
+	return newFileCreatedEvent(d, file), nil
 }
 
-func (d *Directory) RemoveFile(name FileName) error {
+func (d *Directory) RemoveFile(name FileName) (FileEvent, error) {
 	for i, file := range d.files {
 		if file.Name() == name {
 			d.files = append(d.files[:i], d.files[i+1:]...)
 
-			evt := NewUpdate(d, UpdateTypeFileDeleted)
-			evt.AttachFile(file)
-			d.updates <- evt
-
-			return nil
+			return newFileDeletedEvent(d, file), nil
 		}
 	}
-	return ErrNotFound
+	return fileDeletedEvent{}, ErrNotFound
 }
 
-func (d *Directory) RemoveSubDirectory(name string) error {
+func (d *Directory) RemoveSubDirectory(name string) (SubDirectoryEvent, error) {
 	path := d.parentPath.NewSubPath(name)
 	for i, subDirPath := range d.subDirectories {
 		if subDirPath == path {
 			d.subDirectories = append(d.subDirectories[:i], d.subDirectories[i+1:]...)
-
-			evt := NewUpdate(d, UpdateTypeDeleted)
-			evt.AttachDirectory(subDirPath)
-			d.updates <- evt
-
-			return nil
+			return newDirectoryDeletedEvent(d, subDirPath), nil
 		}
 	}
-	return ErrNotFound
+	return subDirectoryDeletedEvent{}, ErrNotFound
 }

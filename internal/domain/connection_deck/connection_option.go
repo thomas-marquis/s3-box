@@ -1,4 +1,4 @@
-package connections
+package connection_deck
 
 type ConnectionOption func(*Connection)
 

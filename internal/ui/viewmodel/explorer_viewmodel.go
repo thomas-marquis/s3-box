@@ -3,6 +3,8 @@ package viewmodel
 import (
 	"context"
 	"fmt"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"path/filepath"
 	"sync"
 
@@ -22,38 +24,37 @@ type ExplorerViewModel interface {
 	StartLoading()
 	StopLoading()
 	Tree() binding.UntypedTree
-	RefreshDir(dirID explorer.S3DirectoryID) error
+	RefreshDir(dirID directory.Path) error
 
 	// OpenDirectory opens a directory in the tree and loads its content.
 	// If the directory is already open, it will refresh its content.
-	OpenDirectory(dirID explorer.S3DirectoryID) error
+	OpenDirectory(dirID directory.Path) error
 
-	RemoveDirToTree(dirID explorer.S3DirectoryID) error
-	GetDirByID(dirID explorer.S3DirectoryID) (*explorer.S3Directory, error)
-	GetFileByID(fileID explorer.S3FileID) (*explorer.S3File, error)
-	PreviewFile(f *explorer.S3File) (string, error)
+	RemoveDirToTree(dirID directory.Path) error
+	GetDirByID(dirID directory.Path) (*directory.Directory, error)
+	GetFileByName(parent directory.Path, name directory.FileName) (*directory.File, error)
+	PreviewFile(f *directory.File) (string, error)
 
 	// GetMaxFileSizePreview returns the max file size preview in bytes
 	GetMaxFileSizePreview() int64
 
 	ResetTree() error
-	DownloadFile(f *explorer.S3File, dest string) error
-	UploadFile(localPath string, remoteDir *explorer.S3Directory) error
-	DeleteFile(file *explorer.S3File) error
+	DownloadFile(f *directory.File, dest string) error
+	UploadFile(localPath string, remoteDir *directory.Directory) error
+	DeleteFile(file *directory.File) error
 	GetLastSaveDir() fyne.ListableURI
 	SetLastSaveDir(filePath string) error
 	GetLastUploadDir() fyne.ListableURI
 	SetLastUploadDir(filePath string) error
 
 	// CreateEmptySubDirectory creates an empty subdirectory in the given parent directory
-	CreateEmptyDirectory(parent *explorer.S3Directory, name string) (*explorer.S3Directory, error)
+	CreateEmptyDirectory(parent *directory.Directory, name string) (*directory.Directory, error)
 }
 
 type explorerViewModelImpl struct {
 	mu                        sync.Mutex
-	connRepo                  connections.Repository
-	dirSvc                    explorer.DirectoryService
-	fileSvc                   explorer.FileService
+	connRepo                  connection_deck.Repository
+	dirSvc                    directory.Service
 	settingsVm                SettingsViewModel
 	tree                      binding.UntypedTree
 	loading                   binding.Bool
@@ -62,16 +63,15 @@ type explorerViewModelImpl struct {
 	errChan                   chan error
 	displayNoConnectionBanner binding.Bool
 
-	filesById map[explorer.S3FileID]*explorer.S3File
-	dirsById  map[explorer.S3DirectoryID]*explorer.S3Directory
+	filesById map[string]*directory.File // TODO: still in use???
+	dirsById  map[directory.Path]*directory.Directory
 }
 
 var _ ExplorerViewModel = &explorerViewModelImpl{}
 
 func NewExplorerViewModel(
-	dirSvc explorer.DirectoryService,
-	connRepo connections.Repository,
-	fileSvc explorer.FileService,
+	dirSvc directory.Service,
+	connRepo connection_deck.Repository,
 	settingsVm SettingsViewModel,
 ) *explorerViewModelImpl {
 	t := binding.NewUntypedTree()
@@ -89,9 +89,8 @@ func NewExplorerViewModel(
 		dirSvc:                    dirSvc,
 		settingsVm:                settingsVm,
 		loading:                   binding.NewBool(),
-		filesById:                 make(map[explorer.S3FileID]*explorer.S3File),
-		dirsById:                  make(map[explorer.S3DirectoryID]*explorer.S3Directory),
-		fileSvc:                   fileSvc,
+		filesById:                 make(map[string]*directory.File),
+		dirsById:                  make(map[directory.Path]*directory.Directory),
 		errChan:                   errChan,
 		connRepo:                  connRepo,
 		displayNoConnectionBanner: binding.NewBool(),
@@ -100,11 +99,12 @@ func NewExplorerViewModel(
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout()*2)
 	defer cancel()
 
-	_, err := connRepo.GetSelected(ctx)
-	if err != nil && err != connections.ErrConnectionNotFound {
-		vm.errChan <- fmt.Errorf("error getting selected connection: %w", err)
+	deck, err := connRepo.Get(ctx)
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error getting connection deck: %w", err)
+		return vm
 	}
-	if err == connections.ErrConnectionNotFound {
+	if deck.SelectedConnection() == nil {
 		vm.displayNoConnectionBanner.Set(true)
 	} else {
 		vm.displayNoConnectionBanner.Set(false)
@@ -143,30 +143,30 @@ func (vm *explorerViewModelImpl) Tree() binding.UntypedTree {
 	return vm.tree
 }
 
-func (vm *explorerViewModelImpl) RefreshDir(dirID explorer.S3DirectoryID) error {
+func (vm *explorerViewModelImpl) RefreshDir(dirPath directory.Path) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
-	dir, err := vm.fetchAndUpdateDirectory(ctx, dirID)
+	dir, err := vm.fetchAndUpdateDirectory(ctx, dirPath)
 	if err != nil {
 		return err
 	}
 
-	dirTreeNodeItem, err := vm.tree.GetValue(dirID.String())
+	dirTreeNodeItem, err := vm.tree.GetValue(dirPath.String())
 	if err != nil {
-		return fmt.Errorf("impossible to retreive the direcotry you want to refresh: %s", dirID.String())
+		return fmt.Errorf("impossible to retreive the direcotry you want to refresh: %s", dirPath.String())
 	}
 	dirTreeNode, ok := dirTreeNodeItem.(*TreeNode)
 	if !ok {
-		panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", dirID.String()))
+		panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", dirPath.String()))
 	}
 	dirTreeNode.SetIsLoaded()
 
-	if err := vm.removeDirectoryContent(dirID); err != nil {
+	if err := vm.removeDirectoryContent(dirPath); err != nil {
 		return err
 	}
 
-	return vm.appendDirectoryContent(dirID, dir)
+	return vm.appendDirectoryContent(dirPath, dir)
 }
 
 func (vm *explorerViewModelImpl) OpenDirectory(dirID explorer.S3DirectoryID) error {
@@ -276,7 +276,7 @@ func (vm *explorerViewModelImpl) GetDirByID(dirID explorer.S3DirectoryID) (*expl
 	return dir, nil
 }
 
-func (vm *explorerViewModelImpl) GetFileByID(fileID explorer.S3FileID) (*explorer.S3File, error) {
+func (vm *explorerViewModelImpl) GetFileByName(parent directory.Path, name directory.FileName) (*directory.File, error) {
 	vm.mu.Lock()
 	file, ok := vm.filesById[fileID]
 	vm.mu.Unlock()

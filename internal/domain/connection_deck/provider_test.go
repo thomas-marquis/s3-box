@@ -1,47 +1,47 @@
-package connections_test
+package connection_deck_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thomas-marquis/s3-box/internal/domain/connections"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 )
 
 func Test_Provider_NewProviderFromString(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected connections.Provider
+		expected connection_deck.Provider
 	}{
 		{
 			name:     "AWSConnectionType",
 			input:    "aws",
-			expected: connections.AWSProvider,
+			expected: connection_deck.AWSProvider,
 		},
 		{
 			name:     "AWSConnectionType upper case",
 			input:    "AWS",
-			expected: connections.AWSProvider,
+			expected: connection_deck.AWSProvider,
 		},
 		{
 			name:     "S3LikeConnectionType",
 			input:    "s3-like",
-			expected: connections.S3LikeProvider,
+			expected: connection_deck.S3LikeProvider,
 		},
 		{
 			name:     "DefaultConnectionType",
 			input:    "",
-			expected: connections.DefaultProvider,
+			expected: connection_deck.DefaultProvider,
 		},
 		{
 			name:     "DefaultConnectionType with random value",
 			input:    "fhziufh",
-			expected: connections.DefaultProvider,
+			expected: connection_deck.DefaultProvider,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := connections.NewProviderFromString(test.input)
+			result := connection_deck.NewProviderFromString(test.input)
 			assert.Equal(t, test.expected, result)
 		})
 	}

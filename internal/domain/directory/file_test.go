@@ -4,14 +4,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thomas-marquis/s3-box/internal/domain/connections"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
 func Test_NewFile_ShouldBuildNewFile(t *testing.T) {
 	// Given
 	fileName := "file.txt"
-	parentDir, _ := directory.New(connections.NewConnectionID(), "path", directory.RootPath)
+	parentDir, _ := directory.New(connection_deck.NewConnectionID(), "path", directory.RootPath)
 
 	// When
 	file, err := directory.NewFile(fileName, parentDir)
@@ -26,7 +26,7 @@ func Test_NewFile_ShouldBuildNewFile(t *testing.T) {
 func Test_NewFile_ShouldBuildNewFileWithNonRootParent(t *testing.T) {
 	// Given
 	fileName := "file.txt"
-	parentDir, _ := directory.New(connections.NewConnectionID(), "a_directory", directory.NewPath("/path/to/parent/"))
+	parentDir, _ := directory.New(connection_deck.NewConnectionID(), "a_directory", directory.NewPath("/path/to/parent/"))
 
 	// When
 	file, err := directory.NewFile(fileName, parentDir)
@@ -41,7 +41,7 @@ func Test_NewFile_ShouldBuildNewFileWithNonRootParent(t *testing.T) {
 func Test_NewFile_ShouldReturnErrorWhenNameIsEmpty(t *testing.T) {
 	// Given
 	fileName := ""
-	parentDir, _ := directory.New(connections.NewConnectionID(), "path", directory.RootPath)
+	parentDir, _ := directory.New(connection_deck.NewConnectionID(), "path", directory.RootPath)
 
 	// When
 	file, err := directory.NewFile(fileName, parentDir)
@@ -55,7 +55,7 @@ func Test_NewFile_ShouldReturnErrorWhenNameIsEmpty(t *testing.T) {
 func Test_NewFile_ShouldReturnErrorWhenNameIsNotValid(t *testing.T) {
 	// Given
 	fileName := "/"
-	parentDir, _ := directory.New(connections.NewConnectionID(), "path", directory.RootPath)
+	parentDir, _ := directory.New(connection_deck.NewConnectionID(), "path", directory.RootPath)
 
 	// When
 	file, err := directory.NewFile(fileName, parentDir)

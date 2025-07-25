@@ -1,4 +1,4 @@
-package connections
+package connection_deck
 
 import "errors"
 

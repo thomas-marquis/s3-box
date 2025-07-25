@@ -2,6 +2,8 @@ package views
 
 import (
 	"fmt"
+	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 
@@ -62,18 +64,14 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	dirDetails := components.NewDirDetails()
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
-		di, err := ctx.ExplorerViewModel().Tree().GetValue(uid)
+		nodeItem, err := uiutils.GetUntypedFromTreeById[*viewmodel.TreeNode](ctx.ExplorerViewModel().Tree(), uid)
 		if err != nil {
 			ctx.ExplorerViewModel().ErrorChan() <- fmt.Errorf("error getting value: %v", err)
 			return
 		}
-		nodeItem, ok := di.(*viewmodel.TreeNode)
-		if !ok {
-			panic(fmt.Sprintf("unexpected type %T", di))
-		}
 
 		if (nodeItem.Type == viewmodel.TreeNodeTypeDirectory || nodeItem.Type == viewmodel.TreeNodeTypeBucketRoot) && !nodeItem.IsLoaded() {
-			if err := ctx.ExplorerViewModel().OpenDirectory(explorer.S3DirectoryID(nodeItem.ID)); err != nil {
+			if err := ctx.ExplorerViewModel().OpenDirectory(directory.Path(nodeItem.ID)); err != nil {
 				ctx.ExplorerViewModel().ErrorChan() <- err
 				return
 			}
@@ -81,14 +79,14 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 			nodeItem.SetIsLoaded()
 		}
 		if nodeItem.Type == viewmodel.TreeNodeTypeDirectory || nodeItem.Type == viewmodel.TreeNodeTypeBucketRoot {
-			d, err := ctx.ExplorerViewModel().GetDirByID(explorer.S3DirectoryID(nodeItem.ID))
+			d, err := ctx.ExplorerViewModel().GetDirByID(directory.Path(nodeItem.ID))
 			if err != nil {
 				panic(fmt.Sprintf("error getting directory by ID (%s) in cache: %v", nodeItem.ID, err))
 			}
 			dirDetails.Update(ctx, d)
 			detailsContainer.Objects = []fyne.CanvasObject{dirDetails.Object()}
 		} else {
-			f, err := ctx.ExplorerViewModel().GetFileByID(explorer.S3FileID(nodeItem.ID))
+			f, err := ctx.ExplorerViewModel().GetFileByName(explorer.S3FileID(nodeItem.ID))
 			if err != nil {
 				panic(fmt.Sprintf("error getting file by ID (%s: %s) in cache: %v", nodeItem.Type, nodeItem.ID, err))
 			}
