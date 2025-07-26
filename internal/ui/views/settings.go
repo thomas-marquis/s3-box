@@ -27,7 +27,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	themeSelector.PlaceHolder = currentTheme
 
 	maxFilePreviewSizeEntry := widget.NewEntryWithData(
-		binding.IntToString(ctx.SettingsViewModel().MaxFilePreviewSizeMegaBytes()))
+		binding.IntToString(ctx.SettingsViewModel().MaxFilePreviewSizeBytes()))
 
 	form := &widget.Form{
 		Items: []*widget.FormItem{

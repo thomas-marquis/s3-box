@@ -2,6 +2,7 @@ package directory
 
 import (
 	"errors"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"strings"
 	"time"
 )
@@ -10,10 +11,10 @@ type FileName string
 
 func NewFileName(name string) (FileName, error) {
 	if name == "" {
-		return "", errors.New("file name is empty")
+		return "", errors.New("fileObj name is empty")
 	}
 	if name == "/" || strings.Contains(name, "/") {
-		return "", errors.New("file name is not valid: should not be '/' or contain '/'")
+		return "", errors.New("fileObj name is not valid: should not be '/' or contain '/'")
 	}
 
 	return FileName(name), nil
@@ -26,7 +27,7 @@ func (name FileName) String() string {
 type File struct {
 	name          FileName
 	directoryPath Path
-	sizeBytes     int64
+	sizeBytes     int
 	lastModified  time.Time
 }
 
@@ -60,7 +61,7 @@ func (f *File) DirectoryPath() Path {
 	return f.directoryPath
 }
 
-func (f *File) SizeBytes() int64 {
+func (f *File) SizeBytes() int {
 	return f.sizeBytes
 }
 
@@ -70,4 +71,8 @@ func (f *File) LastModified() time.Time {
 
 func (f *File) FullPath() string {
 	return f.directoryPath.String() + f.name.String()
+}
+
+func (f *File) Download(connID connection_deck.ConnectionID, toPath string) ContentEvent {
+	return newContentDownloadedEvent(connID, NewFileContent(f, FromLocalFile(toPath)))
 }

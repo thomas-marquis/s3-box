@@ -3,14 +3,14 @@ package utils
 import "fmt"
 
 const (
-	kilo int64 = 1024
-	mega int64 = kilo * kilo
-	giga int64 = mega * kilo
-	tera int64 = giga * kilo
-	peta int64 = tera * kilo
+	kilo int = 1024
+	mega int = kilo * kilo
+	giga int = mega * kilo
+	tera int = giga * kilo
+	peta int = tera * kilo
 )
 
-func FormatSizeBytes(b int64) string {
+func FormatSizeBytes(b int) string {
 	if b < kilo {
 		return fmt.Sprintf("%d B", b)
 	}
@@ -29,10 +29,10 @@ func FormatSizeBytes(b int64) string {
 	return fmt.Sprintf("%.2f PB", float64(b)/float64(peta))
 }
 
-func BytesToMB(b int64) int64 {
+func BytesToMB(b int) int {
 	return b / mega
 }
 
-func MegaToBytes(mb int64) int64 {
+func MegaToBytes(mb int) int {
 	return mb * mega
 }

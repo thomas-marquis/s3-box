@@ -10,7 +10,7 @@ import (
 
 func Test_NewFile_ShouldBuildNewFile(t *testing.T) {
 	// Given
-	fileName := "file.txt"
+	fileName := "fileObj.txt"
 	parentDir, _ := directory.New(connection_deck.NewConnectionID(), "path", directory.RootPath)
 
 	// When
@@ -20,12 +20,12 @@ func Test_NewFile_ShouldBuildNewFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, fileName, file.Name)
 	assert.Equal(t, parentDir.Path(), file.DirectoryPath())
-	assert.Equal(t, directory.FileName("file.txt"), file.Name())
+	assert.Equal(t, directory.FileName("fileObj.txt"), file.Name())
 }
 
 func Test_NewFile_ShouldBuildNewFileWithNonRootParent(t *testing.T) {
 	// Given
-	fileName := "file.txt"
+	fileName := "fileObj.txt"
 	parentDir, _ := directory.New(connection_deck.NewConnectionID(), "a_directory", directory.NewPath("/path/to/parent/"))
 
 	// When
@@ -35,7 +35,7 @@ func Test_NewFile_ShouldBuildNewFileWithNonRootParent(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, fileName, file.Name)
 	assert.Equal(t, parentDir.Path(), file.DirectoryPath())
-	assert.Equal(t, directory.FileName("file.txt"), file.Name())
+	assert.Equal(t, directory.FileName("fileObj.txt"), file.Name())
 }
 
 func Test_NewFile_ShouldReturnErrorWhenNameIsEmpty(t *testing.T) {
@@ -48,7 +48,7 @@ func Test_NewFile_ShouldReturnErrorWhenNameIsEmpty(t *testing.T) {
 
 	// Then
 	assert.Error(t, err)
-	assert.Equal(t, "file name is empty", err.Error())
+	assert.Equal(t, "fileObj name is empty", err.Error())
 	assert.Nil(t, file)
 }
 
@@ -62,6 +62,6 @@ func Test_NewFile_ShouldReturnErrorWhenNameIsNotValid(t *testing.T) {
 
 	// Then
 	assert.Error(t, err)
-	assert.Equal(t, "file name is not valid", err.Error())
+	assert.Equal(t, "fileObj name is not valid", err.Error())
 	assert.Nil(t, file)
 }

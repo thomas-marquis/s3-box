@@ -2,10 +2,8 @@ package views
 
 import (
 	"fmt"
-	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/ui/node"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
-
-	"github.com/thomas-marquis/s3-box/internal/explorer"
 
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
@@ -64,33 +62,28 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	dirDetails := components.NewDirDetails()
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
-		nodeItem, err := uiutils.GetUntypedFromTreeById[*viewmodel.TreeNode](ctx.ExplorerViewModel().Tree(), uid)
+		nodeItem, err := uiutils.GetUntypedFromTreeById[node.Node](ctx.ExplorerViewModel().Tree(), uid)
 		if err != nil {
 			ctx.ExplorerViewModel().ErrorChan() <- fmt.Errorf("error getting value: %v", err)
 			return
 		}
 
-		if (nodeItem.Type == viewmodel.TreeNodeTypeDirectory || nodeItem.Type == viewmodel.TreeNodeTypeBucketRoot) && !nodeItem.IsLoaded() {
-			if err := ctx.ExplorerViewModel().OpenDirectory(directory.Path(nodeItem.ID)); err != nil {
-				ctx.ExplorerViewModel().ErrorChan() <- err
-				return
+		switch nodeItem.NodeType() {
+		case node.FolderNodeType:
+			dirNode := nodeItem.(node.DirectoryNode)
+			dir := dirNode.Directory()
+			if !dirNode.IsLoaded() {
+				if err := ctx.ExplorerViewModel().LoadDirectory(dirNode); err != nil {
+					return
+				}
+				tree.OpenBranch(uid)
 			}
-			tree.OpenBranch(uid)
-			nodeItem.SetIsLoaded()
-		}
-		if nodeItem.Type == viewmodel.TreeNodeTypeDirectory || nodeItem.Type == viewmodel.TreeNodeTypeBucketRoot {
-			d, err := ctx.ExplorerViewModel().GetDirByID(directory.Path(nodeItem.ID))
-			if err != nil {
-				panic(fmt.Sprintf("error getting directory by ID (%s) in cache: %v", nodeItem.ID, err))
-			}
-			dirDetails.Update(ctx, d)
+			dirDetails.Update(ctx, dir)
 			detailsContainer.Objects = []fyne.CanvasObject{dirDetails.Object()}
-		} else {
-			f, err := ctx.ExplorerViewModel().GetFileByName(explorer.S3FileID(nodeItem.ID))
-			if err != nil {
-				panic(fmt.Sprintf("error getting file by ID (%s: %s) in cache: %v", nodeItem.Type, nodeItem.ID, err))
-			}
-			fileDetails.Update(ctx, f)
+
+		case node.FileNodeType:
+			file := (nodeItem.(node.FileNode)).File()
+			fileDetails.Update(ctx, file)
 			detailsContainer.Objects = []fyne.CanvasObject{fileDetails.Object()}
 		}
 	}

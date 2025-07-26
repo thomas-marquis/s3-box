@@ -128,7 +128,7 @@ func Test_RemoveSubDirectory_ShouldRemoveSubDirectoryWhenExists(t *testing.T) {
 	// Then
 	assert.NoError(t, err)
 	assert.Len(t, dir.SubDirectories(), 0, "SubDirectories should be empty")
-	assert.Equal(t, directory.SubDirectoryDeletedEventName, evt.Name())
+	assert.Equal(t, directory.DeletedEventName, evt.Name())
 	assert.Equal(t, dir.Path(), evt.Directory().ParentPath())
 }
 

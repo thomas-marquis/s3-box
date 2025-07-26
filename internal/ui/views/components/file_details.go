@@ -1,7 +1,9 @@
 package components
 
 import (
+	"errors"
 	"fmt"
+	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 
 	"github.com/thomas-marquis/s3-box/internal/explorer"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
@@ -96,24 +98,24 @@ func (d *FileDetials) Object() fyne.CanvasObject {
 	return d.c
 }
 
-func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
-	f.sizeLabel.SetText(utils.FormatSizeBytes(file.SizeBytes))
+func (f *FileDetials) Update(ctx appcontext.AppContext, file *directory.File) {
+	f.sizeLabel.SetText(utils.FormatSizeBytes(file.SizeBytes()))
 
 	var path string
-	originalPath := file.ID.String()
+	originalPath := file.FullPath()
 	if len(originalPath) > maxFileNameLength {
-		path = ".../" + file.Name
+		path = ".../" + file.Name().String()
 	} else {
 		path = originalPath
 	}
 	f.pathLabel.SetText(path)
 
-	fileURI := storage.NewFileURI(file.ID.String())
+	fileURI := storage.NewFileURI(file.FullPath())
 	f.fileIcon.SetURI(fileURI)
 
-	f.lastModifiedLabel.SetText(file.LastModified.Format("2006-01-02 15:04:05"))
+	f.lastModifiedLabel.SetText(file.LastModified().Format("2006-01-02 15:04:05"))
 
-	if file.SizeBytes <= ctx.ExplorerViewModel().GetMaxFileSizePreview() {
+	if file.SizeBytes() <= ctx.SettingsViewModel().CurrentMaxFilePreviewSizeBytes() {
 		f.previewBtn.Show()
 		f.previewBtn.OnTapped = func() {
 			ShowFilePreviewDialog(ctx, file)
@@ -125,8 +127,7 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 	f.downloadBtn.OnTapped = func() {
 		saveDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
 			if err != nil {
-				ctx.L().Error("Error getting file writer", zap.Error(err))
-				// TODO handle error here
+				ctx.ExplorerViewModel().ErrorChan() <- fmt.Errorf("error saving file: %w", err)
 				return
 			}
 			if writer == nil {
@@ -134,16 +135,18 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *explorer.S3File) {
 			}
 			localDestFilePath := writer.URI().Path()
 			if err := ctx.ExplorerViewModel().DownloadFile(file, localDestFilePath); err != nil {
-				ctx.L().Error("Error downloading file", zap.Error(err))
-				// TODO handle error here
+				outErr := fmt.Errorf("error downloading file: %w", err)
+				ctx.ExplorerViewModel().ErrorChan() <- outErr
+				dialog.ShowError(outErr, ctx.Window())
+				return
 			}
-			if err := ctx.ExplorerViewModel().SetLastSaveDir(localDestFilePath); err != nil {
+			if err := ctx.ExplorerViewModel().UpdateLastDownloadLocation(localDestFilePath); err != nil {
 				ctx.L().Error("Error setting last save dir", zap.Error(err))
 			}
 			dialog.ShowInformation("Download", "AttachedFile downloaded", ctx.Window())
 		}, ctx.Window())
-		saveDialog.SetFileName(file.Name)
-		saveDialog.SetLocation(ctx.ExplorerViewModel().GetLastSaveDir())
+		saveDialog.SetFileName(file.Name().String())
+		saveDialog.SetLocation(ctx.ExplorerViewModel().LastDownloadLocation())
 		saveDialog.Show()
 	}
 

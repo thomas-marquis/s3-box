@@ -70,9 +70,9 @@ func (mr *MockSettingsViewModelMockRecorder) CurrentTimeout() *gomock.Call {
 }
 
 // MaxFilePreviewSizeMegaBytes mocks base method.
-func (m *MockSettingsViewModel) MaxFilePreviewSizeMegaBytes() binding.Int {
+func (m *MockSettingsViewModel) MaxFilePreviewSizeBytes() binding.Int {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MaxFilePreviewSizeMegaBytes")
+	ret := m.ctrl.Call(m, "MaxFilePreviewSizeBytes")
 	ret0, _ := ret[0].(binding.Int)
 	return ret0
 }
@@ -80,7 +80,7 @@ func (m *MockSettingsViewModel) MaxFilePreviewSizeMegaBytes() binding.Int {
 // MaxFilePreviewSizeMegaBytes indicates an expected call of MaxFilePreviewSizeMegaBytes.
 func (mr *MockSettingsViewModelMockRecorder) MaxFilePreviewSizeMegaBytes() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaxFilePreviewSizeMegaBytes", reflect.TypeOf((*MockSettingsViewModel)(nil).MaxFilePreviewSizeMegaBytes))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaxFilePreviewSizeBytes", reflect.TypeOf((*MockSettingsViewModel)(nil).MaxFilePreviewSizeBytes))
 }
 
 // Save mocks base method.

@@ -2,12 +2,11 @@ package node
 
 import (
 	"fyne.io/fyne/v2"
-	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
 const (
-	FolderNodeType = "folder"
-	FileNodeType   = "file"
+	FolderNodeType = "node.folder"
+	FileNodeType   = "node.file"
 )
 
 type Node interface {
@@ -17,12 +16,12 @@ type Node interface {
 	Icon() fyne.Resource
 }
 
-type FileNode interface {
-	File() *directory.File
-}
+type Option func(node *baseNode)
 
-type DirectoryNode interface {
-	Directory() *directory.Directory
+func WithDisplayName(displayName string) Option {
+	return func(node *baseNode) {
+		node.displayName = displayName
+	}
 }
 
 type baseNode struct {
@@ -32,62 +31,18 @@ type baseNode struct {
 	icon        fyne.Resource
 }
 
-func (n baseNode) ID() string {
+func (n *baseNode) ID() string {
 	return n.id
 }
 
-func (n baseNode) NodeType() string {
+func (n *baseNode) NodeType() string {
 	return n.nodeType
 }
 
-func (n baseNode) DisplayName() string {
+func (n *baseNode) DisplayName() string {
 	return n.displayName
 }
 
-func (n baseNode) Icon() fyne.Resource {
+func (n *baseNode) Icon() fyne.Resource {
 	return n.icon
-}
-
-type fileNodeImpl struct {
-	baseNode
-	file *directory.File
-}
-
-func NewFileNode(file *directory.File) FileNode {
-	return fileNodeImpl{
-		baseNode{
-			id:          file.FullPath(),
-			nodeType:    FileNodeType,
-			displayName: file.Name().String(),
-			icon:        nil,
-		},
-		file,
-	}
-}
-
-func (n fileNodeImpl) File() *directory.File {
-	return n.file
-}
-
-type directoryNodeImpl struct {
-	baseNode
-	dir *directory.Directory
-}
-
-func NewDirectoryNode(dir *directory.Directory) DirectoryNode {
-	var icon fyne.Resource
-	if dir
-	return directoryNodeImpl{
-		baseNode{
-			id: dir.Path().String(),
-			displayName: dir.Path().DirectoryName(),
-			nodeType:    FolderNodeType,
-			icon:        icon,
-		},
-		dir,,
-	}
-}
-
-func (n directoryNodeImpl) Directory() *directory.Directory {
-	return n.dir
 }

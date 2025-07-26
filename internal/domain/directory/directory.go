@@ -2,6 +2,7 @@ package directory
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
@@ -65,6 +66,10 @@ func (d *Directory) IsFileExists(name FileName) bool {
 	return false
 }
 
+func (d *Directory) IsRoot() bool {
+	return d.parentPath == NilParentPath && d.path == RootPath
+}
+
 func (d *Directory) GetFile(name FileName) (*File, error) { // TODO: rename to FileWithName
 	for _, file := range d.files {
 		if file.Name() == name {
@@ -100,7 +105,7 @@ func (d *Directory) ConnectionID() connection_deck.ConnectionID {
 
 // NewSubDirectory reference a new subdirectory in the current one
 // returns an error when the subdirectory already exists
-func (d *Directory) NewSubDirectory(name string) (Event, error) {
+func (d *Directory) NewSubDirectory(name string) (DirectoryEvent, error) {
 	path := d.parentPath.NewSubPath(name)
 	for _, subDir := range d.subDirectories {
 		if subDir == path {
@@ -114,24 +119,24 @@ func (d *Directory) NewSubDirectory(name string) (Event, error) {
 
 	d.subDirectories = append(d.subDirectories, newDir.path)
 
-	return newDirectoryCreatedEvent(newDir), nil
+	return newDirectoryCreatedEvent(d.connectionID, newDir), nil
 }
 
-// NewFile creates a new file in the current directory
-// returns an error when the file name is not valid or if the file already exists
+// NewFile creates a new fileObj in the current directory
+// returns an error when the fileObj name is not valid or if the fileObj already exists
 func (d *Directory) NewFile(name string) (FileEvent, error) {
 	file, err := NewFile(name, d)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create file: %w", err)
+		return nil, fmt.Errorf("failed to create fileObj: %w", err)
 	}
 	for _, f := range d.files {
 		if f.Is(file) {
-			return nil, fmt.Errorf("file %s already exists in directory %s", name, d.path)
+			return nil, fmt.Errorf("fileObj %s already exists in directory %s", name, d.path)
 		}
 	}
 	d.files = append(d.files, file)
 
-	return newFileCreatedEvent(d, file), nil
+	return newFileCreatedEvent(d.connectionID, file), nil
 }
 
 func (d *Directory) RemoveFile(name FileName) (FileEvent, error) {
@@ -139,19 +144,35 @@ func (d *Directory) RemoveFile(name FileName) (FileEvent, error) {
 		if file.Name() == name {
 			d.files = append(d.files[:i], d.files[i+1:]...)
 
-			return newFileDeletedEvent(d, file), nil
+			return newFileDeletedEvent(d.connectionID, file), nil
 		}
 	}
 	return fileDeletedEvent{}, ErrNotFound
 }
 
-func (d *Directory) RemoveSubDirectory(name string) (SubDirectoryEvent, error) {
+func (d *Directory) RemoveSubDirectory(name string) (DirectoryEvent, error) {
 	path := d.parentPath.NewSubPath(name)
 	for i, subDirPath := range d.subDirectories {
 		if subDirPath == path {
 			d.subDirectories = append(d.subDirectories[:i], d.subDirectories[i+1:]...)
-			return newDirectoryDeletedEvent(d, subDirPath), nil
+			return newDirectoryDeletedEvent(d.connectionID, d), nil
 		}
 	}
-	return subDirectoryDeletedEvent{}, ErrNotFound
+	return directoryDeletedEvent{}, ErrNotFound
+}
+
+func (d *Directory) UploadFile(localPath string) (ContentEvent, error) {
+	fileName := filepath.Base(localPath)
+	newFileEvt, err := d.NewFile(fileName)
+	if err != nil {
+		return nil, err
+	}
+	newFile := newFileEvt.File()
+
+	uploadedEvt := newContentUploadedEvent(d.connectionID, NewFileContent(newFile, FromLocalFile(localPath)))
+	uploadedEvt.AttachErrorCallback(func(_ error) {
+		d.RemoveFile(newFile.Name())
+	})
+
+	return uploadedEvt, nil
 }

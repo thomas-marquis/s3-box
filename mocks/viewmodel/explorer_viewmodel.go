@@ -132,7 +132,7 @@ func (mr *MockExplorerViewModelMockRecorder) GetFileByID(fileID any) *gomock.Cal
 // GetLastSaveDir mocks base method.
 func (m *MockExplorerViewModel) GetLastSaveDir() fyne.ListableURI {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLastSaveDir")
+	ret := m.ctrl.Call(m, "LastDownloadLocation")
 	ret0, _ := ret[0].(fyne.ListableURI)
 	return ret0
 }
@@ -140,13 +140,13 @@ func (m *MockExplorerViewModel) GetLastSaveDir() fyne.ListableURI {
 // GetLastSaveDir indicates an expected call of GetLastSaveDir.
 func (mr *MockExplorerViewModelMockRecorder) GetLastSaveDir() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastSaveDir", reflect.TypeOf((*MockExplorerViewModel)(nil).GetLastSaveDir))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LastDownloadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).GetLastSaveDir))
 }
 
 // GetLastUploadDir mocks base method.
 func (m *MockExplorerViewModel) GetLastUploadDir() fyne.ListableURI {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLastUploadDir")
+	ret := m.ctrl.Call(m, "LastUploadLocation")
 	ret0, _ := ret[0].(fyne.ListableURI)
 	return ret0
 }
@@ -154,7 +154,7 @@ func (m *MockExplorerViewModel) GetLastUploadDir() fyne.ListableURI {
 // GetLastUploadDir indicates an expected call of GetLastUploadDir.
 func (mr *MockExplorerViewModelMockRecorder) GetLastUploadDir() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastUploadDir", reflect.TypeOf((*MockExplorerViewModel)(nil).GetLastUploadDir))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LastUploadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).GetLastUploadDir))
 }
 
 // GetMaxFileSizePreview mocks base method.
@@ -271,7 +271,7 @@ func (mr *MockExplorerViewModelMockRecorder) ResetTree() *gomock.Call {
 // SetLastSaveDir mocks base method.
 func (m *MockExplorerViewModel) SetLastSaveDir(filePath string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetLastSaveDir", filePath)
+	ret := m.ctrl.Call(m, "UpdateLastDownloadLocation", filePath)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -279,13 +279,13 @@ func (m *MockExplorerViewModel) SetLastSaveDir(filePath string) error {
 // SetLastSaveDir indicates an expected call of SetLastSaveDir.
 func (mr *MockExplorerViewModelMockRecorder) SetLastSaveDir(filePath any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLastSaveDir", reflect.TypeOf((*MockExplorerViewModel)(nil).SetLastSaveDir), filePath)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLastDownloadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).SetLastSaveDir), filePath)
 }
 
 // SetLastUploadDir mocks base method.
 func (m *MockExplorerViewModel) SetLastUploadDir(filePath string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetLastUploadDir", filePath)
+	ret := m.ctrl.Call(m, "UpdateLastUploadLocation", filePath)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -293,7 +293,7 @@ func (m *MockExplorerViewModel) SetLastUploadDir(filePath string) error {
 // SetLastUploadDir indicates an expected call of SetLastUploadDir.
 func (mr *MockExplorerViewModelMockRecorder) SetLastUploadDir(filePath any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLastUploadDir", reflect.TypeOf((*MockExplorerViewModel)(nil).SetLastUploadDir), filePath)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLastUploadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).SetLastUploadDir), filePath)
 }
 
 // StartLoading mocks base method.

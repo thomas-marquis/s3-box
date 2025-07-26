@@ -2,8 +2,8 @@ package components
 
 import (
 	"fmt"
+	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 
-	"github.com/thomas-marquis/s3-box/internal/explorer"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
 	"fyne.io/fyne/v2"
@@ -48,33 +48,32 @@ func (d *DirDetials) Object() fyne.CanvasObject {
 	return d.c
 }
 
-func (d *DirDetials) Update(ctx appcontext.AppContext, dir *explorer.S3Directory) {
-	d.pathLabel.SetText(dir.ID.String())
+func (d *DirDetials) Update(ctx appcontext.AppContext, dir *directory.Directory) {
+	d.pathLabel.SetText(dir.Path().String())
 
 	d.uploadBtn.OnTapped = func() {
 		selectDialog := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 			if err != nil {
-				dialog.ShowError(err, ctx.Window()) // TODO better error handling
+				dialog.ShowError(err, ctx.Window())
 				return
 			}
-
 			if reader == nil {
 				return
 			}
 
 			localDestFilePath := reader.URI().Path()
 			if err := ctx.ExplorerViewModel().UploadFile(localDestFilePath, dir); err != nil {
-				dialog.ShowError(err, ctx.Window()) // TODO better error handling
+				dialog.ShowError(err, ctx.Window())
 				return
 			}
-			if err := ctx.ExplorerViewModel().SetLastUploadDir(localDestFilePath); err != nil {
-				dialog.ShowError(err, ctx.Window()) // TODO better error handling
+			if err := ctx.ExplorerViewModel().UpdateLastUploadLocation(localDestFilePath); err != nil {
+				dialog.ShowError(err, ctx.Window())
 				return
 			}
 			dialog.ShowInformation("Upload", "AttachedFile uploaded", ctx.Window())
 		}, ctx.Window())
 
-		selectDialog.SetLocation(ctx.ExplorerViewModel().GetLastUploadDir())
+		selectDialog.SetLocation(ctx.ExplorerViewModel().LastUploadLocation())
 		selectDialog.Show()
 	}
 	if ctx.ConnectionViewModel().IsReadOnly() {

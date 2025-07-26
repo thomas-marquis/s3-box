@@ -25,3 +25,11 @@ func (e *EventPublisher) Publish(event Event) {
 		}
 	}()
 }
+
+func (e *EventPublisher) PublishWithCallbacks(event Event) {
+	go func() {
+		for subscriber := range e.subscribers {
+			subscriber <- event
+		}
+	}()
+}
