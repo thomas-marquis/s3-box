@@ -47,10 +47,19 @@ func NewFile(name string, dir *Directory, opts ...FileOption) (*File, error) {
 }
 
 func (f *File) Is(other *File) bool {
-	if f == nil || other == nil {
+	if other == nil {
 		return false
 	}
 	return f.name == other.name && f.directoryPath == other.directoryPath
+}
+
+func (f *File) Equal(other *File) bool {
+	if other == nil {
+		return false
+	}
+	return f.Is(other) &&
+		f.sizeBytes == other.sizeBytes &&
+		f.lastModified == other.lastModified
 }
 
 func (f *File) Name() FileName {

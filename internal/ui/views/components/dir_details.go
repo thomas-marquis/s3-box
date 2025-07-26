@@ -13,7 +13,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-type DirDetials struct {
+type DirDetails struct {
 	c *fyne.Container
 
 	pathLabel      *widget.Label
@@ -21,7 +21,7 @@ type DirDetials struct {
 	newEmptyDirBtn *widget.Button
 }
 
-func NewDirDetails() *DirDetials {
+func NewDirDetails() *DirDetails {
 	pathLabel := widget.NewLabel("")
 
 	uploadBtn := widget.NewButton("Upload file", func() {})
@@ -36,7 +36,7 @@ func NewDirDetails() *DirDetials {
 		top, container.NewVBox(uploadBtn, newEmptyDirBtn),
 		nil, nil,
 	)
-	return &DirDetials{
+	return &DirDetails{
 		c:              c,
 		pathLabel:      pathLabel,
 		uploadBtn:      uploadBtn,
@@ -44,11 +44,11 @@ func NewDirDetails() *DirDetials {
 	}
 }
 
-func (d *DirDetials) Object() fyne.CanvasObject {
+func (d *DirDetails) Object() fyne.CanvasObject {
 	return d.c
 }
 
-func (d *DirDetials) Update(ctx appcontext.AppContext, dir *directory.Directory) {
+func (d *DirDetails) Update(ctx appcontext.AppContext, dir *directory.Directory) {
 	d.pathLabel.SetText(dir.Path().String())
 
 	d.uploadBtn.OnTapped = func() {

@@ -124,8 +124,8 @@ func (d *Directory) NewSubDirectory(name string) (DirectoryEvent, error) {
 
 // NewFile creates a new fileObj in the current directory
 // returns an error when the fileObj name is not valid or if the fileObj already exists
-func (d *Directory) NewFile(name string) (FileEvent, error) {
-	file, err := NewFile(name, d)
+func (d *Directory) NewFile(name string, opts ...FileOption) (FileEvent, error) {
+	file, err := NewFile(name, d, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fileObj: %w", err)
 	}
@@ -175,4 +175,49 @@ func (d *Directory) UploadFile(localPath string) (ContentEvent, error) {
 	})
 
 	return uploadedEvt, nil
+}
+
+func (d *Directory) Equal(other *Directory) bool {
+	if other == nil {
+		return false
+	}
+
+	if d.path == other.path {
+		return false
+	}
+
+	if len(d.subDirectories) != len(other.subDirectories) {
+		return false
+	}
+
+	for _, subDir := range d.subDirectories {
+		foundInOther := false
+		for _, otherSubDir := range other.subDirectories {
+			if subDir == otherSubDir {
+				foundInOther = true
+				break
+			}
+		}
+		if !foundInOther {
+			return false
+		}
+	}
+
+	if len(d.files) != len(other.files) {
+		return false
+	}
+	for _, file := range d.files {
+		foundInOther := false
+		for _, otherFile := range other.files {
+			if file.Equal(otherFile) {
+				foundInOther = true
+				break
+			}
+		}
+		if !foundInOther {
+			return false
+		}
+	}
+
+	return true
 }

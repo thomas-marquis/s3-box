@@ -33,15 +33,6 @@ type ExplorerViewModel interface {
 	// If the directory is already open, it will do nothing.
 	LoadDirectory(dirNode node.DirectoryNode) error // TODO: use this method for refreshing the content too
 
-	//// RemoveDirToTree removes a directory and its contents from the tree structure
-	//RemoveDirToTree(dirID directory.Path) error
-	//
-	//// GetDirByID retrieves a directory by its identifier from the cache
-	//GetDirByID(dirID directory.Path) (*directory.Directory, error)
-	//
-	//// GetFileByName retrieves a file by its name from a specific parent directory
-	//GetFileByName(parent directory.Path, name directory.FileName) (*directory.File, error)
-	//
 	//// PreviewFile returns the content of a file as a string for preview purposes
 	//// Returns an error if the file is too large or cannot be read
 	//PreviewFile(f *directory.File) (string, error)
@@ -55,8 +46,8 @@ type ExplorerViewModel interface {
 	// UploadFile uploads a local file to the specified remote directory
 	UploadFile(localPath string, dir *directory.Directory) error
 
-	//// DeleteFile removes a file from storage and updates the tree
-	//DeleteFile(file *directory.File) error
+	// DeleteFile removes a file from storage and updates the tree
+	DeleteFile(file *directory.File) error
 
 	// LastDownloadLocation returns the URI of the last used save directory
 	LastDownloadLocation() fyne.ListableURI
@@ -70,8 +61,8 @@ type ExplorerViewModel interface {
 	// UpdateLastUploadLocation updates the last used upload directory path
 	UpdateLastUploadLocation(filePath string) error
 
-	//// CreateEmptyDirectory creates an empty subdirectory in the given parent directory
-	//CreateEmptyDirectory(parent *directory.Directory, name string) (*directory.Directory, error)
+	// CreateEmptyDirectory creates an empty subdirectory in the given parent directory
+	CreateEmptyDirectory(parent *directory.Directory, name string) (*directory.Directory, error)
 }
 
 type explorerViewModelImpl struct {
@@ -79,7 +70,6 @@ type explorerViewModelImpl struct {
 	deck          *connection_deck.Deck
 	connRepo      connection_deck.Repository
 	dirRepository directory.Repository
-	dirSvc        directory.Service
 	tree          binding.UntypedTree
 	errChan       chan error
 	publisher     directory.EventPublisher
@@ -93,7 +83,6 @@ type explorerViewModelImpl struct {
 var _ ExplorerViewModel = &explorerViewModelImpl{}
 
 func NewExplorerViewModel(
-	dirSvc directory.Service,
 	connRepo connection_deck.Repository,
 	dirRepo directory.Repository,
 	settingsVm SettingsViewModel,
@@ -111,7 +100,6 @@ func NewExplorerViewModel(
 
 	vm := &explorerViewModelImpl{
 		tree:                      t,
-		dirSvc:                    dirSvc,
 		settingsVm:                settingsVm,
 		dirRepository:             dirRepo,
 		errChan:                   errChan,
@@ -160,13 +148,7 @@ func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error
 		return nil
 	}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, vm.settingsVm.CurrentTimeout())
-	defer cancel()
-
-	conn := vm.deck.SelectedConnection()
-
-	dir, err := vm.dirRepository.GetByPath(ctx, conn.ID(), dirNode.Path())
+	dir, err := vm.fetchDirectory(dirNode.Path())
 	if err != nil {
 		vm.errChan <- fmt.Errorf("error getting directory: %w", err)
 		return err
@@ -177,84 +159,14 @@ func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error
 		return err
 	}
 
-	for _, file := range dir.Files() {
-		fileNode := node.NewFileNode(file)
-		if err := vm.tree.Append(dirNode.ID(), fileNode.ID(), fileNode); err != nil {
-			vm.errChan <- fmt.Errorf("error appending file to tree: %w", err)
-			continue
-		}
-	}
-
-	for _, subDirPath := range dir.SubDirectories() {
-		subDirNode := node.NewDirectoryNode(subDirPath)
-		if err := vm.tree.Append(dirNode.ID(), subDirNode.ID(), subDirNode); err != nil {
-			vm.errChan <- fmt.Errorf("error appending subdirectory to tree: %w", err)
-			continue
-		}
+	if err := vm.fillSubTree(dirNode, dir); err != nil {
+		vm.errChan <- fmt.Errorf("error filling sub tree: %w", err)
+		return err
 	}
 
 	return nil
 }
 
-//	func (vm *explorerViewModelImpl) RemoveDirToTree(dirID explorer.S3DirectoryID) error {
-//		item, err := vm.tree.GetValue(dirID.String())
-//		if err != nil {
-//			return fmt.Errorf("impossible to retreive the direcotry you want to remove: %s", dirID.String())
-//		}
-//		node, ok := item.(*TreeNode)
-//		if !ok {
-//			panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", dirID.String()))
-//		}
-//
-//		if !node.IsLoaded() {
-//			if err := vm.tree.Remove(dirID.String()); err != nil {
-//				vm.errChan <- fmt.Errorf("error removing directory from tree: %w", err)
-//				return err
-//			}
-//		} else {
-//			vm.mu.Lock()
-//			dir, ok := vm.dirsById[dirID]
-//			vm.mu.Unlock()
-//			if !ok {
-//				panic(fmt.Sprintf("impossible to find the directory in the cache: %s", dirID.String()))
-//			}
-//			for _, f := range dir.Files {
-//				if err := vm.tree.Remove(f.ID.String()); err != nil {
-//					vm.errChan <- fmt.Errorf("error removing file from tree: %w", err)
-//					return err
-//				}
-//			}
-//			for _, subDirID := range dir.SubDirectoriesIDs {
-//				if err := vm.RemoveDirToTree(subDirID); err != nil {
-//					vm.errChan <- fmt.Errorf("error removing subdirectory from tree: %w", err)
-//					return err
-//				}
-//			}
-//		}
-//
-//		return nil
-//	}
-//
-//	func (vm *explorerViewModelImpl) GetDirByID(dirID explorer.S3DirectoryID) (*explorer.S3Directory, error) {
-//		vm.mu.Lock()
-//		dir, ok := vm.dirsById[dirID]
-//		vm.mu.Unlock()
-//		if !ok {
-//			return nil, fmt.Errorf("directory not found in cache")
-//		}
-//		return dir, nil
-//	}
-//
-//	func (vm *explorerViewModelImpl) GetFileByName(parent directory.Path, name directory.FileName) (*directory.File, error) {
-//		vm.mu.Lock()
-//		file, ok := vm.filesById[fileID]
-//		vm.mu.Unlock()
-//		if !ok {
-//			return nil, fmt.Errorf("file not found in cache")
-//		}
-//		return file, nil
-//	}
-//
 //	func (vm *explorerViewModelImpl) PreviewFile(f *explorer.S3File) (string, error) {
 //		if f.SizeBytes > vm.GetMaxFileSizePreview() {
 //			return "", fmt.Errorf("file is too big to PreviewFile")
@@ -272,61 +184,54 @@ func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error
 //	}
 //
 //	func (vm *explorerViewModelImpl) ResetTree() error {
-//		vm.resetTreeContent()
+//		vm.tree = binding.NewUntypedTree()
 //		return vm.initializeTreeData(context.Background())
 //	}
 
 func (vm *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
-	defer cancel()
-
 	evt := f.Download(vm.deck.SelectedConnection().ID(), dest)
-	evt.AttachContext(ctx)
 	vm.publisher.Publish(evt)
-
 	return nil
 }
 
 func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory) error {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
-	defer cancel()
 	evt, err := dir.UploadFile(localPath)
 	if err != nil {
 		vm.errChan <- fmt.Errorf("error uploading file: %w", err)
 		return err
 	}
-	evt.AttachContext(ctx)
 	vm.publisher.Publish(evt)
-
-	return vm.RefreshDir(remoteDir.ID)
+	return vm.sync(dir)
 }
 
-//	func (vm *explorerViewModelImpl) DeleteFile(file *explorer.S3File) error {
-//		ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
-//		defer cancel()
-//
-//		dir, err := vm.dirSvc.GetDirectoryByID(ctx, file.DirectoryID)
-//		if err != nil {
-//			vm.errChan <- fmt.Errorf("error getting parent directory: %w", err)
-//			return err
-//		}
-//
-//		if err := vm.dirSvc.DeleteFile(ctx, dir, file.ID); err != nil {
-//			vm.errChan <- fmt.Errorf("error deleting file: %w", err)
-//			return err
-//		}
-//
-//		if err := vm.tree.Remove(file.ID.String()); err != nil {
-//			vm.errChan <- fmt.Errorf("error removing file from tree: %w", err)
-//			return err
-//		}
-//
-//		vm.mu.Lock()
-//		delete(vm.filesById, file.ID)
-//		vm.mu.Unlock()
-//
-//		return nil
-//	}
+func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) error {
+	dirNodeItem, err := vm.tree.GetValue(file.DirectoryPath().String())
+	if err != nil {
+		return fmt.Errorf("impossible to retreive the direcotry you want to remove: %s", file.DirectoryPath().String())
+	}
+	dirNode, ok := dirNodeItem.(node.DirectoryNode)
+	if !ok {
+		panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", file.DirectoryPath().String()))
+	}
+
+	dir := dirNode.Directory()
+	evt, err := dir.RemoveFile(file.Name())
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error removing file: %w", err)
+		return err
+	}
+	evt.AttachErrorCallback(func(err error) {
+		vm.errChan <- fmt.Errorf("error removing file: %w", err)
+	})
+	evt.AttachSuccessCallback(func() {
+		if err := vm.tree.Remove(file.FullPath()); err != nil {
+			vm.errChan <- fmt.Errorf("error removing file from tree: %w", err)
+		}
+	})
+	vm.publisher.Publish(evt)
+
+	return nil
+}
 
 func (vm *explorerViewModelImpl) LastDownloadLocation() fyne.ListableURI {
 	return vm.lastDownloadLocation
@@ -358,28 +263,25 @@ func (vm *explorerViewModelImpl) UpdateLastUploadLocation(filePath string) error
 	return nil
 }
 
-//	func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *explorer.S3Directory, name string) (*explorer.S3Directory, error) {
-//		ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
-//		defer cancel()
-//
-//		subDir, err := vm.dirSvc.CreateSubDirectory(ctx, parent, name)
-//		if err != nil {
-//			vm.errChan <- fmt.Errorf("error creating subdirectory: %w", err)
-//			return nil, err
-//		}
-//
-//		newNode := NewTreeNode(subDir.ID.String(), subDir.ID.ToName(), TreeNodeTypeDirectory)
-//		if err := vm.tree.Append(parent.ID.String(), subDir.ID.String(), newNode); err != nil {
-//			vm.errChan <- fmt.Errorf("error appending new subdirectory to tree: %w", err)
-//			return nil, err
-//		}
-//
-//		return subDir, nil
-//	}
-//
-//	func (vm *explorerViewModelImpl) resetTreeContent() {
-//		vm.tree = binding.NewUntypedTree()
-//	}
+func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory, name string) (*directory.Directory, error) {
+
+	evt, err := parent.NewSubDirectory(name)
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error creating subdirectory: %w", err)
+		return nil, err
+	}
+	evt.AttachSuccessCallback(func() {
+		if err := vm.sync(parent); err != nil {
+			vm.errChan <- fmt.Errorf("error syncing tree for the new directory: %w", err)
+		}
+	})
+	evt.AttachErrorCallback(func(err error) {
+		vm.errChan <- fmt.Errorf("error creating subdirectory: %w", err)
+	})
+	vm.publisher.Publish(evt)
+	return nil, nil
+}
+
 func (vm *explorerViewModelImpl) initializeTreeData(ctx context.Context) error {
 	currentConn := vm.deck.SelectedConnection()
 	if currentConn == nil {
@@ -402,85 +304,67 @@ func (vm *explorerViewModelImpl) initializeTreeData(ctx context.Context) error {
 }
 
 func (vm *explorerViewModelImpl) sync(dir *directory.Directory) error {
-	dirTreeNodeItem, err := vm.tree.GetValue(dir.Path().String())
+	dirNodeItem, err := vm.tree.GetValue(dir.Path().String())
 	if err != nil {
-		return fmt.Errorf("impossible to retreive the direcotry you want to refresh: %s", dirPath.String())
+		return fmt.Errorf("impossible to retreive the direcotry you want to refresh: %s", dir.Path().String())
 	}
-	dirTreeNode, ok := dirTreeNodeItem.(*node.DirectoryNode)
+	dirNode, ok := dirNodeItem.(node.DirectoryNode)
 	if !ok {
-		panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", dirPath.String()))
+		panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", dir.Path().String()))
 	}
 
-	if err := vm.removeDirectoryContent(dir); err != nil {
+	if !dirNode.IsLoaded() {
+		return vm.LoadDirectory(dirNode) // TODO: is a good idea forcing to load the dir here??
+	}
+
+	moreRecentDir, err := vm.fetchDirectory(dir.Path())
+	if err != nil {
 		return err
 	}
 
-	return vm.appendDirectoryContent(dir)
+	if moreRecentDir.Equal(dir) {
+		return nil
+	}
+
+	if err := vm.tree.Remove(dirNode.ID()); err != nil {
+		return err
+	}
+
+	if err := vm.fillSubTree(dirNode, moreRecentDir); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-//	func (vm *explorerViewModelImpl) fetchAndUpdateDirectory(ctx context.Context, dirID explorer.S3DirectoryID) (*explorer.S3Directory, error) {
-//		dir, err := vm.dirSvc.GetDirectoryByID(ctx, dirID)
-//		if err != nil {
-//			vm.errChan <- fmt.Errorf("error getting directory by ID (%s): %w", dirID, err)
-//			return nil, err
-//		}
-//
-//		vm.mu.Lock()
-//		vm.dirsById[dirID] = dir
-//		vm.mu.Unlock()
-//
-//		return dir, nil
-//	}
-func (vm *explorerViewModelImpl) removeDirectoryContent(dir *directory.Directory) error {
+func (vm *explorerViewModelImpl) fetchDirectory(dirID directory.Path) (*directory.Directory, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
+	defer cancel()
+
+	dir, err := vm.dirRepository.GetByPath(ctx, vm.deck.SelectedConnection().ID(), dirID)
+	if err != nil {
+		vm.errChan <- fmt.Errorf("error getting directory: %w", err)
+		return nil, err
+	}
+
+	return dir, nil
+}
+
+func (vm *explorerViewModelImpl) fillSubTree(startNode node.DirectoryNode, dir *directory.Directory) error {
 	for _, file := range dir.Files() {
-		if err := vm.tree.Remove(file.FullPath()); err != nil {
-			vm.errChan <- fmt.Errorf("error removing old file from tree: %w", err)
+		fileNode := node.NewFileNode(file)
+		if err := vm.tree.Append(startNode.ID(), fileNode.ID(), fileNode); err != nil {
+			vm.errChan <- fmt.Errorf("error appending file to tree: %w", err)
+			continue
 		}
 	}
 
 	for _, subDirPath := range dir.SubDirectories() {
-		if err := vm.tree.Remove(subDirPath.String()); err != nil {
-			vm.errChan <- fmt.Errorf("error removing old subdirectory from tree: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (vm *explorerViewModelImpl) appendDirectoryContent(dir *directory.Directory) error {
-	for _, file := range dir.Files() {
-		if err := vm.appendFileNode(dir, file); err != nil {
+		subDirNode := node.NewDirectoryNode(subDirPath)
+		if err := vm.tree.Append(startNode.ID(), subDirNode.ID(), subDirNode); err != nil {
+			vm.errChan <- fmt.Errorf("error appending subdirectory to tree: %w", err)
 			continue
 		}
 	}
-
-	for _, subDirID := range dir.SubDirectories() {
-		if err := vm.appendDirectoryNode(dirID, subDirID); err != nil {
-			continue
-		}
-	}
-
-	return nil
-}
-
-func (vm *explorerViewModelImpl) appendDirectoryNode(dir *directory.Directory) error {
-	dirNode := node.NewDirectoryNode(dir.Path())
-
-	if err := vm.tree.Append(parentDirID.String(), dirNode.ID, dirNode); err != nil {
-		vm.errChan <- fmt.Errorf("error appending subdirectory to tree: %w", err)
-		return err
-	}
-
-	return nil
-}
-
-func (vm *explorerViewModelImpl) appendFileNode(parent *directory.Directory, file *directory.File) error {
-	fileNode := node.NewFileNode(file)
-
-	if err := vm.tree.Append(parent.Path().String(), fileNode.ID(), fileNode); err != nil {
-		vm.errChan <- fmt.Errorf("error appending file to tree: %w", err)
-		return err
-	}
-
 	return nil
 }

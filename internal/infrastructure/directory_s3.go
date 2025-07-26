@@ -65,17 +65,59 @@ func NewS3DirectoryRepository(
 }
 
 func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connection_deck.ConnectionID, path directory.Path) (*directory.Directory, error) {
-	// Implementation for retrieving a directory by its path
-	return nil, nil
-}
+	searchKey := mapPathToSearchKey(path)
 
-func (r *S3DirectoryRepository) DownloadFile(ctx context.Context, connID connection_deck.ConnectionID, file *directory.File) (*directory.Content, error) {
-	// Implementation for downloading a file from S3
-	return nil, nil
-}
+	s, err := r.getSession(ctx, connID)
+	if err != nil {
+		return nil, fmt.Errorf("GetByID: %w", err)
+	}
 
-func (r *S3DirectoryRepository) UploadFile(ctx context.Context, connID connection_deck.ConnectionID, destDir *directory.Directory, content *directory.Content) (*directory.File, error) {
-	return nil, nil
+	inputs := &s3.ListObjectsInput{
+		Bucket:    aws.String(s.connection.Bucket()),
+		Prefix:    aws.String(searchKey),
+		Delimiter: aws.String("/"),
+		MaxKeys:   aws.Int64(1000),
+	}
+
+	dir, err := directory.New(connID, path.DirectoryName(), path.ParentPath())
+	if err != nil {
+		return nil, fmt.Errorf("GetByID: %w", err)
+	}
+
+	pageHandler := func(page *s3.ListObjectsOutput, lastPage bool) bool {
+		for _, obj := range page.Contents {
+			key := *obj.Key
+			if key == searchKey {
+				continue
+			}
+			if _, err := dir.NewFile(mapKeyToObjectName(key),
+				directory.WithFileSize(int(*obj.Size)),
+				directory.WithFileLastModified(*obj.LastModified),
+			); err != nil {
+				return false
+			}
+		}
+
+		for _, obj := range page.CommonPrefixes {
+			if *obj.Prefix == searchKey {
+				continue
+			}
+			s3Prefix := *obj.Prefix
+			isDir := strings.HasSuffix(s3Prefix, "/")
+			if isDir {
+				if _, err := dir.NewSubDirectory(mapKeyToObjectName(s3Prefix)); err != nil {
+					return false
+				}
+			}
+		}
+		return !lastPage
+	}
+
+	if err := s.client.ListObjectsPagesWithContext(ctx, inputs, pageHandler); err != nil {
+		return nil, fmt.Errorf("GetByID: %w", err)
+	}
+
+	return dir, nil
 }
 
 func (r *S3DirectoryRepository) listen(events <-chan directory.Event, errors chan<- error) {
@@ -142,7 +184,7 @@ func (r *S3DirectoryRepository) handleDirectoryCreation(ctx context.Context, ses
 	}
 	if _, err := sess.client.PutObjectWithContext(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(sess.connection.Bucket()),
-		Key:    aws.String(mapDirToKey(newDir)),
+		Key:    aws.String(mapDirToObjectKey(newDir)),
 		Body:   strings.NewReader(""),
 	}); err != nil {
 		return fmt.Errorf("failed to save empty directory: %w", err)
@@ -262,13 +304,33 @@ func (r *S3DirectoryRepository) getFromCache(c *connection_deck.Connection) *s3S
 	return nil
 }
 
-func mapDirToKey(dir *directory.Directory) string {
-	if dir.Path().String() == "" {
+func mapDirToObjectKey(dir *directory.Directory) string {
+	if dir.Path().String() == "" || dir.IsRoot() {
 		return ""
 	}
 	return strings.TrimPrefix(dir.Path().String(), "/")
 }
 
+func mapPathToSearchKey(path directory.Path) string {
+	if path.String() == "" || path == directory.RootPath {
+		return ""
+	}
+	key := strings.TrimPrefix(path.String(), "/")
+	if !strings.HasSuffix(key, "/") {
+		key += "/"
+	}
+	return key
+}
+
 func mapFileToKey(file *directory.File) string {
 	return strings.TrimPrefix(file.FullPath(), "/")
+}
+
+func mapKeyToObjectName(key string) string {
+	if key == "" || key == "/" {
+		return ""
+	}
+	dirPathStriped := strings.TrimSuffix(key, "/")
+	dirPathSplit := strings.Split(dirPathStriped, "/")
+	return dirPathSplit[len(dirPathSplit)-1]
 }

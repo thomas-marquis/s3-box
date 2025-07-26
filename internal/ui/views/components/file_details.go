@@ -1,11 +1,9 @@
 package components
 
 import (
-	"errors"
 	"fmt"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 
-	"github.com/thomas-marquis/s3-box/internal/explorer"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/utils"
 
