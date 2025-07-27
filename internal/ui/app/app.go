@@ -33,7 +33,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	a := fyne_app.NewWithID(appId)
 	w := a.NewWindow("S3 Box")
 
-	errorStream := make(chan error)
+	errorStream := make(chan error, 1000)
 
 	fyneSettings := a.Settings()
 
