@@ -23,9 +23,6 @@ type ExplorerViewModel interface {
 	// when the no-connection banner display state changes
 	OnDisplayNoConnectionBannerChange(fn func(shouldDisplay bool))
 
-	// ErrorChan returns a channel for error notifications from the view model
-	ErrorChan() chan error
-
 	// Tree returns the binding for the directory/file tree structure
 	Tree() binding.UntypedTree
 
@@ -33,12 +30,11 @@ type ExplorerViewModel interface {
 	// If the directory is already open, it will do nothing.
 	LoadDirectory(dirNode node.DirectoryNode) error // TODO: use this method for refreshing the content too
 
-	//// PreviewFile returns the content of a file as a string for preview purposes
-	//// Returns an error if the file is too large or cannot be read
-	//PreviewFile(f *directory.File) (string, error)
-	//
-	//// ResetTree clears and reinitializes the entire tree structure
-	//ResetTree() error
+	// GetFileContent retrieves the content of the specified file, returning a Content object or an error if the operation fails.
+	GetFileContent(f *directory.File) (*directory.Content, error)
+
+	// SwitchConnection clears and reinitialize the entire tree structure and change the active connection
+	SwitchConnection(newConnection *connection_deck.Connection) error
 
 	// DownloadFile downloads a file to the specified local destination
 	DownloadFile(f *directory.File, dest string) error
@@ -71,41 +67,33 @@ type explorerViewModelImpl struct {
 	connRepo      connection_deck.Repository
 	dirRepository directory.Repository
 	tree          binding.UntypedTree
-	errChan       chan error
-	publisher     directory.EventPublisher
+	publisher     *directory.EventPublisher
 
 	settingsVm                SettingsViewModel
 	lastDownloadLocation      fyne.ListableURI
 	lastUploadDir             fyne.ListableURI
 	displayNoConnectionBanner binding.Bool
-}
 
-var _ ExplorerViewModel = &explorerViewModelImpl{}
+	errorStream chan<- error
+}
 
 func NewExplorerViewModel(
 	connRepo connection_deck.Repository,
 	dirRepo directory.Repository,
 	settingsVm SettingsViewModel,
-	publisher directory.EventPublisher,
-) *explorerViewModelImpl {
+	publisher *directory.EventPublisher,
+	errorStream chan<- error,
+) ExplorerViewModel {
 	t := binding.NewUntypedTree()
-	errChan := make(chan error)
-
-	// Start error handler
-	go func() {
-		for err := range errChan {
-			fmt.Printf("Error in ExplorerViewModel: %v\n", err)
-		}
-	}()
 
 	vm := &explorerViewModelImpl{
 		tree:                      t,
 		settingsVm:                settingsVm,
 		dirRepository:             dirRepo,
-		errChan:                   errChan,
 		connRepo:                  connRepo,
 		displayNoConnectionBanner: binding.NewBool(),
 		publisher:                 publisher,
+		errorStream:               errorStream,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout()*2)
@@ -113,7 +101,7 @@ func NewExplorerViewModel(
 
 	deck, err := connRepo.Get(ctx)
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error getting connection deck: %w", err)
+		vm.errorStream <- fmt.Errorf("error getting connection deck: %w", err)
 		return vm
 	}
 	vm.deck = deck
@@ -123,7 +111,7 @@ func NewExplorerViewModel(
 		if errors.Is(err, ErrNoConnectionSelected) {
 			vm.displayNoConnectionBanner.Set(true)
 		}
-		vm.errChan <- fmt.Errorf("error resetting tree: %w", err)
+		vm.errorStream <- fmt.Errorf("error resetting tree: %w", err)
 	}
 
 	return vm
@@ -134,9 +122,6 @@ func (vm *explorerViewModelImpl) OnDisplayNoConnectionBannerChange(fn func(shoul
 		shouldDisplay, _ := vm.displayNoConnectionBanner.Get()
 		fn(shouldDisplay)
 	}))
-}
-func (vm *explorerViewModelImpl) ErrorChan() chan error {
-	return vm.errChan
 }
 
 func (vm *explorerViewModelImpl) Tree() binding.UntypedTree {
@@ -150,43 +135,47 @@ func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error
 
 	dir, err := vm.fetchDirectory(dirNode.Path())
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error getting directory: %w", err)
+		vm.errorStream <- fmt.Errorf("error getting directory: %w", err)
 		return err
 	}
 
 	if err := dirNode.Load(dir); err != nil {
-		vm.errChan <- fmt.Errorf("error loading directory: %w", err)
+		vm.errorStream <- fmt.Errorf("error loading directory: %w", err)
 		return err
 	}
 
 	if err := vm.fillSubTree(dirNode, dir); err != nil {
-		vm.errChan <- fmt.Errorf("error filling sub tree: %w", err)
+		vm.errorStream <- fmt.Errorf("error filling sub tree: %w", err)
 		return err
 	}
 
 	return nil
 }
 
-//	func (vm *explorerViewModelImpl) PreviewFile(f *explorer.S3File) (string, error) {
-//		if f.SizeBytes > vm.GetMaxFileSizePreview() {
-//			return "", fmt.Errorf("file is too big to PreviewFile")
-//		}
-//
-//		ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
-//		defer cancel()
-//		content, err := vm.fileSvc.GetContent(ctx, f)
-//		if err != nil {
-//			vm.errChan <- fmt.Errorf("error getting file content: %w", err)
-//			return "", err
-//		}
-//
-//		return string(content), nil
-//	}
-//
-//	func (vm *explorerViewModelImpl) ResetTree() error {
-//		vm.tree = binding.NewUntypedTree()
-//		return vm.initializeTreeData(context.Background())
-//	}
+func (vm *explorerViewModelImpl) GetFileContent(file *directory.File) (*directory.Content, error) {
+	if file.SizeBytes() > vm.settingsVm.CurrentMaxFilePreviewSizeBytes() {
+		err := fmt.Errorf("file is too big to GetFileContent")
+		vm.errorStream <- err
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
+	defer cancel()
+
+	content, err := vm.dirRepository.GetFileContent(ctx, vm.deck.SelectedConnection().ID(), file)
+	if err != nil {
+		vm.errorStream <- fmt.Errorf("error getting file content: %w", err)
+		return nil, err
+	}
+
+	return content, nil
+}
+
+func (vm *explorerViewModelImpl) SwitchConnection(newConnection *connection_deck.Connection) error {
+	// FIXME: srt the new connection here
+	vm.tree = binding.NewUntypedTree()
+	return vm.initializeTreeData(context.Background())
+}
 
 func (vm *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) error {
 	evt := f.Download(vm.deck.SelectedConnection().ID(), dest)
@@ -197,7 +186,7 @@ func (vm *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) er
 func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory) error {
 	evt, err := dir.UploadFile(localPath)
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error uploading file: %w", err)
+		vm.errorStream <- fmt.Errorf("error uploading file: %w", err)
 		return err
 	}
 	vm.publisher.Publish(evt)
@@ -217,15 +206,15 @@ func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) error {
 	dir := dirNode.Directory()
 	evt, err := dir.RemoveFile(file.Name())
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error removing file: %w", err)
+		vm.errorStream <- fmt.Errorf("error removing file: %w", err)
 		return err
 	}
 	evt.AttachErrorCallback(func(err error) {
-		vm.errChan <- fmt.Errorf("error removing file: %w", err)
+		vm.errorStream <- fmt.Errorf("error removing file: %w", err)
 	})
 	evt.AttachSuccessCallback(func() {
 		if err := vm.tree.Remove(file.FullPath()); err != nil {
-			vm.errChan <- fmt.Errorf("error removing file from tree: %w", err)
+			vm.errorStream <- fmt.Errorf("error removing file from tree: %w", err)
 		}
 	})
 	vm.publisher.Publish(evt)
@@ -267,16 +256,16 @@ func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Director
 
 	evt, err := parent.NewSubDirectory(name)
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error creating subdirectory: %w", err)
+		vm.errorStream <- fmt.Errorf("error creating subdirectory: %w", err)
 		return nil, err
 	}
 	evt.AttachSuccessCallback(func() {
 		if err := vm.sync(parent); err != nil {
-			vm.errChan <- fmt.Errorf("error syncing tree for the new directory: %w", err)
+			vm.errorStream <- fmt.Errorf("error syncing tree for the new directory: %w", err)
 		}
 	})
 	evt.AttachErrorCallback(func(err error) {
-		vm.errChan <- fmt.Errorf("error creating subdirectory: %w", err)
+		vm.errorStream <- fmt.Errorf("error creating subdirectory: %w", err)
 	})
 	vm.publisher.Publish(evt)
 	return nil, nil
@@ -285,6 +274,7 @@ func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Director
 func (vm *explorerViewModelImpl) initializeTreeData(ctx context.Context) error {
 	currentConn := vm.deck.SelectedConnection()
 	if currentConn == nil {
+		vm.errorStream <- ErrNoConnectionSelected
 		return ErrNoConnectionSelected
 	}
 
@@ -292,12 +282,13 @@ func (vm *explorerViewModelImpl) initializeTreeData(ctx context.Context) error {
 
 	rootNode := node.NewDirectoryNode(directory.RootPath, node.WithDisplayName(displayLabel))
 	if err := vm.tree.Append("", rootNode.ID(), rootNode); err != nil {
-		vm.errChan <- fmt.Errorf("error appending directory to tree: %w", err)
+		vm.errorStream <- fmt.Errorf("error appending directory to tree: %w", err)
 		return err
 	}
 
 	if err := vm.LoadDirectory(rootNode); err != nil {
-		return fmt.Errorf("error appending root directory to tree: %w", err)
+		vm.errorStream <- fmt.Errorf("error loading root directory: %w", err)
+		return err
 	}
 
 	return nil
@@ -306,7 +297,8 @@ func (vm *explorerViewModelImpl) initializeTreeData(ctx context.Context) error {
 func (vm *explorerViewModelImpl) sync(dir *directory.Directory) error {
 	dirNodeItem, err := vm.tree.GetValue(dir.Path().String())
 	if err != nil {
-		return fmt.Errorf("impossible to retreive the direcotry you want to refresh: %s", dir.Path().String())
+		vm.errorStream <- fmt.Errorf("impossible to retreive the direcotry you want to refresh: %s", dir.Path().String())
+		return err
 	}
 	dirNode, ok := dirNodeItem.(node.DirectoryNode)
 	if !ok {
@@ -314,11 +306,16 @@ func (vm *explorerViewModelImpl) sync(dir *directory.Directory) error {
 	}
 
 	if !dirNode.IsLoaded() {
-		return vm.LoadDirectory(dirNode) // TODO: is a good idea forcing to load the dir here??
+		if err := vm.LoadDirectory(dirNode); err != nil { // TODO: is a good idea forcing to load the dir here??
+			vm.errorStream <- fmt.Errorf("error loading directory: %w", err)
+			return err
+		}
+		return nil
 	}
 
 	moreRecentDir, err := vm.fetchDirectory(dir.Path())
 	if err != nil {
+		vm.errorStream <- fmt.Errorf("error getting directory: %w", err)
 		return err
 	}
 
@@ -327,10 +324,12 @@ func (vm *explorerViewModelImpl) sync(dir *directory.Directory) error {
 	}
 
 	if err := vm.tree.Remove(dirNode.ID()); err != nil {
+		vm.errorStream <- fmt.Errorf("error removing directory from tree: %w", err)
 		return err
 	}
 
 	if err := vm.fillSubTree(dirNode, moreRecentDir); err != nil {
+		vm.errorStream <- fmt.Errorf("error filling sub tree: %w", err)
 		return err
 	}
 
@@ -343,7 +342,7 @@ func (vm *explorerViewModelImpl) fetchDirectory(dirID directory.Path) (*director
 
 	dir, err := vm.dirRepository.GetByPath(ctx, vm.deck.SelectedConnection().ID(), dirID)
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error getting directory: %w", err)
+		vm.errorStream <- fmt.Errorf("error getting directory: %w", err)
 		return nil, err
 	}
 
@@ -354,7 +353,7 @@ func (vm *explorerViewModelImpl) fillSubTree(startNode node.DirectoryNode, dir *
 	for _, file := range dir.Files() {
 		fileNode := node.NewFileNode(file)
 		if err := vm.tree.Append(startNode.ID(), fileNode.ID(), fileNode); err != nil {
-			vm.errChan <- fmt.Errorf("error appending file to tree: %w", err)
+			vm.errorStream <- fmt.Errorf("error appending file to tree: %w", err)
 			continue
 		}
 	}
@@ -362,7 +361,7 @@ func (vm *explorerViewModelImpl) fillSubTree(startNode node.DirectoryNode, dir *
 	for _, subDirPath := range dir.SubDirectories() {
 		subDirNode := node.NewDirectoryNode(subDirPath)
 		if err := vm.tree.Append(startNode.ID(), subDirNode.ID(), subDirNode); err != nil {
-			vm.errChan <- fmt.Errorf("error appending subdirectory to tree: %w", err)
+			vm.errorStream <- fmt.Errorf("error appending subdirectory to tree: %w", err)
 			continue
 		}
 	}

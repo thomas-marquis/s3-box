@@ -60,7 +60,7 @@ func newConnection(
 	return conn
 }
 
-// Is return ture if the connection is EXACTLY the same as the provided one
+// Is return true if the connection is EXACTLY the same as the provided one.
 func (c *Connection) Is(other *Connection) bool {
 	if other == nil {
 		return false
@@ -77,7 +77,7 @@ func (c *Connection) Name() string {
 }
 
 func (c *Connection) Rename(name string) {
-	if name != c.name {
+	if name != c.name && !c.readOnly {
 		c.revision++
 		c.name = name
 	}
@@ -88,7 +88,7 @@ func (c *Connection) AccessKey() string {
 }
 
 func (c *Connection) UpdateAccessKey(accessKey string) {
-	if accessKey != c.accessKey {
+	if accessKey != c.accessKey && !c.readOnly {
 		c.revision++
 		c.accessKey = accessKey
 	}
@@ -99,7 +99,7 @@ func (c *Connection) SecretKey() string {
 }
 
 func (c *Connection) UpdateSecretKey(secretKey string) {
-	if secretKey != c.secretKey {
+	if secretKey != c.secretKey && !c.readOnly {
 		c.revision++
 		c.secretKey = secretKey
 	}
@@ -110,7 +110,7 @@ func (c *Connection) Bucket() string {
 }
 
 func (c *Connection) UpdateBucket(bucket string) {
-	if bucket != c.bucket {
+	if bucket != c.bucket && !c.readOnly {
 		c.revision++
 		c.bucket = bucket
 	}
@@ -121,7 +121,7 @@ func (c *Connection) Server() string {
 }
 
 func (c *Connection) UpdateServer(server string) {
-	if server != c.server {
+	if server != c.server && !c.readOnly {
 		c.revision++
 		c.server = server
 	}
@@ -132,7 +132,7 @@ func (c *Connection) Region() string {
 }
 
 func (c *Connection) ChangeRegion(region string) {
-	if region == c.region || c.provider != AWSProvider {
+	if region == c.region || c.provider != AWSProvider || c.readOnly {
 		return
 	}
 	c.revision++
@@ -144,7 +144,7 @@ func (c *Connection) IsTLSActivated() bool {
 }
 
 func (c *Connection) TurnTLSOn() {
-	if !c.useTLS || c.provider != S3LikeProvider {
+	if !c.useTLS || c.provider != S3LikeProvider || c.readOnly {
 		return
 	}
 	c.revision++
@@ -152,7 +152,7 @@ func (c *Connection) TurnTLSOn() {
 }
 
 func (c *Connection) TurnTLSOff() {
-	if c.useTLS || c.provider != S3LikeProvider {
+	if c.useTLS || c.provider != S3LikeProvider || c.readOnly {
 		return
 	}
 	c.revision++
@@ -169,6 +169,8 @@ func (c *Connection) ReadOnly() bool {
 	return c.readOnly
 }
 
+// SetReadOnly updates the read-only state of the connection.
+// Once read-only mode enabled, all other setters will be inoperant
 func (c *Connection) SetReadOnly(readOnly bool) {
 	if readOnly != c.readOnly {
 		c.revision++
@@ -181,7 +183,7 @@ func (c *Connection) Provider() Provider {
 }
 
 func (c *Connection) AsAWS(region string) {
-	if c.provider == AWSProvider {
+	if c.provider == AWSProvider || c.readOnly {
 		return
 	}
 	c.revision++
@@ -189,7 +191,7 @@ func (c *Connection) AsAWS(region string) {
 }
 
 func (c *Connection) AsS3Like(server string, useTLS bool) {
-	if c.provider == S3LikeProvider {
+	if c.provider == S3LikeProvider || c.readOnly {
 		return
 	}
 	c.revision++

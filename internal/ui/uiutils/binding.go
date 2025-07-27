@@ -2,7 +2,6 @@ package uiutils
 
 import (
 	"fmt"
-	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 
 	"fyne.io/fyne/v2/data/binding"
 )
@@ -27,7 +26,7 @@ func GetBool(data binding.Bool) bool {
 	return value
 }
 
-// GetUntypedOrPanic retrieves and cast any value from a binding.Untyped acording to the generic type specified.
+// GetUntypedOrPanic retrieves and casts any value from a binding.Untyped according to the generic type specified.
 // This function panics if there is an error while getting the value.
 // If the value is not of the expected type, it will panic with an error message.
 func GetUntypedOrPanic[T any](data binding.Untyped) T {

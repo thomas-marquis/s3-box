@@ -1,8 +1,8 @@
 package connection_deck
 
-type ConnectionsOption func(*Deck)
+type Option func(*Deck)
 
-func WithConnections(connections []*Connection) ConnectionsOption {
+func WithConnections(connections []*Connection) Option {
 	return func(s *Deck) {
 		s.connections = connections
 	}

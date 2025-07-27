@@ -3,7 +3,7 @@ package views
 import (
 	"fmt"
 
-	"github.com/thomas-marquis/s3-box/internal/settings"
+	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 
@@ -15,6 +15,9 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+// GetSettingsView creates and returns a settings view container with form elements and buttons for user interaction.
+// It implements the navigation.View signature type.
+// Returns the constructed fyne.Container and an error if a problem occurs during the process.
 func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	timeoutEntry := widget.NewEntryWithData(
 		binding.IntToString(ctx.SettingsViewModel().TimeoutInSeconds()))
@@ -58,11 +61,6 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		"Export connections as JSON",
 		theme.DocumentSaveIcon(),
 		func() {
-			export, err := ctx.ConnectionViewModel().ExportAsJSON()
-			if err != nil {
-				dialog.ShowError(err, ctx.Window())
-				return
-			}
 			saveDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
 				if err != nil {
 					dialog.ShowError(err, ctx.Window())
@@ -72,12 +70,14 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 					return
 				}
 				defer writer.Close()
-				_, writeErr := writer.Write(export.JSONData)
-				if writeErr != nil {
-					dialog.ShowError(writeErr, ctx.Window())
+
+				if err := ctx.ConnectionViewModel().ExportAsJSON(writer); err != nil {
+					dialog.ShowError(err, ctx.Window())
 					return
 				}
-				msg := fmt.Sprintf("%d connection(s) exported as JSON", export.Count)
+
+				deck := ctx.ConnectionViewModel().Deck()
+				msg := fmt.Sprintf("%d connection(s) exported as JSON", len(deck.Get()))
 				dialog.ShowInformation("Export", msg, ctx.Window())
 			}, ctx.Window())
 			saveDialog.SetFileName("connections.json")

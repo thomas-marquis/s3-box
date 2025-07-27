@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"fyne.io/fyne/v2"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/dto"
+	"io"
 )
 
 const (
@@ -24,7 +24,7 @@ func NewFyneConnectionsRepository(prefs fyne.Preferences) *FyneConnectionsReposi
 	return &FyneConnectionsRepository{prefs: prefs}
 }
 
-func (r *FyneConnectionsRepository) Get(ctx context.Context) (*connection_deck.Deck, error) {
+func (r *FyneConnectionsRepository) Get(_ context.Context) (*connection_deck.Deck, error) {
 	dtos, err := r.loadConnectionsDTO()
 	if err != nil {
 		return nil, fmt.Errorf("load connections: %w", errors.Join(err, connection_deck.ErrTechnical))
@@ -33,8 +33,8 @@ func (r *FyneConnectionsRepository) Get(ctx context.Context) (*connection_deck.D
 	return dtos.ToConnections(), nil
 }
 
-func (r *FyneConnectionsRepository) Save(ctx context.Context, conn *connection_deck.Deck) error {
-	dtos := dto.NewConnectionsDTO(conn)
+func (r *FyneConnectionsRepository) Save(_ context.Context, deck *connection_deck.Deck) error {
+	dtos := dto.NewConnectionsDTO(deck)
 	jsonContent, err := dtos.Serialize()
 	if err != nil {
 		return fmt.Errorf("serialize connections: %w", errors.Join(err, connection_deck.ErrTechnical))
@@ -43,17 +43,22 @@ func (r *FyneConnectionsRepository) Save(ctx context.Context, conn *connection_d
 	return nil
 }
 
-func (r *FyneConnectionsRepository) GetByID(ctx context.Context, id connection_deck.ConnectionID) (*connection_deck.Connection, error) {
-	conns, err := r.Get(ctx)
+func (r *FyneConnectionsRepository) Export(_ context.Context, file io.Writer) error {
+	deck, err := r.Get(context.Background())
 	if err != nil {
-		return nil, fmt.Errorf("get by id, fail to get connections %s: %w", id, err)
-	}
-	c, err := conns.GetByID(id)
-	if err != nil {
-		return nil, fmt.Errorf("get connection %s: %w", id, err)
+		return fmt.Errorf("get connections: %w", errors.Join(err, connection_deck.ErrTechnical))
 	}
 
-	return c, nil
+	dtos := dto.NewConnectionsDTO(deck)
+	jsonContent, err := dtos.Serialize()
+	if err != nil {
+		return fmt.Errorf("serialize connections: %w", errors.Join(err, connection_deck.ErrTechnical))
+	}
+
+	if _, err = file.Write(jsonContent); err != nil {
+		return fmt.Errorf("write connections: %w", errors.Join(err, connection_deck.ErrTechnical))
+	}
+	return nil
 }
 
 func (r *FyneConnectionsRepository) loadConnectionsDTO() (*dto.ConnectionsDTO, error) {

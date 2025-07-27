@@ -1,7 +1,7 @@
 package views
 
 import (
-	"github.com/thomas-marquis/s3-box/internal/connections"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/components"
@@ -13,35 +13,36 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func GetConnectionView(ctx appcontext.AppContext) (*fyne.Container, error) {
-	connLine := components.NewConnectionLine()
+func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
+	deck := appCtx.ConnectionViewModel().Deck()
+	connLine := components.NewConnectionLine(deck)
 	connectionsList := widget.NewListWithData(
-		ctx.ConnectionViewModel().Connections(),
+		appCtx.ConnectionViewModel().Connections(),
 		func() fyne.CanvasObject {
 			return connLine.Raw()
 		},
 		func(di binding.DataItem, obj fyne.CanvasObject) {
 			i, _ := di.(binding.Untyped).Get()
-			conn, _ := i.(*connection.Connection)
-			connLine.Update(ctx, obj, conn)
+			conn, _ := i.(*connection_deck.Connection)
+			connLine.Update(appCtx, obj, conn)
 		},
 	)
 	createBtn := widget.NewButtonWithIcon(
 		"New connection",
 		theme.ContentAddIcon(),
 		func() {
-			components.NewConnectionDialog(ctx,
+			components.NewConnectionDialog(appCtx,
 				"New connection",
-				*connection.NewEmptyConnection(),
+				connection_deck.Connection{},
 				false,
-				ctx.ConnectionViewModel().Create).Show()
+				appCtx.ConnectionViewModel().Create).Show()
 		})
 
 	goToExplorerBtn := widget.NewButtonWithIcon(
 		"View files",
 		theme.NavigateBackIcon(),
 		func() {
-			ctx.Navigate(navigation.ExplorerRoute)
+			appCtx.Navigate(navigation.ExplorerRoute)
 		},
 	)
 

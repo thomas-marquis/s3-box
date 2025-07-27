@@ -125,7 +125,7 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *directory.File) {
 	f.downloadBtn.OnTapped = func() {
 		saveDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
 			if err != nil {
-				ctx.ExplorerViewModel().ErrorChan() <- fmt.Errorf("error saving file: %w", err)
+				dialog.ShowError(fmt.Errorf("error saving file: %w", err), ctx.Window())
 				return
 			}
 			if writer == nil {
@@ -134,7 +134,6 @@ func (f *FileDetials) Update(ctx appcontext.AppContext, file *directory.File) {
 			localDestFilePath := writer.URI().Path()
 			if err := ctx.ExplorerViewModel().DownloadFile(file, localDestFilePath); err != nil {
 				outErr := fmt.Errorf("error downloading file: %w", err)
-				ctx.ExplorerViewModel().ErrorChan() <- outErr
 				dialog.ShowError(outErr, ctx.Window())
 				return
 			}

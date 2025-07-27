@@ -34,3 +34,4 @@ go.work.sum
 /s3-box
 /s3box
 /.idea
+/.run

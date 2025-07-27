@@ -14,7 +14,7 @@ const settingsKey = "settings"
 
 type settingsDTO struct {
 	TimeoutInSeconds        int    `json:"timeoutInSeconds"`
-	MaxFilePreviewSizeBytes int64  `json:"maxFilePreviewSizeBytes"`
+	MaxFilePreviewSizeBytes int    `json:"maxFilePreviewSizeBytes"`
 	ColorTheme              string `json:"colorTheme"`
 }
 

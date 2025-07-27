@@ -2,12 +2,12 @@ package views
 
 import (
 	"fmt"
+	"fyne.io/fyne/v2/dialog"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
-	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/components"
 
 	"fyne.io/fyne/v2"
@@ -25,6 +25,9 @@ func makeNoConnectionTopBanner(ctx appcontext.AppContext) *fyne.Container {
 	)
 }
 
+// GetFileExplorerView initializes and returns the file explorer UI layout with functionality for file and directory navigation.
+// It implements the navigation.View type interface.
+// Returns filled the *fyne.Container and an error.
 func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	noConn := makeNoConnectionTopBanner(ctx)
 	noConn.Hide()
@@ -50,11 +53,11 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		},
 		func(i binding.DataItem, branch bool, o fyne.CanvasObject) {
 			di, _ := i.(binding.Untyped).Get()
-			nodeItem, ok := di.(*viewmodel.TreeNode)
+			nodeItem, ok := di.(node.Node)
 			if !ok {
 				panic(fmt.Sprintf("unexpected type %T", di))
 			}
-			treeItemBuilder.Update(o, *nodeItem)
+			treeItemBuilder.Update(o, nodeItem)
 		})
 
 	detailsContainer := container.NewVBox()
@@ -64,7 +67,7 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	tree.OnSelected = func(uid widget.TreeNodeID) {
 		nodeItem, err := uiutils.GetUntypedFromTreeById[node.Node](ctx.ExplorerViewModel().Tree(), uid)
 		if err != nil {
-			ctx.ExplorerViewModel().ErrorChan() <- fmt.Errorf("error getting value: %v", err)
+			dialog.ShowError(fmt.Errorf("error getting value: %v", err), ctx.Window())
 			return
 		}
 

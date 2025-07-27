@@ -2,10 +2,10 @@ package components
 
 import (
 	"fmt"
+	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"strings"
 	"unicode"
 
-	"github.com/thomas-marquis/s3-box/internal/explorer"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 
 	"fyne.io/fyne/v2"
@@ -29,7 +29,7 @@ func isStringPrintable(s string) bool {
 	return true
 }
 
-func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.S3File) {
+func ShowFilePreviewDialog(ctx appcontext.AppContext, file *directory.File) {
 	previewData := binding.NewString()
 	loading := binding.NewBool()
 	loading.Set(false)
@@ -39,19 +39,35 @@ func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.S3File) {
 		fyne.Do(func() {
 			loading.Set(true)
 			defer loading.Set(false)
-			fileContent, err := ctx.ExplorerViewModel().PreviewFile(file)
+
+			fileContent, err := ctx.ExplorerViewModel().GetFileContent(file)
 			if err != nil {
 				dialog.ShowError(err, ctx.Window())
 				return
 			}
-			if !isStringPrintable(fileContent) {
-				fileContent = "Binary file, no preview available."
+
+			f, err := fileContent.Open()
+			if err != nil {
+				dialog.ShowError(err, ctx.Window())
+				return
 			}
-			if err = nbLines.Set(strings.Count(fileContent, "\n") + 1); err != nil {
+			defer f.Close()
+
+			var contentBytes []byte
+			if _, err := f.Read(contentBytes); err != nil {
+				dialog.ShowError(err, ctx.Window())
+				return
+			}
+			contentStr := string(contentBytes)
+
+			if !isStringPrintable(contentStr) {
+				contentStr = "Binary file, no preview available."
+			}
+			if err = nbLines.Set(strings.Count(contentStr, "\n") + 1); err != nil {
 				dialog.ShowError(fmt.Errorf("impossible to display line number: %s", err), ctx.Window())
 				return
 			}
-			if err = previewData.Set(fileContent); err != nil {
+			if err = previewData.Set(contentStr); err != nil {
 				dialog.ShowError(fmt.Errorf("file preview impossible: %s", err), ctx.Window())
 				return
 			}
@@ -89,21 +105,20 @@ func ShowFilePreviewDialog(ctx appcontext.AppContext, file *explorer.S3File) {
 		nbLinesLabel.SetText(fmt.Sprintf("%d lines", nbLinesValue))
 	}))
 
-	container := container.NewBorder(
-		container.NewBorder(
-			nil, nil,
-			container.NewHBox(copyContentBtn),
-			nbLinesLabel,
-		),
-		loadingBar,
-		nil,
-		nil,
-		preview,
-	)
 	dial := dialog.NewCustom(
-		file.Name,
+		file.Name().String(),
 		"Close",
-		container,
+		container.NewBorder(
+			container.NewBorder(
+				nil, nil,
+				container.NewHBox(copyContentBtn),
+				nbLinesLabel,
+			),
+			loadingBar,
+			nil,
+			nil,
+			preview,
+		),
 		ctx.Window(),
 	)
 	dial.Resize(fyne.NewSize(700, 500))

@@ -1,16 +1,15 @@
 package infrastructure
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"log"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
@@ -29,7 +28,7 @@ type s3Session struct {
 
 type S3DirectoryRepository struct {
 	sync.Mutex
-	connectionRepository FyneConnectionsRepository
+	connectionRepository *FyneConnectionsRepository
 	logger               *log.Logger
 	cache                map[connection_deck.ConnectionID]*s3Session
 }
@@ -37,7 +36,7 @@ type S3DirectoryRepository struct {
 var _ directory.Repository = &S3DirectoryRepository{}
 
 func NewS3DirectoryRepository(
-	connectionsRepository FyneConnectionsRepository,
+	connectionsRepository *FyneConnectionsRepository,
 	publisher *directory.EventPublisher,
 	errorStream chan error,
 	terminate chan struct{},
@@ -114,10 +113,43 @@ func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connection
 	}
 
 	if err := s.client.ListObjectsPagesWithContext(ctx, inputs, pageHandler); err != nil {
-		return nil, fmt.Errorf("GetByID: %w", err)
+		return nil, r.manageAwsSdkError(err, searchKey, s)
 	}
 
 	return dir, nil
+}
+
+func (r *S3DirectoryRepository) GetFileContent(ctx context.Context, connId connection_deck.ConnectionID, file *directory.File) (*directory.Content, error) {
+	s, err := r.getSession(ctx, connId)
+	if err != nil {
+		return nil, fmt.Errorf("GetFileContent: %w", err)
+	}
+
+	input := &s3.GetObjectInput{
+		Bucket: aws.String(s.connection.Bucket()),
+		Key:    aws.String(mapFileToKey(file)),
+	}
+
+	result, err := s.client.GetObjectWithContext(ctx, input)
+	if err != nil {
+		return nil, r.manageAwsSdkError(err, file.FullPath(), s)
+	}
+
+	defer result.Body.Close()
+
+	buff := new(bytes.Buffer)
+	if _, err = buff.ReadFrom(result.Body); err != nil {
+		return nil, fmt.Errorf("fail reading the body content: %w", err)
+	}
+
+	reader, writer, _ := os.Pipe()
+	go func() {
+		defer writer.Close()
+		writer.Write(buff.Bytes())
+	}()
+	content := directory.NewFileContent(file, directory.FromFileObj(reader))
+
+	return content, nil
 }
 
 func (r *S3DirectoryRepository) listen(events <-chan directory.Event, errors chan<- error) {
@@ -175,162 +207,4 @@ func (r *S3DirectoryRepository) listen(events <-chan directory.Event, errors cha
 			}
 		}
 	}
-}
-
-func (r *S3DirectoryRepository) handleDirectoryCreation(ctx context.Context, sess *s3Session, evt directory.DirectoryEvent) error {
-	newDir := evt.Directory()
-	if newDir == nil {
-		return fmt.Errorf("directory path is empty for created event")
-	}
-	if _, err := sess.client.PutObjectWithContext(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(sess.connection.Bucket()),
-		Key:    aws.String(mapDirToObjectKey(newDir)),
-		Body:   strings.NewReader(""),
-	}); err != nil {
-		return fmt.Errorf("failed to save empty directory: %w", err)
-	}
-
-	return nil
-}
-
-func (r *S3DirectoryRepository) handleFileDeletion(ctx context.Context, sess *s3Session, evt directory.FileEvent) error {
-	file := evt.File()
-	if file == nil {
-		return fmt.Errorf("file is nil for deletion event")
-	}
-	input := &s3.DeleteObjectInput{
-		Bucket: aws.String(sess.connection.Bucket()),
-		Key:    aws.String(mapFileToKey(file)),
-	}
-
-	if _, err := sess.client.DeleteObjectWithContext(ctx, input); err != nil {
-		return fmt.Errorf("failed deleting file: %w", err)
-	}
-	return nil
-}
-
-func (r *S3DirectoryRepository) handleUpload(ctx context.Context, sess *s3Session, evt directory.ContentEvent) error {
-	content := evt.Content()
-	if content == nil {
-		return fmt.Errorf("content is nil for upload event")
-	}
-
-	fileObj, err := content.Open()
-	if err != nil {
-		return fmt.Errorf("failed opening the file to upload: %w", err)
-	}
-	defer func(fileObj *os.File) {
-		if err := fileObj.Close(); err != nil {
-			logger.Printf("failed closing file: %v", err)
-		}
-	}(fileObj)
-
-	uploader := s3manager.NewUploader(sess.session)
-	if _, err = uploader.UploadWithContext(ctx, &s3manager.UploadInput{
-		Bucket: aws.String(sess.connection.Bucket()),
-		Key:    aws.String(mapFileToKey(content.File())),
-		Body:   fileObj,
-	}); err != nil {
-		return fmt.Errorf("failed uploading file: %w", err)
-	}
-
-	return nil
-}
-
-func (r *S3DirectoryRepository) handleDownload(ctx context.Context, sess *s3Session, evt directory.ContentEvent) error {
-	downloader := s3manager.NewDownloader(sess.session)
-
-	file, err := evt.Content().Open()
-	defer file.Close()
-
-	_, err = downloader.DownloadWithContext(ctx, file, &s3.GetObjectInput{
-		Bucket: aws.String(sess.connection.Bucket()),
-		Key:    aws.String(mapFileToKey(evt.Content().File())),
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *S3DirectoryRepository) getSession(ctx context.Context, id connection_deck.ConnectionID) (*s3Session, error) {
-	conn, err := r.connectionRepository.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	if found := r.getFromCache(conn); found != nil {
-		return found, nil
-	}
-
-	region := conn.Region()
-	if region == "" {
-		region = "us-east-1" // for custom endpoints, value is not important but still required
-	}
-
-	sess, err := session.NewSession(&aws.Config{
-		Credentials: credentials.NewStaticCredentials(conn.AccessKey(), conn.SecretKey(), ""),
-		Endpoint:    aws.String(conn.Server()),
-		Logger: aws.LoggerFunc(func(args ...interface{}) {
-			logger.Printf(args[0].(string), args[1:]...)
-		}),
-		Region:           aws.String(region),
-		S3ForcePathStyle: aws.Bool(true),
-		DisableSSL:       aws.Bool(!conn.IsTLSActivated()),
-	})
-	if err != nil {
-		r.logger.Printf("Error creating session: %v\n", err)
-		return nil, fmt.Errorf("NewS3Repository(conn=%s): %w", conn.Name(), err)
-	}
-	s := &s3Session{
-		session:    sess,
-		client:     s3.New(sess),
-		connection: conn,
-	}
-	r.Lock()
-	defer r.Unlock()
-	r.cache[conn.ID()] = s
-	return s, nil
-}
-
-func (r *S3DirectoryRepository) getFromCache(c *connection_deck.Connection) *s3Session {
-	r.Lock()
-	defer r.Unlock()
-
-	found, ok := r.cache[c.ID()]
-	if ok && found != nil && found.connection.Is(c) {
-		return found
-	}
-	return nil
-}
-
-func mapDirToObjectKey(dir *directory.Directory) string {
-	if dir.Path().String() == "" || dir.IsRoot() {
-		return ""
-	}
-	return strings.TrimPrefix(dir.Path().String(), "/")
-}
-
-func mapPathToSearchKey(path directory.Path) string {
-	if path.String() == "" || path == directory.RootPath {
-		return ""
-	}
-	key := strings.TrimPrefix(path.String(), "/")
-	if !strings.HasSuffix(key, "/") {
-		key += "/"
-	}
-	return key
-}
-
-func mapFileToKey(file *directory.File) string {
-	return strings.TrimPrefix(file.FullPath(), "/")
-}
-
-func mapKeyToObjectName(key string) string {
-	if key == "" || key == "/" {
-		return ""
-	}
-	dirPathStriped := strings.TrimSuffix(key, "/")
-	dirPathSplit := strings.Split(dirPathStriped, "/")
-	return dirPathSplit[len(dirPathSplit)-1]
 }
