@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"log"
 	"os"
 	"strings"
@@ -38,7 +39,7 @@ var _ directory.Repository = &S3DirectoryRepository{}
 func NewS3DirectoryRepository(
 	connectionsRepository *FyneConnectionsRepository,
 	publisher *directory.EventPublisher,
-	errorStream chan error,
+	notifier notification.Repository,
 	terminate chan struct{},
 ) (*S3DirectoryRepository, error) {
 	r := &S3DirectoryRepository{
@@ -57,7 +58,7 @@ func NewS3DirectoryRepository(
 	}()
 
 	for i := 0; i < nbWorkers; i++ {
-		go r.listen(events, errorStream)
+		go r.listen(events, notifier)
 	}
 
 	return r, nil
@@ -152,7 +153,7 @@ func (r *S3DirectoryRepository) GetFileContent(ctx context.Context, connId conne
 	return content, nil
 }
 
-func (r *S3DirectoryRepository) listen(events <-chan directory.Event, errors chan<- error) {
+func (r *S3DirectoryRepository) listen(events <-chan directory.Event, notifier notification.Repository) {
 	for {
 		select {
 		case evt, ok := <-events:
@@ -163,7 +164,7 @@ func (r *S3DirectoryRepository) listen(events <-chan directory.Event, errors cha
 
 			s, err := r.getSession(ctx, evt.ConnectionID())
 			if err != nil {
-				errors <- err
+				notifier.NotifyError(err)
 				continue
 			}
 
@@ -171,39 +172,39 @@ func (r *S3DirectoryRepository) listen(events <-chan directory.Event, errors cha
 			case directory.CreatedEventName:
 				if err := r.handleDirectoryCreation(ctx, s, evt.(directory.DirectoryEvent)); err != nil {
 					evt.CallErrorCallbacks(err)
-					errors <- fmt.Errorf("failed creating directory: %w", err)
+					notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
 				}
 				evt.CallSuccessCallbacks()
 
 			case directory.DeletedEventName:
-				errors <- fmt.Errorf("deleting directories is not yet implemented")
+				notifier.NotifyError(fmt.Errorf("deleting directories is not yet implemented"))
 
 			case directory.FileCreatedEventName:
-				errors <- fmt.Errorf("file creation is not yet implemented")
+				notifier.NotifyError(fmt.Errorf("file creation is not yet implemented"))
 
 			case directory.FileDeletedEventName:
 				if err := r.handleFileDeletion(ctx, s, evt.(directory.FileEvent)); err != nil {
 					evt.CallErrorCallbacks(err)
-					errors <- fmt.Errorf("failed deleting file: %w", err)
+					notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
 				}
 				evt.CallSuccessCallbacks()
 
 			case directory.ContentUploadedEventName:
 				if err := r.handleUpload(ctx, s, evt.(directory.ContentEvent)); err != nil {
 					evt.CallErrorCallbacks(err)
-					errors <- fmt.Errorf("failed uploading file: %w", err)
+					notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
 				}
 				evt.CallSuccessCallbacks()
 
 			case directory.ContentDownloadEventName:
 				if err := r.handleDownload(ctx, s, evt.(directory.ContentEvent)); err != nil {
 					evt.CallErrorCallbacks(err)
-					errors <- fmt.Errorf("failed downloading file: %w", err)
+					notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
 				}
 				evt.CallSuccessCallbacks()
 
 			default:
-				errors <- fmt.Errorf("unknown event: %s", evt.Name())
+				notifier.NotifyError(fmt.Errorf("unknown event: %s", evt.Name()))
 			}
 		}
 	}

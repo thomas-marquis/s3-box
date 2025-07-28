@@ -3,6 +3,7 @@ package viewmodel
 import (
 	"context"
 	"fmt"
+	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"io"
 
 	"fyne.io/fyne/v2/data/binding"
@@ -48,13 +49,13 @@ type connectionViewModelImpl struct {
 	settingsVm   SettingsViewModel
 	connBindings binding.UntypedList
 	deck         *connection_deck.Deck
-	errorStream  chan<- error
+	notifier     notification.Repository
 }
 
 func NewConnectionViewModel(
 	connRepo connection_deck.Repository,
 	settingsVm SettingsViewModel,
-	errorStream chan<- error,
+	notifier notification.Repository,
 ) ConnectionViewModel {
 	c := binding.NewUntypedList()
 
@@ -63,7 +64,8 @@ func NewConnectionViewModel(
 
 	deck, err := connRepo.Get(ctx)
 	if err != nil {
-		panic(fmt.Errorf("error getting initial connections: %w", err))
+		notifier.NotifyError(fmt.Errorf("error getting initial connections: %w", err))
+		return nil
 	}
 
 	vm := &connectionViewModelImpl{
@@ -71,13 +73,11 @@ func NewConnectionViewModel(
 		settingsVm:   settingsVm,
 		connBindings: c,
 		deck:         deck,
-		errorStream:  errorStream,
+		notifier:     notifier,
 	}
 
 	if err := vm.initConnections(deck); err != nil {
-		// TOOD: send to global logging chan
-		// vm.errorStream <- fmt.Errorf("error refreshing connections: %w", err)
-		fmt.Printf("error refreshing connections: %v", err)
+		vm.notifier.NotifyError(fmt.Errorf("error refreshing connections: %v", err))
 	}
 
 	return vm
@@ -91,21 +91,24 @@ func (vm *connectionViewModelImpl) Deck() *connection_deck.Deck {
 	return vm.deck
 }
 
-func (vm *connectionViewModelImpl) Create(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) error {
+func (vm *connectionViewModelImpl) Create(
+	name, accessKey, secretKey, bucket string,
+	options ...connection_deck.ConnectionOption,
+) error {
 	vm.deck.New(name, accessKey, secretKey, bucket, options...)
 	if err := vm.sync(); err != nil {
-		vm.errorStream <- err
-		return err
+		return vm.notifier.NotifyError(err)
 	}
 	return nil
 }
 
-func (vm *connectionViewModelImpl) Update(connID connection_deck.ConnectionID, options ...connection_deck.ConnectionOption) error {
+func (vm *connectionViewModelImpl) Update(
+	connID connection_deck.ConnectionID,
+	options ...connection_deck.ConnectionOption,
+) error {
 	conn, err := vm.deck.GetByID(connID)
 	if err != nil {
-		err = fmt.Errorf("connection %s not found in user's deck: %w", connID, err)
-		vm.errorStream <- err
-		return err
+		return vm.notifier.NotifyError(fmt.Errorf("connection %s not found in user's deck: %w", connID, err))
 	}
 
 	for _, option := range options {
@@ -113,28 +116,23 @@ func (vm *connectionViewModelImpl) Update(connID connection_deck.ConnectionID, o
 	}
 
 	if err := vm.sync(); err != nil {
-		vm.errorStream <- err
-		return err
+		return vm.notifier.NotifyError(err)
 	}
 	return nil
 }
 
 func (vm *connectionViewModelImpl) Delete(connID connection_deck.ConnectionID) error {
 	if err := vm.deck.RemoveAConnection(connID); err != nil {
-		err = fmt.Errorf("error deleting connection from set: %w", err)
-		vm.errorStream <- err
-		return err
+		return vm.notifier.NotifyError(fmt.Errorf("error deleting connection from set: %w", err))
 	}
 
 	if err := vm.sync(); err != nil {
-		vm.errorStream <- err
-		return err
+		return vm.notifier.NotifyError(err)
 	}
 
 	prevConns, err := uiutils.GetUntypedList[*connection_deck.Connection](vm.connBindings)
 	if err != nil {
-		vm.errorStream <- err
-		return err
+		return vm.notifier.NotifyError(err)
 	}
 
 	found := false
@@ -145,9 +143,7 @@ func (vm *connectionViewModelImpl) Delete(connID connection_deck.ConnectionID) e
 	}
 
 	if !found {
-		err = fmt.Errorf("connection %s not found in user's deck: %w", connID, err)
-		vm.errorStream <- err
-		return err
+		return vm.notifier.NotifyError(fmt.Errorf("connection %s not found in user's deck: %w", connID, err))
 	}
 
 	return nil
@@ -157,18 +153,14 @@ func (vm *connectionViewModelImpl) Select(c *connection_deck.Connection) (bool, 
 	prevSelected := vm.deck.SelectedConnection()
 
 	if err := vm.deck.Select(c.ID()); err != nil {
-		err = fmt.Errorf("error selecting connection: %w", err)
-		vm.errorStream <- err
-		return false, err
+		return false, vm.notifier.NotifyError(fmt.Errorf("error selecting connection: %w", err))
 	}
 
 	if err := vm.sync(); err != nil {
 		if prevSelected != nil {
 			vm.deck.Select(prevSelected.ID())
 		}
-		err = fmt.Errorf("error saving connection set: %w", err)
-		vm.errorStream <- err
-		return false, err
+		return false, vm.notifier.NotifyError(fmt.Errorf("error saving connection set: %w", err))
 	}
 
 	if err := vm.updateBinding(c); err != nil {
@@ -177,13 +169,11 @@ func (vm *connectionViewModelImpl) Select(c *connection_deck.Connection) (bool, 
 			vm.deck.Select(prevSelected.ID())
 			if err := vm.sync(); err != nil {
 				vm.deck.Select(newSelected.ID())
-				err = fmt.Errorf("error saving connection set after selection: %w", err)
-				vm.errorStream <- err
-				return false, err
+				return false, vm.notifier.NotifyError(
+					fmt.Errorf("error saving connection set after selection: %w", err))
 			}
 		}
-		vm.errorStream <- err
-		return false, err
+		return false, vm.notifier.NotifyError(err)
 	}
 
 	return true, nil
@@ -193,8 +183,7 @@ func (vm *connectionViewModelImpl) ExportAsJSON(writer io.Writer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 	if err := vm.connRepo.Export(ctx, writer); err != nil {
-		vm.errorStream <- err
-		return err
+		return vm.notifier.NotifyError(err)
 	}
 
 	return nil
@@ -214,8 +203,7 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection_deck.Connection) 
 			found = true
 			updatedConn := *c // Create a copy to have a new ref in the binding
 			if err := vm.connBindings.SetValue(i, &updatedConn); err != nil {
-				vm.errorStream <- err
-				return err
+				return vm.notifier.NotifyError(err)
 			}
 
 			// Necessary workaround to trigger the refresh in the UI
@@ -226,8 +214,7 @@ func (vm *connectionViewModelImpl) updateBinding(c *connection_deck.Connection) 
 	}
 
 	if !found {
-		vm.errorStream <- errConnNotInBinding
-		return errConnNotInBinding
+		return vm.notifier.NotifyError(errConnNotInBinding)
 	}
 
 	return nil

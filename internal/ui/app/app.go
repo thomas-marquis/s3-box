@@ -10,6 +10,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views"
 	"go.uber.org/zap"
+	"sync"
 )
 
 const (
@@ -33,7 +34,9 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	a := fyne_app.NewWithID(appId)
 	w := a.NewWindow("S3 Box")
 
-	errorStream := make(chan error, 1000)
+	terminated := make(chan struct{})
+
+	notifier := infrastructure.NewNotificationPublisher()
 
 	fyneSettings := a.Settings()
 
@@ -43,25 +46,28 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 
 	settingsRepository := infrastructure.NewSettingsRepository(a.Preferences())
 
-	directoryRepositoryTerminate := make(chan struct{})
-	directoryRepository, err := infrastructure.NewS3DirectoryRepository(connectionsRepository, directoryEventPublisher, errorStream, directoryRepositoryTerminate)
+	directoryRepository, err := infrastructure.NewS3DirectoryRepository(
+		connectionsRepository,
+		directoryEventPublisher,
+		notifier,
+		terminated,
+	)
 	if err != nil {
 		sugarLog.Error("Error creating directory repository", err)
 		return nil, err
 	}
 
-	settingsViewModel := viewmodel.NewSettingsViewModel(settingsRepository, fyneSettings, errorStream)
+	settingsViewModel := viewmodel.NewSettingsViewModel(settingsRepository, fyneSettings, notifier)
 	explorerViewModel := viewmodel.NewExplorerViewModel(
 		connectionsRepository,
 		directoryRepository,
 		settingsViewModel,
 		directoryEventPublisher,
-		errorStream,
+		notifier,
 	)
-	connectionViewModel := viewmodel.NewConnectionViewModel(connectionsRepository, settingsViewModel, errorStream)
+	connectionViewModel := viewmodel.NewConnectionViewModel(connectionsRepository, settingsViewModel, notifier)
 
-	notificationsViewModelTerminate := make(chan struct{})
-	notificationsViewModel := viewmodel.NewNotificationViewModel(errorStream, notificationsViewModelTerminate)
+	notificationsViewModel := viewmodel.NewNotificationViewModel(notifier, terminated)
 
 	appCtx := appcontext.New(
 		w,
@@ -75,11 +81,11 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		fyneSettings,
 	)
 
-	appCtx.SubscribeTerminate(directoryRepositoryTerminate)
-	appCtx.SubscribeTerminate(notificationsViewModelTerminate)
-
+	var one sync.Once
 	w.SetOnClosed(func() {
-		appCtx.Terminate()
+		one.Do(func() {
+			close(terminated)
+		})
 	})
 	w.SetMainMenu(getMainMenu(appCtx))
 

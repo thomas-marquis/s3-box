@@ -20,9 +20,6 @@ type AppContext interface {
 	Window() fyne.Window
 	L() *zap.Logger
 	FyneSettings() fyne.Settings
-
-	Terminate()
-	SubscribeTerminate(chan struct{})
 }
 
 type AppContextImpl struct {
@@ -36,9 +33,8 @@ type AppContextImpl struct {
 	exitChan     chan struct{}
 	fyneSettings fyne.Settings
 
-	currentRoute         navigation.Route
-	views                map[navigation.Route]View
-	terminateSubscribers []chan struct{}
+	currentRoute navigation.Route
+	views        map[navigation.Route]View
 }
 
 var _ AppContext = &AppContextImpl{}
@@ -64,7 +60,6 @@ func New(
 		currentRoute:          initialRoute,
 		views:                 views,
 		fyneSettings:          settings,
-		terminateSubscribers:  make([]chan struct{}, 0),
 	}
 }
 
@@ -96,12 +91,6 @@ func (ctx *AppContextImpl) L() *zap.Logger {
 	return ctx.logger
 }
 
-func (ctx *AppContextImpl) Terminate() {
-	for _, subscriber := range ctx.terminateSubscribers {
-		subscriber <- struct{}{}
-	}
-}
-
 func (ctx *AppContextImpl) Navigate(route navigation.Route) error {
 	if _, ok := ctx.views[route]; !ok {
 		return navigation.ErrRouteNotFound
@@ -120,8 +109,4 @@ func (ctx *AppContextImpl) Navigate(route navigation.Route) error {
 
 func (ctx *AppContextImpl) CurrentRoute() navigation.Route {
 	return ctx.currentRoute
-}
-
-func (ctx *AppContextImpl) SubscribeTerminate(subscriber chan struct{}) {
-	ctx.terminateSubscribers = append(ctx.terminateSubscribers, subscriber)
 }
