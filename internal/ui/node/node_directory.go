@@ -53,31 +53,6 @@ func NewDirectoryNode(path directory.Path, opts ...Option) DirectoryNode {
 	}
 }
 
-func NewLoadedDirectoryNode(dir *directory.Directory, opts ...Option) DirectoryNode {
-	var icon = theme.FolderIcon()
-	if dir.IsRoot() {
-		icon = theme.StorageIcon()
-	}
-
-	b := baseNode{
-		id:          dir.Path().String(),
-		displayName: dir.Name(),
-		nodeType:    FolderNodeType,
-		icon:        icon,
-	}
-
-	for _, opt := range opts {
-		opt(&b)
-	}
-
-	return &directoryNodeImpl{
-		baseNode: b,
-		dir:      dir,
-		dirPath:  dir.Path(),
-		loaded:   true,
-	}
-}
-
 func (n *directoryNodeImpl) Path() directory.Path {
 	return n.dirPath
 }

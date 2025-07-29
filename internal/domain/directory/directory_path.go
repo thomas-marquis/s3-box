@@ -8,10 +8,17 @@ func NewPath(path string) Path {
 	if path == "" {
 		return NilParentPath
 	}
-	if !strings.HasSuffix(path, "/") {
-		path += "/"
+	if path == "/" {
+		return RootPath
 	}
-	return Path(path)
+	pathContent := path
+	if !strings.HasSuffix(path, "/") {
+		pathContent += "/"
+	}
+	if !strings.HasPrefix(pathContent, "/") {
+		pathContent = "/" + pathContent
+	}
+	return Path(pathContent)
 }
 
 func (p Path) String() string {
@@ -46,5 +53,8 @@ func (p Path) ParentPath() Path {
 }
 
 func (p Path) NewSubPath(name string) Path {
+	if p == NilParentPath && name == "" {
+		return RootPath
+	}
 	return NewPath(p.String() + name)
 }

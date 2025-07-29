@@ -15,8 +15,8 @@ func GetNotificationView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 			return widget.NewLabel("")
 		},
 		func(di binding.DataItem, obj fyne.CanvasObject) {
-			i, _ := di.(binding.Untyped).Get()
-			obj.(*widget.Label).SetText(i.(string))
+			value, _ := di.(binding.String).Get()
+			obj.(*widget.Label).SetText(value)
 		},
 	)
 

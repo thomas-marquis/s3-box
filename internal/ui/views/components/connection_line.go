@@ -54,22 +54,15 @@ func (l *ConnectionLine) Update(ctx appcontext.AppContext, o fyne.CanvasObject, 
 		}
 		dialog.ShowConfirm(
 			"Select connection",
-			fmt.Sprintf("Are you sure you want to select the connection '%s'?", conn.Name),
+			fmt.Sprintf("Are you sure you want to select the connection '%s'?", conn.Name()),
 			func(confirmed bool) {
 				if !confirmed {
 					return
 				}
 
-				hasChanged, err := ctx.ConnectionViewModel().Select(conn)
-				if err != nil {
+				if _, err := ctx.ConnectionViewModel().Select(conn); err != nil {
 					ctx.L().Error("Failed to select connection", zap.Error(err))
 					dialog.ShowError(err, ctx.Window())
-				}
-				if hasChanged {
-					if err := ctx.ExplorerViewModel().SwitchConnection(conn); err != nil {
-						ctx.L().Error("Failed to reset tree", zap.Error(err))
-						dialog.ShowError(err, ctx.Window())
-					}
 				}
 			},
 			ctx.Window(),

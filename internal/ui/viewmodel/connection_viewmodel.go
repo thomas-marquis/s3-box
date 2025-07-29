@@ -21,6 +21,10 @@ type ConnectionViewModel interface {
 	// Deck return user's connections deck
 	Deck() *connection_deck.Deck
 
+	// OnSelectedConnectionChanged sets a callback function that is triggered when the currently selected connection is updated:
+	// a new connection is set as selected, the selected connection has been removed or been updated
+	OnSelectedConnectionChanged(f func(*connection_deck.Connection))
+
 	// Create adds a new connection with the specified name, access key, secret key, bucket, and optional settings.
 	// Returns an error if the creation process fails.
 	Create(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) error
@@ -45,35 +49,37 @@ type ConnectionViewModel interface {
 }
 
 type connectionViewModelImpl struct {
-	connRepo     connection_deck.Repository
-	settingsVm   SettingsViewModel
-	connBindings binding.UntypedList
-	deck         *connection_deck.Deck
-	notifier     notification.Repository
+	connectionRepository connection_deck.Repository
+	settingsViewModel    SettingsViewModel
+	connBindings         binding.UntypedList
+	deck                 *connection_deck.Deck
+	notifier             notification.Repository
+	onChangeCallbacks    []func(*connection_deck.Connection)
 }
 
 func NewConnectionViewModel(
-	connRepo connection_deck.Repository,
-	settingsVm SettingsViewModel,
+	connectionRepository connection_deck.Repository,
+	settingsViewModel SettingsViewModel,
 	notifier notification.Repository,
 ) ConnectionViewModel {
 	c := binding.NewUntypedList()
 
-	ctx, cancel := context.WithTimeout(context.Background(), settingsVm.CurrentTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), settingsViewModel.CurrentTimeout())
 	defer cancel()
 
-	deck, err := connRepo.Get(ctx)
+	deck, err := connectionRepository.Get(ctx)
 	if err != nil {
 		notifier.NotifyError(fmt.Errorf("error getting initial connections: %w", err))
 		return nil
 	}
 
 	vm := &connectionViewModelImpl{
-		connRepo:     connRepo,
-		settingsVm:   settingsVm,
-		connBindings: c,
-		deck:         deck,
-		notifier:     notifier,
+		connectionRepository: connectionRepository,
+		settingsViewModel:    settingsViewModel,
+		connBindings:         c,
+		deck:                 deck,
+		notifier:             notifier,
+		onChangeCallbacks:    make([]func(*connection_deck.Connection), 0),
 	}
 
 	if err := vm.initConnections(deck); err != nil {
@@ -89,6 +95,10 @@ func (vm *connectionViewModelImpl) Connections() binding.UntypedList {
 
 func (vm *connectionViewModelImpl) Deck() *connection_deck.Deck {
 	return vm.deck
+}
+
+func (vm *connectionViewModelImpl) OnSelectedConnectionChanged(f func(*connection_deck.Connection)) {
+	vm.onChangeCallbacks = append(vm.onChangeCallbacks, f)
 }
 
 func (vm *connectionViewModelImpl) Create(
@@ -118,6 +128,14 @@ func (vm *connectionViewModelImpl) Update(
 	if err := vm.sync(); err != nil {
 		return vm.notifier.NotifyError(err)
 	}
+
+	selectedConnection := vm.deck.SelectedConnection()
+	if connID == selectedConnection.ID() && !conn.Is(selectedConnection) {
+		for _, callback := range vm.onChangeCallbacks {
+			callback(conn)
+		}
+	}
+
 	return nil
 }
 
@@ -144,6 +162,10 @@ func (vm *connectionViewModelImpl) Delete(connID connection_deck.ConnectionID) e
 
 	if !found {
 		return vm.notifier.NotifyError(fmt.Errorf("connection %s not found in user's deck: %w", connID, err))
+	}
+
+	for _, callback := range vm.onChangeCallbacks {
+		callback(nil)
 	}
 
 	return nil
@@ -176,13 +198,17 @@ func (vm *connectionViewModelImpl) Select(c *connection_deck.Connection) (bool, 
 		return false, vm.notifier.NotifyError(err)
 	}
 
+	for _, callback := range vm.onChangeCallbacks {
+		callback(c)
+	}
+
 	return true, nil
 }
 
 func (vm *connectionViewModelImpl) ExportAsJSON(writer io.Writer) error {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsViewModel.CurrentTimeout())
 	defer cancel()
-	if err := vm.connRepo.Export(ctx, writer); err != nil {
+	if err := vm.connectionRepository.Export(ctx, writer); err != nil {
 		return vm.notifier.NotifyError(err)
 	}
 
@@ -231,9 +257,9 @@ func (vm *connectionViewModelImpl) initConnections(deck *connection_deck.Deck) e
 // sync saves the current deck state to the repository.
 // Returns an error if the save operation fails.
 func (vm *connectionViewModelImpl) sync() error {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsViewModel.CurrentTimeout())
 	defer cancel()
-	if err := vm.connRepo.Save(ctx, vm.deck); err != nil {
+	if err := vm.connectionRepository.Save(ctx, vm.deck); err != nil {
 		return err
 	}
 	return nil

@@ -29,11 +29,14 @@ func NewNotificationViewModel(notifier notification.Repository, terminated <-cha
 			case <-terminated:
 				return
 			case notif := <-notifStream:
+				formattedDt := notif.Time().Format("2006-01-02 15:04:05")
 				switch notif.Type() {
 				case notification.Error:
-					notifications.Prepend(fmt.Sprintf("Error: %s", notif.(notification.ErrorNotification).Error().Error()))
+					notifications.Prepend(fmt.Sprintf("%s: Error: %s",
+						formattedDt, notif.(notification.ErrorNotification).Error().Error()))
 				case notification.Info:
-					notifications.Prepend(fmt.Sprintf("Info: %s", notif.(notification.LogNotification).Message()))
+					notifications.Prepend(fmt.Sprintf("%s: Info: %s",
+						formattedDt, notif.(notification.LogNotification).Message()))
 				}
 			}
 		}

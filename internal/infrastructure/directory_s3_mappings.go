@@ -17,9 +17,7 @@ func mapPathToSearchKey(path directory.Path) string {
 		return ""
 	}
 	key := strings.TrimPrefix(path.String(), "/")
-	if !strings.HasSuffix(key, "/") {
-		key += "/"
-	}
+	key = strings.TrimSuffix(key, "/") + "/"
 	return key
 }
 

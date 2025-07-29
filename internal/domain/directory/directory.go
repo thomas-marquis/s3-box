@@ -106,13 +106,13 @@ func (d *Directory) ConnectionID() connection_deck.ConnectionID {
 // NewSubDirectory reference a new subdirectory in the current one
 // returns an error when the subdirectory already exists
 func (d *Directory) NewSubDirectory(name string) (DirectoryEvent, error) {
-	path := d.parentPath.NewSubPath(name)
+	path := d.path.NewSubPath(name)
 	for _, subDir := range d.subDirectories {
 		if subDir == path {
 			return nil, fmt.Errorf("subdirectory %s already exists", path)
 		}
 	}
-	newDir, err := New(d.connectionID, name, d.parentPath)
+	newDir, err := New(d.connectionID, name, d.path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sudirectory: %w", err)
 	}

@@ -74,13 +74,14 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		switch nodeItem.NodeType() {
 		case node.FolderNodeType:
 			dirNode := nodeItem.(node.DirectoryNode)
-			dir := dirNode.Directory()
 			if !dirNode.IsLoaded() {
 				if err := ctx.ExplorerViewModel().LoadDirectory(dirNode); err != nil {
+					dialog.ShowError(err, ctx.Window())
 					return
 				}
 				tree.OpenBranch(uid)
 			}
+			dir := dirNode.Directory()
 			dirDetails.Update(ctx, dir)
 			detailsContainer.Objects = []fyne.CanvasObject{dirDetails.Object()}
 

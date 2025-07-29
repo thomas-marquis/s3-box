@@ -34,9 +34,6 @@ type ExplorerViewModel interface {
 	// GetFileContent retrieves the content of the specified file, returning a Content object or an error if the operation fails.
 	GetFileContent(f *directory.File) (*directory.Content, error)
 
-	// SwitchConnection clears and reinitialize the entire tree structure and change the active connection
-	SwitchConnection(newConnection *connection_deck.Connection) error
-
 	// DownloadFile downloads a file to the specified local destination
 	DownloadFile(f *directory.File, dest string) error
 
@@ -63,12 +60,12 @@ type ExplorerViewModel interface {
 }
 
 type explorerViewModelImpl struct {
-	mu            sync.Mutex
-	deck          *connection_deck.Deck
-	connRepo      connection_deck.Repository
-	dirRepository directory.Repository
-	tree          binding.UntypedTree
-	publisher     *directory.EventPublisher
+	mu                  sync.Mutex
+	connectionViewModel ConnectionViewModel
+	directoryRepository directory.Repository
+	tree                binding.UntypedTree
+	publisher           *directory.EventPublisher
+	selectedConnection  *connection_deck.Connection
 
 	settingsVm                SettingsViewModel
 	lastDownloadLocation      fyne.ListableURI
@@ -79,36 +76,40 @@ type explorerViewModelImpl struct {
 }
 
 func NewExplorerViewModel(
-	connRepo connection_deck.Repository,
+	connectionViewModel ConnectionViewModel,
 	dirRepo directory.Repository,
 	settingsVm SettingsViewModel,
 	publisher *directory.EventPublisher,
 	notifier notification.Repository,
 ) ExplorerViewModel {
-	t := binding.NewUntypedTree()
-
 	vm := &explorerViewModelImpl{
-		tree:                      t,
 		settingsVm:                settingsVm,
-		dirRepository:             dirRepo,
-		connRepo:                  connRepo,
+		directoryRepository:       dirRepo,
 		displayNoConnectionBanner: binding.NewBool(),
 		publisher:                 publisher,
 		notifier:                  notifier,
+		connectionViewModel:       connectionViewModel,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout()*2)
-	defer cancel()
+	connectionViewModel.OnSelectedConnectionChanged(func(c *connection_deck.Connection) {
+		if c == nil {
+			vm.displayNoConnectionBanner.Set(true)
+			return
+		}
 
-	deck, err := connRepo.Get(ctx)
-	if err != nil {
-		notifier.NotifyError(fmt.Errorf("error getting connection deck: %w", err))
-		return vm
-	}
-	vm.deck = deck
+		vm.displayNoConnectionBanner.Set(false)
+		if !c.Is(vm.selectedConnection) {
+			if err := vm.initializeTreeData(c); err != nil {
+				notifier.NotifyError(fmt.Errorf("error resetting tree: %w", err))
+				return
+			}
+			vm.selectedConnection = c
+		}
+	})
 
+	vm.selectedConnection = connectionViewModel.Deck().SelectedConnection()
 	vm.displayNoConnectionBanner.Set(false)
-	if err := vm.initializeTreeData(ctx); err != nil {
+	if err := vm.initializeTreeData(vm.selectedConnection); err != nil {
 		if errors.Is(err, ErrNoConnectionSelected) {
 			vm.displayNoConnectionBanner.Set(true)
 		}
@@ -130,6 +131,10 @@ func (vm *explorerViewModelImpl) Tree() binding.UntypedTree {
 }
 
 func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error {
+	if vm.selectedConnection == nil {
+		return vm.notifier.NotifyError(ErrNoConnectionSelected)
+	}
+
 	if dirNode.IsLoaded() {
 		return nil
 	}
@@ -151,6 +156,10 @@ func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error
 }
 
 func (vm *explorerViewModelImpl) GetFileContent(file *directory.File) (*directory.Content, error) {
+	if vm.selectedConnection == nil {
+		return nil, vm.notifier.NotifyError(ErrNoConnectionSelected)
+	}
+
 	if file.SizeBytes() > vm.settingsVm.CurrentMaxFilePreviewSizeBytes() {
 		return nil, vm.notifier.NotifyError(fmt.Errorf("file is too big to GetFileContent"))
 	}
@@ -158,7 +167,7 @@ func (vm *explorerViewModelImpl) GetFileContent(file *directory.File) (*director
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
-	content, err := vm.dirRepository.GetFileContent(ctx, vm.deck.SelectedConnection().ID(), file)
+	content, err := vm.directoryRepository.GetFileContent(ctx, vm.selectedConnection.ID(), file)
 	if err != nil {
 		return nil, vm.notifier.NotifyError(fmt.Errorf("error getting file content: %w", err))
 	}
@@ -166,19 +175,20 @@ func (vm *explorerViewModelImpl) GetFileContent(file *directory.File) (*director
 	return content, nil
 }
 
-func (vm *explorerViewModelImpl) SwitchConnection(newConnection *connection_deck.Connection) error {
-	// FIXME: srt the new connection here
-	vm.tree = binding.NewUntypedTree()
-	return vm.initializeTreeData(context.Background())
-}
-
 func (vm *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) error {
-	evt := f.Download(vm.deck.SelectedConnection().ID(), dest)
+	if vm.selectedConnection == nil {
+		return vm.notifier.NotifyError(ErrNoConnectionSelected)
+	}
+	evt := f.Download(vm.selectedConnection.ID(), dest)
 	vm.publisher.Publish(evt)
 	return nil
 }
 
 func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory) error {
+	if vm.selectedConnection == nil {
+		return vm.notifier.NotifyError(ErrNoConnectionSelected)
+	}
+
 	evt, err := dir.UploadFile(localPath)
 	if err != nil {
 		return vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", err))
@@ -246,6 +256,9 @@ func (vm *explorerViewModelImpl) UpdateLastUploadLocation(filePath string) error
 }
 
 func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory, name string) (*directory.Directory, error) {
+	if vm.selectedConnection == nil {
+		return nil, vm.notifier.NotifyError(ErrNoConnectionSelected)
+	}
 
 	evt, err := parent.NewSubDirectory(name)
 	if err != nil {
@@ -263,13 +276,14 @@ func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Director
 	return nil, nil
 }
 
-func (vm *explorerViewModelImpl) initializeTreeData(ctx context.Context) error {
-	currentConn := vm.deck.SelectedConnection()
-	if currentConn == nil {
+func (vm *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection) error {
+	vm.tree = binding.NewUntypedTree()
+
+	if c == nil {
 		return vm.notifier.NotifyError(ErrNoConnectionSelected)
 	}
 
-	displayLabel := "Bucket: " + currentConn.Bucket()
+	displayLabel := "Bucket: " + c.Bucket()
 
 	rootNode := node.NewDirectoryNode(directory.RootPath, node.WithDisplayName(displayLabel))
 	if err := vm.tree.Append("", rootNode.ID(), rootNode); err != nil {
@@ -326,7 +340,7 @@ func (vm *explorerViewModelImpl) fetchDirectory(dirID directory.Path) (*director
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
-	dir, err := vm.dirRepository.GetByPath(ctx, vm.deck.SelectedConnection().ID(), dirID)
+	dir, err := vm.directoryRepository.GetByPath(ctx, vm.selectedConnection.ID(), dirID)
 	if err != nil {
 		return nil, vm.notifier.NotifyError(fmt.Errorf("error getting directory: %w", err))
 	}

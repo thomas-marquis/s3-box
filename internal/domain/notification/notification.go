@@ -1,5 +1,7 @@
 package notification
 
+import "time"
+
 type Type string
 
 const (
@@ -9,6 +11,19 @@ const (
 
 type Notification interface {
 	Type() Type
+	Time() time.Time
+}
+
+type baseNotification struct {
+	time time.Time
+}
+
+func newBaseNotification() baseNotification {
+	return baseNotification{time: time.Now()}
+}
+
+func (n baseNotification) Time() time.Time {
+	return n.time
 }
 
 type ErrorNotification interface {
@@ -22,11 +37,12 @@ type LogNotification interface {
 }
 
 type errorNotificationImpl struct {
+	baseNotification
 	err error
 }
 
 func NewError(err error) ErrorNotification {
-	return errorNotificationImpl{err: err}
+	return errorNotificationImpl{baseNotification: newBaseNotification(), err: err}
 }
 
 func (n errorNotificationImpl) Type() Type {
@@ -38,11 +54,12 @@ func (n errorNotificationImpl) Error() error {
 }
 
 type infoNotificationImpl struct {
+	baseNotification
 	message string
 }
 
 func NewInfo(message string) LogNotification {
-	return infoNotificationImpl{message: message}
+	return infoNotificationImpl{baseNotification: newBaseNotification(), message: message}
 }
 
 func (n infoNotificationImpl) Type() Type {
