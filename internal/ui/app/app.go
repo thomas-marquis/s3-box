@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	appId = "fr.peaksys.go2s3"
+	appId = "fr.scalde.s3box"
 )
 
 type Go2S3App struct {

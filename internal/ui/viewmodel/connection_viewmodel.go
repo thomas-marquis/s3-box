@@ -130,7 +130,7 @@ func (vm *connectionViewModelImpl) Update(
 	}
 
 	selectedConnection := vm.deck.SelectedConnection()
-	if connID == selectedConnection.ID() && !conn.Is(selectedConnection) {
+	if selectedConnection == nil || (connID == selectedConnection.ID() && !conn.Is(selectedConnection)) {
 		for _, callback := range vm.onChangeCallbacks {
 			callback(conn)
 		}
