@@ -91,21 +91,21 @@ func NewExplorerViewModel(
 		connectionViewModel:       connectionViewModel,
 	}
 
-	connectionViewModel.OnSelectedConnectionChanged(func(c *connection_deck.Connection) {
-		if c == nil {
-			vm.displayNoConnectionBanner.Set(true)
-			return
-		}
-
-		vm.displayNoConnectionBanner.Set(false)
-		if !c.Is(vm.selectedConnection) {
-			if err := vm.initializeTreeData(c); err != nil {
-				notifier.NotifyError(fmt.Errorf("error resetting tree: %w", err))
-				return
-			}
-			vm.selectedConnection = c
-		}
-	})
+	//connectionViewModel.OnSelectedConnectionChanged(func(c *connection_deck.Connection) {
+	//	if c == nil {
+	//		vm.displayNoConnectionBanner.Set(true)
+	//		return
+	//	}
+	//
+	//	vm.displayNoConnectionBanner.Set(false)
+	//	if !c.Is(vm.selectedConnection) {
+	//		if err := vm.initializeTreeData(c); err != nil {
+	//			notifier.NotifyError(fmt.Errorf("error resetting tree: %w", err))
+	//			return
+	//		}
+	//		vm.selectedConnection = c
+	//	}
+	//})
 
 	vm.selectedConnection = connectionViewModel.Deck().SelectedConnection()
 	vm.displayNoConnectionBanner.Set(false)

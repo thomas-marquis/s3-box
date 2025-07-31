@@ -7,6 +7,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/uievent"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views"
 	"go.uber.org/zap"
@@ -35,6 +36,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	w := a.NewWindow("S3 Box")
 
 	terminated := make(chan struct{})
+	uiEventPublisher := uievent.NewPublisher(terminated)
 
 	notifier := infrastructure.NewNotificationPublisher()
 
@@ -58,7 +60,12 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	}
 
 	settingsViewModel := viewmodel.NewSettingsViewModel(settingsRepository, fyneSettings, notifier)
-	connectionViewModel := viewmodel.NewConnectionViewModel(connectionsRepository, settingsViewModel, notifier)
+	connectionViewModel := viewmodel.NewConnectionViewModel(
+		connectionsRepository,
+		settingsViewModel,
+		notifier,
+		uiEventPublisher,
+	)
 	explorerViewModel := viewmodel.NewExplorerViewModel(
 		connectionViewModel,
 		directoryRepository,

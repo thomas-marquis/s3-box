@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/ui/uievent"
 	"go.uber.org/zap"
 )
 
@@ -57,18 +58,19 @@ func (w *ConnectionList) makeRowListItem() fyne.CanvasObject {
 func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject) {
 	i, _ := di.(binding.Untyped).Get()
 	conn, _ := i.(*connection_deck.Connection)
+	vm := w.appCtx.ConnectionViewModel()
 
 	c, _ := o.(*fyne.Container)
 
 	leftGroup := c.Objects[0].(*fyne.Container)
 	selected := leftGroup.Objects[0].(*widget.Button)
-	if conn.Is(w.appCtx.ConnectionViewModel().Deck().SelectedConnection()) {
+	if conn.Is(vm.Deck().SelectedConnection()) {
 		selected.SetIcon(theme.RadioButtonCheckedIcon())
 	} else {
 		selected.SetIcon(theme.RadioButtonIcon())
 	}
 	selected.OnTapped = func() {
-		if conn.Is(w.appCtx.ConnectionViewModel().Deck().SelectedConnection()) {
+		if conn.Is(vm.Deck().SelectedConnection()) {
 			return
 		}
 		dialog.ShowConfirm(
@@ -78,11 +80,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 				if !confirmed {
 					return
 				}
-
-				if _, err := w.appCtx.ConnectionViewModel().Select(conn); err != nil {
-					w.appCtx.L().Error("Failed to select connection", zap.Error(err))
-					dialog.ShowError(err, w.appCtx.Window())
-				}
+				vm.SendUiEvent(&uievent.SelectConnection{Connection: conn})
 			},
 			w.appCtx.Window(),
 		)
@@ -109,7 +107,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 				connection_deck.WithBucket(bucket),
 			)
 			opts = append(opts, options...)
-			return w.appCtx.ConnectionViewModel().Update(conn.ID(), opts...)
+			return vm.Update(conn.ID(), opts...)
 		},
 	).AsDialog("Edit connection").Show
 
@@ -119,7 +117,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 			fmt.Sprintf("Are you sure you want to delete the connection '%s'?", conn.Name()),
 			func(b bool) {
 				if b {
-					if err := w.appCtx.ConnectionViewModel().Delete(conn.ID()); err != nil {
+					if err := vm.Delete(conn.ID()); err != nil {
 						w.appCtx.L().Error("Failed to delete connection", zap.Error(err))
 					}
 				}

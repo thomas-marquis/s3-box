@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/ui/uievent"
 	"io"
+	"time"
 
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
@@ -15,29 +17,25 @@ var errConnNotInBinding = fmt.Errorf("connection not found in binding list")
 
 // ConnectionViewModel provides methods to manage, update, and query connections within the application.
 type ConnectionViewModel interface {
+	////////////////////////
+	// State methods
+	////////////////////////
+
 	// Connections return the list of connections as a binding.UntypedList
 	Connections() binding.UntypedList
 
 	// Deck return user's connections deck
 	Deck() *connection_deck.Deck
 
-	// OnSelectedConnectionChanged sets a callback function that is triggered when the currently selected connection is updated:
-	// a new connection is set as selected, the selected connection has been removed or been updated
-	OnSelectedConnectionChanged(f func(*connection_deck.Connection))
-
-	// Create adds a new connection with the specified name, access key, secret key, bucket, and optional settings.
-	// Returns an error if the creation process fails.
-	Create(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) error
+	// ErrorMessages returns a binding.String that provides access to the current error messages for the connection view model.
+	// When an error occurred, the contained string is set.
+	ErrorMessages() binding.String
 
 	// Update updates the connection with the specified connection ID using the provided options. Returns an error on failure.
 	Update(connID connection_deck.ConnectionID, options ...connection_deck.ConnectionOption) error
 
 	// Delete deletes the specified connection
 	Delete(connID connection_deck.ConnectionID) error
-
-	// Select selects a connection and returns true if a new connection was successfully selected
-	// and false if the set connection is the same as the current connection
-	Select(c *connection_deck.Connection) (bool, error)
 
 	// ExportAsJSON exports all connections JSON serialized.
 	// The JSON object will be written in the writer.
@@ -46,6 +44,17 @@ type ConnectionViewModel interface {
 
 	// IsReadOnly returns true if the connection view model is in a read-only state, otherwise false.
 	IsReadOnly() bool
+
+	Loading() binding.Bool
+
+	IsLoading() bool
+
+	////////////////////////
+	// Action methods
+	////////////////////////
+
+	// SendUiEvent sends a UI event of type uievent.UiEvent to the system for processing or response handling.
+	SendUiEvent(event uievent.UiEvent)
 }
 
 type connectionViewModelImpl struct {
@@ -55,12 +64,16 @@ type connectionViewModelImpl struct {
 	deck                 *connection_deck.Deck
 	notifier             notification.Repository
 	onChangeCallbacks    []func(*connection_deck.Connection)
+	uiEventPublisher     uievent.Publisher
+	errorMsgBinding      binding.String
+	loading              binding.Bool
 }
 
 func NewConnectionViewModel(
 	connectionRepository connection_deck.Repository,
 	settingsViewModel SettingsViewModel,
 	notifier notification.Repository,
+	uiEventPublisher uievent.Publisher,
 ) ConnectionViewModel {
 	c := binding.NewUntypedList()
 
@@ -73,6 +86,12 @@ func NewConnectionViewModel(
 		return nil
 	}
 
+	errorMsgBinding := binding.NewString()
+	errorMsgBinding.Set("")
+
+	loading := binding.NewBool()
+	loading.Set(false)
+
 	vm := &connectionViewModelImpl{
 		connectionRepository: connectionRepository,
 		settingsViewModel:    settingsViewModel,
@@ -80,11 +99,16 @@ func NewConnectionViewModel(
 		deck:                 deck,
 		notifier:             notifier,
 		onChangeCallbacks:    make([]func(*connection_deck.Connection), 0),
+		uiEventPublisher:     uiEventPublisher,
+		errorMsgBinding:      errorMsgBinding,
+		loading:              loading,
 	}
 
 	if err := vm.initConnections(deck); err != nil {
 		vm.notifier.NotifyError(fmt.Errorf("error refreshing connections: %v", err))
 	}
+
+	go vm.listenUiEvents()
 
 	return vm
 }
@@ -97,19 +121,17 @@ func (vm *connectionViewModelImpl) Deck() *connection_deck.Deck {
 	return vm.deck
 }
 
-func (vm *connectionViewModelImpl) OnSelectedConnectionChanged(f func(*connection_deck.Connection)) {
-	vm.onChangeCallbacks = append(vm.onChangeCallbacks, f)
+func (vm *connectionViewModelImpl) ErrorMessages() binding.String {
+	return vm.errorMsgBinding
 }
 
-func (vm *connectionViewModelImpl) Create(
-	name, accessKey, secretKey, bucket string,
-	options ...connection_deck.ConnectionOption,
-) error {
-	vm.deck.New(name, accessKey, secretKey, bucket, options...)
-	if err := vm.sync(); err != nil {
-		return vm.notifier.NotifyError(err)
-	}
-	return nil
+func (vm *connectionViewModelImpl) Loading() binding.Bool {
+	return vm.loading
+}
+
+func (vm *connectionViewModelImpl) IsLoading() bool {
+	val, _ := vm.loading.Get()
+	return val
 }
 
 func (vm *connectionViewModelImpl) Update(
@@ -171,7 +193,9 @@ func (vm *connectionViewModelImpl) Delete(connID connection_deck.ConnectionID) e
 	return nil
 }
 
-func (vm *connectionViewModelImpl) Select(c *connection_deck.Connection) (bool, error) {
+// selectConnection selects a connection and returns true if a new connection was successfully selected
+// and false if the set connection is the same as the current connection
+func (vm *connectionViewModelImpl) selectConnection(c *connection_deck.Connection) (bool, error) {
 	prevSelected := vm.deck.SelectedConnection()
 
 	if err := vm.deck.Select(c.ID()); err != nil {
@@ -222,6 +246,10 @@ func (vm *connectionViewModelImpl) IsReadOnly() bool {
 	return vm.deck.SelectedConnection().ReadOnly()
 }
 
+func (vm *connectionViewModelImpl) SendUiEvent(event uievent.UiEvent) {
+	vm.uiEventPublisher.Publish(event)
+}
+
 func (vm *connectionViewModelImpl) updateBinding(c *connection_deck.Connection) error {
 	found := false
 	for i, conn := range vm.deck.Get() {
@@ -263,4 +291,61 @@ func (vm *connectionViewModelImpl) sync() error {
 		return err
 	}
 	return nil
+}
+
+func (vm *connectionViewModelImpl) listenUiEvents() {
+	stream := vm.uiEventPublisher.Subscribe()
+	for {
+		select {
+		case event, ok := <-stream:
+			if !ok {
+				return
+			}
+			switch event.Type() {
+			case uievent.SelectConnectionType:
+				if vm.IsLoading() {
+					continue
+				}
+				vm.loading.Set(true)
+				evt := event.(*uievent.SelectConnection)
+				if _, err := vm.selectConnection(evt.Connection); err != nil {
+					vm.uiEventPublisher.Publish(&uievent.SelectConnectionFailure{Error: err})
+					continue
+				}
+				vm.uiEventPublisher.Publish(&uievent.SelectConnectionSuccess{Connection: evt.Connection})
+
+			case uievent.SelectConnectionFailureType:
+				evt := event.(*uievent.SelectConnectionFailure)
+				vm.errorMsgBinding.Set(evt.Error.Error())
+				vm.loading.Set(false)
+
+			case uievent.SelectConnectionSuccessType:
+				vm.loading.Set(false)
+
+			case uievent.CreateConnectionType:
+				if vm.IsLoading() {
+					continue
+				}
+				vm.loading.Set(true)
+				evt := event.(*uievent.CreateConnection)
+				newConn := vm.deck.New(evt.Name, evt.AccessKey, evt.SecretKey, evt.Bucket, evt.Options...)
+				time.Sleep(5 * time.Second)
+				if err := vm.sync(); err != nil {
+					vm.uiEventPublisher.Publish(&uievent.CreateConnectionFailure{Error: err})
+					continue
+				}
+				vm.uiEventPublisher.Publish(&uievent.CreateConnectionSuccess{Connection: newConn})
+
+			case uievent.CreateConnectionFailureType:
+				evt := event.(*uievent.CreateConnectionFailure)
+				vm.errorMsgBinding.Set(evt.Error.Error())
+				vm.loading.Set(false)
+
+			case uievent.CreateConnectionSuccessType:
+				evt := event.(*uievent.CreateConnectionSuccess)
+				vm.connBindings.Append(evt.Connection)
+				vm.loading.Set(false)
+			}
+		}
+	}
 }
