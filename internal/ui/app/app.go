@@ -67,11 +67,12 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		uiEventPublisher,
 	)
 	explorerViewModel := viewmodel.NewExplorerViewModel(
-		connectionViewModel,
 		directoryRepository,
 		settingsViewModel,
 		directoryEventPublisher,
+		uiEventPublisher,
 		notifier,
+		connectionViewModel.Deck().SelectedConnection(),
 	)
 
 	notificationsViewModel := viewmodel.NewNotificationViewModel(notifier, terminated)

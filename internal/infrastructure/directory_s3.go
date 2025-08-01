@@ -143,12 +143,13 @@ func (r *S3DirectoryRepository) GetFileContent(ctx context.Context, connId conne
 		return nil, fmt.Errorf("fail reading the body content: %w", err)
 	}
 
-	reader, writer, _ := os.Pipe()
-	go func() {
-		defer writer.Close()
-		writer.Write(buff.Bytes())
-	}()
-	content := directory.NewFileContent(file, directory.FromFileObj(reader))
+	rd, w, _ := os.Pipe()
+	if _, err := w.Write(buff.Bytes()); err != nil {
+		return nil, fmt.Errorf("fail writing the body content: %w", err)
+	}
+	defer w.Close()
+
+	content := directory.NewFileContent(file, directory.ContentFromFile(rd))
 
 	return content, nil
 }

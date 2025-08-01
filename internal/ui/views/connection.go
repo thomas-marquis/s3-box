@@ -20,19 +20,6 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 	connectionsList := widget.NewConnectionList(appCtx)
 	vm := appCtx.ConnectionViewModel()
 
-	loading := fyne_widget.NewProgressBarInfinite()
-	//loading.Hide()
-	loading.Stop()
-	vm.Loading().AddListener(binding.NewDataListener(func() {
-		if vm.IsLoading() {
-			loading.Start()
-			//loading.Show()
-		} else {
-			loading.Stop()
-			//loading.Hide()
-		}
-	}))
-
 	vm.ErrorMessages().AddListener(binding.NewDataListener(func() {
 		msg, _ := vm.ErrorMessages().Get()
 		if msg == "" {
@@ -70,10 +57,7 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 	)
 
 	return container.NewBorder(
-		container.NewVBox(
-			loading,
-			container.NewHBox(goToExplorerBtn),
-		),
+		container.NewHBox(goToExplorerBtn),
 		container.NewCenter(createBtn),
 		nil,
 		nil,

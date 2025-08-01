@@ -25,7 +25,7 @@ func FromLocalFile(path string) ContentOption {
 	}
 }
 
-func FromFileObj(obj *os.File) ContentOption {
+func ContentFromFile(obj *os.File) ContentOption {
 	return func(c *Content) {
 		c.fileObj = obj
 	}

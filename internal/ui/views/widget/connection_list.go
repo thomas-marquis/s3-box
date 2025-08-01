@@ -11,7 +11,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/uievent"
-	"go.uber.org/zap"
 )
 
 type ConnectionList struct {
@@ -115,11 +114,9 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 	deleteBtn.OnTapped = func() {
 		dialog.ShowConfirm("Delete connection",
 			fmt.Sprintf("Are you sure you want to delete the connection '%s'?", conn.Name()),
-			func(b bool) {
-				if b {
-					if err := vm.Delete(conn.ID()); err != nil {
-						w.appCtx.L().Error("Failed to delete connection", zap.Error(err))
-					}
+			func(confirmed bool) {
+				if confirmed {
+					vm.SendUiEvent(&uievent.DeleteConnection{Connection: conn})
 				}
 			}, w.appCtx.Window())
 	}

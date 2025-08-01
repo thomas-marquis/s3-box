@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"os"
+	"io"
 	"strings"
 )
 
@@ -57,7 +57,7 @@ func (r *S3DirectoryRepository) handleUpload(ctx context.Context, sess *s3Sessio
 	if err != nil {
 		return fmt.Errorf("failed opening the file to upload: %w", err)
 	}
-	defer func(fileObj *os.File) {
+	defer func(fileObj io.ReadCloser) {
 		if err := fileObj.Close(); err != nil {
 			logger.Printf("failed closing file: %v", err)
 		}

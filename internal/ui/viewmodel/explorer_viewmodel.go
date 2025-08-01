@@ -3,11 +3,13 @@ package viewmodel
 import (
 	"context"
 	"errors"
+
 	"fmt"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
+	"github.com/thomas-marquis/s3-box/internal/ui/uievent"
 	"path/filepath"
 	"sync"
 
@@ -20,12 +22,28 @@ import (
 // It handles the tree structure display, file operations, and directory management
 // while maintaining the connection with the underlying storage system.
 type ExplorerViewModel interface {
-	// OnDisplayNoConnectionBannerChange registers a callback function that is triggered
-	// when the no-connection banner display state changes
-	OnDisplayNoConnectionBannerChange(fn func(shouldDisplay bool))
+	////////////////////////
+	// State methods
+	////////////////////////
 
 	// Tree returns the binding for the directory/file tree structure
 	Tree() binding.UntypedTree
+
+	SelectedConnection() binding.Untyped
+
+	CurrentSelectedConnection() *connection_deck.Connection
+
+	// LastDownloadLocation returns the URI of the last used save directory
+	LastDownloadLocation() fyne.ListableURI
+
+	// LastUploadLocation returns the URI of the last used upload directory
+	LastUploadLocation() fyne.ListableURI
+
+	Loading() binding.Bool
+
+	////////////////////////
+	// Action methods
+	////////////////////////
 
 	// LoadDirectory sync a directory with the actual s3 one and load its files dans children.
 	// If the directory is already open, it will do nothing.
@@ -43,14 +61,8 @@ type ExplorerViewModel interface {
 	// DeleteFile removes a file from storage and updates the tree
 	DeleteFile(file *directory.File) error
 
-	// LastDownloadLocation returns the URI of the last used save directory
-	LastDownloadLocation() fyne.ListableURI
-
 	// UpdateLastDownloadLocation updates the last used save directory path
 	UpdateLastDownloadLocation(filePath string) error
-
-	// LastUploadLocation returns the URI of the last used upload directory
-	LastUploadLocation() fyne.ListableURI
 
 	// UpdateLastUploadLocation updates the last used upload directory path
 	UpdateLastUploadLocation(filePath string) error
@@ -61,77 +73,74 @@ type ExplorerViewModel interface {
 
 type explorerViewModelImpl struct {
 	mu                  sync.Mutex
-	connectionViewModel ConnectionViewModel
 	directoryRepository directory.Repository
 	tree                binding.UntypedTree
-	publisher           *directory.EventPublisher
-	selectedConnection  *connection_deck.Connection
+	domainPublisher     *directory.EventPublisher
+
+	selectedConnection    binding.Untyped
+	selectedConnectionVal *connection_deck.Connection
+
+	loading binding.Bool
 
 	settingsVm                SettingsViewModel
 	lastDownloadLocation      fyne.ListableURI
 	lastUploadDir             fyne.ListableURI
 	displayNoConnectionBanner binding.Bool
 
-	notifier notification.Repository
+	uiPublisher uievent.Publisher
+	notifier    notification.Repository
 }
 
 func NewExplorerViewModel(
-	connectionViewModel ConnectionViewModel,
-	dirRepo directory.Repository,
+	directoryRepository directory.Repository,
 	settingsVm SettingsViewModel,
-	publisher *directory.EventPublisher,
+	domainPublisher *directory.EventPublisher,
+	uiPublisher uievent.Publisher,
 	notifier notification.Repository,
+	initialConnection *connection_deck.Connection,
 ) ExplorerViewModel {
 	vm := &explorerViewModelImpl{
-		settingsVm:                settingsVm,
-		directoryRepository:       dirRepo,
-		displayNoConnectionBanner: binding.NewBool(),
-		publisher:                 publisher,
-		notifier:                  notifier,
-		connectionViewModel:       connectionViewModel,
+		settingsVm:            settingsVm,
+		directoryRepository:   directoryRepository,
+		domainPublisher:       domainPublisher,
+		notifier:              notifier,
+		uiPublisher:           uiPublisher,
+		selectedConnectionVal: initialConnection,
+		selectedConnection:    binding.NewUntyped(),
+		loading:               binding.NewBool(),
 	}
 
-	//connectionViewModel.OnSelectedConnectionChanged(func(c *connection_deck.Connection) {
-	//	if c == nil {
-	//		vm.displayNoConnectionBanner.Set(true)
-	//		return
-	//	}
-	//
-	//	vm.displayNoConnectionBanner.Set(false)
-	//	if !c.Is(vm.selectedConnection) {
-	//		if err := vm.initializeTreeData(c); err != nil {
-	//			notifier.NotifyError(fmt.Errorf("error resetting tree: %w", err))
-	//			return
-	//		}
-	//		vm.selectedConnection = c
-	//	}
-	//})
-
-	vm.selectedConnection = connectionViewModel.Deck().SelectedConnection()
-	vm.displayNoConnectionBanner.Set(false)
-	if err := vm.initializeTreeData(vm.selectedConnection); err != nil {
+	if err := vm.initializeTreeData(initialConnection); err != nil {
 		if errors.Is(err, ErrNoConnectionSelected) {
-			vm.displayNoConnectionBanner.Set(true)
+			vm.selectedConnection.Set(nil)
+			vm.selectedConnectionVal = nil
 		}
-		notifier.NotifyError(fmt.Errorf("error resetting tree: %w", err))
+		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err))
 	}
+
+	go vm.listenUiEvents()
 
 	return vm
-}
-
-func (vm *explorerViewModelImpl) OnDisplayNoConnectionBannerChange(fn func(shouldDisplay bool)) {
-	vm.displayNoConnectionBanner.AddListener(binding.NewDataListener(func() {
-		shouldDisplay, _ := vm.displayNoConnectionBanner.Get()
-		fn(shouldDisplay)
-	}))
 }
 
 func (vm *explorerViewModelImpl) Tree() binding.UntypedTree {
 	return vm.tree
 }
 
+func (vm *explorerViewModelImpl) SelectedConnection() binding.Untyped {
+	return vm.selectedConnection
+}
+
+func (vm *explorerViewModelImpl) CurrentSelectedConnection() *connection_deck.Connection {
+	return vm.selectedConnectionVal
+}
+
+func (vm *explorerViewModelImpl) Loading() binding.Bool {
+	return vm.loading
+}
+
 func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error {
-	if vm.selectedConnection == nil {
+	if vm.selectedConnectionVal == nil {
 		return vm.notifier.NotifyError(ErrNoConnectionSelected)
 	}
 
@@ -156,7 +165,7 @@ func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error
 }
 
 func (vm *explorerViewModelImpl) GetFileContent(file *directory.File) (*directory.Content, error) {
-	if vm.selectedConnection == nil {
+	if vm.selectedConnectionVal == nil {
 		return nil, vm.notifier.NotifyError(ErrNoConnectionSelected)
 	}
 
@@ -167,7 +176,7 @@ func (vm *explorerViewModelImpl) GetFileContent(file *directory.File) (*director
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
-	content, err := vm.directoryRepository.GetFileContent(ctx, vm.selectedConnection.ID(), file)
+	content, err := vm.directoryRepository.GetFileContent(ctx, vm.selectedConnectionVal.ID(), file)
 	if err != nil {
 		return nil, vm.notifier.NotifyError(fmt.Errorf("error getting file content: %w", err))
 	}
@@ -176,16 +185,16 @@ func (vm *explorerViewModelImpl) GetFileContent(file *directory.File) (*director
 }
 
 func (vm *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) error {
-	if vm.selectedConnection == nil {
+	if vm.selectedConnectionVal == nil {
 		return vm.notifier.NotifyError(ErrNoConnectionSelected)
 	}
-	evt := f.Download(vm.selectedConnection.ID(), dest)
-	vm.publisher.Publish(evt)
+	evt := f.Download(vm.selectedConnectionVal.ID(), dest)
+	vm.domainPublisher.Publish(evt)
 	return nil
 }
 
 func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory) error {
-	if vm.selectedConnection == nil {
+	if vm.selectedConnectionVal == nil {
 		return vm.notifier.NotifyError(ErrNoConnectionSelected)
 	}
 
@@ -193,7 +202,7 @@ func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Dir
 	if err != nil {
 		return vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", err))
 	}
-	vm.publisher.Publish(evt)
+	vm.domainPublisher.Publish(evt)
 	return vm.sync(dir)
 }
 
@@ -220,7 +229,7 @@ func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) error {
 			vm.notifier.NotifyError(fmt.Errorf("error removing file from tree: %w", err))
 		}
 	})
-	vm.publisher.Publish(evt)
+	vm.domainPublisher.Publish(evt)
 
 	return nil
 }
@@ -256,7 +265,7 @@ func (vm *explorerViewModelImpl) UpdateLastUploadLocation(filePath string) error
 }
 
 func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory, name string) (*directory.Directory, error) {
-	if vm.selectedConnection == nil {
+	if vm.selectedConnectionVal == nil {
 		return nil, vm.notifier.NotifyError(ErrNoConnectionSelected)
 	}
 
@@ -272,7 +281,7 @@ func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Director
 	evt.AttachErrorCallback(func(err error) {
 		vm.notifier.NotifyError(fmt.Errorf("error creating subdirectory: %w", err))
 	})
-	vm.publisher.Publish(evt)
+	vm.domainPublisher.Publish(evt)
 	return nil, nil
 }
 
@@ -340,7 +349,7 @@ func (vm *explorerViewModelImpl) fetchDirectory(dirID directory.Path) (*director
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
 
-	dir, err := vm.directoryRepository.GetByPath(ctx, vm.selectedConnection.ID(), dirID)
+	dir, err := vm.directoryRepository.GetByPath(ctx, vm.selectedConnectionVal.ID(), dirID)
 	if err != nil {
 		return nil, vm.notifier.NotifyError(fmt.Errorf("error getting directory: %w", err))
 	}
@@ -365,4 +374,33 @@ func (vm *explorerViewModelImpl) fillSubTree(startNode node.DirectoryNode, dir *
 		}
 	}
 	return nil
+}
+
+func (vm *explorerViewModelImpl) listenUiEvents() {
+	for event := range vm.uiPublisher.Subscribe() {
+		switch event.Type() {
+		case uievent.SelectConnectionSuccessType:
+			evt := event.(*uievent.SelectConnectionSuccess)
+			conn := evt.Connection
+			hasChanged := (vm.selectedConnectionVal == nil && conn != nil) ||
+				(vm.selectedConnectionVal != nil && conn == nil) ||
+				(vm.selectedConnectionVal != nil && !vm.selectedConnectionVal.Is(conn))
+			if hasChanged {
+				vm.loading.Set(true)
+				vm.selectedConnectionVal = conn
+				vm.selectedConnection.Set(conn)
+				vm.initializeTreeData(conn)
+				vm.loading.Set(false)
+			}
+
+		case uievent.DeleteConnectionSuccessType:
+			evt := event.(*uievent.SelectConnectionSuccess)
+			conn := evt.Connection
+			if vm.selectedConnectionVal != nil && vm.selectedConnectionVal.Is(conn) {
+				vm.selectedConnectionVal = nil
+				vm.selectedConnection.Set(nil)
+			}
+		}
+
+	}
 }

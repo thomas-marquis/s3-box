@@ -12,6 +12,10 @@ const (
 	CreateConnectionType        UiEventType = "uievent.Connection.create"
 	CreateConnectionSuccessType UiEventType = "uievent.Connection.create.success"
 	CreateConnectionFailureType UiEventType = "uievent.Connection.create.failure"
+
+	DeleteConnectionType        UiEventType = "uievent.Connection.delete"
+	DeleteConnectionSuccessType UiEventType = "uievent.Connection.delete.success"
+	DeleteConnectionFailureType UiEventType = "uievent.Connection.delete.failure"
 )
 
 type UiEvent interface {
@@ -68,4 +72,28 @@ type CreateConnectionFailure struct {
 
 func (e *CreateConnectionFailure) Type() UiEventType {
 	return CreateConnectionFailureType
+}
+
+type DeleteConnection struct {
+	Connection *connection_deck.Connection
+}
+
+func (e *DeleteConnection) Type() UiEventType {
+	return DeleteConnectionType
+}
+
+type DeleteConnectionSuccess struct {
+	Connection *connection_deck.Connection
+}
+
+func (e *DeleteConnectionSuccess) Type() UiEventType {
+	return DeleteConnectionSuccessType
+}
+
+type DeleteConnectionFailure struct {
+	Error error
+}
+
+func (e *DeleteConnectionFailure) Type() UiEventType {
+	return DeleteConnectionFailureType
 }

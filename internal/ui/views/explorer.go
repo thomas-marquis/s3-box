@@ -5,6 +5,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
@@ -13,13 +14,13 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/widget"
+	fyne_widget "fyne.io/fyne/v2/widget"
 )
 
 func makeNoConnectionTopBanner(ctx appcontext.AppContext) *fyne.Container {
 	return container.NewVBox(
-		container.NewCenter(widget.NewLabel("No connection selected, please select a connection in the settings menu")),
-		container.NewCenter(widget.NewButton("Manage connections", func() {
+		container.NewCenter(fyne_widget.NewLabel("No connection selected, please select a connection in the settings menu")),
+		container.NewCenter(fyne_widget.NewButton("Manage connections", func() {
 			ctx.Navigate(navigation.ConnectionRoute)
 		})),
 	)
@@ -31,22 +32,23 @@ func makeNoConnectionTopBanner(ctx appcontext.AppContext) *fyne.Container {
 func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	noConn := makeNoConnectionTopBanner(ctx)
 	noConn.Hide()
+	vm := ctx.ExplorerViewModel()
 
-	content := container.NewHSplit(widget.NewLabel(""), widget.NewLabel(""))
+	content := container.NewHSplit(fyne_widget.NewLabel(""), fyne_widget.NewLabel(""))
 
-	ctx.ExplorerViewModel().OnDisplayNoConnectionBannerChange(func(shouldDisplay bool) {
-		if shouldDisplay {
+	vm.SelectedConnection().AddListener(binding.NewDataListener(func() {
+		if vm.CurrentSelectedConnection() == nil {
 			noConn.Show()
 			content.Hide()
 		} else {
 			noConn.Hide()
 			content.Show()
 		}
-	})
+	}))
 
 	treeItemBuilder := components.NewTreeItemBuilder()
 
-	tree := widget.NewTreeWithData(
+	tree := fyne_widget.NewTreeWithData(
 		ctx.ExplorerViewModel().Tree(),
 		func(branch bool) fyne.CanvasObject {
 			return treeItemBuilder.NewRaw()
@@ -61,11 +63,11 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		})
 
 	detailsContainer := container.NewVBox()
-	fileDetails := components.NewFileDetails()
-	dirDetails := components.NewDirDetails()
+	fileDetails := widget.NewFileDetails(ctx)
+	dirDetails := widget.NewDirectoryDetails(ctx)
 
-	tree.OnSelected = func(uid widget.TreeNodeID) {
-		nodeItem, err := uiutils.GetUntypedFromTreeById[node.Node](ctx.ExplorerViewModel().Tree(), uid)
+	tree.OnSelected = func(uid fyne_widget.TreeNodeID) {
+		nodeItem, err := uiutils.GetUntypedFromTreeById[node.Node](vm.Tree(), uid)
 		if err != nil {
 			dialog.ShowError(fmt.Errorf("error getting value: %v", err), ctx.Window())
 			return
@@ -75,33 +77,31 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		case node.FolderNodeType:
 			dirNode := nodeItem.(node.DirectoryNode)
 			if !dirNode.IsLoaded() {
-				if err := ctx.ExplorerViewModel().LoadDirectory(dirNode); err != nil {
+				if err := vm.LoadDirectory(dirNode); err != nil {
 					dialog.ShowError(err, ctx.Window())
 					return
 				}
 				tree.OpenBranch(uid)
 			}
 			dir := dirNode.Directory()
-			dirDetails.Update(ctx, dir)
-			detailsContainer.Objects = []fyne.CanvasObject{dirDetails.Object()}
+			dirDetails.Render(dir)
+			detailsContainer.Objects = []fyne.CanvasObject{dirDetails}
 
 		case node.FileNodeType:
 			file := (nodeItem.(node.FileNode)).File()
-			fileDetails.Update(ctx, file)
-			detailsContainer.Objects = []fyne.CanvasObject{fileDetails.Object()}
+			fileDetails.Render(file)
+			detailsContainer.Objects = []fyne.CanvasObject{fileDetails}
 		}
 	}
 
 	content.Leading = container.NewScroll(tree)
 	content.Trailing = detailsContainer
 
-	mainContainer := container.NewBorder(
+	return container.NewBorder(
 		noConn,
 		nil,
 		nil,
 		nil,
 		content,
-	)
-
-	return mainContainer, nil
+	), nil
 }

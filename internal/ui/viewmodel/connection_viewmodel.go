@@ -31,17 +31,6 @@ type ConnectionViewModel interface {
 	// When an error occurred, the contained string is set.
 	ErrorMessages() binding.String
 
-	// Update updates the connection with the specified connection ID using the provided options. Returns an error on failure.
-	Update(connID connection_deck.ConnectionID, options ...connection_deck.ConnectionOption) error
-
-	// Delete deletes the specified connection
-	Delete(connID connection_deck.ConnectionID) error
-
-	// ExportAsJSON exports all connections JSON serialized.
-	// The JSON object will be written in the writer.
-	// It's up to you to effectively write the writer into a file or whatever.
-	ExportAsJSON(writer io.Writer) error
-
 	// IsReadOnly returns true if the connection view model is in a read-only state, otherwise false.
 	IsReadOnly() bool
 
@@ -55,6 +44,14 @@ type ConnectionViewModel interface {
 
 	// SendUiEvent sends a UI event of type uievent.UiEvent to the system for processing or response handling.
 	SendUiEvent(event uievent.UiEvent)
+
+	// Update updates the connection with the specified connection ID using the provided options. Returns an error on failure.
+	Update(connID connection_deck.ConnectionID, options ...connection_deck.ConnectionOption) error
+
+	// ExportAsJSON exports all connections JSON serialized.
+	// The JSON object will be written in the writer.
+	// It's up to you to effectively write the writer into a file or whatever.
+	ExportAsJSON(writer io.Writer) error
 }
 
 type connectionViewModelImpl struct {
@@ -107,6 +104,8 @@ func NewConnectionViewModel(
 	if err := vm.initConnections(deck); err != nil {
 		vm.notifier.NotifyError(fmt.Errorf("error refreshing connections: %v", err))
 	}
+
+	uiEventPublisher.Publish(&uievent.SelectConnection{Connection: deck.SelectedConnection()})
 
 	go vm.listenUiEvents()
 
@@ -161,7 +160,7 @@ func (vm *connectionViewModelImpl) Update(
 	return nil
 }
 
-func (vm *connectionViewModelImpl) Delete(connID connection_deck.ConnectionID) error {
+func (vm *connectionViewModelImpl) deleteConnection(connID connection_deck.ConnectionID) error {
 	if err := vm.deck.RemoveAConnection(connID); err != nil {
 		return vm.notifier.NotifyError(fmt.Errorf("error deleting connection from set: %w", err))
 	}
@@ -184,10 +183,6 @@ func (vm *connectionViewModelImpl) Delete(connID connection_deck.ConnectionID) e
 
 	if !found {
 		return vm.notifier.NotifyError(fmt.Errorf("connection %s not found in user's deck: %w", connID, err))
-	}
-
-	for _, callback := range vm.onChangeCallbacks {
-		callback(nil)
 	}
 
 	return nil
@@ -344,6 +339,26 @@ func (vm *connectionViewModelImpl) listenUiEvents() {
 			case uievent.CreateConnectionSuccessType:
 				evt := event.(*uievent.CreateConnectionSuccess)
 				vm.connBindings.Append(evt.Connection)
+				vm.loading.Set(false)
+
+			case uievent.DeleteConnectionType:
+				if vm.IsLoading() {
+					continue
+				}
+				vm.loading.Set(true)
+				evt := event.(*uievent.DeleteConnection)
+				if err := vm.deleteConnection(evt.Connection.ID()); err != nil {
+					vm.uiEventPublisher.Publish(&uievent.DeleteConnectionFailure{Error: err})
+					continue
+				}
+				vm.uiEventPublisher.Publish(&uievent.DeleteConnectionSuccess{Connection: evt.Connection})
+
+			case uievent.DeleteConnectionFailureType:
+				evt := event.(*uievent.DeleteConnectionFailure)
+				vm.errorMsgBinding.Set(evt.Error.Error())
+				vm.loading.Set(false)
+
+			case uievent.DeleteConnectionSuccessType:
 				vm.loading.Set(false)
 			}
 		}
