@@ -1,15 +1,12 @@
 package views
 
 import (
-	"fmt"
-	"fyne.io/fyne/v2/dialog"
-	"github.com/thomas-marquis/s3-box/internal/ui/node"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
+	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/components"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -46,53 +43,20 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		}
 	}))
 
-	treeItemBuilder := components.NewTreeItemBuilder()
-
-	tree := fyne_widget.NewTreeWithData(
-		ctx.ExplorerViewModel().Tree(),
-		func(branch bool) fyne.CanvasObject {
-			return treeItemBuilder.NewRaw()
-		},
-		func(i binding.DataItem, branch bool, o fyne.CanvasObject) {
-			di, _ := i.(binding.Untyped).Get()
-			nodeItem, ok := di.(node.Node)
-			if !ok {
-				panic(fmt.Sprintf("unexpected type %T", di))
-			}
-			treeItemBuilder.Update(o, nodeItem)
-		})
-
 	detailsContainer := container.NewVBox()
 	fileDetails := widget.NewFileDetails(ctx)
 	dirDetails := widget.NewDirectoryDetails(ctx)
 
-	tree.OnSelected = func(uid fyne_widget.TreeNodeID) {
-		nodeItem, err := uiutils.GetUntypedFromTreeById[node.Node](vm.Tree(), uid)
-		if err != nil {
-			dialog.ShowError(fmt.Errorf("error getting value: %v", err), ctx.Window())
-			return
-		}
-
-		switch nodeItem.NodeType() {
-		case node.FolderNodeType:
-			dirNode := nodeItem.(node.DirectoryNode)
-			if !dirNode.IsLoaded() {
-				if err := vm.LoadDirectory(dirNode); err != nil {
-					dialog.ShowError(err, ctx.Window())
-					return
-				}
-				tree.OpenBranch(uid)
-			}
-			dir := dirNode.Directory()
+	tree := widget.NewExplorerTree(ctx,
+		func(dir *directory.Directory) {
 			dirDetails.Render(dir)
 			detailsContainer.Objects = []fyne.CanvasObject{dirDetails}
-
-		case node.FileNodeType:
-			file := (nodeItem.(node.FileNode)).File()
+		},
+		func(file *directory.File) {
 			fileDetails.Render(file)
 			detailsContainer.Objects = []fyne.CanvasObject{fileDetails}
-		}
-	}
+		},
+	)
 
 	content.Leading = container.NewScroll(tree)
 	content.Trailing = detailsContainer
