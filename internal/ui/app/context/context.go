@@ -1,6 +1,7 @@
 package appcontext
 
 import (
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 
@@ -20,6 +21,8 @@ type AppContext interface {
 	Window() fyne.Window
 	L() *zap.Logger
 	FyneSettings() fyne.Settings
+
+	Bus() event.Bus
 }
 
 type AppContextImpl struct {
@@ -35,6 +38,8 @@ type AppContextImpl struct {
 
 	currentRoute navigation.Route
 	views        map[navigation.Route]View
+
+	bus event.Bus
 }
 
 var _ AppContext = &AppContextImpl{}
@@ -49,6 +54,7 @@ func New(
 	views map[navigation.Route]View,
 	logger *zap.Logger,
 	settings fyne.Settings,
+	bus event.Bus,
 ) *AppContextImpl {
 	return &AppContextImpl{
 		explorerViewModel:     explorerViewModel,
@@ -60,6 +66,7 @@ func New(
 		currentRoute:          initialRoute,
 		views:                 views,
 		fyneSettings:          settings,
+		bus:                   bus,
 	}
 }
 
@@ -109,4 +116,8 @@ func (ctx *AppContextImpl) Navigate(route navigation.Route) error {
 
 func (ctx *AppContextImpl) CurrentRoute() navigation.Route {
 	return ctx.currentRoute
+}
+
+func (ctx *AppContextImpl) Bus() event.Bus {
+	return ctx.bus
 }

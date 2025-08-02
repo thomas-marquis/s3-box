@@ -7,7 +7,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
-	"github.com/thomas-marquis/s3-box/internal/ui/uievent"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 
 	"fyne.io/fyne/v2"
@@ -36,15 +35,8 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 			&connection_deck.Connection{},
 			false,
 			func(name, accessKey, secretKey, bucket string,
-				options ...connection_deck.ConnectionOption) error {
-				vm.SendUiEvent(&uievent.CreateConnection{
-					Name:      name,
-					AccessKey: accessKey,
-					SecretKey: secretKey,
-					Bucket:    bucket,
-					Options:   options,
-				})
-				return nil
+				options ...connection_deck.ConnectionOption) {
+				vm.Create(name, accessKey, secretKey, bucket, options...)
 			},
 		).AsDialog("New connection").Show)
 

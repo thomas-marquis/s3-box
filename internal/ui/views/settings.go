@@ -46,7 +46,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 
 			dialog.ShowInformation("Done", "Settings Saved", ctx.Window())
 		},
-		SubmitText: "Save",
+		SubmitText: "saveDeck",
 	}
 
 	goToExplorerBtn := widget.NewButtonWithIcon(

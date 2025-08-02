@@ -3,11 +3,9 @@ package app
 import (
 	"fyne.io/fyne/v2"
 	fyne_app "fyne.io/fyne/v2/app"
-	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
-	"github.com/thomas-marquis/s3-box/internal/ui/uievent"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views"
 	"go.uber.org/zap"
@@ -36,23 +34,20 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	w := a.NewWindow("S3 Box")
 
 	terminated := make(chan struct{})
-	uiEventPublisher := uievent.NewPublisher(terminated)
+	eventBus := newEventBusImpl(terminated)
 
 	notifier := infrastructure.NewNotificationPublisher()
 
 	fyneSettings := a.Settings()
 
-	directoryEventPublisher := directory.NewEventPublisher()
-
-	connectionsRepository := infrastructure.NewFyneConnectionsRepository(a.Preferences())
+	connectionsRepository := infrastructure.NewFyneConnectionsRepository(a.Preferences(), eventBus)
 
 	settingsRepository := infrastructure.NewSettingsRepository(a.Preferences())
 
 	directoryRepository, err := infrastructure.NewS3DirectoryRepository(
 		connectionsRepository,
-		directoryEventPublisher,
+		eventBus,
 		notifier,
-		terminated,
 	)
 	if err != nil {
 		sugarLog.Error("Error creating directory repository", err)
@@ -64,15 +59,14 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		connectionsRepository,
 		settingsViewModel,
 		notifier,
-		uiEventPublisher,
+		eventBus,
 	)
 	explorerViewModel := viewmodel.NewExplorerViewModel(
 		directoryRepository,
 		settingsViewModel,
-		directoryEventPublisher,
-		uiEventPublisher,
 		notifier,
 		connectionViewModel.Deck().SelectedConnection(),
+		eventBus,
 	)
 
 	notificationsViewModel := viewmodel.NewNotificationViewModel(notifier, terminated)
@@ -87,6 +81,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		appViews,
 		logger,
 		fyneSettings,
+		eventBus,
 	)
 
 	var one sync.Once
@@ -105,7 +100,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 }
 
 func (a *Go2S3App) Start() error {
-	a.appCtx.Window().Resize(fyne.NewSize(1000, 700))
+	a.appCtx.Window().Resize(fyne.NewSize(1200, 900))
 	err := a.appCtx.Navigate(a.initRoute)
 	if err != nil {
 		return err
@@ -114,21 +109,21 @@ func (a *Go2S3App) Start() error {
 	return nil
 }
 
-func getMainMenu(ctx appcontext.AppContext) *fyne.MainMenu {
+func getMainMenu(appCtx appcontext.AppContext) *fyne.MainMenu {
 	settingsMenu := fyne.NewMenu("Settings",
 		fyne.NewMenuItem("Manage connections", func() {
-			ctx.Navigate(navigation.ConnectionRoute)
+			appCtx.Navigate(navigation.ConnectionRoute)
 		}),
 		fyne.NewMenuItem("Manage settings", func() {
-			ctx.Navigate(navigation.SettingsRoute)
+			appCtx.Navigate(navigation.SettingsRoute)
 		}),
 		fyne.NewMenuItem("View notifications", func() {
-			ctx.Navigate(navigation.NotificationsRoute)
+			appCtx.Navigate(navigation.NotificationsRoute)
 		}),
 	)
 	fileMenu := fyne.NewMenu("AttachedFile",
 		fyne.NewMenuItem("Explorer view", func() {
-			ctx.Navigate(navigation.ExplorerRoute)
+			appCtx.Navigate(navigation.ExplorerRoute)
 		}),
 	)
 	return fyne.NewMainMenu(fileMenu, settingsMenu)

@@ -26,10 +26,10 @@ func makeNoConnectionTopBanner(ctx appcontext.AppContext) *fyne.Container {
 // GetFileExplorerView initializes and returns the file explorer UI layout with functionality for file and directory navigation.
 // It implements the navigation.View type interface.
 // Returns filled the *fyne.Container and an error.
-func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
-	noConn := makeNoConnectionTopBanner(ctx)
+func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) {
+	noConn := makeNoConnectionTopBanner(appCtx)
 	noConn.Hide()
-	vm := ctx.ExplorerViewModel()
+	vm := appCtx.ExplorerViewModel()
 
 	content := container.NewHSplit(fyne_widget.NewLabel(""), fyne_widget.NewLabel(""))
 
@@ -44,10 +44,10 @@ func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	}))
 
 	detailsContainer := container.NewVBox()
-	fileDetails := widget.NewFileDetails(ctx)
-	dirDetails := widget.NewDirectoryDetails(ctx)
+	fileDetails := widget.NewFileDetails(appCtx)
+	dirDetails := widget.NewDirectoryDetails(appCtx)
 
-	tree := widget.NewExplorerTree(ctx,
+	tree := widget.NewExplorerTree(appCtx,
 		func(dir *directory.Directory) {
 			dirDetails.Render(dir)
 			detailsContainer.Objects = []fyne.CanvasObject{dirDetails}

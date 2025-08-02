@@ -1,42 +1,99 @@
 package directory
 
-import "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+import (
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+)
 
-type FileEvent interface {
-	Event
-	File() *File
-}
+const (
+	FileCreatedEventType event.Type = "event.file.created"
+	FileDeletedEventType event.Type = "event.file.deleted"
+)
 
-type fileCreatedEvent struct {
-	baseEvent
+type withFile struct {
 	file *File
 }
 
-func newFileCreatedEvent(connectionID connection_deck.ConnectionID, file *File) fileCreatedEvent {
-	return fileCreatedEvent{baseEvent{connectionID, nil, nil, nil}, file}
-}
-
-func (e fileCreatedEvent) Name() string {
-	return FileCreatedEventName
-}
-
-func (e fileCreatedEvent) File() *File {
+func (e withFile) File() *File {
 	return e.file
 }
 
-type fileDeletedEvent struct {
-	baseEvent
-	file *File
+type withConnectionID struct {
+	connectionID connection_deck.ConnectionID
 }
 
-func newFileDeletedEvent(connectionID connection_deck.ConnectionID, file *File) fileDeletedEvent {
-	return fileDeletedEvent{baseEvent{connectionID, nil, nil, nil}, file}
+func (e withConnectionID) ConnectionID() connection_deck.ConnectionID {
+	return e.connectionID
 }
 
-func (e fileDeletedEvent) Name() string {
-	return FileDeletedEventName
+type FileCreatedEvent struct {
+	event.BaseEvent
+	withFile
+	withConnectionID
 }
 
-func (e fileDeletedEvent) File() *File {
-	return e.file
+func NewFileCreatedEvent(connectionID connection_deck.ConnectionID, file *File, opts ...event.Option) FileCreatedEvent {
+	return FileCreatedEvent{
+		event.NewBaseEvent(FileCreatedEventType, opts...),
+		withFile{file},
+		withConnectionID{connectionID},
+	}
+}
+
+type FileCreatedSuccessEvent struct {
+	event.BaseEvent
+	withFile
+}
+
+func NewFileCreatedSuccessEvent(file *File, opts ...event.Option) FileCreatedSuccessEvent {
+	return FileCreatedSuccessEvent{
+		event.NewBaseEvent(FileCreatedEventType.AsSuccess(), opts...),
+		withFile{file},
+	}
+}
+
+type FileCreatedFailureEvent struct {
+	event.BaseErrorEvent
+}
+
+func NewFileCreatedFailureEvent(err error) FileCreatedFailureEvent {
+	return FileCreatedFailureEvent{
+		event.NewBaseErrorEvent(FileCreatedEventType.AsFailure(), err),
+	}
+}
+
+type FileDeletedEvent struct {
+	event.BaseEvent
+	withFile
+	withConnectionID
+}
+
+func NewFileDeletedEvent(connectionID connection_deck.ConnectionID, file *File, opts ...event.Option) FileDeletedEvent {
+	return FileDeletedEvent{
+		event.NewBaseEvent(FileDeletedEventType, opts...),
+		withFile{file},
+		withConnectionID{connectionID},
+	}
+}
+
+type FileDeletedSuccessEvent struct {
+	event.BaseEvent
+	withFile
+}
+
+func NewFileDeletedSuccessEvent(file *File, opts ...event.Option) FileDeletedSuccessEvent {
+	return FileDeletedSuccessEvent{
+		event.NewBaseEvent(FileDeletedEventType.AsSuccess(), opts...),
+		withFile{file},
+	}
+}
+
+type FileDeletedFailureEvent struct {
+	event.BaseErrorEvent
+}
+
+func NewFileDeletedFailureEvent(err error) FileDeletedFailureEvent {
+	return FileDeletedFailureEvent{
+		event.NewBaseErrorEvent(FileDeletedEventType.AsFailure(), err),
+	}
 }

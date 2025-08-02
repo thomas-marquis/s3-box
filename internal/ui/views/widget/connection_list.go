@@ -10,7 +10,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
-	"github.com/thomas-marquis/s3-box/internal/ui/uievent"
 )
 
 type ConnectionList struct {
@@ -79,7 +78,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 				if !confirmed {
 					return
 				}
-				vm.SendUiEvent(&uievent.SelectConnection{Connection: conn})
+				vm.Select(conn)
 			},
 			w.appCtx.Window(),
 		)
@@ -98,7 +97,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 	btnGroup := c.Objects[1].(*fyne.Container)
 	editBtn := btnGroup.Objects[0].(*widget.Button)
 	editBtn.OnTapped = NewConnectionForm(w.appCtx, conn, true,
-		func(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) error {
+		func(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) {
 			opts := make([]connection_deck.ConnectionOption, 0, len(options)+4)
 			opts = append(opts,
 				connection_deck.WithName(name),
@@ -106,7 +105,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 				connection_deck.WithBucket(bucket),
 			)
 			opts = append(opts, options...)
-			return vm.Update(conn.ID(), opts...)
+			vm.Update(conn.ID(), opts...)
 		},
 	).AsDialog("Edit connection").Show
 
@@ -116,7 +115,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 			fmt.Sprintf("Are you sure you want to delete the connection '%s'?", conn.Name()),
 			func(confirmed bool) {
 				if confirmed {
-					vm.SendUiEvent(&uievent.DeleteConnection{Connection: conn})
+					vm.Delete(conn)
 				}
 			}, w.appCtx.Window())
 	}

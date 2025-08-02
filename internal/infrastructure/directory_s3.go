@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"log"
 	"os"
 	"strings"
@@ -38,9 +39,8 @@ var _ directory.Repository = &S3DirectoryRepository{}
 
 func NewS3DirectoryRepository(
 	connectionsRepository *FyneConnectionsRepository,
-	publisher *directory.EventPublisher,
+	bus event.Bus,
 	notifier notification.Repository,
-	terminate chan struct{},
 ) (*S3DirectoryRepository, error) {
 	r := &S3DirectoryRepository{
 		connectionRepository: connectionsRepository,
@@ -48,17 +48,9 @@ func NewS3DirectoryRepository(
 		cache:                make(map[connection_deck.ConnectionID]*s3Session),
 	}
 
-	events := make(chan directory.Event)
-	publisher.Subscribe(events)
-
-	go func() {
-		<-terminate
-		publisher.Unsubscribe(events)
-		close(events)
-	}()
-
+	events := bus.Subscribe()
 	for i := 0; i < nbWorkers; i++ {
-		go r.listen(events, notifier)
+		go r.listen(events, bus.Publish, notifier)
 	}
 
 	return r, nil
@@ -154,59 +146,55 @@ func (r *S3DirectoryRepository) GetFileContent(ctx context.Context, connId conne
 	return content, nil
 }
 
-func (r *S3DirectoryRepository) listen(events <-chan directory.Event, notifier notification.Repository) {
-	for {
-		select {
-		case evt, ok := <-events:
-			if !ok {
-				return
+func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func(event.Event), notifier notification.Repository) {
+	for evt := range events {
+		ctx := evt.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
+
+		switch evt.Type() {
+		case directory.CreatedEventType:
+			e := evt.(directory.CreatedEvent)
+			if err := r.handleDirectoryCreation(ctx, e); err != nil {
+				notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
+				publisher(directory.NewCreatedFailureEvent(err))
 			}
-			ctx := evt.Context()
+			publisher(directory.NewCreatedSuccessEvent(e.Directory()))
 
-			s, err := r.getSession(ctx, evt.ConnectionID())
-			if err != nil {
-				notifier.NotifyError(err)
-				continue
+		case directory.DeletedEventType:
+			err := fmt.Errorf("deleting directories is not yet implemented")
+			notifier.NotifyError(err)
+			publisher(directory.NewDeletedFailureEvent(err))
+
+		case directory.FileCreatedEventType:
+			err := fmt.Errorf("file creation is not yet implemented")
+			notifier.NotifyError(err)
+			publisher(directory.NewFileCreatedFailureEvent(err))
+
+		case directory.FileDeletedEventType:
+			e := evt.(directory.FileDeletedEvent)
+			if err := r.handleFileDeletion(ctx, e); err != nil {
+				notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
+				publisher(directory.NewFileDeletedFailureEvent(err))
 			}
+			publisher(directory.NewFileDeletedSuccessEvent(e.File()))
 
-			switch evt.Name() {
-			case directory.CreatedEventName:
-				if err := r.handleDirectoryCreation(ctx, s, evt.(directory.DirectoryEvent)); err != nil {
-					evt.CallErrorCallbacks(err)
-					notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
-				}
-				evt.CallSuccessCallbacks()
-
-			case directory.DeletedEventName:
-				notifier.NotifyError(fmt.Errorf("deleting directories is not yet implemented"))
-
-			case directory.FileCreatedEventName:
-				notifier.NotifyError(fmt.Errorf("file creation is not yet implemented"))
-
-			case directory.FileDeletedEventName:
-				if err := r.handleFileDeletion(ctx, s, evt.(directory.FileEvent)); err != nil {
-					evt.CallErrorCallbacks(err)
-					notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
-				}
-				evt.CallSuccessCallbacks()
-
-			case directory.ContentUploadedEventName:
-				if err := r.handleUpload(ctx, s, evt.(directory.ContentEvent)); err != nil {
-					evt.CallErrorCallbacks(err)
-					notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
-				}
-				evt.CallSuccessCallbacks()
-
-			case directory.ContentDownloadEventName:
-				if err := r.handleDownload(ctx, s, evt.(directory.ContentEvent)); err != nil {
-					evt.CallErrorCallbacks(err)
-					notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
-				}
-				evt.CallSuccessCallbacks()
-
-			default:
-				notifier.NotifyError(fmt.Errorf("unknown event: %s", evt.Name()))
+		case directory.ContentUploadedEventType:
+			e := evt.(directory.ContentUploadedEvent)
+			if err := r.handleUpload(ctx, e); err != nil {
+				notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
+				publisher(directory.NewContentUploadedFailureEvent(err))
 			}
+			publisher(directory.NewContentUploadedSuccessEvent(e.Directory(), e.Content()))
+
+		case directory.ContentDownloadEventType:
+			e := evt.(directory.ContentDownloadedEvent)
+			if err := r.handleDownload(ctx, e); err != nil {
+				notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
+				publisher(directory.NewContentDownloadedFailureEvent(err))
+			}
+			publisher(directory.NewContentDownloadedSuccessEvent(e.Content()))
 		}
 	}
 }

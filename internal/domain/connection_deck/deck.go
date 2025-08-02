@@ -1,7 +1,9 @@
 package connection_deck
 
+import "github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+
 // Deck represents a collection of connections and maintains a currently selected connection by its ID.
-// There is only one deck per user. The deck ensure the consistency of all operations performed over connections.
+// There is only one deck per user. The deck ensures the consistency of all operations performed over connections.
 type Deck struct {
 	connections []*Connection
 	selectedID  ConnectionID
@@ -23,10 +25,10 @@ func New(opts ...Option) *Deck {
 func (d *Deck) New(
 	name, accessKey, secretKey, bucket string,
 	options ...ConnectionOption,
-) *Connection {
+) CreateEvent {
 	conn := newConnection(name, accessKey, secretKey, bucket, options...)
 	d.connections = append(d.connections, conn)
-	return conn
+	return NewCreateEvent(d, conn)
 }
 
 // Get returns all the connections currently stored in the deck.
@@ -47,35 +49,34 @@ func (d *Deck) GetByID(id ConnectionID) (*Connection, error) {
 
 // Select sets the provided connection ID as the selected connection in the deck.
 // Returns ErrNotFound if the connection ID does not exist in the deck.
-func (d *Deck) Select(connID ConnectionID) error {
-	found := false
+func (d *Deck) Select(connID ConnectionID) (SelectEvent, error) {
 	for i, conn := range d.connections {
 		if connID.Is(conn) {
+			previous, _ := d.GetByID(d.selectedID)
 			d.selectedID = d.connections[i].ID()
-			found = true
+			return NewSelectEvent(d, conn, previous), nil
 		}
 	}
-	if !found {
-		return ErrNotFound
-	}
 
-	return nil
+	return SelectEvent{}, ErrNotFound
 }
 
 // RemoveAConnection removes a connection with the given ID from the deck.
 // If the connection is the currently selected one, the selection is reset.
 // Returns ErrNotFound if the connection ID does not exist in the deck.
-func (d *Deck) RemoveAConnection(connID ConnectionID) error {
+func (d *Deck) RemoveAConnection(connID ConnectionID) (RemoveEvent, error) {
 	for i, conn := range d.connections {
 		if connID.Is(conn) {
 			d.connections = append(d.connections[:i], d.connections[i+1:]...)
-			if d.selectedID.Is(conn) {
+			isSelected := d.selectedID.Is(conn)
+			if isSelected {
 				d.selectedID = nilConnectionID // Reset selected ID if removed
 			}
-			return nil
+			return NewRemoveEvent(d, conn, i, isSelected), nil
 		}
 	}
-	return ErrNotFound
+
+	return RemoveEvent{}, ErrNotFound
 }
 
 // SelectedConnection returns the currently selected connection or nil if no connection is selected.
@@ -89,4 +90,73 @@ func (d *Deck) SelectedConnection() *Connection {
 		}
 	}
 	return nil
+}
+
+func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (UpdateEvent, error) {
+	found := false
+	var connIdx int
+	var previous Connection
+	for i, conn := range d.connections {
+		if connID.Is(conn) {
+			found = true
+			connIdx = i
+			previous = *conn
+			break
+		}
+	}
+	if !found {
+		return UpdateEvent{}, ErrNotFound
+	}
+
+	for _, opt := range options {
+		opt(d.connections[connIdx])
+	}
+
+	return NewUpdateEvent(d, &previous, d.connections[connIdx]), nil
+}
+
+func (d *Deck) Notify(evt event.Event) {
+	switch evt.Type() {
+	case CreateEventType.AsFailure():
+		e := evt.(CreateFailureEvent)
+		for i, c := range d.connections {
+			if c.Is(e.Connection()) {
+				d.connections = append(d.connections[:i], d.connections[i+1:]...)
+				return
+			}
+		}
+
+	case SelectEventType.AsFailure():
+		e := evt.(SelectFailureEvent)
+		prev := e.Connection()
+		if prev != nil {
+			d.selectedID = prev.ID()
+		}
+
+	case RemoveEventType.AsFailure():
+		e := evt.(RemoveFailureEvent)
+		conn := e.Connection()
+		if conn != nil {
+			d.connections = append(
+				d.connections[:e.RemovedIndex()],
+				append(
+					[]*Connection{conn},
+					d.connections[e.RemovedIndex():]...,
+				)...,
+			)
+			if e.WasSelected() {
+				d.selectedID = conn.ID()
+			}
+		}
+
+	case UpdateEventType.AsFailure():
+		e := evt.(UpdateFailureEvent)
+		previous := e.Connection()
+		for i, conn := range d.connections {
+			if conn.Is(previous) {
+				d.connections[i] = previous
+				return
+			}
+		}
+	}
 }

@@ -1,46 +1,93 @@
 package directory
 
-import "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+import (
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+)
 
-type ContentEvent interface {
-	Event
-	Content() *Content
-}
+const (
+	ContentUploadedEventType event.Type = "event.content.uploaded"
+	ContentDownloadEventType event.Type = "event.content.downloaded"
+)
 
-type contentUploadedEvent struct {
-	baseEvent
+type withContent struct {
 	content *Content
 }
 
-var _ ContentEvent = &contentUploadedEvent{}
-
-func newContentUploadedEvent(connectionID connection_deck.ConnectionID, content *Content) contentUploadedEvent {
-	return contentUploadedEvent{baseEvent{connectionID, nil, nil, nil}, content}
-}
-
-func (e contentUploadedEvent) Name() string {
-	return ContentUploadedEventName
-}
-
-func (e contentUploadedEvent) Content() *Content {
+func (e withContent) Content() *Content {
 	return e.content
 }
 
-type contentDownloadedEvent struct {
-	baseEvent
-	content *Content
+type ContentUploadedEvent struct {
+	event.BaseEvent
+	withContent
+	withDirectory
 }
 
-var _ ContentEvent = &contentDownloadedEvent{}
-
-func newContentDownloadedEvent(connectionID connection_deck.ConnectionID, content *Content) contentDownloadedEvent {
-	return contentDownloadedEvent{baseEvent{connectionID, nil, nil, nil}, content}
+func NewContentUploadedEvent(directory *Directory, content *Content, opts ...event.Option) ContentUploadedEvent {
+	return ContentUploadedEvent{
+		event.NewBaseEvent(ContentUploadedEventType, opts...),
+		withContent{content},
+		withDirectory{directory},
+	}
 }
 
-func (e contentDownloadedEvent) Name() string {
-	return ContentDownloadEventName
+type ContentUploadedSuccessEvent struct {
+	event.BaseEvent
+	withContent
+	withDirectory
 }
 
-func (e contentDownloadedEvent) Content() *Content {
-	return e.content
+func NewContentUploadedSuccessEvent(directory *Directory, content *Content, opts ...event.Option) ContentUploadedSuccessEvent {
+	return ContentUploadedSuccessEvent{
+		event.NewBaseEvent(ContentUploadedEventType.AsSuccess(), opts...),
+		withContent{content},
+		withDirectory{directory},
+	}
+}
+
+type ContentUploadedFailureEvent struct {
+	event.BaseErrorEvent
+}
+
+func NewContentUploadedFailureEvent(err error) ContentUploadedFailureEvent {
+	return ContentUploadedFailureEvent{
+		event.NewBaseErrorEvent(ContentUploadedEventType.AsFailure(), err),
+	}
+}
+
+type ContentDownloadedEvent struct {
+	event.BaseEvent
+	withContent
+	withConnectionID
+}
+
+func NewContentDownloadedEvent(connectionID connection_deck.ConnectionID, content *Content, opts ...event.Option) ContentDownloadedEvent {
+	return ContentDownloadedEvent{
+		event.NewBaseEvent(ContentDownloadEventType, opts...),
+		withContent{content},
+		withConnectionID{connectionID},
+	}
+}
+
+type ContentDownloadedSuccessEvent struct {
+	event.BaseEvent
+	withContent
+}
+
+func NewContentDownloadedSuccessEvent(content *Content, opts ...event.Option) ContentDownloadedSuccessEvent {
+	return ContentDownloadedSuccessEvent{
+		event.NewBaseEvent(ContentDownloadEventType.AsSuccess(), opts...),
+		withContent{content},
+	}
+}
+
+type ContentDownloadedFailureEvent struct {
+	event.BaseErrorEvent
+}
+
+func NewContentDownloadedFailureEvent(err error) ContentDownloadedFailureEvent {
+	return ContentDownloadedFailureEvent{
+		event.NewBaseErrorEvent(ContentDownloadEventType.AsFailure(), err),
+	}
 }

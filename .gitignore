@@ -35,3 +35,4 @@ go.work.sum
 /s3box
 /.idea
 /.run
+/playground

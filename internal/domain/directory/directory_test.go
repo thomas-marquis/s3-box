@@ -94,11 +94,11 @@ func Test_NewSubDirectory_ShouldReturnEmptyDirectory(t *testing.T) {
 	// Then
 	assert.NoError(t, err)
 
-	assert.Equal(t, directory.CreatedEventName, evt.Name())
+	assert.Equal(t, directory.CreatedEventType, evt.Type())
 	assert.Equal(t, dir, evt.Directory())
 
 	newDir := evt.Directory()
-	assert.Equal(t, "subdir", newDir.Name(), "Name should be 'subdir'")
+	assert.Equal(t, "subdir", newDir.Name(), "Type should be 'subdir'")
 	assert.Equal(t, directory.NewPath("/dir/subdir/"), newDir.Path(), "Path should be '/dir/subdir/'")
 	assert.Len(t, dir.SubDirectories(), 1, "SubDirectories should contain one element")
 }
@@ -128,7 +128,7 @@ func Test_RemoveSubDirectory_ShouldRemoveSubDirectoryWhenExists(t *testing.T) {
 	// Then
 	assert.NoError(t, err)
 	assert.Len(t, dir.SubDirectories(), 0, "SubDirectories should be empty")
-	assert.Equal(t, directory.DeletedEventName, evt.Name())
+	assert.Equal(t, directory.DeletedEventType, evt.Type())
 	assert.Equal(t, dir.Path(), evt.Directory().ParentPath())
 }
 

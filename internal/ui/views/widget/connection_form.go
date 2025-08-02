@@ -12,7 +12,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
-type ConnDialogOnSubmitFunc func(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) error
+type ConnDialogOnSubmitFunc func(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption)
 
 type ConnectionForm struct {
 	widget.BaseWidget
@@ -40,10 +40,10 @@ func NewConnectionForm(
 
 func (w *ConnectionForm) CreateRenderer() fyne.WidgetRenderer {
 	awsForm := w.buildAWSForm()
-	awsForm.SubmitText = "Save"
+	awsForm.SubmitText = "saveDeck"
 
 	s3LikeForm := w.buildS3LikeForm()
-	s3LikeForm.SubmitText = "Save"
+	s3LikeForm.SubmitText = "saveDeck"
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem(
@@ -74,10 +74,9 @@ func (w *ConnectionForm) CreateRenderer() fyne.WidgetRenderer {
 func (w *ConnectionForm) AsDialog(label string) dialog.Dialog {
 	d := dialog.NewCustom(label, "cancel", w, w.appCtx.Window())
 	originalOnSubmit := w.handleOnSubmit
-	w.handleOnSubmit = func(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) error {
-		err := originalOnSubmit(name, accessKey, secretKey, bucket, options...)
+	w.handleOnSubmit = func(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) {
+		originalOnSubmit(name, accessKey, secretKey, bucket, options...)
 		d.Hide()
-		return err
 	}
 	d.Resize(fyne.NewSize(650, 200))
 	return d
@@ -153,21 +152,21 @@ func (w *ConnectionForm) buildAWSForm() *widget.Form {
 		readOnlyFormItem,
 	)
 	f.OnSubmit = func() {
-		if err := w.handleOnSubmit(
+		w.handleOnSubmit(
 			uiutils.GetString(nameData),
 			uiutils.GetString(accessKeyData),
 			uiutils.GetString(secretKeyData),
 			uiutils.GetString(bucketData),
 			connection_deck.AsAWS(uiutils.GetString(regionData)),
 			connection_deck.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
-		); err == nil {
-			nameData.Set("")
-			accessKeyData.Set("")
-			secretKeyData.Set("")
-			bucketData.Set("")
-			regionData.Set("")
-			readOnlyData.Set(false)
-		}
+		)
+		// TODO: reset the form content on success
+		//nameData.Set("")
+		//accessKeyData.Set("")
+		//secretKeyData.Set("")
+		//bucketData.Set("")
+		//regionData.Set("")
+		//readOnlyData.Set(false)
 	}
 
 	return f
@@ -249,22 +248,23 @@ func (w *ConnectionForm) buildS3LikeForm() *widget.Form {
 		readOnlyFormItem,
 	)
 	f.OnSubmit = func() {
-		if err := w.handleOnSubmit(
+		w.handleOnSubmit(
 			uiutils.GetString(nameData),
 			uiutils.GetString(accessKeyData),
 			uiutils.GetString(secretKeyData),
 			uiutils.GetString(bucketData),
 			connection_deck.AsS3Like(uiutils.GetString(serverData), uiutils.GetBool(useTlsData)),
 			connection_deck.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
-		); err == nil {
-			nameData.Set("")
-			accessKeyData.Set("")
-			secretKeyData.Set("")
-			serverData.Set("")
-			bucketData.Set("")
-			useTlsData.Set(false)
-			readOnlyData.Set(false)
-		}
+		)
+		// TODO reset the form content on success
+		//nameData.Set("")
+		//accessKeyData.Set("")
+		//secretKeyData.Set("")
+		//serverData.Set("")
+		//bucketData.Set("")
+		//useTlsData.Set(false)
+		//readOnlyData.Set(false)
+
 	}
 
 	return f

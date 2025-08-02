@@ -3,13 +3,13 @@ package viewmodel
 import (
 	"context"
 	"errors"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 
 	"fmt"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
-	"github.com/thomas-marquis/s3-box/internal/ui/uievent"
 	"path/filepath"
 	"sync"
 
@@ -75,7 +75,6 @@ type explorerViewModelImpl struct {
 	mu                  sync.Mutex
 	directoryRepository directory.Repository
 	tree                binding.UntypedTree
-	domainPublisher     *directory.EventPublisher
 
 	selectedConnection    binding.Untyped
 	selectedConnectionVal *connection_deck.Connection
@@ -87,24 +86,21 @@ type explorerViewModelImpl struct {
 	lastUploadDir             fyne.ListableURI
 	displayNoConnectionBanner binding.Bool
 
-	uiPublisher uievent.Publisher
-	notifier    notification.Repository
+	notifier notification.Repository
+	bus      event.Bus
 }
 
 func NewExplorerViewModel(
 	directoryRepository directory.Repository,
 	settingsVm SettingsViewModel,
-	domainPublisher *directory.EventPublisher,
-	uiPublisher uievent.Publisher,
 	notifier notification.Repository,
 	initialConnection *connection_deck.Connection,
+	bus event.Bus,
 ) ExplorerViewModel {
 	vm := &explorerViewModelImpl{
 		settingsVm:            settingsVm,
 		directoryRepository:   directoryRepository,
-		domainPublisher:       domainPublisher,
 		notifier:              notifier,
-		uiPublisher:           uiPublisher,
 		selectedConnectionVal: initialConnection,
 		selectedConnection:    binding.NewUntyped(),
 		loading:               binding.NewBool(),
@@ -118,6 +114,7 @@ func NewExplorerViewModel(
 		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err))
 	}
 
+	go vm.forwardDomainEvents()
 	go vm.listenUiEvents()
 
 	return vm
@@ -204,6 +201,19 @@ func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Dir
 	}
 	vm.domainPublisher.Publish(evt)
 	return vm.sync(dir)
+}
+
+func (vm *explorerViewModelImpl) uploadFile(localPath string, dir *directory.Directory) error {
+	if vm.selectedConnectionVal == nil {
+		return vm.notifier.NotifyError(ErrNoConnectionSelected)
+	}
+
+	evt, err := dir.UploadFile(localPath)
+	if err != nil {
+		return vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", err))
+	}
+	vm.domainPublisher.Publish(evt)
+	return nil
 }
 
 func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) error {
@@ -400,7 +410,46 @@ func (vm *explorerViewModelImpl) listenUiEvents() {
 				vm.selectedConnectionVal = nil
 				vm.selectedConnection.Set(nil)
 			}
-		}
 
+		case uievent.UploadFileType:
+			evt := event.(*uievent.UploadFile)
+			if err := vm.uploadFile(evt.LocalPath, evt.Directory); err != nil {
+				vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", err))
+				vm.uiPublisher.Publish(&uievent.UploadFileFailure{Error: err})
+			}
+
+		case uievent.UploadFileSuccessType:
+			evt := event.(*uievent.UploadFileSuccess)
+			if err := vm.sync(evt.Directory); err != nil {
+				vm.uiPublisher.Publish(&uievent.UploadFileFailure{Error: err})
+			}
+
+		case uievent.UploadFileFailureType:
+			evt := event.(*uievent.UploadFileFailure)
+			vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", evt.Error))
+		}
+	}
+}
+
+func (vm *explorerViewModelImpl) forwardDomainEvents() {
+	for event := range vm.domainPublisher.Subscribe() {
+		if evt := mapDomainEventToUiEvent(event); evt != nil {
+			vm.uiPublisher.Publish(evt)
+		}
+	}
+}
+
+func mapDomainEventToUiEvent(event directory.Event) uievent.UiEvent {
+	switch event.Type() {
+	case directory.ContentUploadedSuccessEventType:
+		evt := event.(directory.ContentUploadedSuccessEvent)
+		return &uievent.UploadFileSuccess{Directory: evt.Directory(), File: evt.Content().File()}
+
+	case directory.ContentUploadedFailureEventType:
+		evt := event.(directory.ContentUploadedFailureEvent)
+		return &uievent.UploadFileFailure{Error: evt.Error()}
+
+	default:
+		return nil
 	}
 }

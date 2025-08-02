@@ -113,7 +113,7 @@ func (w *DirectoryDetails) makeOnCreateDirectory(vm viewmodel.ExplorerViewModel,
 			"Create",
 			"Cancel",
 			[]*widget.FormItem{
-				widget.NewFormItem("Name", nameEntry),
+				widget.NewFormItem("Type", nameEntry),
 			},
 			func(ok bool) {
 				if !ok {

@@ -2,6 +2,7 @@ package directory
 
 import (
 	"fmt"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"path/filepath"
 	"strings"
 
@@ -15,8 +16,9 @@ const (
 )
 
 type Directory struct {
-	connectionID   connection_deck.ConnectionID
-	path           Path
+	connectionID connection_deck.ConnectionID
+	path         Path
+
 	name           string
 	parentPath     Path
 	subDirectories []Path
@@ -29,7 +31,7 @@ func New(
 	connectionID connection_deck.ConnectionID,
 	name string,
 	parentPath Path,
-	opts ...DirectoryOption,
+	opts ...Option,
 ) (*Directory, error) {
 	if name == RootDirName && parentPath != NilParentPath {
 		return nil, fmt.Errorf("directory name is empty")
@@ -70,7 +72,7 @@ func (d *Directory) IsRoot() bool {
 	return d.parentPath == NilParentPath && d.path == RootPath
 }
 
-func (d *Directory) GetFile(name FileName) (*File, error) { // TODO: rename to FileWithName
+func (d *Directory) GetFileByName(name FileName) (*File, error) {
 	for _, file := range d.files {
 		if file.Name() == name {
 			return file, nil
@@ -105,84 +107,124 @@ func (d *Directory) ConnectionID() connection_deck.ConnectionID {
 
 // NewSubDirectory reference a new subdirectory in the current one
 // returns an error when the subdirectory already exists
-func (d *Directory) NewSubDirectory(name string) (DirectoryEvent, error) {
+func (d *Directory) NewSubDirectory(name string) (CreatedEvent, error) {
 	path := d.path.NewSubPath(name)
 	for _, subDir := range d.subDirectories {
 		if subDir == path {
-			return nil, fmt.Errorf("subdirectory %s already exists", path)
+			return CreatedEvent{}, fmt.Errorf("subdirectory %s already exists", path)
 		}
 	}
 	newDir, err := New(d.connectionID, name, d.path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create sudirectory: %w", err)
+		return CreatedEvent{}, fmt.Errorf("failed to create sudirectory: %w", err)
 	}
 
-	d.subDirectories = append(d.subDirectories, newDir.path)
-
-	return newDirectoryCreatedEvent(d.connectionID, newDir), nil
+	return NewCreatedEvent(newDir), nil
 }
 
 // NewFile creates a new fileObj in the current directory
 // returns an error when the fileObj name is not valid or if the fileObj already exists
-func (d *Directory) NewFile(name string, opts ...FileOption) (FileEvent, error) {
+func (d *Directory) NewFile(name string, opts ...FileOption) (FileCreatedEvent, error) {
 	file, err := NewFile(name, d, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create fileObj: %w", err)
+		return FileCreatedEvent{}, fmt.Errorf("failed to create fileObj: %w", err)
 	}
 	for _, f := range d.files {
 		if f.Is(file) {
-			return nil, fmt.Errorf("fileObj %s already exists in directory %s", name, d.path)
+			return FileCreatedEvent{}, fmt.Errorf("fileObj %s already exists in directory %s", name, d.path)
 		}
 	}
-	d.files = append(d.files, file)
 
-	return newFileCreatedEvent(d.connectionID, file), nil
+	return NewFileCreatedEvent(d.connectionID, file), nil
 }
 
-func (d *Directory) RemoveFile(name FileName) (FileEvent, error) {
-	for i, file := range d.files {
+func (d *Directory) RemoveFile(name FileName) (FileDeletedEvent, error) {
+	for _, file := range d.files {
 		if file.Name() == name {
-			d.files = append(d.files[:i], d.files[i+1:]...)
-
-			return newFileDeletedEvent(d.connectionID, file), nil
+			return NewFileDeletedEvent(d.connectionID, file), nil
 		}
 	}
-	return fileDeletedEvent{}, ErrNotFound
+	return FileDeletedEvent{}, ErrNotFound
 }
 
-func (d *Directory) RemoveSubDirectory(name string) (DirectoryEvent, error) {
+func (d *Directory) RemoveSubDirectory(name string) (DeletedEvent, error) {
 	path := d.parentPath.NewSubPath(name)
 	for i, subDirPath := range d.subDirectories {
 		if subDirPath == path {
 			d.subDirectories = append(d.subDirectories[:i], d.subDirectories[i+1:]...)
-			return newDirectoryDeletedEvent(d.connectionID, d), nil
+			return NewDeletedEvent(d, path), nil
 		}
 	}
-	return directoryDeletedEvent{}, ErrNotFound
+	return DeletedEvent{}, ErrNotFound
 }
 
-func (d *Directory) UploadFile(localPath string) (ContentEvent, error) {
+func (d *Directory) UploadFile(localPath string) (ContentUploadedEvent, error) {
 	fileName := filepath.Base(localPath)
 	newFileEvt, err := d.NewFile(fileName)
 	if err != nil {
-		return nil, err
+		return ContentUploadedEvent{}, err
 	}
 	newFile := newFileEvt.File()
 
-	uploadedEvt := newContentUploadedEvent(d.connectionID, NewFileContent(newFile, FromLocalFile(localPath)))
-	uploadedEvt.AttachErrorCallback(func(_ error) {
-		d.RemoveFile(newFile.Name())
-	})
+	uploadedEvt := NewContentUploadedEvent(d, NewFileContent(newFile, FromLocalFile(localPath)))
 
 	return uploadedEvt, nil
 }
 
-func (d *Directory) Equal(other *Directory) bool {
+// Notify processes of various event types and updates the state of the directory accordingly.
+func (d *Directory) Notify(evt event.Event) {
+	switch evt.Type() {
+	case DeletedEventType.AsSuccess():
+		e := evt.(DeletedEvent)
+		for i, subDirPath := range d.subDirectories {
+			if subDirPath == e.DeletedDirPath() {
+				d.subDirectories = append(d.subDirectories[:i], d.subDirectories[i+1:]...)
+				return
+			}
+		}
+
+	case FileDeletedEventType.AsSuccess():
+		e := evt.(FileDeletedEvent)
+		for i, file := range d.files {
+			if file.Name() == e.File().Name() {
+				d.files = append(d.files[:i], d.files[i+1:]...)
+				return
+			}
+		}
+
+	case FileCreatedEventType.AsSuccess():
+		e := evt.(FileCreatedEvent)
+		d.files = append(d.files, e.File())
+
+	case CreatedEventType.AsSuccess():
+		e := evt.(CreatedEvent)
+		d.subDirectories = append(d.subDirectories, e.Directory().Path())
+
+	case ContentUploadedEventType.AsSuccess():
+		e := evt.(ContentUploadedEvent)
+		newFile := e.Content().File()
+		for i, file := range d.files {
+			if file.Name() == newFile.Name() {
+				// If a file with the same name has been created in the meantime, we overwrite it
+				d.files[i] = newFile
+				return
+			}
+		}
+		d.files = append(d.files, newFile)
+	}
+}
+
+// Is checks if the current directory is equivalent to another in their identity.
+func (d *Directory) Is(other *Directory) bool {
 	if other == nil {
 		return false
 	}
+	return d.path == other.path && d.connectionID == other.connectionID
+}
 
-	if d.path == other.path {
+// Equal compares the current directory by identity and value.
+func (d *Directory) Equal(other *Directory) bool {
+	if !d.Is(other) {
 		return false
 	}
 

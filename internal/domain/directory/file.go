@@ -82,6 +82,6 @@ func (f *File) FullPath() string {
 	return f.directoryPath.String() + f.name.String()
 }
 
-func (f *File) Download(connID connection_deck.ConnectionID, toPath string) ContentEvent {
-	return newContentDownloadedEvent(connID, NewFileContent(f, FromLocalFile(toPath)))
+func (f *File) Download(connID connection_deck.ConnectionID, toPath string) ContentDownloadedEvent {
+	return NewContentDownloadedEvent(connID, NewFileContent(f, FromLocalFile(toPath)))
 }

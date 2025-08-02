@@ -11,7 +11,12 @@ import (
 	"strings"
 )
 
-func (r *S3DirectoryRepository) handleDirectoryCreation(ctx context.Context, sess *s3Session, evt directory.DirectoryEvent) error {
+func (r *S3DirectoryRepository) handleDirectoryCreation(ctx context.Context, evt directory.CreatedEvent) error {
+	sess, err := r.getSession(ctx, evt.Directory().ConnectionID())
+	if err != nil {
+		return err
+	}
+
 	newDir := evt.Directory()
 	if newDir == nil {
 		return fmt.Errorf("directory path is empty for created event")
@@ -29,7 +34,12 @@ func (r *S3DirectoryRepository) handleDirectoryCreation(ctx context.Context, ses
 	return nil
 }
 
-func (r *S3DirectoryRepository) handleFileDeletion(ctx context.Context, sess *s3Session, evt directory.FileEvent) error {
+func (r *S3DirectoryRepository) handleFileDeletion(ctx context.Context, evt directory.FileDeletedEvent) error {
+	sess, err := r.getSession(ctx, evt.ConnectionID())
+	if err != nil {
+		return err
+	}
+
 	file := evt.File()
 	if file == nil {
 		return fmt.Errorf("file is nil for deletion event")
@@ -47,7 +57,12 @@ func (r *S3DirectoryRepository) handleFileDeletion(ctx context.Context, sess *s3
 	return nil
 }
 
-func (r *S3DirectoryRepository) handleUpload(ctx context.Context, sess *s3Session, evt directory.ContentEvent) error {
+func (r *S3DirectoryRepository) handleUpload(ctx context.Context, evt directory.ContentUploadedEvent) error {
+	sess, err := r.getSession(ctx, evt.Directory().ConnectionID())
+	if err != nil {
+		return err
+	}
+
 	content := evt.Content()
 	if content == nil {
 		return fmt.Errorf("content is nil for upload event")
@@ -75,7 +90,12 @@ func (r *S3DirectoryRepository) handleUpload(ctx context.Context, sess *s3Sessio
 	return nil
 }
 
-func (r *S3DirectoryRepository) handleDownload(ctx context.Context, sess *s3Session, evt directory.ContentEvent) error {
+func (r *S3DirectoryRepository) handleDownload(ctx context.Context, evt directory.ContentDownloadedEvent) error {
+	sess, err := r.getSession(ctx, evt.ConnectionID())
+	if err != nil {
+		return err
+	}
+
 	downloader := s3manager.NewDownloader(sess.session)
 
 	file, err := evt.Content().Open()
