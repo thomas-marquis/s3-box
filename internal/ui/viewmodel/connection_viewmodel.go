@@ -15,6 +15,8 @@ var errConnNotInBinding = fmt.Errorf("connection not found in binding list")
 
 // ConnectionViewModel provides methods to manage, update, and query connections within the application.
 type ConnectionViewModel interface {
+	ViewModel
+
 	////////////////////////
 	// State methods
 	////////////////////////
@@ -25,16 +27,8 @@ type ConnectionViewModel interface {
 	// Deck return user's connections deck
 	Deck() *connection_deck.Deck
 
-	// ErrorMessage returns a binding.String that provides access to the current error messages for the connection view model.
-	// When an error occurred, the contained string is set.
-	ErrorMessage() binding.String
-
 	// IsReadOnly returns true if the connection view model is in a read-only state, otherwise false.
 	IsReadOnly() bool
-
-	Loading() binding.Bool
-
-	IsLoading() bool
 
 	////////////////////////
 	// Action methods
@@ -56,6 +50,8 @@ type ConnectionViewModel interface {
 }
 
 type connectionViewModelImpl struct {
+	baseViewModel
+
 	connectionRepository connection_deck.Repository
 	settingsViewModel    SettingsViewModel
 	connBindings         binding.UntypedList
@@ -63,8 +59,6 @@ type connectionViewModelImpl struct {
 	notifier             notification.Repository
 	onChangeCallbacks    []func(*connection_deck.Connection)
 	bus                  event.Bus
-	errorMsgBinding      binding.String
-	loading              binding.Bool
 }
 
 func NewConnectionViewModel(
@@ -91,6 +85,11 @@ func NewConnectionViewModel(
 	loading.Set(false)
 
 	vm := &connectionViewModelImpl{
+		baseViewModel: baseViewModel{
+			loading:      binding.NewBool(),
+			errorMessage: binding.NewString(),
+			infoMessage:  binding.NewString(),
+		},
 		connectionRepository: connectionRepository,
 		settingsViewModel:    settingsViewModel,
 		connBindings:         c,
@@ -98,8 +97,6 @@ func NewConnectionViewModel(
 		notifier:             notifier,
 		onChangeCallbacks:    make([]func(*connection_deck.Connection), 0),
 		bus:                  bus,
-		errorMsgBinding:      errorMsgBinding,
-		loading:              loading,
 	}
 
 	vm.initConnections(deck)
@@ -117,19 +114,6 @@ func (vm *connectionViewModelImpl) Connections() binding.UntypedList {
 
 func (vm *connectionViewModelImpl) Deck() *connection_deck.Deck {
 	return vm.deck
-}
-
-func (vm *connectionViewModelImpl) ErrorMessage() binding.String {
-	return vm.errorMsgBinding
-}
-
-func (vm *connectionViewModelImpl) Loading() binding.Bool {
-	return vm.loading
-}
-
-func (vm *connectionViewModelImpl) IsLoading() bool {
-	val, _ := vm.loading.Get()
-	return val
 }
 
 func (vm *connectionViewModelImpl) Update(
@@ -256,7 +240,7 @@ func (vm *connectionViewModelImpl) listenUiEvents() {
 
 		case connection_deck.SelectEventType.AsFailure():
 			e := evt.(connection_deck.SelectFailureEvent)
-			vm.errorMsgBinding.Set(e.Error().Error())
+			vm.errorMessage.Set(e.Error().Error())
 			vm.deck.Notify(evt)
 			vm.loading.Set(false)
 
@@ -274,7 +258,7 @@ func (vm *connectionViewModelImpl) listenUiEvents() {
 
 		case connection_deck.CreateEventType.AsFailure():
 			e := evt.(connection_deck.CreateFailureEvent)
-			vm.errorMsgBinding.Set(e.Error().Error())
+			vm.errorMessage.Set(e.Error().Error())
 			vm.deck.Notify(evt)
 			vm.loading.Set(false)
 
@@ -292,7 +276,7 @@ func (vm *connectionViewModelImpl) listenUiEvents() {
 
 		case connection_deck.RemoveEventType.AsFailure():
 			e := evt.(connection_deck.RemoveFailureEvent)
-			vm.errorMsgBinding.Set(e.Error().Error())
+			vm.errorMessage.Set(e.Error().Error())
 			vm.deck.Notify(evt)
 			vm.loading.Set(false)
 
@@ -312,7 +296,7 @@ func (vm *connectionViewModelImpl) listenUiEvents() {
 
 		case connection_deck.UpdateEventType.AsFailure():
 			e := evt.(connection_deck.UpdateFailureEvent)
-			vm.errorMsgBinding.Set(e.Error().Error())
+			vm.errorMessage.Set(e.Error().Error())
 			vm.deck.Notify(evt)
 			vm.loading.Set(false)
 

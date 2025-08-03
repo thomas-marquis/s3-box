@@ -22,13 +22,7 @@ import (
 // It handles the tree structure display, file operations, and directory management
 // while maintaining the connection with the underlying storage system.
 type ExplorerViewModel interface {
-	Loading() binding.Bool
-
-	IsLoading() bool
-
-	ErrorMessage() binding.String
-
-	InfoMessage() binding.String
+	ViewModel
 
 	////////////////////////
 	// State methods
@@ -78,6 +72,8 @@ type ExplorerViewModel interface {
 }
 
 type explorerViewModelImpl struct {
+	baseViewModel
+
 	mu                  sync.Mutex
 	directoryRepository directory.Repository
 	tree                binding.UntypedTree
@@ -85,14 +81,10 @@ type explorerViewModelImpl struct {
 	selectedConnection    binding.Untyped
 	selectedConnectionVal *connection_deck.Connection
 
-	loading binding.Bool
-
 	settingsVm                SettingsViewModel
 	lastDownloadLocation      fyne.ListableURI
 	lastUploadDir             fyne.ListableURI
 	displayNoConnectionBanner binding.Bool
-	errorMessage              binding.String
-	infoMessage               binding.String
 
 	notifier notification.Repository
 	bus      event.Bus
@@ -106,15 +98,17 @@ func NewExplorerViewModel(
 	bus event.Bus,
 ) ExplorerViewModel {
 	vm := &explorerViewModelImpl{
+		baseViewModel: baseViewModel{
+			loading:      binding.NewBool(),
+			errorMessage: binding.NewString(),
+			infoMessage:  binding.NewString(),
+		},
 		settingsVm:            settingsVm,
 		directoryRepository:   directoryRepository,
 		notifier:              notifier,
 		selectedConnectionVal: initialConnection,
 		selectedConnection:    binding.NewUntyped(),
-		loading:               binding.NewBool(),
 		bus:                   bus,
-		errorMessage:          binding.NewString(),
-		infoMessage:           binding.NewString(),
 	}
 
 	if err := vm.initializeTreeData(initialConnection); err != nil {
@@ -125,7 +119,7 @@ func NewExplorerViewModel(
 		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err))
 	}
 
-	go vm.listenUiEvents()
+	go vm.listenEvents()
 
 	return vm
 }
@@ -140,23 +134,6 @@ func (vm *explorerViewModelImpl) SelectedConnection() binding.Untyped {
 
 func (vm *explorerViewModelImpl) CurrentSelectedConnection() *connection_deck.Connection {
 	return vm.selectedConnectionVal
-}
-
-func (vm *explorerViewModelImpl) Loading() binding.Bool {
-	return vm.loading
-}
-
-func (vm *explorerViewModelImpl) IsLoading() bool {
-	val, _ := vm.loading.Get()
-	return val
-}
-
-func (vm *explorerViewModelImpl) ErrorMessage() binding.String {
-	return vm.errorMessage
-}
-
-func (vm *explorerViewModelImpl) InfoMessage() binding.String {
-	return vm.infoMessage
 }
 
 func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error {
@@ -316,33 +293,6 @@ func (vm *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connectio
 	return nil
 }
 
-func (vm *explorerViewModelImpl) updateTreeUnder(dir *directory.Directory) error {
-	dirNodeItem, err := vm.tree.GetValue(dir.Path().String())
-	if err != nil {
-		return fmt.Errorf("impossible to retreive the direcotry you want to refresh: %s", dir.Path().String())
-	}
-	dirNode, ok := dirNodeItem.(node.DirectoryNode)
-	if !ok {
-		return fmt.Errorf("impossible to cast the item to TreeNode: %s", dir.Path().String())
-	}
-
-	if dirNode.IsLoaded() {
-		if err := vm.resetSubTree(dirNode); err != nil {
-			return fmt.Errorf("error resetting sub tree: %w", err)
-		}
-	} else {
-		if err := dirNode.Load(dir); err != nil {
-			return fmt.Errorf("error loading directory in the explorer tree: %w", err)
-		}
-	}
-
-	if err := vm.fillSubTree(dirNode, dir); err != nil {
-		return fmt.Errorf("error filling sub tree: %w", err)
-	}
-
-	return nil
-}
-
 func (vm *explorerViewModelImpl) fetchDirectory(dirID directory.Path) (*directory.Directory, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
 	defer cancel()
@@ -387,6 +337,14 @@ func (vm *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Direc
 	return nil
 }
 
+func (vm *explorerViewModelImpl) addNewFileToTree(fileToAdd *directory.File) error {
+	newFileNode := node.NewFileNode(fileToAdd)
+	if err := vm.tree.Append(fileToAdd.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
+		return fmt.Errorf("error appending file to tree: %w", err)
+	}
+	return nil
+}
+
 func (vm *explorerViewModelImpl) resetSubTree(startNode node.DirectoryNode) error {
 	return vm.tree.Remove(startNode.ID())
 }
@@ -396,7 +354,7 @@ func (vm *explorerViewModelImpl) removeFileFromTree(file *directory.File) error 
 	return vm.tree.Remove(fileNodePath)
 }
 
-func (vm *explorerViewModelImpl) listenUiEvents() {
+func (vm *explorerViewModelImpl) listenEvents() {
 	for evt := range vm.bus.Subscribe() {
 		switch evt.Type() {
 		case connection_deck.SelectEventType.AsSuccess():
@@ -429,7 +387,7 @@ func (vm *explorerViewModelImpl) listenUiEvents() {
 
 		case directory.ContentUploadedEventType.AsSuccess():
 			e := evt.(directory.ContentUploadedSuccessEvent)
-			if err := vm.updateTreeUnder(e.Directory()); err != nil {
+			if err := vm.addNewFileToTree(e.Content().File()); err != nil {
 				vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, e.Directory()))
 				vm.loading.Set(false)
 				continue
