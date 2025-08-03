@@ -125,7 +125,7 @@ func (d *Directory) NewSubDirectory(name string) (CreatedEvent, error) {
 // NewFile creates a new fileObj in the current directory
 // returns an error when the fileObj name is not valid or if the fileObj already exists
 func (d *Directory) NewFile(name string, opts ...FileOption) (FileCreatedEvent, error) {
-	file, err := NewFile(name, d, opts...)
+	file, err := NewFile(name, d.Path(), opts...)
 	if err != nil {
 		return FileCreatedEvent{}, fmt.Errorf("failed to create fileObj: %w", err)
 	}

@@ -56,7 +56,9 @@ func NewS3DirectoryRepository(
 	return r, nil
 }
 
-func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connection_deck.ConnectionID, path directory.Path) (*directory.Directory, error) {
+func (r *S3DirectoryRepository) GetByPath(
+	ctx context.Context, connID connection_deck.ConnectionID, path directory.Path,
+) (*directory.Directory, error) {
 	searchKey := mapPathToSearchKey(path)
 
 	s, err := r.getSession(ctx, connID)
@@ -71,8 +73,6 @@ func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connection
 		MaxKeys:   aws.Int64(1000),
 	}
 
-	var dir directory.Directory
-
 	files := make([]*directory.File, 0)
 	subDirectoriesPaths := make([]directory.Path, 0)
 
@@ -82,7 +82,7 @@ func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connection
 			if key == searchKey {
 				continue
 			}
-			f, err := directory.NewFile(mapKeyToObjectName(key), &dir,
+			f, err := directory.NewFile(mapKeyToObjectName(key), path,
 				directory.WithFileSize(int(*obj.Size)),
 				directory.WithFileLastModified(*obj.LastModified),
 			)
@@ -110,18 +110,21 @@ func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connection
 		return nil, r.manageAwsSdkError(err, searchKey, s)
 	}
 
-	temp, err := directory.New(connID, path.DirectoryName(), path.ParentPath(),
+	dir, err := directory.New(connID, path.DirectoryName(), path.ParentPath(),
 		directory.WithFiles(files),
 		directory.WithSubDirectories(subDirectoriesPaths))
 	if err != nil {
 		return nil, fmt.Errorf("GetByID: %w", err)
 	}
-	dir = *temp
 
-	return &dir, nil
+	return dir, nil
 }
 
-func (r *S3DirectoryRepository) GetFileContent(ctx context.Context, connId connection_deck.ConnectionID, file *directory.File) (*directory.Content, error) {
+func (r *S3DirectoryRepository) GetFileContent(
+	ctx context.Context,
+	connId connection_deck.ConnectionID,
+	file *directory.File,
+) (*directory.Content, error) {
 	s, err := r.getSession(ctx, connId)
 	if err != nil {
 		return nil, fmt.Errorf("GetFileContent: %w", err)

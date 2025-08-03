@@ -31,14 +31,14 @@ type File struct {
 	lastModified  time.Time
 }
 
-func NewFile(name string, dir *Directory, opts ...FileOption) (*File, error) {
+func NewFile(name string, parentPath Path, opts ...FileOption) (*File, error) {
 	fileName, err := NewFileName(name)
 	if err != nil {
 		return nil, err
 	}
 	f := &File{
 		name:          fileName,
-		directoryPath: dir.Path(),
+		directoryPath: parentPath,
 	}
 	for _, opt := range opts {
 		opt(f)
