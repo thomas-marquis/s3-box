@@ -99,8 +99,7 @@ func (r *S3DirectoryRepository) GetByPath(
 			s3Prefix := *obj.Prefix
 			isDir := strings.HasSuffix(s3Prefix, "/")
 			if isDir {
-				subPath := directory.NewPath(mapKeyToObjectName(s3Prefix))
-				subDirectoriesPaths = append(subDirectoriesPaths, subPath)
+				subDirectoriesPaths = append(subDirectoriesPaths, directory.NewPath(s3Prefix))
 			}
 		}
 		return !lastPage
