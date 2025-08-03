@@ -58,3 +58,10 @@ func (p Path) NewSubPath(name string) Path {
 	}
 	return NewPath(p.String() + name)
 }
+
+func (p Path) Is(dir *Directory) bool {
+	if dir == nil {
+		return false
+	}
+	return dir.Path() == p
+}

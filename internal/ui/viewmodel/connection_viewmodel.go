@@ -25,9 +25,9 @@ type ConnectionViewModel interface {
 	// Deck return user's connections deck
 	Deck() *connection_deck.Deck
 
-	// ErrorMessages returns a binding.String that provides access to the current error messages for the connection view model.
+	// ErrorMessage returns a binding.String that provides access to the current error messages for the connection view model.
 	// When an error occurred, the contained string is set.
-	ErrorMessages() binding.String
+	ErrorMessage() binding.String
 
 	// IsReadOnly returns true if the connection view model is in a read-only state, otherwise false.
 	IsReadOnly() bool
@@ -119,7 +119,7 @@ func (vm *connectionViewModelImpl) Deck() *connection_deck.Deck {
 	return vm.deck
 }
 
-func (vm *connectionViewModelImpl) ErrorMessages() binding.String {
+func (vm *connectionViewModelImpl) ErrorMessage() binding.String {
 	return vm.errorMsgBinding
 }
 

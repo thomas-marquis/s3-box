@@ -48,11 +48,13 @@ func NewContentUploadedSuccessEvent(directory *Directory, content *Content, opts
 
 type ContentUploadedFailureEvent struct {
 	event.BaseErrorEvent
+	withDirectory
 }
 
-func NewContentUploadedFailureEvent(err error) ContentUploadedFailureEvent {
+func NewContentUploadedFailureEvent(err error, dir *Directory) ContentUploadedFailureEvent {
 	return ContentUploadedFailureEvent{
 		event.NewBaseErrorEvent(ContentUploadedEventType.AsFailure(), err),
+		withDirectory{dir},
 	}
 }
 

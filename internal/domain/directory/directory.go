@@ -175,36 +175,36 @@ func (d *Directory) UploadFile(localPath string) (ContentUploadedEvent, error) {
 func (d *Directory) Notify(evt event.Event) {
 	switch evt.Type() {
 	case DeletedEventType.AsSuccess():
-		e := evt.(DeletedEvent)
+		e := evt.(DeletedSuccessEvent)
 		for i, subDirPath := range d.subDirectories {
-			if subDirPath == e.DeletedDirPath() {
+			if subDirPath.Is(e.Directory()) {
 				d.subDirectories = append(d.subDirectories[:i], d.subDirectories[i+1:]...)
 				return
 			}
 		}
 
 	case FileDeletedEventType.AsSuccess():
-		e := evt.(FileDeletedEvent)
+		e := evt.(FileDeletedSuccessEvent)
 		for i, file := range d.files {
-			if file.Name() == e.File().Name() {
+			if file.Is(e.File()) {
 				d.files = append(d.files[:i], d.files[i+1:]...)
 				return
 			}
 		}
 
 	case FileCreatedEventType.AsSuccess():
-		e := evt.(FileCreatedEvent)
+		e := evt.(FileCreatedSuccessEvent)
 		d.files = append(d.files, e.File())
 
 	case CreatedEventType.AsSuccess():
-		e := evt.(CreatedEvent)
+		e := evt.(CreatedSuccessEvent)
 		d.subDirectories = append(d.subDirectories, e.Directory().Path())
 
 	case ContentUploadedEventType.AsSuccess():
-		e := evt.(ContentUploadedEvent)
+		e := evt.(ContentUploadedSuccessEvent)
 		newFile := e.Content().File()
 		for i, file := range d.files {
-			if file.Name() == newFile.Name() {
+			if file.Is(newFile) {
 				// If a file with the same name has been created in the meantime, we overwrite it
 				d.files[i] = newFile
 				return

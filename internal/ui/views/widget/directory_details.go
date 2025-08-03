@@ -89,10 +89,7 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 			}
 
 			localDestFilePath := reader.URI().Path()
-			if err := vm.UploadFile(localDestFilePath, dir); err != nil {
-				dialog.ShowError(err, w.appCtx.Window())
-				return
-			}
+			vm.UploadFile(localDestFilePath, dir)
 			if err := vm.UpdateLastUploadLocation(localDestFilePath); err != nil {
 				dialog.ShowError(err, w.appCtx.Window())
 				return

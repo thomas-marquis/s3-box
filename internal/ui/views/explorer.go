@@ -1,6 +1,8 @@
 package views
 
 import (
+	"fmt"
+	"fyne.io/fyne/v2/dialog"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
@@ -41,6 +43,15 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 			noConn.Hide()
 			content.Show()
 		}
+	}))
+
+	vm.ErrorMessage().AddListener(binding.NewDataListener(func() {
+		msg, _ := vm.ErrorMessage().Get()
+		if msg == "" {
+			return
+		}
+		dialog.ShowError(fmt.Errorf(msg), appCtx.Window())
+		vm.ErrorMessage().Set("")
 	}))
 
 	detailsContainer := container.NewVBox()

@@ -184,7 +184,7 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 			e := evt.(directory.ContentUploadedEvent)
 			if err := r.handleUpload(ctx, e); err != nil {
 				notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
-				publisher(directory.NewContentUploadedFailureEvent(err))
+				publisher(directory.NewContentUploadedFailureEvent(err, e.Directory()))
 			}
 			publisher(directory.NewContentUploadedSuccessEvent(e.Directory(), e.Content()))
 

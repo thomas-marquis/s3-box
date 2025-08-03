@@ -41,6 +41,10 @@ type ExplorerViewModel interface {
 
 	Loading() binding.Bool
 
+	IsLoading() bool
+
+	ErrorMessage() binding.String
+
 	////////////////////////
 	// Action methods
 	////////////////////////
@@ -56,7 +60,7 @@ type ExplorerViewModel interface {
 	DownloadFile(f *directory.File, dest string) error
 
 	// UploadFile uploads a local file to the specified remote directory
-	UploadFile(localPath string, dir *directory.Directory) error
+	UploadFile(localPath string, dir *directory.Directory)
 
 	// DeleteFile removes a file from storage and updates the tree
 	DeleteFile(file *directory.File) error
@@ -85,6 +89,7 @@ type explorerViewModelImpl struct {
 	lastDownloadLocation      fyne.ListableURI
 	lastUploadDir             fyne.ListableURI
 	displayNoConnectionBanner binding.Bool
+	errorMessage              binding.String
 
 	notifier notification.Repository
 	bus      event.Bus
@@ -104,6 +109,8 @@ func NewExplorerViewModel(
 		selectedConnectionVal: initialConnection,
 		selectedConnection:    binding.NewUntyped(),
 		loading:               binding.NewBool(),
+		bus:                   bus,
+		errorMessage:          binding.NewString(),
 	}
 
 	if err := vm.initializeTreeData(initialConnection); err != nil {
@@ -134,6 +141,15 @@ func (vm *explorerViewModelImpl) CurrentSelectedConnection() *connection_deck.Co
 
 func (vm *explorerViewModelImpl) Loading() binding.Bool {
 	return vm.loading
+}
+
+func (vm *explorerViewModelImpl) IsLoading() bool {
+	val, _ := vm.loading.Get()
+	return val
+}
+
+func (vm *explorerViewModelImpl) ErrorMessage() binding.String {
+	return vm.errorMessage
 }
 
 func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error {
@@ -190,30 +206,20 @@ func (vm *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) er
 	return nil
 }
 
-func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory) error {
+func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory) {
 	if vm.selectedConnectionVal == nil {
-		return vm.notifier.NotifyError(ErrNoConnectionSelected)
+		err := vm.notifier.NotifyError(ErrNoConnectionSelected)
+		vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
+		return
 	}
 
 	evt, err := dir.UploadFile(localPath)
 	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", err))
+		err := vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", err))
+		vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
+		return
 	}
-	vm.domainPublisher.Publish(evt)
-	return vm.sync(dir)
-}
-
-func (vm *explorerViewModelImpl) uploadFile(localPath string, dir *directory.Directory) error {
-	if vm.selectedConnectionVal == nil {
-		return vm.notifier.NotifyError(ErrNoConnectionSelected)
-	}
-
-	evt, err := dir.UploadFile(localPath)
-	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", err))
-	}
-	vm.domainPublisher.Publish(evt)
-	return nil
+	vm.bus.Publish(evt)
 }
 
 func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) error {
@@ -387,11 +393,11 @@ func (vm *explorerViewModelImpl) fillSubTree(startNode node.DirectoryNode, dir *
 }
 
 func (vm *explorerViewModelImpl) listenUiEvents() {
-	for event := range vm.uiPublisher.Subscribe() {
-		switch event.Type() {
-		case uievent.SelectConnectionSuccessType:
-			evt := event.(*uievent.SelectConnectionSuccess)
-			conn := evt.Connection
+	for evt := range vm.bus.Subscribe() {
+		switch evt.Type() {
+		case connection_deck.SelectEventType.AsSuccess():
+			e := evt.(connection_deck.SelectSuccessEvent)
+			conn := e.Connection()
 			hasChanged := (vm.selectedConnectionVal == nil && conn != nil) ||
 				(vm.selectedConnectionVal != nil && conn == nil) ||
 				(vm.selectedConnectionVal != nil && !vm.selectedConnectionVal.Is(conn))
@@ -403,29 +409,39 @@ func (vm *explorerViewModelImpl) listenUiEvents() {
 				vm.loading.Set(false)
 			}
 
-		case uievent.DeleteConnectionSuccessType:
-			evt := event.(*uievent.SelectConnectionSuccess)
-			conn := evt.Connection
+		case connection_deck.RemoveEventType.AsSuccess():
+			e := evt.(connection_deck.RemoveSuccessEvent)
+			conn := e.Connection()
 			if vm.selectedConnectionVal != nil && vm.selectedConnectionVal.Is(conn) {
 				vm.selectedConnectionVal = nil
 				vm.selectedConnection.Set(nil)
 			}
 
-		case uievent.UploadFileType:
-			evt := event.(*uievent.UploadFile)
-			if err := vm.uploadFile(evt.LocalPath, evt.Directory); err != nil {
-				vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", err))
-				vm.uiPublisher.Publish(&uievent.UploadFileFailure{Error: err})
+		case directory.ContentUploadedEventType:
+			if vm.IsLoading() {
+				continue
 			}
+			vm.loading.Set(true)
+
+		case directory.ContentUploadedEventType.AsSuccess():
+			e := evt.(directory.ContentUploadedEvent)
+			e.Directory().Notify(e)
+			vm.loading.Set(false)
+
+		case directory.ContentUploadedEventType.AsFailure():
+			e := evt.(directory.ContentUploadedFailureEvent)
+			e.Directory().Notify(e)
+			vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", e.Error()))
+			vm.loading.Set(false)
 
 		case uievent.UploadFileSuccessType:
-			evt := event.(*uievent.UploadFileSuccess)
+			evt := evt.(*uievent.UploadFileSuccess)
 			if err := vm.sync(evt.Directory); err != nil {
 				vm.uiPublisher.Publish(&uievent.UploadFileFailure{Error: err})
 			}
 
 		case uievent.UploadFileFailureType:
-			evt := event.(*uievent.UploadFileFailure)
+			evt := evt.(*uievent.UploadFileFailure)
 			vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", evt.Error))
 		}
 	}

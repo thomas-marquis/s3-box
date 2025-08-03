@@ -19,13 +19,13 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 	connectionsList := widget.NewConnectionList(appCtx)
 	vm := appCtx.ConnectionViewModel()
 
-	vm.ErrorMessages().AddListener(binding.NewDataListener(func() {
-		msg, _ := vm.ErrorMessages().Get()
+	vm.ErrorMessage().AddListener(binding.NewDataListener(func() {
+		msg, _ := vm.ErrorMessage().Get()
 		if msg == "" {
 			return
 		}
 		dialog.ShowError(fmt.Errorf(msg), appCtx.Window())
-		vm.ErrorMessages().Set("")
+		vm.ErrorMessage().Set("")
 	}))
 
 	createBtn := fyne_widget.NewButtonWithIcon(
