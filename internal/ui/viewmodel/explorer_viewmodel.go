@@ -22,6 +22,14 @@ import (
 // It handles the tree structure display, file operations, and directory management
 // while maintaining the connection with the underlying storage system.
 type ExplorerViewModel interface {
+	Loading() binding.Bool
+
+	IsLoading() bool
+
+	ErrorMessage() binding.String
+
+	InfoMessage() binding.String
+
 	////////////////////////
 	// State methods
 	////////////////////////
@@ -38,14 +46,6 @@ type ExplorerViewModel interface {
 
 	// LastUploadLocation returns the URI of the last used upload directory
 	LastUploadLocation() fyne.ListableURI
-
-	Loading() binding.Bool
-
-	IsLoading() bool
-
-	ErrorMessage() binding.String
-
-	InfoMessage() binding.String
 
 	////////////////////////
 	// Action methods

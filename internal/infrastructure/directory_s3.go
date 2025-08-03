@@ -71,10 +71,10 @@ func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connection
 		MaxKeys:   aws.Int64(1000),
 	}
 
-	dir, err := directory.New(connID, path.DirectoryName(), path.ParentPath())
-	if err != nil {
-		return nil, fmt.Errorf("GetByID: %w", err)
-	}
+	var dir directory.Directory
+
+	files := make([]*directory.File, 0)
+	subDirectoriesPaths := make([]directory.Path, 0)
 
 	pageHandler := func(page *s3.ListObjectsOutput, lastPage bool) bool {
 		for _, obj := range page.Contents {
@@ -82,12 +82,14 @@ func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connection
 			if key == searchKey {
 				continue
 			}
-			if _, err := dir.NewFile(mapKeyToObjectName(key),
+			f, err := directory.NewFile(mapKeyToObjectName(key), &dir,
 				directory.WithFileSize(int(*obj.Size)),
 				directory.WithFileLastModified(*obj.LastModified),
-			); err != nil {
+			)
+			if err != nil {
 				return false
 			}
+			files = append(files, f)
 		}
 
 		for _, obj := range page.CommonPrefixes {
@@ -97,9 +99,8 @@ func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connection
 			s3Prefix := *obj.Prefix
 			isDir := strings.HasSuffix(s3Prefix, "/")
 			if isDir {
-				if _, err := dir.NewSubDirectory(mapKeyToObjectName(s3Prefix)); err != nil {
-					return false
-				}
+				subPath := directory.NewPath(mapKeyToObjectName(s3Prefix))
+				subDirectoriesPaths = append(subDirectoriesPaths, subPath)
 			}
 		}
 		return !lastPage
@@ -109,7 +110,15 @@ func (r *S3DirectoryRepository) GetByPath(ctx context.Context, connID connection
 		return nil, r.manageAwsSdkError(err, searchKey, s)
 	}
 
-	return dir, nil
+	temp, err := directory.New(connID, path.DirectoryName(), path.ParentPath(),
+		directory.WithFiles(files),
+		directory.WithSubDirectories(subDirectoriesPaths))
+	if err != nil {
+		return nil, fmt.Errorf("GetByID: %w", err)
+	}
+	dir = *temp
+
+	return &dir, nil
 }
 
 func (r *S3DirectoryRepository) GetFileContent(ctx context.Context, connId connection_deck.ConnectionID, file *directory.File) (*directory.Content, error) {
