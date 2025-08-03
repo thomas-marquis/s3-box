@@ -184,10 +184,10 @@ func (vm *connectionViewModelImpl) IsReadOnly() bool {
 	return vm.deck.SelectedConnection().ReadOnly()
 }
 
-func (vm *connectionViewModelImpl) deleteFromBinding(deletedConn *connection_deck.Connection) {
+func (vm *connectionViewModelImpl) deleteFromBinding(deletedConn *connection_deck.Connection) error {
 	found := false
-	currentConns := vm.deck.Get()
-	for _, prevConn := range currentConns {
+	allConnections := uiutils.GetUntypedListOrPanic[*connection_deck.Connection](vm.connBindings)
+	for _, prevConn := range allConnections {
 		if prevConn.Is(deletedConn) {
 			found = vm.connBindings.Remove(prevConn) == nil
 		}
@@ -195,8 +195,11 @@ func (vm *connectionViewModelImpl) deleteFromBinding(deletedConn *connection_dec
 
 	if !found {
 		vm.bus.Publish(connection_deck.NewRemoveFailureEvent(
-			errConnNotInBinding, len(currentConns), false, deletedConn))
+			errConnNotInBinding, len(allConnections), false, deletedConn))
+		return errConnNotInBinding
 	}
+
+	return nil
 }
 
 func (vm *connectionViewModelImpl) findConnectionInBinding(connID connection_deck.ConnectionID) *connection_deck.Connection {
@@ -295,7 +298,9 @@ func (vm *connectionViewModelImpl) listenUiEvents() {
 
 		case connection_deck.RemoveEventType.AsSuccess():
 			e := evt.(connection_deck.RemoveSuccessEvent)
-			vm.deleteFromBinding(e.Connection())
+			if err := vm.deleteFromBinding(e.Connection()); err != nil {
+				continue
+			}
 			vm.deck.Notify(evt)
 			vm.loading.Set(false)
 
