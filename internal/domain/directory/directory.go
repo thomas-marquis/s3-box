@@ -119,7 +119,7 @@ func (d *Directory) NewSubDirectory(name string) (CreatedEvent, error) {
 		return CreatedEvent{}, fmt.Errorf("failed to create sudirectory: %w", err)
 	}
 
-	return NewCreatedEvent(newDir), nil
+	return NewCreatedEvent(d, newDir), nil
 }
 
 // NewFile creates a new fileObj in the current directory
@@ -141,7 +141,7 @@ func (d *Directory) NewFile(name string, opts ...FileOption) (FileCreatedEvent, 
 func (d *Directory) RemoveFile(name FileName) (FileDeletedEvent, error) {
 	for _, file := range d.files {
 		if file.Name() == name {
-			return NewFileDeletedEvent(d.connectionID, file), nil
+			return NewFileDeletedEvent(d.connectionID, d, file), nil
 		}
 	}
 	return FileDeletedEvent{}, ErrNotFound

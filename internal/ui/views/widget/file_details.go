@@ -133,11 +133,7 @@ func (w *FileDetails) Render(file *directory.File) {
 				return
 			}
 			localDestFilePath := writer.URI().Path()
-			if err := vm.DownloadFile(file, localDestFilePath); err != nil {
-				outErr := fmt.Errorf("error downloading file: %w", err)
-				dialog.ShowError(outErr, w.appCtx.Window())
-				return
-			}
+			vm.DownloadFile(file, localDestFilePath)
 			vm.UpdateLastDownloadLocation(localDestFilePath)
 			dialog.ShowInformation("Download", "File downloaded", w.appCtx.Window())
 		}, w.appCtx.Window())
@@ -151,11 +147,7 @@ func (w *FileDetails) Render(file *directory.File) {
 			fmt.Sprintf("Are you sure you want to delete '%s'?", file.Name()),
 			func(b bool) {
 				if b {
-					if err := vm.DeleteFile(file); err != nil {
-						dialog.ShowError(err, w.appCtx.Window())
-					} else {
-						dialog.ShowInformation("Delete", "File deleted", w.appCtx.Window())
-					}
+					vm.DeleteFile(file)
 				}
 			}, w.appCtx.Window())
 	})

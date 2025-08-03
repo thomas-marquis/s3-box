@@ -17,37 +17,53 @@ func (e withDirectory) Directory() *Directory {
 	return e.directory
 }
 
+type withParentDirectory struct {
+	parent *Directory
+}
+
+func (e withParentDirectory) Parent() *Directory {
+	return e.parent
+}
+
 type CreatedEvent struct {
 	event.BaseEvent
+	withParentDirectory
 	withDirectory
 }
 
-func NewCreatedEvent(directory *Directory, opts ...event.Option) CreatedEvent {
+func NewCreatedEvent(parent *Directory, newDir *Directory, opts ...event.Option) CreatedEvent {
 	return CreatedEvent{
 		event.NewBaseEvent(CreatedEventType, opts...),
-		withDirectory{directory},
+		withParentDirectory{parent},
+		withDirectory{newDir},
 	}
 }
 
+// CreatedSuccessEvent represents an event triggered when a directory creation process completes successfully.
+// It contains the reference of the new directory created
 type CreatedSuccessEvent struct {
 	event.BaseEvent
+	withParentDirectory
 	withDirectory
 }
 
-func NewCreatedSuccessEvent(directory *Directory, opts ...event.Option) CreatedSuccessEvent {
+func NewCreatedSuccessEvent(parent *Directory, newDire *Directory, opts ...event.Option) CreatedSuccessEvent {
 	return CreatedSuccessEvent{
 		event.NewBaseEvent(CreatedEventType.AsSuccess(), opts...),
-		withDirectory{directory},
+		withParentDirectory{parent},
+		withDirectory{newDire},
 	}
 }
 
 type CreatedFailureEvent struct {
 	event.BaseErrorEvent
+	withParentDirectory
 }
 
-func NewCreatedFailureEvent(err error) CreatedFailureEvent {
+func NewCreatedFailureEvent(err error, parent *Directory) CreatedFailureEvent {
 	return CreatedFailureEvent{
 		event.NewBaseErrorEvent(CreatedEventType.AsFailure(), err),
+		withParentDirectory{parent},
 	}
 }
 

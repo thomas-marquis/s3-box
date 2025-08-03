@@ -45,6 +45,8 @@ type ExplorerViewModel interface {
 
 	ErrorMessage() binding.String
 
+	InfoMessage() binding.String
+
 	////////////////////////
 	// Action methods
 	////////////////////////
@@ -57,22 +59,22 @@ type ExplorerViewModel interface {
 	GetFileContent(f *directory.File) (*directory.Content, error)
 
 	// DownloadFile downloads a file to the specified local destination
-	DownloadFile(f *directory.File, dest string) error
+	DownloadFile(f *directory.File, dest string)
 
 	// UploadFile uploads a local file to the specified remote directory
 	UploadFile(localPath string, dir *directory.Directory)
 
 	// DeleteFile removes a file from storage and updates the tree
-	DeleteFile(file *directory.File) error
+	DeleteFile(file *directory.File)
 
 	// UpdateLastDownloadLocation updates the last used save directory path
 	UpdateLastDownloadLocation(filePath string) error
 
 	// UpdateLastUploadLocation updates the last used upload directory path
-	UpdateLastUploadLocation(filePath string) error
+	UpdateLastUploadLocation(filePath string)
 
 	// CreateEmptyDirectory creates an empty subdirectory in the given parent directory
-	CreateEmptyDirectory(parent *directory.Directory, name string) (*directory.Directory, error)
+	CreateEmptyDirectory(parent *directory.Directory, name string)
 }
 
 type explorerViewModelImpl struct {
@@ -90,6 +92,7 @@ type explorerViewModelImpl struct {
 	lastUploadDir             fyne.ListableURI
 	displayNoConnectionBanner binding.Bool
 	errorMessage              binding.String
+	infoMessage               binding.String
 
 	notifier notification.Repository
 	bus      event.Bus
@@ -111,6 +114,7 @@ func NewExplorerViewModel(
 		loading:               binding.NewBool(),
 		bus:                   bus,
 		errorMessage:          binding.NewString(),
+		infoMessage:           binding.NewString(),
 	}
 
 	if err := vm.initializeTreeData(initialConnection); err != nil {
@@ -121,7 +125,6 @@ func NewExplorerViewModel(
 		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err))
 	}
 
-	go vm.forwardDomainEvents()
 	go vm.listenUiEvents()
 
 	return vm
@@ -150,6 +153,10 @@ func (vm *explorerViewModelImpl) IsLoading() bool {
 
 func (vm *explorerViewModelImpl) ErrorMessage() binding.String {
 	return vm.errorMessage
+}
+
+func (vm *explorerViewModelImpl) InfoMessage() binding.String {
+	return vm.infoMessage
 }
 
 func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error {
@@ -197,13 +204,9 @@ func (vm *explorerViewModelImpl) GetFileContent(file *directory.File) (*director
 	return content, nil
 }
 
-func (vm *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) error {
-	if vm.selectedConnectionVal == nil {
-		return vm.notifier.NotifyError(ErrNoConnectionSelected)
-	}
+func (vm *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
 	evt := f.Download(vm.selectedConnectionVal.ID(), dest)
-	vm.domainPublisher.Publish(evt)
-	return nil
+	vm.bus.Publish(evt)
 }
 
 func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory) {
@@ -222,32 +225,27 @@ func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Dir
 	vm.bus.Publish(evt)
 }
 
-func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) error {
+func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) {
 	dirNodeItem, err := vm.tree.GetValue(file.DirectoryPath().String())
 	if err != nil {
-		return fmt.Errorf("impossible to retreive the direcotry you want to remove: %s", file.DirectoryPath().String())
+		panic(
+			fmt.Sprintf("impossible to retreive the direcotry you want to refresh: %s",
+				file.DirectoryPath().String()))
 	}
+
 	dirNode, ok := dirNodeItem.(node.DirectoryNode)
 	if !ok {
 		panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", file.DirectoryPath().String()))
 	}
 
-	dir := dirNode.Directory()
-	evt, err := dir.RemoveFile(file.Name())
+	parent := dirNode.Directory()
+	evt, err := parent.RemoveFile(file.Name())
 	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error removing file: %w", err))
+		vm.bus.Publish(directory.NewFileDeletedFailureEvent(
+			fmt.Errorf("error removing file from tthe direcory %s: %w", parent.Path(), err), parent))
+		return
 	}
-	evt.AttachErrorCallback(func(err error) {
-		vm.notifier.NotifyError(fmt.Errorf("error removing file: %w", err))
-	})
-	evt.AttachSuccessCallback(func() {
-		if err := vm.tree.Remove(file.FullPath()); err != nil {
-			vm.notifier.NotifyError(fmt.Errorf("error removing file from tree: %w", err))
-		}
-	})
-	vm.domainPublisher.Publish(evt)
-
-	return nil
+	vm.bus.Publish(evt)
 }
 
 func (vm *explorerViewModelImpl) LastDownloadLocation() fyne.ListableURI {
@@ -269,36 +267,32 @@ func (vm *explorerViewModelImpl) LastUploadLocation() fyne.ListableURI {
 	return vm.lastUploadDir
 }
 
-func (vm *explorerViewModelImpl) UpdateLastUploadLocation(filePath string) error {
+func (vm *explorerViewModelImpl) UpdateLastUploadLocation(filePath string) {
 	dirPath := filepath.Dir(filePath)
 	uri := storage.NewFileURI(dirPath)
 	uriLister, err := storage.ListerForURI(uri)
 	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("update upload location: %w", err))
+		vm.notifier.NotifyError(fmt.Errorf("update upload location: %w", err))
+		return
 	}
 	vm.lastUploadDir = uriLister
-	return nil
 }
 
-func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory, name string) (*directory.Directory, error) {
+func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory, name string) {
 	if vm.selectedConnectionVal == nil {
-		return nil, vm.notifier.NotifyError(ErrNoConnectionSelected)
+		err := vm.notifier.NotifyError(ErrNoConnectionSelected)
+		vm.bus.Publish(directory.NewCreatedFailureEvent(err, parent))
+		return
 	}
 
 	evt, err := parent.NewSubDirectory(name)
 	if err != nil {
-		return nil, vm.notifier.NotifyError(fmt.Errorf("error creating subdirectory: %w", err))
+		err := vm.notifier.NotifyError(fmt.Errorf("error creating subdirectory: %w", err))
+		vm.bus.Publish(directory.NewCreatedFailureEvent(err, parent))
+		return
 	}
-	evt.AttachSuccessCallback(func() {
-		if err := vm.sync(parent); err != nil {
-			vm.notifier.NotifyError(fmt.Errorf("error syncing tree for the new directory: %w", err))
-		}
-	})
-	evt.AttachErrorCallback(func(err error) {
-		vm.notifier.NotifyError(fmt.Errorf("error creating subdirectory: %w", err))
-	})
-	vm.domainPublisher.Publish(evt)
-	return nil, nil
+
+	vm.bus.Publish(evt)
 }
 
 func (vm *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection) error {
@@ -322,40 +316,28 @@ func (vm *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connectio
 	return nil
 }
 
-func (vm *explorerViewModelImpl) sync(dir *directory.Directory) error {
+func (vm *explorerViewModelImpl) updateTreeUnder(dir *directory.Directory) error {
 	dirNodeItem, err := vm.tree.GetValue(dir.Path().String())
 	if err != nil {
-		return vm.notifier.NotifyError(
-			fmt.Errorf("impossible to retreive the direcotry you want to refresh: %s", dir.Path().String()))
+		return fmt.Errorf("impossible to retreive the direcotry you want to refresh: %s", dir.Path().String())
 	}
 	dirNode, ok := dirNodeItem.(node.DirectoryNode)
 	if !ok {
-		return vm.notifier.NotifyError(
-			fmt.Errorf("impossible to cast the item to TreeNode: %s", dir.Path().String()))
+		return fmt.Errorf("impossible to cast the item to TreeNode: %s", dir.Path().String())
 	}
 
-	if !dirNode.IsLoaded() {
-		if err := vm.LoadDirectory(dirNode); err != nil { // TODO: is a good idea forcing to load the dir here??
-			return vm.notifier.NotifyError(fmt.Errorf("error loading directory: %w", err))
+	if dirNode.IsLoaded() {
+		if err := vm.resetSubTree(dirNode); err != nil {
+			return fmt.Errorf("error resetting sub tree: %w", err)
 		}
-		return nil
+	} else {
+		if err := dirNode.Load(dir); err != nil {
+			return fmt.Errorf("error loading directory in the explorer tree: %w", err)
+		}
 	}
 
-	moreRecentDir, err := vm.fetchDirectory(dir.Path())
-	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error getting directory: %w", err))
-	}
-
-	if moreRecentDir.Equal(dir) {
-		return nil
-	}
-
-	if err := vm.tree.Remove(dirNode.ID()); err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error removing directory from tree: %w", err))
-	}
-
-	if err := vm.fillSubTree(dirNode, moreRecentDir); err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error filling sub tree: %w", err))
+	if err := vm.fillSubTree(dirNode, dir); err != nil {
+		return fmt.Errorf("error filling sub tree: %w", err)
 	}
 
 	return nil
@@ -392,6 +374,28 @@ func (vm *explorerViewModelImpl) fillSubTree(startNode node.DirectoryNode, dir *
 	return nil
 }
 
+func (vm *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Directory) error {
+	parentPath := dirToAdd.Path().ParentPath()
+	parentNodeItem, err := vm.tree.GetValue(parentPath.String())
+	if err != nil {
+		return fmt.Errorf("impossible to retreive the parent direcotry from path: %s", parentPath)
+	}
+	childNode := node.NewDirectoryNode(dirToAdd.Path())
+	if err := vm.tree.Append(parentNodeItem.(node.DirectoryNode).ID(), childNode.ID(), childNode); err != nil {
+		return fmt.Errorf("error appending directory to tree: %w", err)
+	}
+	return nil
+}
+
+func (vm *explorerViewModelImpl) resetSubTree(startNode node.DirectoryNode) error {
+	return vm.tree.Remove(startNode.ID())
+}
+
+func (vm *explorerViewModelImpl) removeFileFromTree(file *directory.File) error {
+	fileNodePath := file.FullPath()
+	return vm.tree.Remove(fileNodePath)
+}
+
 func (vm *explorerViewModelImpl) listenUiEvents() {
 	for evt := range vm.bus.Subscribe() {
 		switch evt.Type() {
@@ -424,48 +428,88 @@ func (vm *explorerViewModelImpl) listenUiEvents() {
 			vm.loading.Set(true)
 
 		case directory.ContentUploadedEventType.AsSuccess():
-			e := evt.(directory.ContentUploadedEvent)
+			e := evt.(directory.ContentUploadedSuccessEvent)
+			if err := vm.updateTreeUnder(e.Directory()); err != nil {
+				vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, e.Directory()))
+				vm.loading.Set(false)
+				continue
+			}
 			e.Directory().Notify(e)
 			vm.loading.Set(false)
 
 		case directory.ContentUploadedEventType.AsFailure():
 			e := evt.(directory.ContentUploadedFailureEvent)
 			e.Directory().Notify(e)
-			vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", e.Error()))
+			err := vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", e.Error()))
+			vm.errorMessage.Set(err.Error())
 			vm.loading.Set(false)
 
-		case uievent.UploadFileSuccessType:
-			evt := evt.(*uievent.UploadFileSuccess)
-			if err := vm.sync(evt.Directory); err != nil {
-				vm.uiPublisher.Publish(&uievent.UploadFileFailure{Error: err})
+		case directory.CreatedEventType:
+			if vm.IsLoading() {
+				continue
 			}
+			vm.loading.Set(true)
 
-		case uievent.UploadFileFailureType:
-			evt := evt.(*uievent.UploadFileFailure)
-			vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", evt.Error))
+		case directory.CreatedEventType.AsSuccess():
+			e := evt.(directory.CreatedSuccessEvent)
+			if err := vm.addNewDirectoryToTree(e.Directory()); err != nil {
+				vm.bus.Publish(directory.NewCreatedFailureEvent(err, e.Parent()))
+				vm.loading.Set(false)
+				continue
+			}
+			e.Parent().Notify(e)
+			vm.loading.Set(false)
+
+		case directory.CreatedEventType.AsFailure():
+			e := evt.(directory.CreatedFailureEvent)
+			e.Parent().Notify(e)
+			err := vm.notifier.NotifyError(fmt.Errorf("error creating directory: %w", e.Error()))
+			vm.errorMessage.Set(err.Error())
+			vm.loading.Set(false)
+
+		case directory.FileDeletedEventType:
+			if vm.IsLoading() {
+				continue
+			}
+			vm.loading.Set(true)
+
+		case directory.FileDeletedEventType.AsSuccess():
+			e := evt.(directory.FileDeletedSuccessEvent)
+
+			if err := vm.removeFileFromTree(e.File()); err != nil {
+				vm.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
+				vm.loading.Set(false)
+				continue
+			}
+			e.Parent().Notify(e)
+			vm.loading.Set(false)
+			vm.infoMessage.Set(fmt.Sprintf("File %s deleted", e.File().Name()))
+
+		case directory.FileDeletedEventType.AsFailure():
+			e := evt.(directory.FileDeletedFailureEvent)
+			e.Parent().Notify(e)
+			err := vm.notifier.NotifyError(fmt.Errorf("error deleting file: %w", e.Error()))
+			vm.errorMessage.Set(err.Error())
+			vm.loading.Set(false)
+
+		case directory.ContentDownloadEventType:
+			if vm.IsLoading() {
+				continue
+			}
+			vm.loading.Set(true)
+
+		case directory.ContentDownloadEventType.AsSuccess():
+			e := evt.(directory.ContentUploadedSuccessEvent)
+			e.Directory().Notify(e)
+			vm.loading.Set(false)
+			vm.infoMessage.Set(fmt.Sprintf("File %s downloaded", e.Content().File().Name()))
+
+		case directory.ContentDownloadEventType.AsFailure():
+			e := evt.(directory.ContentUploadedFailureEvent)
+			e.Directory().Notify(e)
+			err := vm.notifier.NotifyError(fmt.Errorf("error downloading file: %w", e.Error()))
+			vm.errorMessage.Set(err.Error())
+			vm.loading.Set(false)
 		}
-	}
-}
-
-func (vm *explorerViewModelImpl) forwardDomainEvents() {
-	for event := range vm.domainPublisher.Subscribe() {
-		if evt := mapDomainEventToUiEvent(event); evt != nil {
-			vm.uiPublisher.Publish(evt)
-		}
-	}
-}
-
-func mapDomainEventToUiEvent(event directory.Event) uievent.UiEvent {
-	switch event.Type() {
-	case directory.ContentUploadedSuccessEventType:
-		evt := event.(directory.ContentUploadedSuccessEvent)
-		return &uievent.UploadFileSuccess{Directory: evt.Directory(), File: evt.Content().File()}
-
-	case directory.ContentUploadedFailureEventType:
-		evt := event.(directory.ContentUploadedFailureEvent)
-		return &uievent.UploadFileFailure{Error: evt.Error()}
-
-	default:
-		return nil
 	}
 }

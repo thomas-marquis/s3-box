@@ -158,9 +158,9 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 			e := evt.(directory.CreatedEvent)
 			if err := r.handleDirectoryCreation(ctx, e); err != nil {
 				notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
-				publisher(directory.NewCreatedFailureEvent(err))
+				publisher(directory.NewCreatedFailureEvent(err, e.Parent()))
 			}
-			publisher(directory.NewCreatedSuccessEvent(e.Directory()))
+			publisher(directory.NewCreatedSuccessEvent(e.Parent(), e.Directory()))
 
 		case directory.DeletedEventType:
 			err := fmt.Errorf("deleting directories is not yet implemented")
@@ -176,9 +176,9 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 			e := evt.(directory.FileDeletedEvent)
 			if err := r.handleFileDeletion(ctx, e); err != nil {
 				notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
-				publisher(directory.NewFileDeletedFailureEvent(err))
+				publisher(directory.NewFileDeletedFailureEvent(err, e.Parent()))
 			}
-			publisher(directory.NewFileDeletedSuccessEvent(e.File()))
+			publisher(directory.NewFileDeletedSuccessEvent(e.Parent(), e.File()))
 
 		case directory.ContentUploadedEventType:
 			e := evt.(directory.ContentUploadedEvent)

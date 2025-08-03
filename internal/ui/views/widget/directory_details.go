@@ -90,10 +90,7 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 
 			localDestFilePath := reader.URI().Path()
 			vm.UploadFile(localDestFilePath, dir)
-			if err := vm.UpdateLastUploadLocation(localDestFilePath); err != nil {
-				dialog.ShowError(err, w.appCtx.Window())
-				return
-			}
+			vm.UpdateLastUploadLocation(localDestFilePath)
 			dialog.ShowInformation("Upload", "AttachedFile uploaded", w.appCtx.Window())
 		}, w.appCtx.Window())
 
@@ -117,11 +114,7 @@ func (w *DirectoryDetails) makeOnCreateDirectory(vm viewmodel.ExplorerViewModel,
 					return
 				}
 				name := nameEntry.Text
-				_, err := vm.CreateEmptyDirectory(dir, name)
-				if err != nil {
-					dialog.ShowError(err, w.appCtx.Window())
-					return
-				}
+				vm.CreateEmptyDirectory(dir, name)
 			},
 			w.appCtx.Window(),
 		)

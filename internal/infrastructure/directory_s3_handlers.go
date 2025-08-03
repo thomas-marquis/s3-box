@@ -12,7 +12,7 @@ import (
 )
 
 func (r *S3DirectoryRepository) handleDirectoryCreation(ctx context.Context, evt directory.CreatedEvent) error {
-	sess, err := r.getSession(ctx, evt.Directory().ConnectionID())
+	sess, err := r.getSession(ctx, evt.Parent().ConnectionID())
 	if err != nil {
 		return err
 	}

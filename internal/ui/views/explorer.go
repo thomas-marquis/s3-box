@@ -54,6 +54,15 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 		vm.ErrorMessage().Set("")
 	}))
 
+	vm.InfoMessage().AddListener(binding.NewDataListener(func() {
+		msg, _ := vm.InfoMessage().Get()
+		if msg == "" {
+			return
+		}
+		dialog.ShowInformation("Info", msg, appCtx.Window())
+		vm.InfoMessage().Set("")
+	}))
+
 	detailsContainer := container.NewVBox()
 	fileDetails := widget.NewFileDetails(appCtx)
 	dirDetails := widget.NewDirectoryDetails(appCtx)

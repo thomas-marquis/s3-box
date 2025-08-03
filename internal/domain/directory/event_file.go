@@ -66,34 +66,40 @@ type FileDeletedEvent struct {
 	event.BaseEvent
 	withFile
 	withConnectionID
+	withParentDirectory
 }
 
-func NewFileDeletedEvent(connectionID connection_deck.ConnectionID, file *File, opts ...event.Option) FileDeletedEvent {
+func NewFileDeletedEvent(connectionID connection_deck.ConnectionID, parent *Directory, file *File, opts ...event.Option) FileDeletedEvent {
 	return FileDeletedEvent{
 		event.NewBaseEvent(FileDeletedEventType, opts...),
 		withFile{file},
 		withConnectionID{connectionID},
+		withParentDirectory{parent},
 	}
 }
 
 type FileDeletedSuccessEvent struct {
 	event.BaseEvent
 	withFile
+	withParentDirectory
 }
 
-func NewFileDeletedSuccessEvent(file *File, opts ...event.Option) FileDeletedSuccessEvent {
+func NewFileDeletedSuccessEvent(parent *Directory, file *File, opts ...event.Option) FileDeletedSuccessEvent {
 	return FileDeletedSuccessEvent{
 		event.NewBaseEvent(FileDeletedEventType.AsSuccess(), opts...),
 		withFile{file},
+		withParentDirectory{parent},
 	}
 }
 
 type FileDeletedFailureEvent struct {
 	event.BaseErrorEvent
+	withParentDirectory
 }
 
-func NewFileDeletedFailureEvent(err error) FileDeletedFailureEvent {
+func NewFileDeletedFailureEvent(err error, parent *Directory) FileDeletedFailureEvent {
 	return FileDeletedFailureEvent{
 		event.NewBaseErrorEvent(FileDeletedEventType.AsFailure(), err),
+		withParentDirectory{parent},
 	}
 }
