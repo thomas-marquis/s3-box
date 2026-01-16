@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/thomas-marquis/s3-box/internal/domain/notification"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"log"
 	"os"
 	"strings"
 	"sync"
 
+	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
@@ -24,8 +24,8 @@ const (
 
 type s3Session struct {
 	connection *connection_deck.Connection
-	client     *s3.S3
-	session    *session.Session
+	client     *s3.Client
+	//session    *session.Session
 }
 
 type S3DirectoryRepository struct {
@@ -66,17 +66,26 @@ func (r *S3DirectoryRepository) GetByPath(
 		return nil, fmt.Errorf("GetByID: %w", err)
 	}
 
-	inputs := &s3.ListObjectsInput{
+	inputs := &s3.ListObjectsV2Input{
 		Bucket:    aws.String(s.connection.Bucket()),
 		Prefix:    aws.String(searchKey),
 		Delimiter: aws.String("/"),
-		MaxKeys:   aws.Int64(1000),
+		MaxKeys:   aws.Int32(1000),
 	}
 
 	files := make([]*directory.File, 0)
 	subDirectoriesPaths := make([]directory.Path, 0)
 
-	pageHandler := func(page *s3.ListObjectsOutput, lastPage bool) bool {
+	paginator := s3.NewListObjectsV2Paginator(s.client, inputs)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, r.manageAwsSdkError(
+				fmt.Errorf("error while fetching next objects page: %w", err),
+				searchKey,
+				s)
+		}
+
 		for _, obj := range page.Contents {
 			key := *obj.Key
 			if key == searchKey {
@@ -87,7 +96,7 @@ func (r *S3DirectoryRepository) GetByPath(
 				directory.WithFileLastModified(*obj.LastModified),
 			)
 			if err != nil {
-				return false
+				return nil, fmt.Errorf("error while creating a file: %w", err)
 			}
 			files = append(files, f)
 		}
@@ -102,11 +111,6 @@ func (r *S3DirectoryRepository) GetByPath(
 				subDirectoriesPaths = append(subDirectoriesPaths, directory.NewPath(s3Prefix))
 			}
 		}
-		return !lastPage
-	}
-
-	if err := s.client.ListObjectsPagesWithContext(ctx, inputs, pageHandler); err != nil {
-		return nil, r.manageAwsSdkError(err, searchKey, s)
 	}
 
 	dir, err := directory.New(connID, path.DirectoryName(), path.ParentPath(),
@@ -134,7 +138,7 @@ func (r *S3DirectoryRepository) GetFileContent(
 		Key:    aws.String(mapFileToKey(file)),
 	}
 
-	result, err := s.client.GetObjectWithContext(ctx, input)
+	result, err := s.client.GetObject(ctx, input)
 	if err != nil {
 		return nil, r.manageAwsSdkError(err, file.FullPath(), s)
 	}
@@ -147,10 +151,10 @@ func (r *S3DirectoryRepository) GetFileContent(
 	}
 
 	rd, w, _ := os.Pipe()
+	defer w.Close() //nolint:errcheck
 	if _, err := w.Write(buff.Bytes()); err != nil {
 		return nil, fmt.Errorf("fail writing the body content: %w", err)
 	}
-	defer w.Close()
 
 	content := directory.NewFileContent(file, directory.ContentFromFile(rd))
 

@@ -12,11 +12,11 @@ func GetNotificationView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 	notificationList := widget.NewListWithData(
 		appCtx.NotificationViewModel().Notifications(),
 		func() fyne.CanvasObject {
-			return widget.NewLabel("")
+			return widget.NewTextGridFromString("")
 		},
 		func(di binding.DataItem, obj fyne.CanvasObject) {
 			value, _ := di.(binding.String).Get()
-			obj.(*widget.Label).SetText(value)
+			obj.(*widget.TextGrid).SetText(value)
 		},
 	)
 
