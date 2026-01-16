@@ -1,6 +1,7 @@
 package appcontext
 
 import (
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 
@@ -11,50 +12,61 @@ import (
 type AppContext interface {
 	Navigate(route navigation.Route) error
 	CurrentRoute() navigation.Route
+
 	ExplorerViewModel() viewmodel.ExplorerViewModel
 	ConnectionViewModel() viewmodel.ConnectionViewModel
 	SettingsViewModel() viewmodel.SettingsViewModel
+	NotificationViewModel() viewmodel.NotificationViewModel
+
 	Window() fyne.Window
 	L() *zap.Logger
-	ExitChan() chan struct{}
 	FyneSettings() fyne.Settings
+
+	Bus() event.Bus
 }
 
 type AppContextImpl struct {
-	vm           viewmodel.ExplorerViewModel
-	connVm       viewmodel.ConnectionViewModel
-	settingsVm   viewmodel.SettingsViewModel
-	w            fyne.Window
-	l            *zap.Logger
+	explorerViewModel     viewmodel.ExplorerViewModel
+	connectionsViewModel  viewmodel.ConnectionViewModel
+	settingsViewModel     viewmodel.SettingsViewModel
+	notificationViewModel viewmodel.NotificationViewModel
+
+	window       fyne.Window
+	logger       *zap.Logger
 	exitChan     chan struct{}
 	fyneSettings fyne.Settings
 
 	currentRoute navigation.Route
-	views        map[navigation.Route]func(AppContext) (*fyne.Container, error)
+	views        map[navigation.Route]View
+
+	bus event.Bus
 }
 
 var _ AppContext = &AppContextImpl{}
 
 func New(
-	w fyne.Window,
-	vm viewmodel.ExplorerViewModel,
-	connVm viewmodel.ConnectionViewModel,
-	settingsVm viewmodel.SettingsViewModel,
+	window fyne.Window,
+	explorerViewModel viewmodel.ExplorerViewModel,
+	connectionViewModel viewmodel.ConnectionViewModel,
+	settingsViewModel viewmodel.SettingsViewModel,
+	notificationViewModel viewmodel.NotificationViewModel,
 	initialRoute navigation.Route,
-	views map[navigation.Route]func(AppContext) (*fyne.Container, error),
+	views map[navigation.Route]View,
 	logger *zap.Logger,
 	settings fyne.Settings,
+	bus event.Bus,
 ) *AppContextImpl {
 	return &AppContextImpl{
-		vm:           vm,
-		connVm:       connVm,
-		settingsVm:   settingsVm,
-		w:            w,
-		l:            logger,
-		exitChan:     make(chan struct{}),
-		currentRoute: initialRoute,
-		views:        views,
-		fyneSettings: settings,
+		explorerViewModel:     explorerViewModel,
+		connectionsViewModel:  connectionViewModel,
+		settingsViewModel:     settingsViewModel,
+		notificationViewModel: notificationViewModel,
+		window:                window,
+		logger:                logger,
+		currentRoute:          initialRoute,
+		views:                 views,
+		fyneSettings:          settings,
+		bus:                   bus,
 	}
 }
 
@@ -63,27 +75,27 @@ func (ctx *AppContextImpl) FyneSettings() fyne.Settings {
 }
 
 func (ctx *AppContextImpl) ExplorerViewModel() viewmodel.ExplorerViewModel {
-	return ctx.vm
+	return ctx.explorerViewModel
 }
 
 func (ctx *AppContextImpl) ConnectionViewModel() viewmodel.ConnectionViewModel {
-	return ctx.connVm
+	return ctx.connectionsViewModel
 }
 
 func (ctx *AppContextImpl) SettingsViewModel() viewmodel.SettingsViewModel {
-	return ctx.settingsVm
+	return ctx.settingsViewModel
+}
+
+func (ctx *AppContextImpl) NotificationViewModel() viewmodel.NotificationViewModel {
+	return ctx.notificationViewModel
 }
 
 func (ctx *AppContextImpl) Window() fyne.Window {
-	return ctx.w
+	return ctx.window
 }
 
 func (ctx *AppContextImpl) L() *zap.Logger {
-	return ctx.l
-}
-
-func (ctx *AppContextImpl) ExitChan() chan struct{} {
-	return ctx.exitChan
+	return ctx.logger
 }
 
 func (ctx *AppContextImpl) Navigate(route navigation.Route) error {
@@ -104,4 +116,8 @@ func (ctx *AppContextImpl) Navigate(route navigation.Route) error {
 
 func (ctx *AppContextImpl) CurrentRoute() navigation.Route {
 	return ctx.currentRoute
+}
+
+func (ctx *AppContextImpl) Bus() event.Bus {
+	return ctx.bus
 }

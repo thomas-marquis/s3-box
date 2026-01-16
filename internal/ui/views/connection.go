@@ -1,56 +1,58 @@
 package views
 
 import (
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"fmt"
+	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/dialog"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/components"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
+	fyne_widget "fyne.io/fyne/v2/widget"
 )
 
-func GetConnectionView(ctx appcontext.AppContext) (*fyne.Container, error) {
-	connLine := components.NewConnectionLine()
-	connectionsList := widget.NewListWithData(
-		ctx.ConnectionViewModel().Connections(),
-		func() fyne.CanvasObject {
-			return connLine.Raw()
-		},
-		func(di binding.DataItem, obj fyne.CanvasObject) {
-			i, _ := di.(binding.Untyped).Get()
-			conn, _ := i.(*connection.Connection)
-			connLine.Update(ctx, obj, conn)
-		},
-	)
-	createBtn := widget.NewButtonWithIcon(
+func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
+	connectionsList := widget.NewConnectionList(appCtx)
+	vm := appCtx.ConnectionViewModel()
+
+	vm.ErrorMessage().AddListener(binding.NewDataListener(func() {
+		msg, _ := vm.ErrorMessage().Get()
+		if msg == "" {
+			return
+		}
+		dialog.ShowError(fmt.Errorf(msg), appCtx.Window())
+		vm.ErrorMessage().Set("")
+	}))
+
+	createBtn := fyne_widget.NewButtonWithIcon(
 		"New connection",
 		theme.ContentAddIcon(),
-		func() {
-			components.NewConnectionDialog(ctx,
-				"New connection",
-				*connection.NewEmptyConnection(),
-				false,
-				ctx.ConnectionViewModel().SaveConnection).Show()
-		})
+		widget.NewConnectionForm(appCtx,
+			&connection_deck.Connection{},
+			false,
+			func(name, accessKey, secretKey, bucket string,
+				options ...connection_deck.ConnectionOption) {
+				vm.Create(name, accessKey, secretKey, bucket, options...)
+			},
+		).AsDialog("New connection").Show)
 
-	goToExplorerBtn := widget.NewButtonWithIcon(
+	goToExplorerBtn := fyne_widget.NewButtonWithIcon(
 		"View files",
 		theme.NavigateBackIcon(),
 		func() {
-			ctx.Navigate(navigation.ExplorerRoute)
+			appCtx.Navigate(navigation.ExplorerRoute)
 		},
 	)
 
-	mainContainer := container.NewBorder(
+	return container.NewBorder(
 		container.NewHBox(goToExplorerBtn),
 		container.NewCenter(createBtn),
 		nil,
 		nil,
 		connectionsList,
-	)
-	return mainContainer, nil
+	), nil
 }

@@ -3,12 +3,13 @@ package viewmodel
 import (
 	"context"
 	"fmt"
+	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"math"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
-	"github.com/thomas-marquis/s3-box/internal/settings"
+	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	"github.com/thomas-marquis/s3-box/internal/utils"
 )
 
@@ -20,63 +21,59 @@ type SettingsViewModel interface {
 	Save() error
 	TimeoutInSeconds() binding.Int
 	CurrentTimeout() time.Duration
-	MaxFilePreviewSizeMegaBytes() binding.Int
+	MaxFilePreviewSizeBytes() binding.Int
+	CurrentMaxFilePreviewSizeBytes() int
 	ColorTheme() binding.String
 }
 
 type settingsViewModelImpl struct {
 	settingsRepo settings.Repository
 	loading      binding.Bool
-	errChan      chan error
+	notifier     notification.Repository
 
-	timeoutInSeconds            binding.Int
-	maxFilePreviewSizeMegaBytes binding.Int
-	fyneSettings                fyne.Settings
-	colorTheme                  binding.String
+	timeoutInSeconds        binding.Int
+	maxFilePreviewSizeBytes binding.Int
+	fyneSettings            fyne.Settings
+	colorTheme              binding.String
 }
 
-var _ SettingsViewModel = &settingsViewModelImpl{}
-
-func NewSettingsViewModel(settingsRepo settings.Repository, fyneSettings fyne.Settings) SettingsViewModel {
-	errChan := make(chan error)
-
-	go func() {
-		for err := range errChan {
-			fmt.Printf("Error in SettingsViewModel: %v\n", err)
-		}
-	}()
-
+func NewSettingsViewModel(
+	settingsRepo settings.Repository,
+	fyneSettings fyne.Settings,
+	notifier notification.Repository,
+) SettingsViewModel {
 	ctx, cancel := context.WithTimeout(context.Background(), settingsTimeout)
 	defer cancel()
 	s, err := settingsRepo.Get(ctx)
 	if err != nil {
-		errChan <- fmt.Errorf("error getting settings: %w", err)
+		notifier.NotifyError(fmt.Errorf("error getting settings: %w", err))
 	}
+	fyneSettings.SetTheme(utils.MapFyneColorTheme(s.Color))
 
 	themeBinding := binding.NewString()
 
 	themeBinding.AddListener(binding.NewDataListener(func() {
 		currThemeName, err := themeBinding.Get()
 		if err != nil {
-			errChan <- fmt.Errorf("error getting color theme: %w", err)
+			notifier.NotifyError(fmt.Errorf("error getting color theme: %w", err))
 			return
 		}
 		currTheme, err := settings.NewColorThemeFromString(currThemeName)
 		if err != nil {
-			errChan <- fmt.Errorf("error converting color theme: %w", err)
+			notifier.NotifyError(fmt.Errorf("error converting color theme: %w", err))
 			return
 		}
 		fyneSettings.SetTheme(utils.MapFyneColorTheme(currTheme))
 	}))
 
 	vm := &settingsViewModelImpl{
-		settingsRepo:                settingsRepo,
-		loading:                     binding.NewBool(),
-		errChan:                     errChan,
-		timeoutInSeconds:            binding.NewInt(),
-		maxFilePreviewSizeMegaBytes: binding.NewInt(),
-		fyneSettings:                fyneSettings,
-		colorTheme:                  themeBinding,
+		settingsRepo:            settingsRepo,
+		loading:                 binding.NewBool(),
+		notifier:                notifier,
+		timeoutInSeconds:        binding.NewInt(),
+		maxFilePreviewSizeBytes: binding.NewInt(),
+		fyneSettings:            fyneSettings,
+		colorTheme:              themeBinding,
 	}
 
 	vm.synchronize(s)
@@ -87,29 +84,24 @@ func NewSettingsViewModel(settingsRepo settings.Repository, fyneSettings fyne.Se
 func (vm *settingsViewModelImpl) Save() error {
 	timeout, err := vm.timeoutInSeconds.Get()
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error getting timeout in seconds: %w", err)
-		return err
+		return vm.notifier.NotifyError(fmt.Errorf("error getting timeout in seconds: %w", err))
 	}
-	maxFilePreviewSizeMegaBytes, err := vm.maxFilePreviewSizeMegaBytes.Get()
+	maxFilePreviewSizeMegaBytes, err := vm.maxFilePreviewSizeBytes.Get()
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error getting max file preview size in mega bytes: %w", err)
-		return err
+		return vm.notifier.NotifyError(fmt.Errorf("error getting max file preview size in mega bytes: %w", err))
 	}
 	colorThemeString, err := vm.colorTheme.Get()
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error getting color theme: %w", err)
-		return err
+		return vm.notifier.NotifyError(fmt.Errorf("error getting color theme: %w", err))
 	}
 	colorTheme, err := settings.NewColorThemeFromString(colorThemeString)
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error converting color theme: %w", err)
-		return err
+		return vm.notifier.NotifyError(fmt.Errorf("error converting color theme: %w", err))
 	}
 
-	s, err := settings.NewSettings(timeout, utils.MegaToBytes(int64(maxFilePreviewSizeMegaBytes)))
+	s, err := settings.NewSettings(timeout, utils.MegaToBytes(maxFilePreviewSizeMegaBytes))
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error creating settings: %w", err)
-		return err
+		return vm.notifier.NotifyError(fmt.Errorf("error creating settings: %w", err))
 	}
 	s.Color = colorTheme
 
@@ -117,8 +109,7 @@ func (vm *settingsViewModelImpl) Save() error {
 	defer cancel()
 
 	if err := vm.settingsRepo.Save(ctx, s); err != nil {
-		vm.errChan <- fmt.Errorf("error saving settings: %w", err)
-		return err
+		return vm.notifier.NotifyError(fmt.Errorf("error saving settings: %w", err))
 	}
 
 	vm.synchronize(s)
@@ -133,14 +124,23 @@ func (vm *settingsViewModelImpl) TimeoutInSeconds() binding.Int {
 func (vm *settingsViewModelImpl) CurrentTimeout() time.Duration {
 	val, err := vm.timeoutInSeconds.Get()
 	if err != nil {
-		vm.errChan <- fmt.Errorf("error getting timeout in seconds: %w", err)
+		vm.notifier.NotifyError(fmt.Errorf("error getting timeout in seconds: %w", err))
 		return settings.DefaultTimeoutInSeconds * time.Second
 	}
 	return time.Duration(val) * time.Second
 }
 
-func (vm *settingsViewModelImpl) MaxFilePreviewSizeMegaBytes() binding.Int {
-	return vm.maxFilePreviewSizeMegaBytes
+func (vm *settingsViewModelImpl) MaxFilePreviewSizeBytes() binding.Int {
+	return vm.maxFilePreviewSizeBytes
+}
+
+func (vm *settingsViewModelImpl) CurrentMaxFilePreviewSizeBytes() int {
+	val, err := vm.maxFilePreviewSizeBytes.Get()
+	if err != nil {
+		vm.notifier.NotifyError(fmt.Errorf("error getting max file preview size in mega bytes: %w", err))
+		return settings.DefaultMaxFilePreviewSizeBytes
+	}
+	return val
 }
 
 func (vm *settingsViewModelImpl) ColorTheme() binding.String {
@@ -150,10 +150,11 @@ func (vm *settingsViewModelImpl) ColorTheme() binding.String {
 func (vm *settingsViewModelImpl) synchronize(s settings.Settings) {
 	vm.timeoutInSeconds.Set(s.TimeoutInSeconds)
 	if s.MaxFilePreviewSizeBytes > math.MaxInt {
-		vm.errChan <- fmt.Errorf("max file preview size exceeds maximum allowed value: clamping to max int")
-		vm.maxFilePreviewSizeMegaBytes.Set(math.MaxInt)
+		vm.notifier.NotifyError(
+			fmt.Errorf("max file preview size exceeds maximum allowed value: clamping to max int"))
+		vm.maxFilePreviewSizeBytes.Set(math.MaxInt)
 	} else {
-		vm.maxFilePreviewSizeMegaBytes.Set(int(utils.BytesToMB(s.MaxFilePreviewSizeBytes)))
+		vm.maxFilePreviewSizeBytes.Set(s.MaxFilePreviewSizeBytes)
 	}
 	vm.colorTheme.Set(s.Color.String())
 }

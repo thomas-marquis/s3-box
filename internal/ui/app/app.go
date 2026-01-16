@@ -1,107 +1,129 @@
 package app
 
 import (
-	"context"
-	"time"
-
-	"github.com/thomas-marquis/s3-box/internal/connection"
+	"fyne.io/fyne/v2"
+	fyne_app "fyne.io/fyne/v2/app"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views"
-	"github.com/thomas-marquis/s3-box/internal/utils"
-
-	"fyne.io/fyne/v2"
-	fyne_app "fyne.io/fyne/v2/app"
 	"go.uber.org/zap"
+	"sync"
 )
 
 const (
-	appId = "fr.peaksys.go2s3"
+	appId = "fr.scalde.s3box"
 )
 
 type Go2S3App struct {
-	ctx       appcontext.AppContext
-	views     map[navigation.Route]func(appcontext.AppContext) (*fyne.Container, error)
+	appCtx    appcontext.AppContext
+	views     map[navigation.Route]appcontext.View
 	initRoute navigation.Route
 }
 
 func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
-	appViews := make(map[navigation.Route]func(appcontext.AppContext) (*fyne.Container, error))
+	appViews := make(map[navigation.Route]appcontext.View)
 	appViews[navigation.ExplorerRoute] = views.GetFileExplorerView
 	appViews[navigation.ConnectionRoute] = views.GetConnectionView
 	appViews[navigation.SettingsRoute] = views.GetSettingsView
+	appViews[navigation.NotificationsRoute] = views.GetNotificationView
 
 	sugarLog := logger.Sugar()
 	a := fyne_app.NewWithID(appId)
 	w := a.NewWindow("S3 Box")
 
-	connRepo := infrastructure.NewConnectionRepositoryImpl(a.Preferences())
-	settingsRepo := infrastructure.NewSettingsRepository(a.Preferences())
+	terminated := make(chan struct{})
+	eventBus := newEventBusImpl(terminated)
 
-	// TODO: setup the last connection in other part of the app
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // TODO get this from the user's settings
-	defer cancel()
-	lastSelectedConn, err := connRepo.GetSelectedConnection(ctx)
-	if err != nil && err != connection.ErrConnectionNotFound {
-		sugarLog.Error("Error getting selected connection", err)
-		return nil, err
-	}
+	notifier := infrastructure.NewNotificationPublisher()
 
 	fyneSettings := a.Settings()
-	settings, err := settingsRepo.Get(ctx)
+
+	connectionsRepository := infrastructure.NewFyneConnectionsRepository(a.Preferences(), eventBus)
+
+	settingsRepository := infrastructure.NewSettingsRepository(a.Preferences())
+
+	directoryRepository, err := infrastructure.NewS3DirectoryRepository(
+		connectionsRepository,
+		eventBus,
+		notifier,
+	)
 	if err != nil {
-		sugarLog.Error("Error getting settings", err)
+		sugarLog.Error("Error creating directory repository", err)
 		return nil, err
 	}
-	fyneSettings.SetTheme(utils.MapFyneColorTheme(settings.Color))
 
-	appctx := BuildAppContext(
-		connRepo,
-		settingsRepo,
-		logger,
-		lastSelectedConn,
-		w,
-		navigation.ExplorerRoute,
-		appViews,
-		fyneSettings,
+	settingsViewModel := viewmodel.NewSettingsViewModel(settingsRepository, fyneSettings, notifier)
+	connectionViewModel := viewmodel.NewConnectionViewModel(
+		connectionsRepository,
+		settingsViewModel,
+		notifier,
+		eventBus,
+	)
+	explorerViewModel := viewmodel.NewExplorerViewModel(
+		directoryRepository,
+		settingsViewModel,
+		notifier,
+		connectionViewModel.Deck().SelectedConnection(),
+		eventBus,
 	)
 
-	w.SetOnClosed(func() {
-		close(appctx.ExitChan())
-	})
+	notificationsViewModel := viewmodel.NewNotificationViewModel(notifier, terminated)
 
-	w.SetMainMenu(getMainMenu(appctx))
+	appCtx := appcontext.New(
+		w,
+		explorerViewModel,
+		connectionViewModel,
+		settingsViewModel,
+		notificationsViewModel,
+		initRoute,
+		appViews,
+		logger,
+		fyneSettings,
+		eventBus,
+	)
+
+	var one sync.Once
+	w.SetOnClosed(func() {
+		one.Do(func() {
+			close(terminated)
+		})
+	})
+	w.SetMainMenu(getMainMenu(appCtx))
 
 	return &Go2S3App{
 		views:     appViews,
 		initRoute: initRoute,
-		ctx:       appctx,
+		appCtx:    appCtx,
 	}, nil
 }
 
 func (a *Go2S3App) Start() error {
-	a.ctx.Window().Resize(fyne.NewSize(1000, 700))
-	err := a.ctx.Navigate(a.initRoute)
+	a.appCtx.Window().Resize(fyne.NewSize(1200, 900))
+	err := a.appCtx.Navigate(a.initRoute)
 	if err != nil {
 		return err
 	}
-	a.ctx.Window().ShowAndRun()
+	a.appCtx.Window().ShowAndRun()
 	return nil
 }
 
-func getMainMenu(ctx appcontext.AppContext) *fyne.MainMenu {
+func getMainMenu(appCtx appcontext.AppContext) *fyne.MainMenu {
 	settingsMenu := fyne.NewMenu("Settings",
 		fyne.NewMenuItem("Manage connections", func() {
-			ctx.Navigate(navigation.ConnectionRoute)
+			appCtx.Navigate(navigation.ConnectionRoute)
 		}),
 		fyne.NewMenuItem("Manage settings", func() {
-			ctx.Navigate(navigation.SettingsRoute)
+			appCtx.Navigate(navigation.SettingsRoute)
+		}),
+		fyne.NewMenuItem("View notifications", func() {
+			appCtx.Navigate(navigation.NotificationsRoute)
 		}),
 	)
-	fileMenu := fyne.NewMenu("File",
+	fileMenu := fyne.NewMenu("AttachedFile",
 		fyne.NewMenuItem("Explorer view", func() {
-			ctx.Navigate(navigation.ExplorerRoute)
+			appCtx.Navigate(navigation.ExplorerRoute)
 		}),
 	)
 	return fyne.NewMainMenu(fileMenu, settingsMenu)

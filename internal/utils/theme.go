@@ -3,7 +3,7 @@ package utils
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
-	"github.com/thomas-marquis/s3-box/internal/settings"
+	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 )
 
 func MapFyneColorTheme(colorTheme settings.ColorTheme) fyne.Theme {

@@ -2,111 +2,90 @@ package views
 
 import (
 	"fmt"
+	"fyne.io/fyne/v2/dialog"
+	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 
-	"github.com/thomas-marquis/s3-box/internal/explorer"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
-	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/components"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/widget"
+	fyne_widget "fyne.io/fyne/v2/widget"
 )
 
 func makeNoConnectionTopBanner(ctx appcontext.AppContext) *fyne.Container {
 	return container.NewVBox(
-		container.NewCenter(widget.NewLabel("No connection selected, please select a connection in the settings menu")),
-		container.NewCenter(widget.NewButton("Manage connections", func() {
+		container.NewCenter(fyne_widget.NewLabel("No connection selected, please select a connection in the settings menu")),
+		container.NewCenter(fyne_widget.NewButton("Manage connections", func() {
 			ctx.Navigate(navigation.ConnectionRoute)
 		})),
 	)
 }
 
-func GetFileExplorerView(ctx appcontext.AppContext) (*fyne.Container, error) {
-	noConn := makeNoConnectionTopBanner(ctx)
+// GetFileExplorerView initializes and returns the file explorer UI layout with functionality for file and directory navigation.
+// It implements the navigation.View type interface.
+// Returns filled the *fyne.Container and an error.
+func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) {
+	noConn := makeNoConnectionTopBanner(appCtx)
 	noConn.Hide()
+	vm := appCtx.ExplorerViewModel()
 
-	content := container.NewHSplit(widget.NewLabel(""), widget.NewLabel(""))
+	content := container.NewHSplit(fyne_widget.NewLabel(""), fyne_widget.NewLabel(""))
 
-	ctx.ExplorerViewModel().OnDisplayNoConnectionBannerChange(func(shouldDisplay bool) {
-		if shouldDisplay {
+	vm.SelectedConnection().AddListener(binding.NewDataListener(func() {
+		if vm.CurrentSelectedConnection() == nil {
 			noConn.Show()
 			content.Hide()
 		} else {
 			noConn.Hide()
 			content.Show()
 		}
-	})
+	}))
 
-	treeItemBuilder := components.NewTreeItemBuilder()
-
-	tree := widget.NewTreeWithData(
-		ctx.ExplorerViewModel().Tree(),
-		func(branch bool) fyne.CanvasObject {
-			return treeItemBuilder.NewRaw()
-		},
-		func(i binding.DataItem, branch bool, o fyne.CanvasObject) {
-			di, _ := i.(binding.Untyped).Get()
-			nodeItem, ok := di.(*viewmodel.TreeNode)
-			if !ok {
-				panic(fmt.Sprintf("unexpected type %T", di))
-			}
-			treeItemBuilder.Update(o, *nodeItem)
-		})
-
-	detailsContainer := container.NewVBox()
-	fileDetails := components.NewFileDetails()
-	dirDetails := components.NewDirDetails()
-
-	tree.OnSelected = func(uid widget.TreeNodeID) {
-		di, err := ctx.ExplorerViewModel().Tree().GetValue(uid)
-		if err != nil {
-			ctx.ExplorerViewModel().ErrorChan() <- fmt.Errorf("error getting value: %v", err)
+	vm.ErrorMessage().AddListener(binding.NewDataListener(func() {
+		msg, _ := vm.ErrorMessage().Get()
+		if msg == "" {
 			return
 		}
-		nodeItem, ok := di.(*viewmodel.TreeNode)
-		if !ok {
-			panic(fmt.Sprintf("unexpected type %T", di))
-		}
+		dialog.ShowError(fmt.Errorf(msg), appCtx.Window())
+		vm.ErrorMessage().Set("")
+	}))
 
-		if (nodeItem.Type == viewmodel.TreeNodeTypeDirectory || nodeItem.Type == viewmodel.TreeNodeTypeBucketRoot) && !nodeItem.IsLoaded() {
-			if err := ctx.ExplorerViewModel().OpenDirectory(explorer.S3DirectoryID(nodeItem.ID)); err != nil {
-				ctx.ExplorerViewModel().ErrorChan() <- err
-				return
-			}
-			tree.OpenBranch(uid)
-			nodeItem.SetIsLoaded()
+	vm.InfoMessage().AddListener(binding.NewDataListener(func() {
+		msg, _ := vm.InfoMessage().Get()
+		if msg == "" {
+			return
 		}
-		if nodeItem.Type == viewmodel.TreeNodeTypeDirectory || nodeItem.Type == viewmodel.TreeNodeTypeBucketRoot {
-			d, err := ctx.ExplorerViewModel().GetDirByID(explorer.S3DirectoryID(nodeItem.ID))
-			if err != nil {
-				panic(fmt.Sprintf("error getting directory by ID (%s) in cache: %v", nodeItem.ID, err))
-			}
-			dirDetails.Update(ctx, d)
-			detailsContainer.Objects = []fyne.CanvasObject{dirDetails.Object()}
-		} else {
-			f, err := ctx.ExplorerViewModel().GetFileByID(explorer.S3FileID(nodeItem.ID))
-			if err != nil {
-				panic(fmt.Sprintf("error getting file by ID (%s: %s) in cache: %v", nodeItem.Type, nodeItem.ID, err))
-			}
-			fileDetails.Update(ctx, f)
-			detailsContainer.Objects = []fyne.CanvasObject{fileDetails.Object()}
-		}
-	}
+		dialog.ShowInformation("Info", msg, appCtx.Window())
+		vm.InfoMessage().Set("")
+	}))
+
+	detailsContainer := container.NewVBox()
+	fileDetails := widget.NewFileDetails(appCtx)
+	dirDetails := widget.NewDirectoryDetails(appCtx)
+
+	tree := widget.NewExplorerTree(appCtx,
+		func(dir *directory.Directory) {
+			dirDetails.Render(dir)
+			detailsContainer.Objects = []fyne.CanvasObject{dirDetails}
+		},
+		func(file *directory.File) {
+			fileDetails.Render(file)
+			detailsContainer.Objects = []fyne.CanvasObject{fileDetails}
+		},
+	)
 
 	content.Leading = container.NewScroll(tree)
 	content.Trailing = detailsContainer
 
-	mainContainer := container.NewBorder(
+	return container.NewBorder(
 		noConn,
 		nil,
 		nil,
 		nil,
 		content,
-	)
-
-	return mainContainer, nil
+	), nil
 }

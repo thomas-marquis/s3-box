@@ -33,3 +33,6 @@ go.work.sum
 /tools
 /s3-box
 /s3box
+/.idea
+/.run
+/playground
