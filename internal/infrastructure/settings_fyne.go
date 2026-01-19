@@ -53,7 +53,7 @@ func (r *SettingRepositoryImpl) Save(ctx context.Context, s settings.Settings) e
 	settingJson, err := json.Marshal(dto)
 	if err != nil {
 		logger.Printf("error marshalling settings: %v", err)
-		return fmt.Errorf("saveDeck: %w", err)
+		return fmt.Errorf("save: %w", err)
 	}
 	r.prefs.SetString(settingsKey, string(settingJson))
 	return nil

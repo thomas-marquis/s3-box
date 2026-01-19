@@ -36,7 +36,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		Items: []*widget.FormItem{
 			{Text: "Timeout (seconde)", Widget: timeoutEntry},
 			{Text: "Color theme", Widget: themeSelector},
-			{Text: "AttachedFile size limit for preview (MB)", Widget: maxFilePreviewSizeEntry},
+			{Text: "File size limit for preview (MB)", Widget: maxFilePreviewSizeEntry},
 		},
 		OnSubmit: func() {
 			if err := ctx.SettingsViewModel().Save(); err != nil {
@@ -46,7 +46,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 
 			dialog.ShowInformation("Done", "Settings Saved", ctx.Window())
 		},
-		SubmitText: "saveDeck",
+		SubmitText: "Save",
 	}
 
 	goToExplorerBtn := widget.NewButtonWithIcon(

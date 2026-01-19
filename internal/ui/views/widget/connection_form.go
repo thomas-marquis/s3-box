@@ -40,10 +40,10 @@ func NewConnectionForm(
 
 func (w *ConnectionForm) CreateRenderer() fyne.WidgetRenderer {
 	awsForm := w.buildAWSForm()
-	awsForm.SubmitText = "saveDeck"
+	awsForm.SubmitText = "Save"
 
 	s3LikeForm := w.buildS3LikeForm()
-	s3LikeForm.SubmitText = "saveDeck"
+	s3LikeForm.SubmitText = "Save"
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem(
@@ -160,13 +160,6 @@ func (w *ConnectionForm) buildAWSForm() *widget.Form {
 			connection_deck.AsAWS(uiutils.GetString(regionData)),
 			connection_deck.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
 		)
-		// TODO: reset the form content on success
-		//nameData.Set("")
-		//accessKeyData.Set("")
-		//secretKeyData.Set("")
-		//bucketData.Set("")
-		//regionData.Set("")
-		//readOnlyData.Set(false)
 	}
 
 	return f
@@ -256,15 +249,6 @@ func (w *ConnectionForm) buildS3LikeForm() *widget.Form {
 			connection_deck.AsS3Like(uiutils.GetString(serverData), uiutils.GetBool(useTlsData)),
 			connection_deck.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
 		)
-		// TODO reset the form content on success
-		//nameData.Set("")
-		//accessKeyData.Set("")
-		//secretKeyData.Set("")
-		//serverData.Set("")
-		//bucketData.Set("")
-		//useTlsData.Set(false)
-		//readOnlyData.Set(false)
-
 	}
 
 	return f
