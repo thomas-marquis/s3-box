@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -173,5 +174,101 @@ func TestS3DirectoryRepository_GetByPath(t *testing.T) {
 		assert.Len(t, dir.Files(), 1)
 		assert.Equal(t, "file_in_dir.txt", dir.Files()[0].Name().String())
 		assert.Len(t, dir.SubDirectories(), 0)
+	})
+}
+
+func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
+	ctx := context.Background()
+	endpoint, terminate := setupS3testContainer(ctx, t)
+	defer terminate()
+	client := setupS3Client(t, endpoint)
+
+	bucketName := "test-bucket"
+
+	setupS3Bucket(ctx, t, client, bucketName, []fakeS3Object{
+		{Key: "root_file.txt", Body: strings.NewReader("coucou")},
+		{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("lolo")},
+	})
+
+	fakeConnID := connection_deck.NewConnectionID()
+	fakeDeck := connection_deck.New()
+	fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, bucketName,
+		connection_deck.AsS3Like(endpoint, false),
+		connection_deck.WithID(fakeConnID))
+
+	t.Run("should return the file content", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+
+		fakeEventChan := make(chan event.Event)
+		defer close(fakeEventChan)
+		mockBus.EXPECT().
+			Subscribe().
+			Return(fakeEventChan)
+
+		mockConnRepo.EXPECT().
+			Get(gomock.AssignableToTypeOf(ctxType)).
+			Return(fakeDeck, nil).
+			Times(1)
+
+		repo, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		require.NoError(t, err)
+
+		file, err := directory.NewFile("root_file.txt", directory.RootPath)
+		require.NoError(t, err)
+
+		// When
+		res, err := repo.GetFileContent(context.TODO(), fakeConnID, file)
+
+		// Then
+		assert.NoError(t, err)
+
+		f, err := res.Open()
+		assert.NoError(t, err)
+		var resContent []byte
+		resContent, err = io.ReadAll(f)
+		assert.NoError(t, err)
+		assert.Equal(t, "coucou", string(resContent))
+	})
+
+	t.Run("should return the file content", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+
+		fakeEventChan := make(chan event.Event)
+		defer close(fakeEventChan)
+		mockBus.EXPECT().
+			Subscribe().
+			Return(fakeEventChan)
+
+		mockConnRepo.EXPECT().
+			Get(gomock.AssignableToTypeOf(ctxType)).
+			Return(fakeDeck, nil).
+			Times(1)
+
+		repo, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		require.NoError(t, err)
+
+		file, err := directory.NewFile("file_in_dir.txt", directory.NewPath("/mydir/"))
+		require.NoError(t, err)
+
+		// When
+		res, err := repo.GetFileContent(context.TODO(), fakeConnID, file)
+
+		// Then
+		assert.NoError(t, err)
+
+		f, err := res.Open()
+		assert.NoError(t, err)
+		var resContent []byte
+		resContent, err = io.ReadAll(f)
+		assert.NoError(t, err)
+		assert.Equal(t, "lolo", string(resContent))
 	})
 }
