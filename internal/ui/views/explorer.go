@@ -85,10 +85,17 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 	content.Trailing = detailsContainer
 
 	return container.NewBorder(
-		noConn,
-		nil,
-		nil,
-		nil,
-		content,
+		container.NewVBox(
+			widget.NewHeading("File explorer"),
+			fyne_widget.NewSeparator(),
+		),
+		nil, nil, nil,
+		container.NewBorder(
+			noConn,
+			nil,
+			nil,
+			nil,
+			content,
+		),
 	), nil
 }
