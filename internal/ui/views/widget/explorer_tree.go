@@ -2,6 +2,7 @@ package widget
 
 import (
 	"fmt"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -61,7 +62,7 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 
 			displayLabel.SetText(nodeItem.DisplayName())
 
-			if nodeItem.Icon != nil {
+			if nodeItem.Icon() != nil {
 				icon.SetResource(nodeItem.Icon())
 				icon.Show()
 			} else {

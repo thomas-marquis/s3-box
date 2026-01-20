@@ -91,7 +91,7 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 			localDestFilePath := reader.URI().Path()
 			vm.UploadFile(localDestFilePath, dir)
 			vm.UpdateLastUploadLocation(localDestFilePath)
-			dialog.ShowInformation("Upload", "AttachedFile uploaded", w.appCtx.Window())
+			dialog.ShowInformation("Upload", "File uploaded", w.appCtx.Window())
 		}, w.appCtx.Window())
 
 		selectDialog.SetLocation(vm.LastUploadLocation())

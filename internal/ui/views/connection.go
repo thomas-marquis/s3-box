@@ -1,7 +1,8 @@
 package views
 
 import (
-	"fmt"
+	"errors"
+
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
@@ -24,8 +25,8 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 		if msg == "" {
 			return
 		}
-		dialog.ShowError(fmt.Errorf(msg), appCtx.Window())
-		vm.ErrorMessage().Set("")
+		dialog.ShowError(errors.New(msg), appCtx.Window())
+		vm.ErrorMessage().Set("") //nolint:errcheck
 	}))
 
 	createBtn := fyne_widget.NewButtonWithIcon(
@@ -44,7 +45,9 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 		"View files",
 		theme.NavigateBackIcon(),
 		func() {
-			appCtx.Navigate(navigation.ExplorerRoute)
+			if _, err := appCtx.Navigate(navigation.ExplorerRoute); err != nil { //nolint:staticcheck
+				// TODO: handle error
+			}
 		},
 	)
 

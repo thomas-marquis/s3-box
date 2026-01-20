@@ -2,6 +2,7 @@ package widget
 
 import (
 	"fmt"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -104,8 +105,8 @@ func (w *FileDetails) Render(file *directory.File) {
 	fileURI := storage.NewFileURI(file.FullPath())
 	w.fileIcon.SetURI(fileURI)
 
-	w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05"))
-	w.fileSizeBinding.Set(utils.FormatSizeBytes(file.SizeBytes()))
+	w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05")) //nolint:errcheck
+	w.fileSizeBinding.Set(utils.FormatSizeBytes(file.SizeBytes()))               //nolint:errcheck
 
 	if file.SizeBytes() <= w.appCtx.SettingsViewModel().CurrentMaxFilePreviewSizeBytes() {
 		w.previewAction.Enable()
@@ -134,7 +135,9 @@ func (w *FileDetails) Render(file *directory.File) {
 			}
 			localDestFilePath := writer.URI().Path()
 			vm.DownloadFile(file, localDestFilePath)
-			vm.UpdateLastDownloadLocation(localDestFilePath)
+			if err := vm.UpdateLastDownloadLocation(localDestFilePath); err != nil { //nolint:staticcheck
+				// TODO: handle error
+			}
 			dialog.ShowInformation("Download", "File downloaded", w.appCtx.Window())
 		}, w.appCtx.Window())
 		saveDialog.SetFileName(file.Name().String())

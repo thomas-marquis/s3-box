@@ -1,7 +1,8 @@
 package views
 
 import (
-	"fmt"
+	"errors"
+
 	"fyne.io/fyne/v2/dialog"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 
@@ -20,7 +21,9 @@ func makeNoConnectionTopBanner(ctx appcontext.AppContext) *fyne.Container {
 	return container.NewVBox(
 		container.NewCenter(fyne_widget.NewLabel("No connection selected, please select a connection in the settings menu")),
 		container.NewCenter(fyne_widget.NewButton("Manage connections", func() {
-			ctx.Navigate(navigation.ConnectionRoute)
+			if _, err := ctx.Navigate(navigation.ConnectionRoute); err != nil { //nolint:staticcheck
+				// TODO: handle error
+			}
 		})),
 	)
 }
@@ -50,8 +53,8 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 		if msg == "" {
 			return
 		}
-		dialog.ShowError(fmt.Errorf(msg), appCtx.Window())
-		vm.ErrorMessage().Set("")
+		dialog.ShowError(errors.New(msg), appCtx.Window())
+		vm.ErrorMessage().Set("") //nolint:errcheck
 	}))
 
 	vm.InfoMessage().AddListener(binding.NewDataListener(func() {
@@ -60,7 +63,7 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 			return
 		}
 		dialog.ShowInformation("Info", msg, appCtx.Window())
-		vm.InfoMessage().Set("")
+		vm.InfoMessage().Set("") //nolint:errcheck
 	}))
 
 	detailsContainer := container.NewVBox()

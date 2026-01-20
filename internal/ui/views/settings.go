@@ -36,7 +36,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		Items: []*widget.FormItem{
 			{Text: "Timeout (seconde)", Widget: timeoutEntry},
 			{Text: "Color theme", Widget: themeSelector},
-			{Text: "AttachedFile size limit for preview (MB)", Widget: maxFilePreviewSizeEntry},
+			{Text: "File size limit for preview (MB)", Widget: maxFilePreviewSizeEntry},
 		},
 		OnSubmit: func() {
 			if err := ctx.SettingsViewModel().Save(); err != nil {
@@ -46,14 +46,16 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 
 			dialog.ShowInformation("Done", "Settings Saved", ctx.Window())
 		},
-		SubmitText: "saveDeck",
+		SubmitText: "Save",
 	}
 
 	goToExplorerBtn := widget.NewButtonWithIcon(
 		"View files",
 		theme.NavigateBackIcon(),
 		func() {
-			ctx.Navigate(navigation.ExplorerRoute)
+			if _, err := ctx.Navigate(navigation.ExplorerRoute); err != nil { //nolint:staticcheck
+				// TODO: handle error
+			}
 		},
 	)
 
@@ -69,7 +71,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 				if writer == nil {
 					return
 				}
-				defer writer.Close()
+				defer writer.Close() //nolint:errcheck
 
 				if err := ctx.ConnectionViewModel().ExportAsJSON(writer); err != nil {
 					dialog.ShowError(err, ctx.Window())

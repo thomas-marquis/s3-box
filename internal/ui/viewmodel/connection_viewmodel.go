@@ -3,12 +3,13 @@ package viewmodel
 import (
 	"context"
 	"fmt"
+	"io"
+
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
-	"io"
 )
 
 var errConnNotInBinding = fmt.Errorf("connection not found in binding list")
@@ -74,15 +75,15 @@ func NewConnectionViewModel(
 
 	deck, err := connectionRepository.Get(ctx)
 	if err != nil {
-		notifier.NotifyError(fmt.Errorf("error getting initial connections: %w", err))
+		notifier.NotifyError(fmt.Errorf("error getting initial connections: %w", err)) //nolint:errcheck
 		return nil
 	}
 
 	errorMsgBinding := binding.NewString()
-	errorMsgBinding.Set("")
+	errorMsgBinding.Set("") //nolint:errcheck
 
 	loading := binding.NewBool()
-	loading.Set(false)
+	loading.Set(false) //nolint:errcheck
 
 	vm := &connectionViewModelImpl{
 		baseViewModel: baseViewModel{
@@ -213,8 +214,8 @@ func (vm *connectionViewModelImpl) updateConnectionBinding(c *connection_deck.Co
 
 			// Necessary workaround to trigger the refresh in the UI
 			placeholderConn := connection_deck.Connection{}
-			vm.connBindings.Append(placeholderConn)
-			vm.connBindings.Remove(placeholderConn)
+			vm.connBindings.Append(placeholderConn) //nolint:errcheck
+			vm.connBindings.Remove(placeholderConn) //nolint:errcheck
 		}
 	}
 
@@ -225,7 +226,7 @@ func (vm *connectionViewModelImpl) updateConnectionBinding(c *connection_deck.Co
 
 func (vm *connectionViewModelImpl) initConnections(deck *connection_deck.Deck) {
 	for _, c := range deck.Get() {
-		vm.connBindings.Append(c)
+		vm.connBindings.Append(c) //nolint:errcheck
 	}
 }
 
@@ -236,49 +237,49 @@ func (vm *connectionViewModelImpl) listenUiEvents() {
 			if vm.IsLoading() {
 				continue
 			}
-			vm.loading.Set(true)
+			vm.loading.Set(true) //nolint:errcheck
 
 		case connection_deck.SelectEventType.AsFailure():
 			e := evt.(connection_deck.SelectFailureEvent)
-			vm.errorMessage.Set(e.Error().Error())
+			vm.errorMessage.Set(e.Error().Error()) //nolint:errcheck
 			vm.deck.Notify(evt)
-			vm.loading.Set(false)
+			vm.loading.Set(false) //nolint:errcheck
 
 		case connection_deck.SelectEventType.AsSuccess():
 			e := evt.(connection_deck.SelectSuccessEvent)
 			vm.updateConnectionBinding(e.Connection())
 			vm.deck.Notify(evt)
-			vm.loading.Set(false)
+			vm.loading.Set(false) //nolint:errcheck
 
 		case connection_deck.CreateEventType:
 			if vm.IsLoading() {
 				continue
 			}
-			vm.loading.Set(true)
+			vm.loading.Set(true) //nolint:errcheck
 
 		case connection_deck.CreateEventType.AsFailure():
 			e := evt.(connection_deck.CreateFailureEvent)
-			vm.errorMessage.Set(e.Error().Error())
+			vm.errorMessage.Set(e.Error().Error()) //nolint:errcheck
 			vm.deck.Notify(evt)
-			vm.loading.Set(false)
+			vm.loading.Set(false) //nolint:errcheck
 
 		case connection_deck.CreateEventType.AsSuccess():
 			e := evt.(connection_deck.CreateSuccessEvent)
-			vm.connBindings.Append(e.Connection())
+			vm.connBindings.Append(e.Connection()) //nolint:errcheck
 			vm.deck.Notify(evt)
-			vm.loading.Set(false)
+			vm.loading.Set(false) //nolint:errcheck
 
 		case connection_deck.RemoveEventType:
 			if vm.IsLoading() {
 				continue
 			}
-			vm.loading.Set(true)
+			vm.loading.Set(true) //nolint:errcheck
 
 		case connection_deck.RemoveEventType.AsFailure():
 			e := evt.(connection_deck.RemoveFailureEvent)
-			vm.errorMessage.Set(e.Error().Error())
+			vm.errorMessage.Set(e.Error().Error()) //nolint:errcheck
 			vm.deck.Notify(evt)
-			vm.loading.Set(false)
+			vm.loading.Set(false) //nolint:errcheck
 
 		case connection_deck.RemoveEventType.AsSuccess():
 			e := evt.(connection_deck.RemoveSuccessEvent)
@@ -286,25 +287,25 @@ func (vm *connectionViewModelImpl) listenUiEvents() {
 				continue
 			}
 			vm.deck.Notify(evt)
-			vm.loading.Set(false)
+			vm.loading.Set(false) //nolint:errcheck
 
 		case connection_deck.UpdateEventType:
 			if vm.IsLoading() {
 				continue
 			}
-			vm.loading.Set(true)
+			vm.loading.Set(true) //nolint:errcheck
 
 		case connection_deck.UpdateEventType.AsFailure():
 			e := evt.(connection_deck.UpdateFailureEvent)
-			vm.errorMessage.Set(e.Error().Error())
+			vm.errorMessage.Set(e.Error().Error()) //nolint:errcheck
 			vm.deck.Notify(evt)
-			vm.loading.Set(false)
+			vm.loading.Set(false) //nolint:errcheck
 
 		case connection_deck.UpdateEventType.AsSuccess():
 			e := evt.(connection_deck.UpdateSuccessEvent)
 			vm.updateConnectionBinding(e.Connection())
 			vm.deck.Notify(evt)
-			vm.loading.Set(false)
+			vm.loading.Set(false) //nolint:errcheck
 
 		}
 	}

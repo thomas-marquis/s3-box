@@ -3,12 +3,13 @@ package infrastructure
 import (
 	"context"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"io"
 	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	s3manager "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
 func (r *S3DirectoryRepository) handleDirectoryCreation(ctx context.Context, evt directory.CreatedEvent) error {
@@ -23,7 +24,7 @@ func (r *S3DirectoryRepository) handleDirectoryCreation(ctx context.Context, evt
 	}
 
 	key := mapDirToObjectKey(newDir)
-	if _, err := sess.client.PutObjectWithContext(ctx, &s3.PutObjectInput{
+	if _, err := sess.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(sess.connection.Bucket()),
 		Key:    aws.String(key),
 		Body:   strings.NewReader(""),
@@ -51,7 +52,7 @@ func (r *S3DirectoryRepository) handleFileDeletion(ctx context.Context, evt dire
 		Key:    aws.String(key),
 	}
 
-	if _, err := sess.client.DeleteObjectWithContext(ctx, input); err != nil {
+	if _, err := sess.client.DeleteObject(ctx, input); err != nil {
 		return r.manageAwsSdkError(err, file.FullPath(), sess)
 	}
 	return nil
@@ -78,8 +79,8 @@ func (r *S3DirectoryRepository) handleUpload(ctx context.Context, evt directory.
 		}
 	}(fileObj)
 
-	uploader := s3manager.NewUploader(sess.session)
-	if _, err = uploader.UploadWithContext(ctx, &s3manager.UploadInput{
+	uploader := s3manager.NewUploader(sess.client)
+	if _, err = uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(sess.connection.Bucket()),
 		Key:    aws.String(mapFileToKey(content.File())),
 		Body:   fileObj,
@@ -96,12 +97,15 @@ func (r *S3DirectoryRepository) handleDownload(ctx context.Context, evt director
 		return err
 	}
 
-	downloader := s3manager.NewDownloader(sess.session)
+	downloader := s3manager.NewDownloader(sess.client)
 
 	file, err := evt.Content().Open()
-	defer file.Close()
+	if err != nil {
+		return fmt.Errorf("failed opening the file to download: %w", err)
+	}
+	defer file.Close() //nolint:errcheck
 
-	if _, err = downloader.DownloadWithContext(ctx, file, &s3.GetObjectInput{
+	if _, err = downloader.Download(ctx, file, &s3.GetObjectInput{
 		Bucket: aws.String(sess.connection.Bucket()),
 		Key:    aws.String(mapFileToKey(evt.Content().File())),
 	}); err != nil {

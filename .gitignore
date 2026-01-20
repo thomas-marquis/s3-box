@@ -36,3 +36,4 @@ go.work.sum
 /.idea
 /.run
 /playground
+/*.pdf

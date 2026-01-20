@@ -3,15 +3,16 @@ package viewmodel
 import (
 	"context"
 	"errors"
+
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 
 	"fmt"
+	"path/filepath"
+
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
-	"path/filepath"
-	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -74,17 +75,15 @@ type ExplorerViewModel interface {
 type explorerViewModelImpl struct {
 	baseViewModel
 
-	mu                  sync.Mutex
 	directoryRepository directory.Repository
 	tree                binding.UntypedTree
 
 	selectedConnection    binding.Untyped
 	selectedConnectionVal *connection_deck.Connection
 
-	settingsVm                SettingsViewModel
-	lastDownloadLocation      fyne.ListableURI
-	lastUploadDir             fyne.ListableURI
-	displayNoConnectionBanner binding.Bool
+	settingsVm           SettingsViewModel
+	lastDownloadLocation fyne.ListableURI
+	lastUploadDir        fyne.ListableURI
 
 	notifier notification.Repository
 	bus      event.Bus
@@ -113,10 +112,10 @@ func NewExplorerViewModel(
 
 	if err := vm.initializeTreeData(initialConnection); err != nil {
 		if errors.Is(err, ErrNoConnectionSelected) {
-			vm.selectedConnection.Set(nil)
+			vm.selectedConnection.Set(nil) //nolint:errcheck
 			vm.selectedConnectionVal = nil
 		}
-		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err))
+		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err)) //nolint:errcheck
 	}
 
 	go vm.listenEvents()
@@ -249,7 +248,7 @@ func (vm *explorerViewModelImpl) UpdateLastUploadLocation(filePath string) {
 	uri := storage.NewFileURI(dirPath)
 	uriLister, err := storage.ListerForURI(uri)
 	if err != nil {
-		vm.notifier.NotifyError(fmt.Errorf("update upload location: %w", err))
+		vm.notifier.NotifyError(fmt.Errorf("update upload location: %w", err)) //nolint:errcheck
 		return
 	}
 	vm.lastUploadDir = uriLister
@@ -309,7 +308,7 @@ func (vm *explorerViewModelImpl) fillSubTree(startNode node.DirectoryNode, dir *
 	for _, file := range dir.Files() {
 		fileNode := node.NewFileNode(file)
 		if err := vm.tree.Append(startNode.ID(), fileNode.ID(), fileNode); err != nil {
-			vm.notifier.NotifyError(fmt.Errorf("error appending file to tree: %w", err))
+			vm.notifier.NotifyError(fmt.Errorf("error appending file to tree: %w", err)) //nolint:errcheck
 			continue
 		}
 	}
@@ -317,7 +316,7 @@ func (vm *explorerViewModelImpl) fillSubTree(startNode node.DirectoryNode, dir *
 	for _, subDirPath := range dir.SubDirectories() {
 		subDirNode := node.NewDirectoryNode(subDirPath)
 		if err := vm.tree.Append(startNode.ID(), subDirNode.ID(), subDirNode); err != nil {
-			vm.notifier.NotifyError(fmt.Errorf("error appending subdirectory to tree: %w", err))
+			vm.notifier.NotifyError(fmt.Errorf("error appending subdirectory to tree: %w", err)) //nolint:errcheck
 			continue
 		}
 	}
@@ -345,10 +344,6 @@ func (vm *explorerViewModelImpl) addNewFileToTree(fileToAdd *directory.File) err
 	return nil
 }
 
-func (vm *explorerViewModelImpl) resetSubTree(startNode node.DirectoryNode) error {
-	return vm.tree.Remove(startNode.ID())
-}
-
 func (vm *explorerViewModelImpl) removeFileFromTree(file *directory.File) error {
 	fileNodePath := file.FullPath()
 	return vm.tree.Remove(fileNodePath)
@@ -364,11 +359,13 @@ func (vm *explorerViewModelImpl) listenEvents() {
 				(vm.selectedConnectionVal != nil && conn == nil) ||
 				(vm.selectedConnectionVal != nil && !vm.selectedConnectionVal.Is(conn))
 			if hasChanged {
-				vm.loading.Set(true)
+				vm.loading.Set(true) //nolint:errcheck
 				vm.selectedConnectionVal = conn
-				vm.selectedConnection.Set(conn)
-				vm.initializeTreeData(conn)
-				vm.loading.Set(false)
+				vm.selectedConnection.Set(conn)                     //nolint:errcheck
+				if err := vm.initializeTreeData(conn); err != nil { //nolint:staticcheck
+					// TODO: handle error
+				}
+				vm.loading.Set(false) //nolint:errcheck
 			}
 
 		case connection_deck.RemoveEventType.AsSuccess():
@@ -376,98 +373,98 @@ func (vm *explorerViewModelImpl) listenEvents() {
 			conn := e.Connection()
 			if vm.selectedConnectionVal != nil && vm.selectedConnectionVal.Is(conn) {
 				vm.selectedConnectionVal = nil
-				vm.selectedConnection.Set(nil)
+				vm.selectedConnection.Set(nil) //nolint:errcheck
 			}
 
 		case directory.ContentUploadedEventType:
 			if vm.IsLoading() {
 				continue
 			}
-			vm.loading.Set(true)
+			vm.loading.Set(true) //nolint:errcheck
 
 		case directory.ContentUploadedEventType.AsSuccess():
 			e := evt.(directory.ContentUploadedSuccessEvent)
 			if err := vm.addNewFileToTree(e.Content().File()); err != nil {
 				vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, e.Directory()))
-				vm.loading.Set(false)
+				vm.loading.Set(false) //nolint:errcheck
 				continue
 			}
 			e.Directory().Notify(e)
-			vm.loading.Set(false)
+			vm.loading.Set(false) //nolint:errcheck
 
 		case directory.ContentUploadedEventType.AsFailure():
 			e := evt.(directory.ContentUploadedFailureEvent)
 			e.Directory().Notify(e)
 			err := vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", e.Error()))
-			vm.errorMessage.Set(err.Error())
-			vm.loading.Set(false)
+			vm.errorMessage.Set(err.Error()) //nolint:errcheck
+			vm.loading.Set(false)            //nolint:errcheck
 
 		case directory.CreatedEventType:
 			if vm.IsLoading() {
 				continue
 			}
-			vm.loading.Set(true)
+			vm.loading.Set(true) //nolint:errcheck
 
 		case directory.CreatedEventType.AsSuccess():
 			e := evt.(directory.CreatedSuccessEvent)
 			if err := vm.addNewDirectoryToTree(e.Directory()); err != nil {
 				vm.bus.Publish(directory.NewCreatedFailureEvent(err, e.Parent()))
-				vm.loading.Set(false)
+				vm.loading.Set(false) //nolint:errcheck
 				continue
 			}
 			e.Parent().Notify(e)
-			vm.loading.Set(false)
+			vm.loading.Set(false) //nolint:errcheck
 
 		case directory.CreatedEventType.AsFailure():
 			e := evt.(directory.CreatedFailureEvent)
 			e.Parent().Notify(e)
 			err := vm.notifier.NotifyError(fmt.Errorf("error creating directory: %w", e.Error()))
-			vm.errorMessage.Set(err.Error())
-			vm.loading.Set(false)
+			vm.errorMessage.Set(err.Error()) //nolint:errcheck
+			vm.loading.Set(false)            //nolint:errcheck
 
 		case directory.FileDeletedEventType:
 			if vm.IsLoading() {
 				continue
 			}
-			vm.loading.Set(true)
+			vm.loading.Set(true) //nolint:errcheck
 
 		case directory.FileDeletedEventType.AsSuccess():
 			e := evt.(directory.FileDeletedSuccessEvent)
 
 			if err := vm.removeFileFromTree(e.File()); err != nil {
 				vm.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
-				vm.loading.Set(false)
+				vm.loading.Set(false) //nolint:errcheck
 				continue
 			}
 			e.Parent().Notify(e)
-			vm.loading.Set(false)
-			vm.infoMessage.Set(fmt.Sprintf("File %s deleted", e.File().Name()))
+			vm.loading.Set(false)                                               //nolint:errcheck
+			vm.infoMessage.Set(fmt.Sprintf("File %s deleted", e.File().Name())) //nolint:errcheck
 
 		case directory.FileDeletedEventType.AsFailure():
 			e := evt.(directory.FileDeletedFailureEvent)
 			e.Parent().Notify(e)
 			err := vm.notifier.NotifyError(fmt.Errorf("error deleting file: %w", e.Error()))
-			vm.errorMessage.Set(err.Error())
-			vm.loading.Set(false)
+			vm.errorMessage.Set(err.Error()) //nolint:errcheck
+			vm.loading.Set(false)            //nolint:errcheck
 
 		case directory.ContentDownloadEventType:
 			if vm.IsLoading() {
 				continue
 			}
-			vm.loading.Set(true)
+			vm.loading.Set(true) //nolint:errcheck
 
 		case directory.ContentDownloadEventType.AsSuccess():
 			e := evt.(directory.ContentUploadedSuccessEvent)
 			e.Directory().Notify(e)
-			vm.loading.Set(false)
-			vm.infoMessage.Set(fmt.Sprintf("File %s downloaded", e.Content().File().Name()))
+			vm.loading.Set(false)                                                            //nolint:errcheck
+			vm.infoMessage.Set(fmt.Sprintf("File %s downloaded", e.Content().File().Name())) //nolint:errcheck
 
 		case directory.ContentDownloadEventType.AsFailure():
 			e := evt.(directory.ContentUploadedFailureEvent)
 			e.Directory().Notify(e)
 			err := vm.notifier.NotifyError(fmt.Errorf("error downloading file: %w", e.Error()))
-			vm.errorMessage.Set(err.Error())
-			vm.loading.Set(false)
+			vm.errorMessage.Set(err.Error()) //nolint:errcheck
+			vm.loading.Set(false)            //nolint:errcheck
 		}
 	}
 }

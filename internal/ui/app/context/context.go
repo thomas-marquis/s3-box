@@ -10,7 +10,7 @@ import (
 )
 
 type AppContext interface {
-	Navigate(route navigation.Route) error
+	Navigate(route navigation.Route) (*fyne.Container, error)
 	CurrentRoute() navigation.Route
 
 	ExplorerViewModel() viewmodel.ExplorerViewModel
@@ -21,6 +21,7 @@ type AppContext interface {
 	Window() fyne.Window
 	L() *zap.Logger
 	FyneSettings() fyne.Settings
+	AppContent() fyne.CanvasObject
 
 	Bus() event.Bus
 }
@@ -33,30 +34,38 @@ type AppContextImpl struct {
 
 	window       fyne.Window
 	logger       *zap.Logger
-	exitChan     chan struct{}
 	fyneSettings fyne.Settings
 
 	currentRoute navigation.Route
-	views        map[navigation.Route]View
+	menu         map[navigation.Route]Menu
 
 	bus event.Bus
+
+	mainWidget *AppWidget
 }
 
 var _ AppContext = &AppContextImpl{}
 
 func New(
+	appName string,
 	window fyne.Window,
 	explorerViewModel viewmodel.ExplorerViewModel,
 	connectionViewModel viewmodel.ConnectionViewModel,
 	settingsViewModel viewmodel.SettingsViewModel,
 	notificationViewModel viewmodel.NotificationViewModel,
 	initialRoute navigation.Route,
-	views map[navigation.Route]View,
+	menu map[navigation.Route]Menu,
 	logger *zap.Logger,
 	settings fyne.Settings,
 	bus event.Bus,
 ) *AppContextImpl {
-	return &AppContextImpl{
+
+	menuList := make([]Menu, len(menu))
+	for _, menu := range menu {
+		menuList[menu.Index] = menu
+	}
+
+	ctx := &AppContextImpl{
 		explorerViewModel:     explorerViewModel,
 		connectionsViewModel:  connectionViewModel,
 		settingsViewModel:     settingsViewModel,
@@ -64,10 +73,18 @@ func New(
 		window:                window,
 		logger:                logger,
 		currentRoute:          initialRoute,
-		views:                 views,
 		fyneSettings:          settings,
 		bus:                   bus,
+		menu:                  menu,
 	}
+
+	ctx.mainWidget = newAppWidget(appName, menuList, ctx.Navigate)
+
+	return ctx
+}
+
+func (ctx *AppContextImpl) AppContent() fyne.CanvasObject {
+	return ctx.mainWidget
 }
 
 func (ctx *AppContextImpl) FyneSettings() fyne.Settings {
@@ -98,20 +115,20 @@ func (ctx *AppContextImpl) L() *zap.Logger {
 	return ctx.logger
 }
 
-func (ctx *AppContextImpl) Navigate(route navigation.Route) error {
-	if _, ok := ctx.views[route]; !ok {
-		return navigation.ErrRouteNotFound
+func (ctx *AppContextImpl) Navigate(route navigation.Route) (*fyne.Container, error) {
+	if _, ok := ctx.menu[route]; !ok {
+		return nil, navigation.ErrRouteNotFound
 	}
 
-	view, err := ctx.views[route](ctx)
+	view, err := ctx.menu[route].View(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	ctx.Window().SetContent(view)
+	ctx.mainWidget.SetViewContent(view)
 	ctx.currentRoute = route
 
-	return nil
+	return view, nil
 }
 
 func (ctx *AppContextImpl) CurrentRoute() navigation.Route {
