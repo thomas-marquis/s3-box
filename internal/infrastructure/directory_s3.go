@@ -25,12 +25,11 @@ const (
 type s3Session struct {
 	connection *connection_deck.Connection
 	client     *s3.Client
-	//session    *session.Session
 }
 
 type S3DirectoryRepository struct {
 	sync.Mutex
-	connectionRepository *FyneConnectionsRepository
+	connectionRepository connection_deck.Repository
 	logger               *log.Logger
 	cache                map[connection_deck.ConnectionID]*s3Session
 }
@@ -38,7 +37,7 @@ type S3DirectoryRepository struct {
 var _ directory.Repository = &S3DirectoryRepository{}
 
 func NewS3DirectoryRepository(
-	connectionsRepository *FyneConnectionsRepository,
+	connectionsRepository connection_deck.Repository,
 	bus event.Bus,
 	notifier notification.Repository,
 ) (*S3DirectoryRepository, error) {

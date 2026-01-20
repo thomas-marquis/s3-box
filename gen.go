@@ -2,20 +2,21 @@ package main
 
 import _ "go.uber.org/mock/gomock"
 
-//go:generate mockgen -package mocks_explorer -destination mocks/explorer/directory_repository.go github.com/thomas-marquis/s3-box/internal/explorer S3DirectoryRepository
-//go:generate mockgen -package mocks_explorer -destination mocks/explorer/file_s3_repository.go github.com/thomas-marquis/s3-box/internal/explorer S3FileRepository
-//go:generate mockgen -package mocks_explorer -destination mocks/explorer/directory_service.go github.com/thomas-marquis/s3-box/internal/explorer DirectoryService
-//go:generate mockgen -package mocks_explorer -destination mocks/explorer/file_service.go github.com/thomas-marquis/s3-box/internal/explorer FileService
+// Domain
+//go:generate mockgen -package mocks_explorer -destination mocks/directory/repository.go github.com/thomas-marquis/s3-box/internal/domain/directory Repository
+//go:generate mockgen -package mocks_connection_deck -destination mocks/connection_deck/repository.go github.com/thomas-marquis/s3-box/internal/domain/connection_deck Repository
+//go:generate mockgen -package mocks_settings -destination mocks/settings/repository.go github.com/thomas-marquis/s3-box/internal/domain/settings Repository
+//go:generate mockgen -package mocks_notification -destination mocks/notification/repository.go github.com/thomas-marquis/s3-box/internal/domain/notification Repository
 
-//go:generate mockgen -package mocks_connections -destination mocks/connections/repository.go github.com/thomas-marquis/s3-box/internal/connections Repository
-//go:generate mockgen -package mocks_connections -destination mocks/connections/connection_service.go github.com/thomas-marquis/s3-box/internal/connections ConnectionService
-
+// View Model
 //go:generate mockgen -package mocks_viewmodel -destination mocks/viewmodel/explorer_viewmodel.go github.com/thomas-marquis/s3-box/internal/ui/viewmodel ExplorerViewModel
 //go:generate mockgen -package mocks_viewmodel -destination mocks/viewmodel/connection_viewmodel.go github.com/thomas-marquis/s3-box/internal/ui/viewmodel ConnectionViewModel
 //go:generate mockgen -package mocks_viewmodel -destination mocks/viewmodel/settings_viewmodel.go github.com/thomas-marquis/s3-box/internal/ui/viewmodel SettingsViewModel
+//go:generate mockgen -package mocks_viewmodel -destination mocks/viewmodel/notification_viewmodel.go github.com/thomas-marquis/s3-box/internal/ui/viewmodel NotificationViewModel
 
-//go:generate mockgen -package mocks_settings -destination mocks/settings/settings_repository.go github.com/thomas-marquis/s3-box/internal/settings Repository
-
+// Global
 //go:generate mockgen -package mocks_appcontext -destination mocks/context/appcontext.go github.com/thomas-marquis/s3-box/internal/ui/app/context AppContext
+//go:generate mockgen -package mocks_event -destination mocks/event/bus.go github.com/thomas-marquis/s3-box/internal/domain/shared/event Bus
 
+// External
 //go:generate mockgen -package mocks_binding -destination mocks/binding/tree.go fyne.io/fyne/v2/data/binding UntypedTree

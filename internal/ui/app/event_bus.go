@@ -17,6 +17,10 @@ type eventBusImpl struct {
 	done           <-chan struct{}
 }
 
+func NewEventBus(done <-chan struct{}) event.Bus {
+	return newEventBusImpl(done)
+}
+
 func newEventBusImpl(done <-chan struct{}) event.Bus {
 	b := &eventBusImpl{
 		subscribers:    make(map[chan event.Event]struct{}),
