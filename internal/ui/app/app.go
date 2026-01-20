@@ -21,9 +21,8 @@ const (
 )
 
 type Go2S3App struct {
-	appCtx        appcontext.AppContext
-	initRoute     navigation.Route
-	windowContent fyne.CanvasObject
+	appCtx    appcontext.AppContext
+	initRoute navigation.Route
 }
 
 func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
