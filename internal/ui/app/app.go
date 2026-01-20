@@ -60,7 +60,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 
 	sugarLog := logger.Sugar()
 	a := fyne_app.NewWithID(appId)
-	a.Settings().SetTheme(apptheme.Get(a.Settings().ThemeVariant()))
+	a.Settings().SetTheme(apptheme.GetDefaultByVariant(a.Settings().ThemeVariant()))
 	w := a.NewWindow(appName)
 
 	terminated := make(chan struct{})

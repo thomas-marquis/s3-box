@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	apptheme "github.com/thomas-marquis/s3-box/internal/ui/theme"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -49,7 +50,7 @@ func NewSettingsViewModel(
 	if err != nil {
 		notifier.NotifyError(fmt.Errorf("error getting settings: %w", err))
 	}
-	fyneSettings.SetTheme(utils.MapFyneColorTheme(s.Color))
+	fyneSettings.SetTheme(apptheme.GetByName(s.Color))
 	themeBinding := binding.NewString()
 
 	themeBinding.AddListener(binding.NewDataListener(func() {
@@ -63,7 +64,7 @@ func NewSettingsViewModel(
 			notifier.NotifyError(fmt.Errorf("error converting color theme: %w", err))
 			return
 		}
-		fyneSettings.SetTheme(utils.MapFyneColorTheme(currTheme))
+		fyneSettings.SetTheme(apptheme.GetByName(currTheme))
 	}))
 
 	vm := &settingsViewModelImpl{

@@ -7,9 +7,11 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
+	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 )
 
-func Get(variant fyne.ThemeVariant) fyne.Theme {
+// GetDefaultByVariant returns the default theme for the given variant (light or dark.
+func GetDefaultByVariant(variant fyne.ThemeVariant) fyne.Theme {
 	switch variant {
 	case theme.VariantDark:
 		return &appThemeDark{}
@@ -21,6 +23,20 @@ func Get(variant fyne.ThemeVariant) fyne.Theme {
 		}
 		return &appThemeLight{}
 	}
+}
+
+// GetByName returns the theme for the given name.
+func GetByName(themeName settings.ColorTheme) fyne.Theme {
+	switch themeName {
+	case settings.ColorThemeLight:
+		return GetDefaultByVariant(theme.VariantLight)
+	case settings.ColorThemeDark:
+		return GetDefaultByVariant(theme.VariantDark)
+	case settings.ColorThemeSystem:
+		return theme.DefaultTheme()
+	}
+
+	return theme.DefaultTheme()
 }
 
 type appThemeLight struct{}

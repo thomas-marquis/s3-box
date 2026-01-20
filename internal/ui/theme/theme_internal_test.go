@@ -6,16 +6,34 @@ import (
 
 	"fyne.io/fyne/v2/theme"
 	"github.com/stretchr/testify/assert"
+	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 )
 
-func TestGet(t *testing.T) {
+func TestGetByName(t *testing.T) {
 	t.Run("should returns dark theme", func(t *testing.T) {
-		th := Get(theme.VariantDark)
+		th := GetByName(settings.ColorThemeDark)
 		assert.IsType(t, &appThemeDark{}, th)
 	})
 
 	t.Run("should returns light theme", func(t *testing.T) {
-		th := Get(theme.VariantLight)
+		th := GetByName(settings.ColorThemeLight)
+		assert.IsType(t, &appThemeLight{}, th)
+	})
+
+	t.Run("should returns default system theme", func(t *testing.T) {
+		th := GetByName(settings.ColorThemeSystem)
+		assert.Equal(t, theme.DefaultTheme(), th)
+	})
+}
+
+func TestGetDefaultByVariant(t *testing.T) {
+	t.Run("should returns dark theme", func(t *testing.T) {
+		th := GetDefaultByVariant(theme.VariantDark)
+		assert.IsType(t, &appThemeDark{}, th)
+	})
+
+	t.Run("should returns light theme", func(t *testing.T) {
+		th := GetDefaultByVariant(theme.VariantLight)
 		assert.IsType(t, &appThemeLight{}, th)
 	})
 }
