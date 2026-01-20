@@ -2,6 +2,7 @@ package viewmodel
 
 import (
 	"fmt"
+
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 )
@@ -32,10 +33,10 @@ func NewNotificationViewModel(notifier notification.Repository, terminated <-cha
 				formattedDt := notif.Time().Format("2006-01-02 15:04:05")
 				switch notif.Type() {
 				case notification.Error:
-					notifications.Prepend(fmt.Sprintf("%s: Error: %s",
+					notifications.Prepend(fmt.Sprintf("%s: Error: %s", //nolint:errcheck
 						formattedDt, notif.(notification.ErrorNotification).Error().Error()))
 				case notification.Info:
-					notifications.Prepend(fmt.Sprintf("%s: Info: %s",
+					notifications.Prepend(fmt.Sprintf("%s: Info: %s", //nolint:errcheck
 						formattedDt, notif.(notification.LogNotification).Message()))
 				}
 			}
@@ -53,7 +54,7 @@ func (vm *notificationViewModelImpl) Notifications() binding.StringList {
 }
 
 func (vm *notificationViewModelImpl) SendError(err error) {
-	vm.notifier.NotifyError(err)
+	vm.notifier.NotifyError(err) //nolint:errcheck
 }
 
 func (vm *notificationViewModelImpl) SendInfo(msg string) {

@@ -2,9 +2,10 @@ package directory
 
 import (
 	"errors"
-	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"strings"
 	"time"
+
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 )
 
 type FileName string
@@ -59,7 +60,7 @@ func (f *File) Equal(other *File) bool {
 	}
 	return f.Is(other) &&
 		f.sizeBytes == other.sizeBytes &&
-		f.lastModified == other.lastModified
+		f.lastModified.Equal(other.lastModified)
 }
 
 func (f *File) Name() FileName {

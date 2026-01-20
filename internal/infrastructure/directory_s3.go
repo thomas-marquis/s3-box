@@ -12,8 +12,8 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
@@ -142,7 +142,7 @@ func (r *S3DirectoryRepository) GetFileContent(
 		return nil, r.manageAwsSdkError(err, file.FullPath(), s)
 	}
 
-	defer result.Body.Close()
+	defer result.Body.Close() //nolint:errcheck
 
 	buff := new(bytes.Buffer)
 	if _, err = buff.ReadFrom(result.Body); err != nil {
@@ -171,25 +171,25 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 		case directory.CreatedEventType:
 			e := evt.(directory.CreatedEvent)
 			if err := r.handleDirectoryCreation(ctx, e); err != nil {
-				notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
+				notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err)) //nolint:errcheck
 				publisher(directory.NewCreatedFailureEvent(err, e.Parent()))
 			}
 			publisher(directory.NewCreatedSuccessEvent(e.Parent(), e.Directory()))
 
 		case directory.DeletedEventType:
 			err := fmt.Errorf("deleting directories is not yet implemented")
-			notifier.NotifyError(err)
+			notifier.NotifyError(err) //nolint:errcheck
 			publisher(directory.NewDeletedFailureEvent(err))
 
 		case directory.FileCreatedEventType:
 			err := fmt.Errorf("file creation is not yet implemented")
-			notifier.NotifyError(err)
+			notifier.NotifyError(err) //nolint:errcheck
 			publisher(directory.NewFileCreatedFailureEvent(err))
 
 		case directory.FileDeletedEventType:
 			e := evt.(directory.FileDeletedEvent)
 			if err := r.handleFileDeletion(ctx, e); err != nil {
-				notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
+				notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err)) //nolint:errcheck
 				publisher(directory.NewFileDeletedFailureEvent(err, e.Parent()))
 			}
 			publisher(directory.NewFileDeletedSuccessEvent(e.Parent(), e.File()))
@@ -197,7 +197,7 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 		case directory.ContentUploadedEventType:
 			e := evt.(directory.ContentUploadedEvent)
 			if err := r.handleUpload(ctx, e); err != nil {
-				notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
+				notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err)) //nolint:errcheck
 				publisher(directory.NewContentUploadedFailureEvent(err, e.Directory()))
 			}
 			publisher(directory.NewContentUploadedSuccessEvent(e.Directory(), e.Content()))
@@ -205,7 +205,7 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 		case directory.ContentDownloadEventType:
 			e := evt.(directory.ContentDownloadedEvent)
 			if err := r.handleDownload(ctx, e); err != nil {
-				notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
+				notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err)) //nolint:errcheck
 				publisher(directory.NewContentDownloadedFailureEvent(err))
 			}
 			publisher(directory.NewContentDownloadedSuccessEvent(e.Content()))

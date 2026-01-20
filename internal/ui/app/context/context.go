@@ -34,7 +34,6 @@ type AppContextImpl struct {
 
 	window       fyne.Window
 	logger       *zap.Logger
-	exitChan     chan struct{}
 	fyneSettings fyne.Settings
 
 	currentRoute navigation.Route

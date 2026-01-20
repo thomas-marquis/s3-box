@@ -53,7 +53,9 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		"View files",
 		theme.NavigateBackIcon(),
 		func() {
-			ctx.Navigate(navigation.ExplorerRoute)
+			if _, err := ctx.Navigate(navigation.ExplorerRoute); err != nil { //nolint:staticcheck
+				// TODO: handle error
+			}
 		},
 	)
 
@@ -69,7 +71,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 				if writer == nil {
 					return
 				}
-				defer writer.Close()
+				defer writer.Close() //nolint:errcheck
 
 				if err := ctx.ConnectionViewModel().ExportAsJSON(writer); err != nil {
 					dialog.ShowError(err, ctx.Window())

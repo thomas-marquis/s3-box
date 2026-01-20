@@ -6,9 +6,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	s3manager "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
@@ -100,7 +100,10 @@ func (r *S3DirectoryRepository) handleDownload(ctx context.Context, evt director
 	downloader := s3manager.NewDownloader(sess.client)
 
 	file, err := evt.Content().Open()
-	defer file.Close()
+	if err != nil {
+		return fmt.Errorf("failed opening the file to download: %w", err)
+	}
+	defer file.Close() //nolint:errcheck
 
 	if _, err = downloader.Download(ctx, file, &s3.GetObjectInput{
 		Bucket: aws.String(sess.connection.Bucket()),

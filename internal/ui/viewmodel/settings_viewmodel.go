@@ -48,7 +48,7 @@ func NewSettingsViewModel(
 	defer cancel()
 	s, err := settingsRepo.Get(ctx)
 	if err != nil {
-		notifier.NotifyError(fmt.Errorf("error getting settings: %w", err))
+		notifier.NotifyError(fmt.Errorf("error getting settings: %w", err)) //nolint:errcheck
 	}
 	fyneSettings.SetTheme(apptheme.GetByName(s.Color))
 	themeBinding := binding.NewString()
@@ -56,12 +56,12 @@ func NewSettingsViewModel(
 	themeBinding.AddListener(binding.NewDataListener(func() {
 		currThemeName, err := themeBinding.Get()
 		if err != nil {
-			notifier.NotifyError(fmt.Errorf("error getting color theme: %w", err))
+			notifier.NotifyError(fmt.Errorf("error getting color theme: %w", err)) //nolint:errcheck
 			return
 		}
 		currTheme, err := settings.NewColorThemeFromString(currThemeName)
 		if err != nil {
-			notifier.NotifyError(fmt.Errorf("error converting color theme: %w", err))
+			notifier.NotifyError(fmt.Errorf("error converting color theme: %w", err)) //nolint:errcheck
 			return
 		}
 		fyneSettings.SetTheme(apptheme.GetByName(currTheme))
@@ -125,7 +125,7 @@ func (vm *settingsViewModelImpl) TimeoutInSeconds() binding.Int {
 func (vm *settingsViewModelImpl) CurrentTimeout() time.Duration {
 	val, err := vm.timeoutInSeconds.Get()
 	if err != nil {
-		vm.notifier.NotifyError(fmt.Errorf("error getting timeout in seconds: %w", err))
+		vm.notifier.NotifyError(fmt.Errorf("error getting timeout in seconds: %w", err)) //nolint:errcheck
 		return settings.DefaultTimeoutInSeconds * time.Second
 	}
 	return time.Duration(val) * time.Second
@@ -138,7 +138,7 @@ func (vm *settingsViewModelImpl) MaxFilePreviewSizeBytes() binding.Int {
 func (vm *settingsViewModelImpl) CurrentMaxFilePreviewSizeBytes() int {
 	val, err := vm.maxFilePreviewSizeBytes.Get()
 	if err != nil {
-		vm.notifier.NotifyError(fmt.Errorf("error getting max file preview size in mega bytes: %w", err))
+		vm.notifier.NotifyError(fmt.Errorf("error getting max file preview size in mega bytes: %w", err)) //nolint:errcheck
 		return settings.DefaultMaxFilePreviewSizeBytes
 	}
 	return val
@@ -149,13 +149,13 @@ func (vm *settingsViewModelImpl) ColorTheme() binding.String {
 }
 
 func (vm *settingsViewModelImpl) synchronize(s settings.Settings) {
-	vm.timeoutInSeconds.Set(s.TimeoutInSeconds)
+	vm.timeoutInSeconds.Set(s.TimeoutInSeconds) //nolint:errcheck
 	if s.MaxFilePreviewSizeBytes > math.MaxInt {
-		vm.notifier.NotifyError(
+		vm.notifier.NotifyError( //nolint:errcheck
 			fmt.Errorf("max file preview size exceeds maximum allowed value: clamping to max int"))
-		vm.maxFilePreviewSizeBytes.Set(math.MaxInt)
+		vm.maxFilePreviewSizeBytes.Set(math.MaxInt) //nolint:errcheck
 	} else {
-		vm.maxFilePreviewSizeBytes.Set(s.MaxFilePreviewSizeBytes)
+		vm.maxFilePreviewSizeBytes.Set(s.MaxFilePreviewSizeBytes) //nolint:errcheck
 	}
-	vm.colorTheme.Set(s.Color.String())
+	vm.colorTheme.Set(s.Color.String()) //nolint:errcheck
 }

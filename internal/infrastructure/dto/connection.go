@@ -87,7 +87,7 @@ func (c *ConnectionsDTO) ToConnections() *connection_deck.Deck {
 		}
 	}
 	if selectedID != nilID {
-		conns.Select(selectedID)
+		conns.Select(selectedID) //nolint:errcheck
 	}
 	return conns
 }

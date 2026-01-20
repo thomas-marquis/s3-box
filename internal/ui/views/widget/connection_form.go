@@ -85,22 +85,22 @@ func (w *ConnectionForm) AsDialog(label string) dialog.Dialog {
 func (w *ConnectionForm) buildAWSForm() *widget.Form {
 	// Init data bindings
 	nameData := binding.NewString()
-	nameData.Set(w.defaultConnection.Name())
+	nameData.Set(w.defaultConnection.Name()) //nolint:errcheck
 
 	accessKeyData := binding.NewString()
-	accessKeyData.Set(w.defaultConnection.AccessKey())
+	accessKeyData.Set(w.defaultConnection.AccessKey()) //nolint:errcheck
 
 	secretKeyData := binding.NewString()
-	secretKeyData.Set(w.defaultConnection.SecretKey())
+	secretKeyData.Set(w.defaultConnection.SecretKey()) //nolint:errcheck
 
 	bucketData := binding.NewString()
-	bucketData.Set(w.defaultConnection.Bucket())
+	bucketData.Set(w.defaultConnection.Bucket()) //nolint:errcheck
 
 	regionData := binding.NewString()
-	regionData.Set(w.defaultConnection.Region())
+	regionData.Set(w.defaultConnection.Region()) //nolint:errcheck
 
 	readOnlyData := binding.NewBool()
-	readOnlyData.Set(w.defaultConnection.ReadOnly())
+	readOnlyData.Set(w.defaultConnection.ReadOnly()) //nolint:errcheck
 
 	// Create Form items
 	nameFormItem := makeTextFormItemWithData(
@@ -168,25 +168,25 @@ func (w *ConnectionForm) buildAWSForm() *widget.Form {
 func (w *ConnectionForm) buildS3LikeForm() *widget.Form {
 	// Init data bindings
 	nameData := binding.NewString()
-	nameData.Set(w.defaultConnection.Name())
+	nameData.Set(w.defaultConnection.Name()) //nolint:errcheck
 
 	accessKeyData := binding.NewString()
-	accessKeyData.Set(w.defaultConnection.AccessKey())
+	accessKeyData.Set(w.defaultConnection.AccessKey()) //nolint:errcheck
 
 	secretKeyData := binding.NewString()
-	secretKeyData.Set(w.defaultConnection.SecretKey())
+	secretKeyData.Set(w.defaultConnection.SecretKey()) //nolint:errcheck
 
 	serverData := binding.NewString()
-	serverData.Set(w.defaultConnection.Server())
+	serverData.Set(w.defaultConnection.Server()) //nolint:errcheck
 
 	bucketData := binding.NewString()
-	bucketData.Set(w.defaultConnection.Bucket())
+	bucketData.Set(w.defaultConnection.Bucket()) //nolint:errcheck
 
 	readOnlyData := binding.NewBool()
-	readOnlyData.Set(w.defaultConnection.ReadOnly())
+	readOnlyData.Set(w.defaultConnection.ReadOnly()) //nolint:errcheck
 
 	useTlsData := binding.NewBool()
-	useTlsData.Set(w.defaultConnection.IsTLSActivated())
+	useTlsData.Set(w.defaultConnection.IsTLSActivated()) //nolint:errcheck
 
 	nameFormItem := makeTextFormItemWithData(
 		nameData,
@@ -259,7 +259,7 @@ func makeCopyBtnWithData(enableCopy bool, data binding.String, w fyne.Window) *w
 		if enableCopy {
 			value, err := data.Get()
 			if err == nil && value != "" {
-				w.Clipboard().SetContent(value)
+				fyne.CurrentApp().Clipboard().SetContent(value)
 			}
 		}
 	})

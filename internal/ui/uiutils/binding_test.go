@@ -18,8 +18,8 @@ func Test_GetUntypedListOrPanic_ShouldReturnListWithStructValue(t *testing.T) {
 	fyne_test.NewTempApp(t)
 
 	data := binding.NewUntypedList()
-	data.Append(testStruct{Value: "test1"})
-	data.Append(testStruct{Value: "test2"})
+	data.Append(testStruct{Value: "test1"}) //nolint:errcheck
+	data.Append(testStruct{Value: "test2"}) //nolint:errcheck
 
 	expected := []testStruct{
 		{Value: "test1"},
@@ -42,8 +42,8 @@ func Test_GetUntypedListOrPanic_ShouldReturnListWithStructPointer(t *testing.T) 
 	d2 := testStruct{Value: "test2"}
 
 	data := binding.NewUntypedList()
-	data.Append(&d1)
-	data.Append(&d2)
+	data.Append(&d1) //nolint:errcheck
+	data.Append(&d2) //nolint:errcheck
 
 	expected := []*testStruct{
 		&d1, &d2,
@@ -62,8 +62,8 @@ func Test_GetUntypedListOrPanic_ShouldPanicOnInvalidType(t *testing.T) {
 	fyne_test.NewTempApp(t)
 
 	data := binding.NewUntypedList()
-	data.Append("test1")
-	data.Append("test2")
+	data.Append("test1") //nolint:errcheck
+	data.Append("test2") //nolint:errcheck
 
 	// When/Then
 	assert.PanicsWithValue(t, "Invalid casting type for binding.UntypedList", func() {

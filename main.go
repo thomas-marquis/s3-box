@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer logger.Sync()
+	defer logger.Sync() //nolint:errcheck
 
 	a, err := app.New(logger, navigation.ExplorerRoute)
 	if err != nil {

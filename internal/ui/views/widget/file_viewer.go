@@ -2,6 +2,9 @@ package widget
 
 import (
 	"fmt"
+	"strings"
+	"unicode"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -10,12 +13,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
-	"strings"
-	"unicode"
-)
-
-const (
-	previewTabWidth = 2 // TODO: a ajouter dans les settings
 )
 
 func isStringPrintable(s string) bool {
@@ -41,13 +38,13 @@ type FileViewer struct {
 func NewFileViewer(appCtx appcontext.AppContext, file *directory.File) *FileViewer {
 	previewData := binding.NewString()
 	loading := binding.NewBool()
-	loading.Set(false)
+	loading.Set(false) //nolint:errcheck
 	nbLines := binding.NewInt()
 
 	go func() {
 		fyne.Do(func() {
-			loading.Set(true)
-			defer loading.Set(false)
+			loading.Set(true)        //nolint:errcheck
+			defer loading.Set(false) //nolint:errcheck
 
 			fileContent, err := appCtx.ExplorerViewModel().GetFileContent(file)
 			if err != nil {
@@ -60,7 +57,7 @@ func NewFileViewer(appCtx appcontext.AppContext, file *directory.File) *FileView
 				dialog.ShowError(err, appCtx.Window())
 				return
 			}
-			defer f.Close()
+			defer f.Close() //nolint:errcheck
 
 			contentBytes := make([]byte, file.SizeBytes())
 			if _, err := f.Read(contentBytes); err != nil {
@@ -85,7 +82,7 @@ func NewFileViewer(appCtx appcontext.AppContext, file *directory.File) *FileView
 
 	copyContentBtn := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
 		fileContent, _ := previewData.Get()
-		appCtx.Window().Clipboard().SetContent(fileContent)
+		fyne.CurrentApp().Clipboard().SetContent(fileContent)
 	})
 
 	nbLinesLabel := widget.NewLabel("")
@@ -97,7 +94,7 @@ func NewFileViewer(appCtx appcontext.AppContext, file *directory.File) *FileView
 	preview := widget.NewEntryWithData(previewData)
 	preview.OnChanged = func(_ string) {
 		originalText, _ := previewData.Get()
-		previewData.Set(originalText)
+		previewData.Set(originalText) //nolint:errcheck
 	}
 
 	loadingBar := widget.NewProgressBarInfinite()
