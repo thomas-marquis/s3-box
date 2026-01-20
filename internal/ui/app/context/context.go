@@ -48,6 +48,7 @@ type AppContextImpl struct {
 var _ AppContext = &AppContextImpl{}
 
 func New(
+	appName string,
 	window fyne.Window,
 	explorerViewModel viewmodel.ExplorerViewModel,
 	connectionViewModel viewmodel.ConnectionViewModel,
@@ -78,7 +79,7 @@ func New(
 		menu:                  menu,
 	}
 
-	ctx.mainWidget = newAppWidget(menuList, ctx.Navigate)
+	ctx.mainWidget = newAppWidget(appName, menuList, ctx.Navigate)
 
 	return ctx
 }

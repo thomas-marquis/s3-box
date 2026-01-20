@@ -9,13 +9,15 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	apptheme "github.com/thomas-marquis/s3-box/internal/ui/theme"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views"
 	"go.uber.org/zap"
 )
 
 const (
-	appId = "fr.scalde.s3box"
+	appId   = "fr.scalde.s3box"
+	appName = "S3 Box"
 )
 
 type Go2S3App struct {
@@ -58,7 +60,8 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 
 	sugarLog := logger.Sugar()
 	a := fyne_app.NewWithID(appId)
-	w := a.NewWindow("S3 Box")
+	a.Settings().SetTheme(apptheme.Get(a.Settings().ThemeVariant()))
+	w := a.NewWindow(appName)
 
 	terminated := make(chan struct{})
 	eventBus := newEventBusImpl(terminated)
@@ -99,6 +102,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	notificationsViewModel := viewmodel.NewNotificationViewModel(notifier, terminated)
 
 	appCtx := appcontext.New(
+		appName,
 		w,
 		explorerViewModel,
 		connectionViewModel,

@@ -3,9 +3,10 @@ package viewmodel
 import (
 	"context"
 	"fmt"
-	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"math"
 	"time"
+
+	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -49,7 +50,6 @@ func NewSettingsViewModel(
 		notifier.NotifyError(fmt.Errorf("error getting settings: %w", err))
 	}
 	fyneSettings.SetTheme(utils.MapFyneColorTheme(s.Color))
-
 	themeBinding := binding.NewString()
 
 	themeBinding.AddListener(binding.NewDataListener(func() {

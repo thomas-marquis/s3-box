@@ -3,6 +3,7 @@ package appcontext
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 )
@@ -10,6 +11,7 @@ import (
 type AppWidget struct {
 	widget.BaseWidget
 
+	title string
 	menu  []Menu
 	navCb func(navigation.Route) (*fyne.Container, error)
 	split *container.Split
@@ -17,10 +19,11 @@ type AppWidget struct {
 
 var _ fyne.Widget = (*AppWidget)(nil)
 
-func newAppWidget(menus []Menu, navCb func(navigation.Route) (*fyne.Container, error)) *AppWidget {
+func newAppWidget(appTitle string, menus []Menu, navCb func(navigation.Route) (*fyne.Container, error)) *AppWidget {
 	a := &AppWidget{
 		menu:  menus,
 		navCb: navCb,
+		title: appTitle,
 	}
 	a.ExtendBaseWidget(a)
 	return a
@@ -51,8 +54,26 @@ func (a *AppWidget) CreateRenderer() fyne.WidgetRenderer {
 	}
 	itemList := container.NewVBox(btns...)
 
+	seg := &widget.TextSegment{
+		Style: widget.RichTextStyle{
+			ColorName: theme.ColorNameForeground,
+			TextStyle: fyne.TextStyle{
+				Bold: true,
+			},
+			SizeName: theme.SizeNameHeadingText,
+		},
+		Text: a.title,
+	}
+	title := widget.NewRichText(seg)
+
 	content = widget.NewLabel("")
-	split := container.NewHSplit(itemList, content)
+	split := container.NewHSplit(
+		container.NewVBox(
+			title,
+			itemList,
+		),
+		content,
+	)
 	split.SetOffset(0)
 
 	a.split = split
