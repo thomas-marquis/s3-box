@@ -10,12 +10,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
-          go-version: "1.23"
+          go-version: '1.25.x'
+          cache: true
 
       - name: Setup environnment
         run: |
@@ -26,6 +27,13 @@ jobs:
         run: |
           go get .
           go install fyne.io/fyne/v2/cmd/fyne@latest
+          
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          args: >
+            --timeout=5m
+            ./...
 
       - name: Build
         run: go build -v ./...
