@@ -73,15 +73,19 @@ func (c *ConnectionsDTO) ToConnections() *connection_deck.Deck {
 			continue
 		}
 		connID := connection_deck.ConnectionID(dto.ID)
-		conns.New(
+		evt := conns.New(
 			dto.Name, dto.AccessKey, dto.SecretKey, dto.Buket,
 			connection_deck.WithRevision(dto.Revision),
 			connection_deck.WithUseTLS(dto.UseTls),
 			connection_deck.WithID(connID),
 			connection_deck.WithReadOnlyOption(dto.ReadOnly),
-			connection_deck.AsS3Like(dto.Server, dto.UseTls),
-			connection_deck.AsAWS(dto.Region),
 		)
+		newConn := evt.Connection()
+		if dto.Type == "aws" {
+			connection_deck.AsAWS(dto.Region)(newConn)
+		} else if dto.Type == "s3-like" {
+			connection_deck.AsS3Like(dto.Server, dto.UseTls)(newConn)
+		}
 		if dto.Selected {
 			selectedID = connID
 		}
