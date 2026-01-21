@@ -2,10 +2,11 @@ package appcontext
 
 import (
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/theme/resources"
 )
 
 type AppWidget struct {
@@ -52,25 +53,20 @@ func (a *AppWidget) CreateRenderer() fyne.WidgetRenderer {
 	for i := range btns {
 		btns[i].Resize(fyne.NewSize(sMax, btns[i].MinSize().Height))
 	}
-	itemList := container.NewVBox(btns...)
 
-	seg := &widget.TextSegment{
-		Style: widget.RichTextStyle{
-			ColorName: theme.ColorNameForeground,
-			TextStyle: fyne.TextStyle{
-				Bold: true,
-			},
-			SizeName: theme.SizeNameHeadingText,
-		},
-		Text: a.title,
-	}
-	title := widget.NewRichText(seg)
+	r := resources.NewAppLogo()
+
+	logo := canvas.NewImageFromResource(r)
+	logo.FillMode = canvas.ImageFillContain
+	logo.Resize(fyne.NewSize(70, 70))
+	logo.SetMinSize(logo.Size())
 
 	content = widget.NewLabel("")
 	split := container.NewHSplit(
 		container.NewVBox(
-			title,
-			itemList,
+			container.NewPadded(logo),
+			widget.NewLabel(""),
+			container.NewVBox(btns...),
 		),
 		content,
 	)
