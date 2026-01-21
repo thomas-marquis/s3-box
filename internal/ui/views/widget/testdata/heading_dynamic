@@ -1,0 +1,9 @@
+<canvas padded size="159x56">
+	<content>
+		<widget pos="4,4" size="151x48" type="*widget.Heading">
+			<widget size="151x48" type="*widget.RichText">
+				<text pos="8,8" size="135x32" textSize="23">Hello world!</text>
+			</widget>
+		</widget>
+	</content>
+</canvas>
