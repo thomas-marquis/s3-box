@@ -81,9 +81,10 @@ func (c *ConnectionsDTO) ToConnections() *connection_deck.Deck {
 			connection_deck.WithReadOnlyOption(dto.ReadOnly),
 		)
 		newConn := evt.Connection()
-		if dto.Type == "aws" {
+		switch dto.Type {
+		case "aws":
 			connection_deck.AsAWS(dto.Region)(newConn)
-		} else if dto.Type == "s3-like" {
+		case "s3-like":
 			connection_deck.AsS3Like(dto.Server, dto.UseTls)(newConn)
 		}
 		if dto.Selected {

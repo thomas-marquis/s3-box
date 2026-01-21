@@ -114,8 +114,8 @@ func (w *ExplorerTree) reopenOpenedDirectories(tree *widget.Tree) {
 		return
 	}
 
-	for key, val := range treeContent {
-		if n, ok := val.(node.Node); ok && n.NodeType() == node.FolderNodeType {
+	for key, n := range treeContent {
+		if n.NodeType() == node.FolderNodeType {
 			dirNode := n.(node.DirectoryNode)
 			if dirNode.Opened() {
 				tree.OpenBranch(key)
