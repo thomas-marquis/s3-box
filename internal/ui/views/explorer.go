@@ -36,13 +36,18 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 	noConn.Hide()
 	vm := appCtx.ExplorerViewModel()
 
+	headingData := binding.NewString()
+	headingData.Set("File explorer") //nolint:errcheck
+
 	content := container.NewHSplit(fyne_widget.NewLabel(""), fyne_widget.NewLabel(""))
 
 	vm.SelectedConnection().AddListener(binding.NewDataListener(func() {
-		if vm.CurrentSelectedConnection() == nil {
+		conn := vm.CurrentSelectedConnection()
+		if conn == nil {
 			noConn.Show()
 			content.Hide()
 		} else {
+			headingData.Set("File explorer: " + conn.Name())
 			noConn.Hide()
 			content.Show()
 		}
@@ -86,7 +91,7 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 
 	return container.NewBorder(
 		container.NewVBox(
-			widget.NewHeading("File explorer"),
+			widget.NewHeadingWithData(headingData),
 			fyne_widget.NewSeparator(),
 		),
 		nil, nil, nil,
