@@ -1,0 +1,53 @@
+<canvas padded size="110x48">
+	<content>
+		<widget pos="4,4" size="102x40" type="*widget.FileViewer">
+			<container size="102x40">
+				<widget pos="0,40" size="102x0" type="*widget.Entry">
+					<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="98x-4"/>
+					<rectangle pos="1,1" radius="4" size="99x-2" strokeColor="inputBorder" strokeWidth="2"/>
+					<widget pos="0,2" size="70x-4" type="*widget.Scroll">
+						<widget size="94x50" type="*widget.entryContent">
+							<widget size="94x50" type="*widget.RichText">
+								<text pos="8,6" size="78x19">Hello world!</text>
+								<text pos="8,25" size="39x19">Line 2</text>
+							</widget>
+						</widget>
+						<widget pos="0,-4" size="70x0" type="*widget.Shadow">
+							<linearGradient endColor="shadow" pos="0,-8" size="70x8"/>
+						</widget>
+						<widget pos="70,0" size="0x-4" type="*widget.Shadow">
+							<linearGradient angle="270" endColor="shadow" pos="-8,0" size="8x-4"/>
+						</widget>
+						<widget pos="64,0" size="6x-4" type="*widget.scrollBarArea">
+							<widget pos="3,0" size="3x16" type="*widget.scrollBar">
+								<rectangle fillColor="scrollbar" radius="3" size="3x16"/>
+							</widget>
+						</widget>
+						<widget pos="0,-10" size="70x6" type="*widget.scrollBarArea">
+							<widget pos="0,3" size="51x3" type="*widget.scrollBar">
+								<rectangle fillColor="scrollbar" radius="3" size="51x3"/>
+							</widget>
+						</widget>
+					</widget>
+					<widget pos="74,8" size="20x20" type="*widget.validationStatus">
+						<image rsc="confirmIcon" size="iconInlineSize" themed="foreground"/>
+					</widget>
+				</widget>
+				<container size="102x36">
+					<container size="36x36">
+						<widget size="36x36" type="*widget.Button">
+							<rectangle fillColor="button" radius="4" size="36x36"/>
+							<rectangle size="36x36"/>
+							<image fillMode="contain" pos="8,8" rsc="contentCopyIcon" size="iconInlineSize" themed="foreground"/>
+						</widget>
+					</container>
+					<widget pos="44,0" size="58x36" type="*widget.Label">
+						<widget size="58x36" type="*widget.RichText">
+							<text pos="8,8" size="42x19">2 lines</text>
+						</widget>
+					</widget>
+				</container>
+			</container>
+		</widget>
+	</content>
+</canvas>

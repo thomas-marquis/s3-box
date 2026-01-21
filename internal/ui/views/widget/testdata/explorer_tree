@@ -1,0 +1,27 @@
+<canvas padded size="52x43">
+	<content>
+		<widget pos="4,4" size="44x35" type="*widget.ExplorerTree">
+			<widget size="44x35" type="*widget.Tree">
+				<widget size="44x35" type="*widget.Scroll">
+					<widget size="44x35" type="*widget.treeContent">
+						<widget size="44x35" type="*widget.branch">
+							<container pos="28,0" size="16x35">
+								<widget size="20x35" type="*widget.Icon">
+									<image fillMode="contain" rsc="storageIcon" size="20x35" themed="foreground"/>
+								</widget>
+								<widget pos="24,0" size="16x35" type="*widget.Label">
+									<widget size="16x35" type="*widget.RichText">
+										<text pos="8,8" size="0x19"></text>
+									</widget>
+								</widget>
+							</container>
+							<widget pos="4,0" size="20x35" type="*widget.branchIcon">
+								<image fillMode="contain" rsc="navigateNextIcon" size="20x35" themed="foreground"/>
+							</widget>
+						</widget>
+					</widget>
+				</widget>
+			</widget>
+		</widget>
+	</content>
+</canvas>

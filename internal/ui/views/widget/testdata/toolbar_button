@@ -1,0 +1,12 @@
+<canvas padded size="76x44">
+	<content>
+		<widget pos="4,4" size="68x36" type="*widget.Button">
+			<rectangle fillColor="button" radius="4" size="68x36"/>
+			<rectangle size="68x36"/>
+			<widget pos="32,8" size="28x20" type="*widget.RichText">
+				<text alignment="center" bold size="28x19">Test</text>
+			</widget>
+			<image fillMode="contain" pos="8,8" rsc="confirmIcon" size="iconInlineSize" themed="foreground"/>
+		</widget>
+	</content>
+</canvas>

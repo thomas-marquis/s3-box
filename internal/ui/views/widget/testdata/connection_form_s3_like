@@ -1,0 +1,192 @@
+<canvas padded size="321x396">
+	<content>
+		<widget pos="4,4" size="313x388" type="*widget.ConnectionForm">
+			<widget size="313x388" type="*container.AppTabs">
+				<container size="313x36">
+					<container size="313x36">
+						<widget size="46x36" type="*container.tabButton">
+							<text alignment="center" bold pos="8,8" size="30x20">AWS</text>
+						</widget>
+						<widget pos="50,0" size="118x36" type="*container.tabButton">
+							<text alignment="center" bold color="primary" pos="8,8" size="102x20">Other (S3 Like)</text>
+						</widget>
+					</container>
+				</container>
+				<rectangle fillColor="shadow" pos="0,36" size="313x4"/>
+				<rectangle fillColor="primary" pos="50,36" radius="4" size="118x4"/>
+				<container pos="0,40" size="313x348">
+					<widget size="313x35" type="*widget.Label">
+						<widget size="313x35" type="*widget.RichText">
+							<text pos="8,8" size="0x19"></text>
+						</widget>
+					</widget>
+					<widget pos="0,39" size="313x309" type="*widget.Form">
+						<container size="313x309">
+							<container size="313x269">
+								<container size="208x35">
+									<text alignment="trailing" bold pos="8,8" size="192x19">Connection name</text>
+								</container>
+								<container pos="212,0" size="100x35">
+									<widget size="100x35" type="*widget.Entry">
+										<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="96x31"/>
+										<rectangle pos="1,1" radius="4" size="98x32" strokeColor="inputBorder" strokeWidth="2"/>
+										<widget pos="0,2" size="40x31" type="*widget.Scroll">
+											<widget size="42x31" type="*widget.entryContent">
+												<widget size="42x31" type="*widget.RichText">
+													<text pos="8,6" size="26x19">Test</text>
+												</widget>
+											</widget>
+											<widget pos="40,0" size="0x31" type="*widget.Shadow">
+												<linearGradient angle="270" endColor="shadow" pos="-8,0" size="8x31"/>
+											</widget>
+											<widget pos="0,25" size="40x6" type="*widget.scrollBarArea">
+												<widget pos="0,3" size="38x3" type="*widget.scrollBar">
+													<rectangle fillColor="scrollbar" radius="3" size="38x3"/>
+												</widget>
+											</widget>
+										</widget>
+										<widget pos="44,8" size="20x20" type="*widget.validationStatus">
+											<image rsc="confirmIcon" size="iconInlineSize" themed="foreground"/>
+										</widget>
+									</widget>
+									<container pos="8,39" size="100x1">
+									</container>
+								</container>
+								<container pos="0,39" size="208x35">
+									<text alignment="trailing" bold pos="8,8" size="192x19">Access key Id</text>
+								</container>
+								<container pos="212,39" size="100x35">
+									<widget size="100x35" type="*widget.Entry">
+										<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="96x31"/>
+										<rectangle pos="1,1" radius="4" size="98x32" strokeColor="inputBorder" strokeWidth="2"/>
+										<widget pos="0,2" size="40x31" type="*widget.Scroll">
+											<widget size="40x31" type="*widget.entryContent">
+												<widget size="40x31" type="*widget.RichText">
+													<text pos="8,6" size="15x19">ak</text>
+												</widget>
+											</widget>
+										</widget>
+										<widget pos="44,8" size="20x20" type="*widget.validationStatus">
+											<image rsc="confirmIcon" size="iconInlineSize" themed="foreground"/>
+										</widget>
+									</widget>
+									<container pos="8,39" size="100x1">
+									</container>
+								</container>
+								<container pos="0,78" size="208x35">
+									<text alignment="trailing" bold pos="8,8" size="192x19">Secret access key</text>
+								</container>
+								<container pos="212,78" size="100x35">
+									<widget size="100x35" type="*widget.Entry">
+										<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="96x31"/>
+										<rectangle pos="1,1" radius="4" size="98x32" strokeColor="inputBorder" strokeWidth="2"/>
+										<widget pos="0,2" size="40x31" type="*widget.Scroll">
+											<widget size="40x31" type="*widget.entryContent">
+												<widget size="40x31" type="*widget.RichText">
+													<text pos="8,6" size="14x19">sk</text>
+												</widget>
+											</widget>
+										</widget>
+										<widget pos="44,8" size="20x20" type="*widget.validationStatus">
+											<image rsc="confirmIcon" size="iconInlineSize" themed="foreground"/>
+										</widget>
+									</widget>
+									<container pos="8,39" size="100x1">
+									</container>
+								</container>
+								<container pos="0,117" size="208x35">
+									<text alignment="trailing" bold pos="8,8" size="192x19">Server hostname (and port)</text>
+								</container>
+								<container pos="212,117" size="100x35">
+									<widget size="100x35" type="*widget.Entry">
+										<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="96x31"/>
+										<rectangle pos="1,1" radius="4" size="98x32" strokeColor="inputBorder" strokeWidth="2"/>
+										<widget pos="0,2" size="40x31" type="*widget.Scroll">
+											<widget size="152x31" type="*widget.entryContent">
+												<widget size="152x31" type="*widget.RichText">
+													<text pos="8,6" size="136x19">http://localhost:9000</text>
+												</widget>
+											</widget>
+											<widget pos="40,0" size="0x31" type="*widget.Shadow">
+												<linearGradient angle="270" endColor="shadow" pos="-8,0" size="8x31"/>
+											</widget>
+											<widget pos="0,25" size="40x6" type="*widget.scrollBarArea">
+												<widget pos="0,3" size="16x3" type="*widget.scrollBar">
+													<rectangle fillColor="scrollbar" radius="3" size="16x3"/>
+												</widget>
+											</widget>
+										</widget>
+										<widget pos="44,8" size="20x20" type="*widget.validationStatus">
+											<image rsc="confirmIcon" size="iconInlineSize" themed="foreground"/>
+										</widget>
+									</widget>
+									<container pos="8,39" size="100x1">
+									</container>
+								</container>
+								<container pos="0,156" size="208x35">
+									<text alignment="trailing" bold pos="8,8" size="192x19">Bucket name</text>
+								</container>
+								<container pos="212,156" size="100x35">
+									<widget size="100x35" type="*widget.Entry">
+										<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="96x31"/>
+										<rectangle pos="1,1" radius="4" size="98x32" strokeColor="inputBorder" strokeWidth="2"/>
+										<widget pos="0,2" size="40x31" type="*widget.Scroll">
+											<widget size="60x31" type="*widget.entryContent">
+												<widget size="60x31" type="*widget.RichText">
+													<text pos="8,6" size="44x19">bucket</text>
+												</widget>
+											</widget>
+											<widget pos="40,0" size="0x31" type="*widget.Shadow">
+												<linearGradient angle="270" endColor="shadow" pos="-8,0" size="8x31"/>
+											</widget>
+											<widget pos="0,25" size="40x6" type="*widget.scrollBarArea">
+												<widget pos="0,3" size="26x3" type="*widget.scrollBar">
+													<rectangle fillColor="scrollbar" radius="3" size="26x3"/>
+												</widget>
+											</widget>
+										</widget>
+										<widget pos="44,8" size="20x20" type="*widget.validationStatus">
+											<image rsc="confirmIcon" size="iconInlineSize" themed="foreground"/>
+										</widget>
+									</widget>
+									<container pos="8,39" size="100x1">
+									</container>
+								</container>
+								<container pos="0,195" size="208x35">
+									<text alignment="trailing" bold pos="8,8" size="192x19">UseTls</text>
+								</container>
+								<widget pos="212,195" size="100x35" type="*widget.Check">
+									<circle pos="2,3" size="28x28"/>
+									<image pos="6,7" rsc="checkButtonFillIcon" size="iconInlineSize" themed="inputBackground"/>
+									<image pos="6,7" rsc="checkButtonIcon" size="iconInlineSize" themed="inputBorder"/>
+									<text pos="32,0" size="68x35">Use TLS</text>
+								</widget>
+								<container pos="0,234" size="208x35">
+									<text alignment="trailing" bold pos="8,8" size="192x19">Read only</text>
+								</container>
+								<widget pos="212,234" size="100x35" type="*widget.Check">
+									<circle pos="2,3" size="28x28"/>
+									<image pos="6,7" rsc="checkButtonFillIcon" size="iconInlineSize" themed="inputBackground"/>
+									<image pos="6,7" rsc="checkButtonIcon" size="iconInlineSize" themed="inputBorder"/>
+									<text pos="32,0" size="68x35">Read only</text>
+								</widget>
+							</container>
+							<container pos="0,273" size="313x36">
+								<container pos="240,0" size="72x36">
+									<widget size="72x36" type="*widget.Button">
+										<rectangle fillColor="primary" radius="4" size="72x36"/>
+										<rectangle size="72x36"/>
+										<widget pos="32,8" size="32x20" type="*widget.RichText">
+											<text alignment="center" bold color="foregroundOnPrimary" size="32x19">Save</text>
+										</widget>
+										<image fillMode="contain" pos="8,8" rsc="confirmIcon" size="iconInlineSize" themed="foregroundOnPrimary"/>
+									</widget>
+								</container>
+							</container>
+						</container>
+					</widget>
+				</container>
+			</widget>
+		</widget>
+	</content>
+</canvas>

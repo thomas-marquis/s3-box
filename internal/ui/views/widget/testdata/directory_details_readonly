@@ -1,0 +1,45 @@
+<canvas padded size="276x118">
+	<content>
+		<widget pos="4,4" size="268x110" type="*widget.DirectoryDetails">
+			<container size="268x110">
+				<container size="268x35">
+					<widget size="20x35" type="*widget.Icon">
+						<image fillMode="contain" rsc="folderIcon" size="20x35" themed="foreground"/>
+					</widget>
+					<widget pos="24,0" size="73x35" type="*widget.Label">
+						<widget size="73x35" type="*widget.focusSelectable">
+						</widget>
+						<widget size="73x35" type="*widget.RichText">
+							<text pos="8,8" size="57x19">/test-dir/</text>
+						</widget>
+					</widget>
+				</container>
+				<container pos="0,39" size="268x31">
+					<widget pos="0,10" size="268x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="268x1"/>
+					</widget>
+				</container>
+				<container pos="0,74" size="268x36">
+					<widget pos="5,0" size="258x36" type="*widget.Toolbar">
+						<widget size="138x36" type="*widget.Button">
+							<rectangle fillColor="disabled button" radius="4" size="138x36"/>
+							<rectangle size="138x36"/>
+							<widget pos="32,8" size="98x20" type="*widget.RichText">
+								<text alignment="center" bold color="disabled" size="98x19">New directory</text>
+							</widget>
+							<image fillMode="contain" pos="8,8" rsc="folderNewIcon" size="iconInlineSize" themed="disabled"/>
+						</widget>
+						<widget pos="142,0" size="115x36" type="*widget.Button">
+							<rectangle fillColor="disabled button" radius="4" size="115x36"/>
+							<rectangle size="115x36"/>
+							<widget pos="32,8" size="75x20" type="*widget.RichText">
+								<text alignment="center" bold color="disabled" size="75x19">Upload file</text>
+							</widget>
+							<image fillMode="contain" pos="8,8" rsc="upload.svg" size="iconInlineSize" themed="disabled"/>
+						</widget>
+					</widget>
+				</container>
+			</container>
+		</widget>
+	</content>
+</canvas>

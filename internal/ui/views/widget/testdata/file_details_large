@@ -1,0 +1,82 @@
+<canvas padded size="318x226">
+	<content>
+		<widget pos="4,4" size="310x218" type="*widget.FileDetails">
+			<container size="310x218">
+				<container size="310x35">
+					<widget size="20x35" type="*widget.FileIcon">
+						<image fillMode="contain" rsc="fileTextIcon" size="20x35" themed="foreground"/>
+						<text alignment="center" color="background" pos="0,16" size="20x5" textSize="4">.txt</text>
+					</widget>
+					<widget pos="24,0" size="67x35" type="*widget.Label">
+						<widget size="67x35" type="*widget.focusSelectable">
+						</widget>
+						<widget size="67x35" type="*widget.RichText">
+							<text pos="8,8" size="51x19">/test.txt</text>
+						</widget>
+					</widget>
+				</container>
+				<container pos="0,39" size="310x31">
+					<widget pos="0,10" size="310x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="310x1"/>
+					</widget>
+				</container>
+				<container pos="0,74" size="310x36">
+					<widget pos="5,0" size="300x36" type="*widget.Toolbar">
+						<widget size="110x36" type="*widget.Button">
+							<rectangle fillColor="button" radius="4" size="110x36"/>
+							<rectangle size="110x36"/>
+							<widget pos="32,8" size="70x20" type="*widget.RichText">
+								<text alignment="center" bold size="70x19">Download</text>
+							</widget>
+							<image fillMode="contain" pos="8,8" rsc="downloadIcon" size="iconInlineSize" themed="foreground"/>
+						</widget>
+						<widget pos="114,0" size="95x36" type="*widget.Button">
+							<rectangle fillColor="disabled button" radius="4" size="95x36"/>
+							<rectangle size="95x36"/>
+							<widget pos="32,8" size="55x20" type="*widget.RichText">
+								<text alignment="center" bold color="disabled" size="55x19">Preview</text>
+							</widget>
+							<image fillMode="contain" pos="8,8" rsc="visibilityIcon" size="iconInlineSize" themed="disabled"/>
+						</widget>
+						<widget pos="213,0" size="85x36" type="*widget.Button">
+							<rectangle fillColor="button" radius="4" size="85x36"/>
+							<rectangle size="85x36"/>
+							<widget pos="32,8" size="45x20" type="*widget.RichText">
+								<text alignment="center" bold size="45x19">Delete</text>
+							</widget>
+							<image fillMode="contain" pos="8,8" rsc="deleteIcon" size="iconInlineSize" themed="foreground"/>
+						</widget>
+					</widget>
+				</container>
+				<container pos="0,114" size="310x104">
+					<container pos="5,30" size="300x74">
+						<widget size="148x35" type="*widget.Label">
+							<widget size="148x35" type="*widget.RichText">
+								<text alignment="trailing" bold pos="113,8" size="27x19">Size</text>
+							</widget>
+						</widget>
+						<widget pos="152,0" size="148x35" type="*widget.Label">
+							<widget size="148x35" type="*widget.focusSelectable">
+							</widget>
+							<widget size="148x35" type="*widget.RichText">
+								<text pos="8,8" size="49x19">1.00 KB</text>
+							</widget>
+						</widget>
+						<widget pos="0,39" size="148x35" type="*widget.Label">
+							<widget size="148x35" type="*widget.RichText">
+								<text alignment="trailing" bold pos="44,8" size="95x19">Last modified</text>
+							</widget>
+						</widget>
+						<widget pos="152,39" size="148x35" type="*widget.Label">
+							<widget size="148x35" type="*widget.focusSelectable">
+							</widget>
+							<widget size="148x35" type="*widget.RichText">
+								<text pos="8,8" size="132x19">2024-01-01 12:00:00</text>
+							</widget>
+						</widget>
+					</container>
+				</container>
+			</container>
+		</widget>
+	</content>
+</canvas>

@@ -1,0 +1,114 @@
+<canvas padded size="273x44">
+	<content>
+		<widget pos="4,4" size="265x36" type="*widget.ConnectionList">
+			<widget size="265x36" type="*widget.List">
+				<widget size="265x36" type="*widget.Scroll">
+					<container size="265x76">
+						<widget size="265x36" type="*widget.listItem">
+							<container size="265x36">
+								<container size="100x36">
+									<widget size="36x36" type="*widget.Button">
+										<rectangle fillColor="button" radius="4" size="36x36"/>
+										<rectangle size="36x36"/>
+										<image fillMode="contain" pos="8,8" rsc="radioButtonIcon" size="iconInlineSize" themed="foreground"/>
+									</widget>
+									<widget pos="40,0" size="16x36" type="*widget.Label">
+										<widget size="16x36" type="*widget.RichText">
+											<text pos="8,8" size="46x19">Conn 1</text>
+										</widget>
+									</widget>
+									<widget pos="60,0" size="20x36" type="*widget.Label">
+										<widget size="20x36" type="*widget.RichText">
+											<text pos="8,8" size="4x19">-</text>
+										</widget>
+									</widget>
+									<widget pos="84,0" size="16x36" type="*widget.Label">
+										<widget size="16x36" type="*widget.RichText">
+											<text pos="8,8" size="21x19">/b1</text>
+										</widget>
+									</widget>
+								</container>
+								<container pos="108,0" size="156x36">
+									<widget size="67x36" type="*widget.Button">
+										<rectangle fillColor="button" radius="4" size="67x36"/>
+										<rectangle size="67x36"/>
+										<widget pos="32,8" size="27x20" type="*widget.RichText">
+											<text alignment="center" bold size="27x19">Edit</text>
+										</widget>
+										<image fillMode="contain" pos="8,8" rsc="documentCreateIcon" size="iconInlineSize" themed="foreground"/>
+									</widget>
+									<widget pos="71,0" size="85x36" type="*widget.Button">
+										<rectangle fillColor="button" radius="4" size="85x36"/>
+										<rectangle size="85x36"/>
+										<widget pos="32,8" size="45x20" type="*widget.RichText">
+											<text alignment="center" bold size="45x19">Delete</text>
+										</widget>
+										<image fillMode="contain" pos="8,8" rsc="deleteIcon" size="iconInlineSize" themed="foreground"/>
+									</widget>
+								</container>
+							</container>
+						</widget>
+						<widget pos="0,40" size="265x36" type="*widget.listItem">
+							<container size="265x36">
+								<container size="100x36">
+									<widget size="36x36" type="*widget.Button">
+										<rectangle fillColor="button" radius="4" size="36x36"/>
+										<rectangle size="36x36"/>
+										<image fillMode="contain" pos="8,8" rsc="radioButtonIcon" size="iconInlineSize" themed="foreground"/>
+									</widget>
+									<widget pos="40,0" size="16x36" type="*widget.Label">
+										<widget size="16x36" type="*widget.RichText">
+											<text pos="8,8" size="46x19">Conn 2</text>
+										</widget>
+									</widget>
+									<widget pos="60,0" size="20x36" type="*widget.Label">
+										<widget size="20x36" type="*widget.RichText">
+											<text pos="8,8" size="4x19">-</text>
+										</widget>
+									</widget>
+									<widget pos="84,0" size="16x36" type="*widget.Label">
+										<widget size="16x36" type="*widget.RichText">
+											<text pos="8,8" size="21x19">/b2</text>
+										</widget>
+									</widget>
+								</container>
+								<container pos="108,0" size="156x36">
+									<widget size="67x36" type="*widget.Button">
+										<rectangle fillColor="button" radius="4" size="67x36"/>
+										<rectangle size="67x36"/>
+										<widget pos="32,8" size="27x20" type="*widget.RichText">
+											<text alignment="center" bold size="27x19">Edit</text>
+										</widget>
+										<image fillMode="contain" pos="8,8" rsc="documentCreateIcon" size="iconInlineSize" themed="foreground"/>
+									</widget>
+									<widget pos="71,0" size="85x36" type="*widget.Button">
+										<rectangle fillColor="button" radius="4" size="85x36"/>
+										<rectangle size="85x36"/>
+										<widget pos="32,8" size="45x20" type="*widget.RichText">
+											<text alignment="center" bold size="45x19">Delete</text>
+										</widget>
+										<image fillMode="contain" pos="8,8" rsc="deleteIcon" size="iconInlineSize" themed="foreground"/>
+									</widget>
+								</container>
+							</container>
+						</widget>
+						<widget size="0x0" type="*widget.Separator">
+							<rectangle fillColor="separator" size="0x0"/>
+						</widget>
+						<widget pos="0,37" size="265x1" type="*widget.Separator">
+							<rectangle fillColor="separator" size="265x1"/>
+						</widget>
+					</container>
+					<widget pos="0,36" size="265x0" type="*widget.Shadow">
+						<linearGradient endColor="shadow" pos="0,-8" size="265x8"/>
+					</widget>
+					<widget pos="259,0" size="6x36" type="*widget.scrollBarArea">
+						<widget pos="3,0" size="3x17" type="*widget.scrollBar">
+							<rectangle fillColor="scrollbar" radius="3" size="3x17"/>
+						</widget>
+					</widget>
+				</widget>
+			</widget>
+		</widget>
+	</content>
+</canvas>
