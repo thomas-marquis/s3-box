@@ -6,22 +6,23 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
+	fyne_widget "fyne.io/fyne/v2/widget"
 )
 
 // GetSettingsView creates and returns a settings view container with form elements and buttons for user interaction.
 // It implements the navigation.View signature type.
 // Returns the constructed fyne.Container and an error if a problem occurs during the process.
 func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
-	timeoutEntry := widget.NewEntryWithData(
+	timeoutEntry := fyne_widget.NewEntryWithData(
 		binding.IntToString(ctx.SettingsViewModel().TimeoutInSeconds()))
-	themeSelector := widget.NewSelect(settings.AllColorThemesStr, func(s string) {
+	themeSelector := fyne_widget.NewSelect(settings.AllColorThemesStr, func(s string) {
 		if err := ctx.SettingsViewModel().ColorTheme().Set(s); err != nil {
 			dialog.ShowError(err, ctx.Window())
 		}
@@ -29,11 +30,11 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	currentTheme, _ := ctx.SettingsViewModel().ColorTheme().Get()
 	themeSelector.PlaceHolder = currentTheme
 
-	maxFilePreviewSizeEntry := widget.NewEntryWithData(
+	maxFilePreviewSizeEntry := fyne_widget.NewEntryWithData(
 		binding.IntToString(ctx.SettingsViewModel().MaxFilePreviewSizeBytes()))
 
-	form := &widget.Form{
-		Items: []*widget.FormItem{
+	form := &fyne_widget.Form{
+		Items: []*fyne_widget.FormItem{
 			{Text: "Timeout (seconde)", Widget: timeoutEntry},
 			{Text: "Color theme", Widget: themeSelector},
 			{Text: "File size limit for preview (MB)", Widget: maxFilePreviewSizeEntry},
@@ -49,7 +50,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		SubmitText: "Save",
 	}
 
-	goToExplorerBtn := widget.NewButtonWithIcon(
+	goToExplorerBtn := fyne_widget.NewButtonWithIcon(
 		"View files",
 		theme.NavigateBackIcon(),
 		func() {
@@ -59,7 +60,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		},
 	)
 
-	exportConnectionsBtn := widget.NewButtonWithIcon(
+	exportConnectionsBtn := fyne_widget.NewButtonWithIcon(
 		"Export connections as JSON",
 		theme.DocumentSaveIcon(),
 		func() {
@@ -88,8 +89,17 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	)
 	exportConnectionsBtn.Resize(fyne.NewSize(100, 100))
 
-	return container.NewVBox(
-		container.NewHBox(goToExplorerBtn),
-		container.NewVBox(form, container.NewCenter(exportConnectionsBtn)),
+	return container.NewBorder(
+		container.NewVBox(
+			widget.NewHeading("Settings"),
+			fyne_widget.NewSeparator(),
+		),
+		nil, nil, nil,
+		container.NewPadded(
+			container.NewVBox(
+				container.NewHBox(goToExplorerBtn),
+				container.NewVBox(form, container.NewCenter(exportConnectionsBtn)),
+			),
+		),
 	), nil
 }

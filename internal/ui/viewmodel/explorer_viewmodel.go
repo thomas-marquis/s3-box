@@ -30,7 +30,7 @@ type ExplorerViewModel interface {
 	////////////////////////
 
 	// Tree returns the binding for the directory/file tree structure
-	Tree() binding.UntypedTree
+	Tree() binding.Tree[node.Node]
 
 	SelectedConnection() binding.Untyped
 
@@ -76,7 +76,7 @@ type explorerViewModelImpl struct {
 	baseViewModel
 
 	directoryRepository directory.Repository
-	tree                binding.UntypedTree
+	tree                binding.Tree[node.Node]
 
 	selectedConnection    binding.Untyped
 	selectedConnectionVal *connection_deck.Connection
@@ -123,7 +123,7 @@ func NewExplorerViewModel(
 	return vm
 }
 
-func (vm *explorerViewModelImpl) Tree() binding.UntypedTree {
+func (vm *explorerViewModelImpl) Tree() binding.Tree[node.Node] {
 	return vm.tree
 }
 
@@ -272,7 +272,9 @@ func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Director
 }
 
 func (vm *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection) error {
-	vm.tree = binding.NewUntypedTree()
+	vm.tree = binding.NewTree[node.Node](func(n1 node.Node, n2 node.Node) bool {
+		return n1.ID() == n2.ID()
+	})
 
 	if c == nil {
 		return vm.notifier.NotifyError(ErrNoConnectionSelected)
@@ -352,9 +354,18 @@ func (vm *explorerViewModelImpl) removeFileFromTree(file *directory.File) error 
 func (vm *explorerViewModelImpl) listenEvents() {
 	for evt := range vm.bus.Subscribe() {
 		switch evt.Type() {
-		case connection_deck.SelectEventType.AsSuccess():
-			e := evt.(connection_deck.SelectSuccessEvent)
-			conn := e.Connection()
+		case connection_deck.SelectEventType.AsSuccess(), connection_deck.UpdateEventType.AsSuccess():
+			var conn *connection_deck.Connection
+			e, ok := evt.(connection_deck.SelectSuccessEvent)
+			if ok {
+				conn = e.Connection()
+			} else {
+				e := evt.(connection_deck.UpdateSuccessEvent)
+				conn = e.Connection()
+				if conn.ID() != vm.selectedConnectionVal.ID() {
+					continue
+				}
+			}
 			hasChanged := (vm.selectedConnectionVal == nil && conn != nil) ||
 				(vm.selectedConnectionVal != nil && conn == nil) ||
 				(vm.selectedConnectionVal != nil && !vm.selectedConnectionVal.Is(conn))

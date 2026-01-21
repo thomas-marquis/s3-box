@@ -110,6 +110,7 @@ func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (UpdateE
 
 	for _, opt := range options {
 		opt(d.connections[connIdx])
+		d.connections[connIdx].revision++
 	}
 
 	return NewUpdateEvent(d, &previous, d.connections[connIdx]), nil
@@ -137,11 +138,18 @@ func (d *Deck) Notify(evt event.Event) {
 		e := evt.(RemoveFailureEvent)
 		conn := e.Connection()
 		if conn != nil {
+			index := e.RemovedIndex()
+			if index < 0 {
+				index = 0
+			}
+			if index > len(d.connections) {
+				index = len(d.connections)
+			}
 			d.connections = append(
-				d.connections[:e.RemovedIndex()],
+				d.connections[:index],
 				append(
 					[]*Connection{conn},
-					d.connections[e.RemovedIndex():]...,
+					d.connections[index:]...,
 				)...,
 			)
 			if e.WasSelected() {
@@ -152,8 +160,12 @@ func (d *Deck) Notify(evt event.Event) {
 	case UpdateEventType.AsFailure():
 		e := evt.(UpdateFailureEvent)
 		previous := e.Connection()
+		if previous == nil {
+			return
+		}
+
 		for i, conn := range d.connections {
-			if conn.Is(previous) {
+			if previous.ID().Is(conn) {
 				d.connections[i] = previous
 				return
 			}

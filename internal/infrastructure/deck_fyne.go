@@ -2,13 +2,15 @@ package infrastructure
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+
 	"fyne.io/fyne/v2"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/dto"
-	"io"
 )
 
 const (
@@ -50,7 +52,7 @@ func (r *FyneConnectionsRepository) Export(_ context.Context, file io.Writer) er
 	}
 
 	dtos := dto.NewConnectionsDTO(deck)
-	jsonContent, err := dtos.Serialize()
+	jsonContent, err := json.Marshal(dtos)
 	if err != nil {
 		return fmt.Errorf("serialize connections: %w", errors.Join(err, connection_deck.ErrTechnical))
 	}
@@ -63,7 +65,7 @@ func (r *FyneConnectionsRepository) Export(_ context.Context, file io.Writer) er
 
 func (r *FyneConnectionsRepository) saveDeck(_ context.Context, deck *connection_deck.Deck) error {
 	dtos := dto.NewConnectionsDTO(deck)
-	jsonContent, err := dtos.Serialize()
+	jsonContent, err := json.Marshal(dtos)
 	if err != nil {
 		return fmt.Errorf("serialize connections: %w", errors.Join(err, connection_deck.ErrTechnical))
 	}

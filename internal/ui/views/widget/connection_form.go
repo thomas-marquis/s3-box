@@ -211,7 +211,7 @@ func (w *ConnectionForm) buildS3LikeForm() *widget.Form {
 	)
 	serverFormItem := makeTextFormItemWithData(
 		serverData,
-		"Server hostname",
+		"Server hostname (and port)",
 		"s3.amazonaws.com",
 		w.enableCopy,
 		w.appCtx.Window(),

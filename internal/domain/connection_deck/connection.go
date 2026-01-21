@@ -182,6 +182,7 @@ func (c *Connection) Provider() Provider {
 	return c.provider
 }
 
+// AsAWS turns the connection into an AWS one if it's not already
 func (c *Connection) AsAWS(region string) {
 	if c.provider == AWSProvider || c.readOnly {
 		return
@@ -190,6 +191,7 @@ func (c *Connection) AsAWS(region string) {
 	AsAWS(region)(c)
 }
 
+// AsS3Like turns the connection into an S3-like one if it's not already
 func (c *Connection) AsS3Like(server string, useTLS bool) {
 	if c.provider == S3LikeProvider || c.readOnly {
 		return

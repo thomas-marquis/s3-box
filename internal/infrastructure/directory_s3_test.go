@@ -175,6 +175,45 @@ func TestS3DirectoryRepository_GetByPath(t *testing.T) {
 		assert.Equal(t, "file_in_dir.txt", dir.Files()[0].Name().String())
 		assert.Len(t, dir.SubDirectories(), 0)
 	})
+
+	t.Run("should handle AWS connection without custom endpoint", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+
+		fakeEventChan := make(chan event.Event)
+		defer close(fakeEventChan)
+		mockBus.EXPECT().
+			Subscribe().
+			Return(fakeEventChan).
+			AnyTimes()
+
+		awsConnID := connection_deck.NewConnectionID()
+		awsDeck := connection_deck.New()
+		awsDeck.New("AWS connection", fakeAccessKeyId, fakeSecretAccessKey, "any-bucket",
+			connection_deck.AsAWS("us-east-1"),
+			connection_deck.WithID(awsConnID))
+
+		mockConnRepo.EXPECT().
+			Get(gomock.AssignableToTypeOf(ctxType)).
+			Return(awsDeck, nil).
+			Times(1)
+
+		repo, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		require.NoError(t, err)
+
+		// When
+		_, err = repo.GetByPath(ctx, awsConnID, directory.RootPath)
+
+		// Then
+		// It should fail with a connection error since we don't have real AWS access,
+		// but we want to ensure the baseEp was nil, which leads to using default AWS endpoints.
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(),
+			"api error PermanentRedirect: The bucket you are attempting to access must be addressed using the specified endpoint.")
+	})
 }
 
 func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {

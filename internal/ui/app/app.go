@@ -10,6 +10,7 @@ import (
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	apptheme "github.com/thomas-marquis/s3-box/internal/ui/theme"
+	"github.com/thomas-marquis/s3-box/internal/ui/theme/resources"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views"
 	"go.uber.org/zap"
@@ -60,6 +61,8 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	sugarLog := logger.Sugar()
 	a := fyne_app.NewWithID(appId)
 	a.Settings().SetTheme(apptheme.GetDefaultByVariant(a.Settings().ThemeVariant()))
+	a.SetIcon(resources.NewAppLogo())
+
 	w := a.NewWindow(appName)
 
 	terminated := make(chan struct{})

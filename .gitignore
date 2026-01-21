@@ -37,3 +37,6 @@ go.work.sum
 /.run
 /playground
 /*.pdf
+
+# Test failed data
+**/testdata/failed/

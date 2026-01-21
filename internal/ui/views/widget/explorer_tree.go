@@ -12,7 +12,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
 type ExplorerTree struct {
@@ -39,21 +38,23 @@ func NewExplorerTree(
 }
 
 func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
+	w.ExtendBaseWidget(w)
 	vm := w.appCtx.ExplorerViewModel()
 
+	treeData := vm.Tree()
+
 	tree := widget.NewTreeWithData(
-		vm.Tree(),
+		treeData,
 		func(branch bool) fyne.CanvasObject {
-			displayLabel := widget.NewLabel("-")
+			displayLabel := widget.NewLabel("")
 			icon := widget.NewIcon(theme.FolderIcon())
 			icon.Hide()
 			return container.NewHBox(icon, displayLabel)
 		},
 		func(i binding.DataItem, branch bool, o fyne.CanvasObject) {
-			di, _ := i.(binding.Untyped).Get()
-			nodeItem, ok := di.(node.Node)
-			if !ok {
-				panic(fmt.Sprintf("unexpected type %T", di))
+			nodeItem, err := i.(binding.Item[node.Node]).Get()
+			if err != nil {
+				panic(fmt.Errorf("unexpected type %T: %w", nodeItem, err))
 			}
 
 			c, _ := o.(*fyne.Container)
@@ -71,8 +72,13 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 		},
 	)
 
+	w.reopenOpenedDirectories(tree)
+
+	tree.OnBranchOpened = w.makeOnBranchCallback(true, treeData)
+	tree.OnBranchClosed = w.makeOnBranchCallback(false, treeData)
+
 	tree.OnSelected = func(uid widget.TreeNodeID) {
-		nodeItem, err := uiutils.GetUntypedFromTreeById[node.Node](vm.Tree(), uid)
+		nodeItem, err := treeData.GetValue(uid)
 		if err != nil {
 			dialog.ShowError(fmt.Errorf("error getting value: %v", err), w.appCtx.Window())
 			return
@@ -98,4 +104,38 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 	}
 
 	return widget.NewSimpleRenderer(tree)
+}
+
+func (w *ExplorerTree) reopenOpenedDirectories(tree *widget.Tree) {
+	vm := w.appCtx.ExplorerViewModel()
+
+	_, treeContent, err := vm.Tree().Get()
+	if err != nil {
+		return
+	}
+
+	for key, n := range treeContent {
+		if n.NodeType() == node.FolderNodeType {
+			dirNode := n.(node.DirectoryNode)
+			if dirNode.Opened() {
+				tree.OpenBranch(key)
+			}
+		}
+	}
+}
+
+func (w *ExplorerTree) makeOnBranchCallback(shouldOpen bool, data binding.Tree[node.Node]) func(uid widget.TreeNodeID) {
+	return func(uid widget.TreeNodeID) {
+		nodeItem, err := data.GetValue(uid)
+		if err != nil {
+			dialog.ShowError(fmt.Errorf("error getting value: %v", err), w.appCtx.Window())
+			return
+		}
+
+		if nodeItem.NodeType() != node.FolderNodeType {
+			return
+		}
+		dirNode := nodeItem.(node.DirectoryNode)
+		dirNode.Open(shouldOpen)
+	}
 }

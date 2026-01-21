@@ -92,8 +92,7 @@ func (r *S3DirectoryRepository) GetByPath(
 			}
 			f, err := directory.NewFile(mapKeyToObjectName(key), path,
 				directory.WithFileSize(int(*obj.Size)),
-				directory.WithFileLastModified(*obj.LastModified),
-			)
+				directory.WithFileLastModified(*obj.LastModified))
 			if err != nil {
 				return nil, fmt.Errorf("error while creating a file: %w", err)
 			}

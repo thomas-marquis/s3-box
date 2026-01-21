@@ -20,3 +20,7 @@ import _ "go.uber.org/mock/gomock"
 
 // External
 //go:generate mockgen -package mocks_binding -destination mocks/binding/tree.go fyne.io/fyne/v2/data/binding UntypedTree
+//go:generate mockgen -package mocks_fyne -destination mocks/fyne/preferences.go fyne.io/fyne/v2 Preferences
+
+// Resources
+//go:generate fyne bundle -o internal/ui/theme/resources/logo.go --package resources resources/logo-wbg.png

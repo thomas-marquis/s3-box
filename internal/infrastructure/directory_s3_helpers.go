@@ -74,12 +74,16 @@ func (r *S3DirectoryRepository) getSession(ctx context.Context, id connection_de
 		} else {
 			endpoint = "http://" + conn.Server()
 		}
+	}
 
+	var baseEp *string
+	if endpoint != "" {
+		baseEp = aws.String(endpoint)
 	}
 	s3Client := s3.New(s3.Options{
 		Credentials:  credentials.NewStaticCredentialsProvider(conn.AccessKey(), conn.SecretKey(), ""),
 		Region:       region,
-		BaseEndpoint: aws.String(endpoint),
+		BaseEndpoint: baseEp,
 		Logger:       logging.NewStandardLogger(logger.Writer()),
 		UsePathStyle: true,
 	})

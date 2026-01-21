@@ -11,10 +11,10 @@ type connectionDTO struct {
 	ID        uuid.UUID `json:"id"`
 	Revision  int       `json:"revision,omitempty"`
 	Name      string    `json:"name"`
-	Server    string    `json:"server"`
+	Server    string    `json:"server,omitempty"`
 	AccessKey string    `json:"accessKey"`
 	SecretKey string    `json:"secretKey"`
-	Buket     string    `json:"bucket"`
+	Bucket    string    `json:"bucket"`
 	Selected  bool      `json:"selected,omitempty"`
 	Region    string    `json:"region,omitempty"`
 	Type      string    `json:"type,omitempty"`
@@ -38,7 +38,7 @@ func NewConnectionsDTO(c *connection_deck.Deck) *ConnectionsDTO {
 			Server:    conn.Server(),
 			AccessKey: conn.AccessKey(),
 			SecretKey: conn.SecretKey(),
-			Buket:     conn.Bucket(),
+			Bucket:    conn.Bucket(),
 			Selected:  false,
 			Region:    conn.Region(),
 			Type:      conn.Provider().String(),
@@ -73,15 +73,20 @@ func (c *ConnectionsDTO) ToConnections() *connection_deck.Deck {
 			continue
 		}
 		connID := connection_deck.ConnectionID(dto.ID)
-		conns.New(
-			dto.Name, dto.AccessKey, dto.SecretKey, dto.Buket,
+		evt := conns.New(
+			dto.Name, dto.AccessKey, dto.SecretKey, dto.Bucket,
 			connection_deck.WithRevision(dto.Revision),
 			connection_deck.WithUseTLS(dto.UseTls),
 			connection_deck.WithID(connID),
 			connection_deck.WithReadOnlyOption(dto.ReadOnly),
-			connection_deck.AsS3Like(dto.Server, dto.UseTls),
-			connection_deck.AsAWS(dto.Region),
 		)
+		newConn := evt.Connection()
+		switch dto.Type {
+		case "aws":
+			connection_deck.AsAWS(dto.Region)(newConn)
+		case "s3-like":
+			connection_deck.AsS3Like(dto.Server, dto.UseTls)(newConn)
+		}
 		if dto.Selected {
 			selectedID = connID
 		}
@@ -92,10 +97,6 @@ func (c *ConnectionsDTO) ToConnections() *connection_deck.Deck {
 	return conns
 }
 
-func (c *ConnectionsDTO) Serialize() ([]byte, error) {
-	content, err := json.Marshal(c.connections)
-	if err != nil {
-		return nil, err
-	}
-	return content, nil
+func (c *ConnectionsDTO) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.connections)
 }
