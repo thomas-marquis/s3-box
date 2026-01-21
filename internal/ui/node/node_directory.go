@@ -2,6 +2,8 @@ package node
 
 import (
 	"errors"
+
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
@@ -17,12 +19,15 @@ type DirectoryNode interface {
 	Directory() *directory.Directory
 	Load(*directory.Directory) error
 	IsLoaded() bool
+	Opened() bool
+	Open(bool)
 }
 
 type directoryNodeImpl struct {
 	baseNode
 	dir     *directory.Directory
 	loaded  bool
+	opened  bool
 	dirPath directory.Path
 }
 
@@ -79,4 +84,16 @@ func (n *directoryNodeImpl) Load(dir *directory.Directory) error {
 
 func (n *directoryNodeImpl) IsLoaded() bool {
 	return n.loaded
+}
+
+func (n *directoryNodeImpl) Opened() bool {
+	return n.opened
+}
+
+func (n *directoryNodeImpl) Open(opened bool) {
+	if !n.loaded && opened {
+		fyne.LogError("cannot open unloaded directory", nil)
+		return
+	}
+	n.opened = opened
 }

@@ -41,17 +41,13 @@ func GetUntypedOrPanic[T any](data binding.Untyped) T {
 	return value
 }
 
-func GetUntypedFromTreeById[T any](tree binding.UntypedTree, id string) (T, error) {
+func GetUntypedFromTreeById[T any](tree binding.Tree[T], id string) (T, error) {
 	var zero T
 	di, err := tree.GetValue(id)
 	if err != nil {
 		return zero, err
 	}
-	item, ok := di.(T)
-	if !ok {
-		panic(fmt.Sprintf("unexpected type %T", di))
-	}
-	return item, nil
+	return di, nil
 }
 
 func GetUntypedListOrPanic[T any](data binding.UntypedList) []T {
