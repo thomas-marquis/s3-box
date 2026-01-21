@@ -138,11 +138,18 @@ func (d *Deck) Notify(evt event.Event) {
 		e := evt.(RemoveFailureEvent)
 		conn := e.Connection()
 		if conn != nil {
+			index := e.RemovedIndex()
+			if index < 0 {
+				index = 0
+			}
+			if index > len(d.connections) {
+				index = len(d.connections)
+			}
 			d.connections = append(
-				d.connections[:e.RemovedIndex()],
+				d.connections[:index],
 				append(
 					[]*Connection{conn},
-					d.connections[e.RemovedIndex():]...,
+					d.connections[index:]...,
 				)...,
 			)
 			if e.WasSelected() {
@@ -153,10 +160,12 @@ func (d *Deck) Notify(evt event.Event) {
 	case UpdateEventType.AsFailure():
 		e := evt.(UpdateFailureEvent)
 		previous := e.Connection()
-		for i, conn := range d.connections {
-			if conn.Is(previous) {
-				d.connections[i] = previous
-				return
+		if previous != nil {
+			for i, conn := range d.connections {
+				if previous.ID().Is(conn) {
+					d.connections[i] = previous
+					return
+				}
 			}
 		}
 	}
