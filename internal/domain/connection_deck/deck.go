@@ -160,12 +160,14 @@ func (d *Deck) Notify(evt event.Event) {
 	case UpdateEventType.AsFailure():
 		e := evt.(UpdateFailureEvent)
 		previous := e.Connection()
-		if previous != nil {
-			for i, conn := range d.connections {
-				if previous.ID().Is(conn) {
-					d.connections[i] = previous
-					return
-				}
+		if previous == nil {
+			return
+		}
+
+		for i, conn := range d.connections {
+			if previous.ID().Is(conn) {
+				d.connections[i] = previous
+				return
 			}
 		}
 	}
