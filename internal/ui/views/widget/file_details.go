@@ -39,6 +39,7 @@ type FileDetails struct {
 func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 	fileIcon := widget.NewFileIcon(nil)
 	filepathLabel := widget.NewLabel("")
+	filepathLabel.Selectable = true
 
 	w := &FileDetails{
 		appCtx:    appCtx,
@@ -57,12 +58,17 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 }
 
 func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
+	fileSize := widget.NewLabelWithData(w.fileSizeBinding)
+	fileSize.Selectable = true
+
+	lastModified := widget.NewLabelWithData(w.lastModifiedBinding)
+	lastModified.Selectable = true
+
 	fileInfosTable := container.NewGridWithColumns(2,
 		widget.NewLabelWithStyle("Size", fyne.TextAlignTrailing, fyne.TextStyle{Bold: true}),
-		widget.NewLabelWithData(w.fileSizeBinding),
-
+		fileSize,
 		widget.NewLabelWithStyle("Last modified", fyne.TextAlignTrailing, fyne.TextStyle{Bold: true}),
-		widget.NewLabelWithData(w.lastModifiedBinding),
+		lastModified,
 	)
 
 	actionToolbar := widget.NewToolbar(

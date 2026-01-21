@@ -222,10 +222,10 @@ func (mr *MockExplorerViewModelMockRecorder) SelectedConnection() *gomock.Call {
 }
 
 // Tree mocks base method.
-func (m *MockExplorerViewModel) Tree() binding.UntypedTree {
+func (m *MockExplorerViewModel) Tree() binding.Tree[node.Node] {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Tree")
-	ret0, _ := ret[0].(binding.UntypedTree)
+	ret0, _ := ret[0].(binding.Tree[node.Node])
 	return ret0
 }
 

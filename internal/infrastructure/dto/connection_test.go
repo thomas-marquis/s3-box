@@ -46,7 +46,6 @@ func TestNewConnectionsDTO(t *testing.T) {
 			{
 				"id": "%s",
 				"name": "conn 1",
-				"server": "",
 				"accessKey": "ak1",
 				"secretKey": "sk1",
 				"bucket": "b1",
@@ -201,7 +200,6 @@ func TestConnectionsDTO_MarshalJSON(t *testing.T) {
 			{
 				"id":"` + uuid.UUID(c1.ID()).String() + `",` + `
 			    "name":"conn 1",
-				"server":"",
 				"accessKey":"ak1",
 				"secretKey":"sk1",
 				"bucket":"b1",

@@ -2,6 +2,7 @@ package widget
 
 import (
 	"fmt"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
@@ -27,6 +28,7 @@ type DirectoryDetails struct {
 
 func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	pathLabel := widget.NewLabel("")
+	pathLabel.Selectable = true
 
 	createDirAction := NewToolbarButton("New directory", theme.FolderNewIcon(), func() {})
 	uploadAction := NewToolbarButton("Upload file", theme.UploadIcon(), func() {})

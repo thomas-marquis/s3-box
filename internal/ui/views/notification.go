@@ -54,8 +54,9 @@ func (l *tappableLabel) handleTape() {
 }
 
 func GetNotificationView(appCtx appcontext.AppContext) (*fyne.Container, error) {
+	notifications := appCtx.NotificationViewModel().Notifications()
 	notificationList := fyne_widget.NewListWithData(
-		appCtx.NotificationViewModel().Notifications(),
+		notifications,
 		func() fyne.CanvasObject {
 			label := newTappableLabel("", appCtx.Window())
 			label.Alignment = fyne.TextAlignLeading
@@ -71,6 +72,22 @@ func GetNotificationView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 		},
 	)
 
+	nothingToDisplay := container.NewCenter(
+		fyne_widget.NewLabelWithStyle("Noting to display at the moment...",
+			fyne.TextAlignCenter,
+			fyne.TextStyle{Bold: true}))
+	notificationList.Hide()
+
+	notifications.AddListener(binding.NewDataListener(func() {
+		if notifications.Length() == 0 {
+			notificationList.Hide()
+			nothingToDisplay.Show()
+		} else {
+			notificationList.Show()
+			nothingToDisplay.Hide()
+		}
+	}))
+
 	return container.NewBorder(
 		container.NewVBox(
 			widget.NewHeading("Notifications"),
@@ -80,5 +97,6 @@ func GetNotificationView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 		container.NewPadded(
 			notificationList,
 		),
+		nothingToDisplay,
 	), nil
 }

@@ -11,7 +11,7 @@ type connectionDTO struct {
 	ID        uuid.UUID `json:"id"`
 	Revision  int       `json:"revision,omitempty"`
 	Name      string    `json:"name"`
-	Server    string    `json:"server"`
+	Server    string    `json:"server,omitempty"`
 	AccessKey string    `json:"accessKey"`
 	SecretKey string    `json:"secretKey"`
 	Bucket    string    `json:"bucket"`
