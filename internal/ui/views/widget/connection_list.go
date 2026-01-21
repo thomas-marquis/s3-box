@@ -2,6 +2,7 @@ package widget
 
 import (
 	"fmt"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -98,7 +99,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 	editBtn := btnGroup.Objects[0].(*widget.Button)
 	editBtn.OnTapped = NewConnectionForm(w.appCtx, conn, true,
 		func(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) {
-			opts := make([]connection_deck.ConnectionOption, 0, len(options)+4)
+			opts := make([]connection_deck.ConnectionOption, 0, len(options)+3)
 			opts = append(opts,
 				connection_deck.WithName(name),
 				connection_deck.WithCredentials(accessKey, secretKey),

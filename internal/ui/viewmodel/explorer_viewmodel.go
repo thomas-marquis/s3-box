@@ -352,9 +352,18 @@ func (vm *explorerViewModelImpl) removeFileFromTree(file *directory.File) error 
 func (vm *explorerViewModelImpl) listenEvents() {
 	for evt := range vm.bus.Subscribe() {
 		switch evt.Type() {
-		case connection_deck.SelectEventType.AsSuccess():
-			e := evt.(connection_deck.SelectSuccessEvent)
-			conn := e.Connection()
+		case connection_deck.SelectEventType.AsSuccess(), connection_deck.UpdateEventType.AsSuccess():
+			var conn *connection_deck.Connection
+			e, ok := evt.(connection_deck.SelectSuccessEvent)
+			if ok {
+				conn = e.Connection()
+			} else {
+				e := evt.(connection_deck.UpdateSuccessEvent)
+				conn = e.Connection()
+				if conn.ID() != vm.selectedConnectionVal.ID() {
+					continue
+				}
+			}
 			hasChanged := (vm.selectedConnectionVal == nil && conn != nil) ||
 				(vm.selectedConnectionVal != nil && conn == nil) ||
 				(vm.selectedConnectionVal != nil && !vm.selectedConnectionVal.Is(conn))

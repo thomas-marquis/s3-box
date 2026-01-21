@@ -4,9 +4,6 @@ type ConnectionOption func(*Connection)
 
 func AsAWS(region string) ConnectionOption {
 	return func(c *Connection) {
-		if region == "" || c.provider == AWSProvider {
-			return
-		}
 		c.provider = AWSProvider
 		c.region = region
 		c.useTLS = true
@@ -16,9 +13,6 @@ func AsAWS(region string) ConnectionOption {
 
 func AsS3Like(server string, useTLS bool) ConnectionOption {
 	return func(c *Connection) {
-		if server == "" || c.provider == S3LikeProvider {
-			return
-		}
 		c.provider = S3LikeProvider
 		c.server = server
 		c.useTLS = useTLS

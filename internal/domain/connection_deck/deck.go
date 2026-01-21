@@ -110,6 +110,7 @@ func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (UpdateE
 
 	for _, opt := range options {
 		opt(d.connections[connIdx])
+		d.connections[connIdx].revision++
 	}
 
 	return NewUpdateEvent(d, &previous, d.connections[connIdx]), nil
