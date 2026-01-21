@@ -31,6 +31,7 @@ func NewConnectionList(appCtx appcontext.AppContext) *ConnectionList {
 }
 
 func (w *ConnectionList) CreateRenderer() fyne.WidgetRenderer {
+	w.ExtendBaseWidget(w)
 	return widget.NewSimpleRenderer(widget.NewListWithData(
 		w.connections,
 		w.makeRowListItem,

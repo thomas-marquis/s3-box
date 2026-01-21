@@ -5,6 +5,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	fyne_widget "fyne.io/fyne/v2/widget"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
@@ -20,6 +21,7 @@ var (
 	_ fyne.Widget         = (*tappableLabel)(nil)
 	_ fyne.DoubleTappable = (*tappableLabel)(nil)
 	_ fyne.Tappable       = (*tappableLabel)(nil)
+	_ desktop.Cursorable  = (*tappableLabel)(nil)
 )
 
 func newTappableLabel(text string, window fyne.Window) *tappableLabel {
@@ -34,6 +36,10 @@ func (l *tappableLabel) DoubleTapped(*fyne.PointEvent) {
 
 func (l *tappableLabel) Tapped(*fyne.PointEvent) {
 	l.handleTape()
+}
+
+func (l *tappableLabel) Cursor() desktop.Cursor {
+	return desktop.PointerCursor
 }
 
 func (l *tappableLabel) handleTape() {

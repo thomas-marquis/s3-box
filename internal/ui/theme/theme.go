@@ -54,7 +54,7 @@ func (t appThemeLight) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant
 	case theme.ColorNameDisabledButton:
 		return hexToNRGBA("#D0C5B4")
 	case theme.ColorNameDisabled:
-		return hexToNRGBA("#D0C5B4")
+		return hexToNRGBA("#FFF8F2")
 	case theme.ColorNameError:
 		return hexToNRGBA("#BA1A1A")
 	case theme.ColorNameFocus:
@@ -137,7 +137,7 @@ func (t appThemeDark) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant)
 	case theme.ColorNameDisabledButton:
 		return hexToNRGBA("#4D4639")
 	case theme.ColorNameDisabled:
-		return hexToNRGBA("#4D4639")
+		return hexToNRGBA("#FFF8F2")
 	case theme.ColorNameError:
 		return hexToNRGBA("#FFB4AB")
 	case theme.ColorNameFocus:
