@@ -26,30 +26,6 @@ func GetBool(data binding.Bool) bool {
 	return value
 }
 
-// GetUntypedOrPanic retrieves and casts any value from a binding.Untyped, according to the generic type specified.
-// This function panics if there is an error while getting the value.
-// If the value is not of the expected type, it will panic with an error message.
-func GetUntypedOrPanic[T any](data binding.Untyped) T {
-	di, err := data.Get()
-	if err != nil {
-		panic("error while getting value from binding")
-	}
-	value, ok := di.(T)
-	if !ok {
-		panic("Invalid casting type for binding.Untyped")
-	}
-	return value
-}
-
-func GetUntypedFromTreeById[T any](tree binding.Tree[T], id string) (T, error) {
-	var zero T
-	di, err := tree.GetValue(id)
-	if err != nil {
-		return zero, err
-	}
-	return di, nil
-}
-
 func GetUntypedListOrPanic[T any](data binding.UntypedList) []T {
 	dis, err := data.Get()
 	if err != nil {

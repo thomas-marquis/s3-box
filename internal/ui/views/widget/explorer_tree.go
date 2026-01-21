@@ -12,7 +12,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
 type ExplorerTree struct {
@@ -79,7 +78,7 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 	tree.OnBranchClosed = w.makeOnBranchCallback(false, treeData)
 
 	tree.OnSelected = func(uid widget.TreeNodeID) {
-		nodeItem, err := uiutils.GetUntypedFromTreeById[node.Node](vm.Tree(), uid)
+		nodeItem, err := treeData.GetValue(uid)
 		if err != nil {
 			dialog.ShowError(fmt.Errorf("error getting value: %v", err), w.appCtx.Window())
 			return
