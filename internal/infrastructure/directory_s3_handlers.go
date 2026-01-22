@@ -113,3 +113,61 @@ func (r *S3DirectoryRepository) handleDownload(ctx context.Context, evt director
 	}
 	return nil
 }
+
+func (r *S3DirectoryRepository) handleLoading(ctx context.Context, evt directory.LoadEvent) ([]directory.Path, []*directory.File, error) {
+	dir := evt.Directory()
+	searchKey := mapPathToSearchKey(dir.Path())
+
+	s, err := r.getSession(ctx, dir.ConnectionID())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	inputs := &s3.ListObjectsV2Input{
+		Bucket:    aws.String(s.connection.Bucket()),
+		Prefix:    aws.String(searchKey),
+		Delimiter: aws.String("/"),
+		MaxKeys:   aws.Int32(1000),
+	}
+
+	files := make([]*directory.File, 0)
+	subDirectoriesPaths := make([]directory.Path, 0)
+
+	paginator := s3.NewListObjectsV2Paginator(s.client, inputs)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, nil, r.manageAwsSdkError(
+				fmt.Errorf("error while fetching next objects page: %w", err),
+				searchKey,
+				s)
+		}
+
+		for _, obj := range page.Contents {
+			key := *obj.Key
+			if key == searchKey {
+				continue
+			}
+			f, err := directory.NewFile(mapKeyToObjectName(key), dir.Path(),
+				directory.WithFileSize(int(*obj.Size)),
+				directory.WithFileLastModified(*obj.LastModified))
+			if err != nil {
+				return nil, nil, fmt.Errorf("error while creating a file: %w", err)
+			}
+			files = append(files, f)
+		}
+
+		for _, obj := range page.CommonPrefixes {
+			if *obj.Prefix == searchKey {
+				continue
+			}
+			s3Prefix := *obj.Prefix
+			isDir := strings.HasSuffix(s3Prefix, "/")
+			if isDir {
+				subDirectoriesPaths = append(subDirectoriesPaths, directory.NewPath(s3Prefix))
+			}
+		}
+	}
+
+	return subDirectoriesPaths, files, nil
+}

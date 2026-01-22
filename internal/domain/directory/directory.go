@@ -216,6 +216,11 @@ func (d *Directory) Notify(evt event.Event) {
 			}
 		}
 		d.files = append(d.files, newFile)
+
+	case LoadEventType.AsSuccess():
+		e := evt.(LoadSuccessEvent)
+		d.subDirectories = e.subDirPaths
+		d.files = e.files
 	}
 }
 

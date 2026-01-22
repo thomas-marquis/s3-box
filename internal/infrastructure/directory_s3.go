@@ -57,7 +57,7 @@ func NewS3DirectoryRepository(
 
 func (r *S3DirectoryRepository) GetByPath(
 	ctx context.Context, connID connection_deck.ConnectionID, path directory.Path,
-) (*directory.Directory, error) {
+) (*directory.Directory, error) { // TODO: remove this
 	searchKey := mapPathToSearchKey(path)
 
 	s, err := r.getSession(ctx, connID)
@@ -208,6 +208,16 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 				publisher(directory.NewContentDownloadedFailureEvent(err))
 			}
 			publisher(directory.NewContentDownloadedSuccessEvent(e.Content()))
+
+		case directory.LoadEventType:
+			e := evt.(directory.LoadEvent)
+			dir := e.Directory()
+			subDirPaths, files, err := r.handleLoading(ctx, e)
+			if err != nil {
+				notifier.NotifyError(fmt.Errorf("failed loading directory: %w", err)) //nolint:errcheck
+				publisher(directory.NewLoadFailureEvent(err, dir))
+			}
+			publisher(directory.NewLoadSuccessEvent(dir, subDirPaths, files))
 		}
 	}
 }

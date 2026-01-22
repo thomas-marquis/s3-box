@@ -87,7 +87,7 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 		switch nodeItem.NodeType() {
 		case node.FolderNodeType:
 			dirNode := nodeItem.(node.DirectoryNode)
-			if !dirNode.IsLoaded() {
+			if !dirNode.Directory().IsLoaded() {
 				if err := vm.LoadDirectory(dirNode); err != nil {
 					dialog.ShowError(err, w.appCtx.Window())
 					return
@@ -117,7 +117,7 @@ func (w *ExplorerTree) reopenOpenedDirectories(tree *widget.Tree) {
 	for key, n := range treeContent {
 		if n.NodeType() == node.FolderNodeType {
 			dirNode := n.(node.DirectoryNode)
-			if dirNode.Opened() {
+			if dirNode.Directory().IsOpened() {
 				tree.OpenBranch(key)
 			}
 		}
@@ -136,6 +136,10 @@ func (w *ExplorerTree) makeOnBranchCallback(shouldOpen bool, data binding.Tree[n
 			return
 		}
 		dirNode := nodeItem.(node.DirectoryNode)
-		dirNode.Open(shouldOpen)
+		if shouldOpen {
+			dirNode.Directory().Open()
+		} else {
+			dirNode.Directory().Close()
+		}
 	}
 }
