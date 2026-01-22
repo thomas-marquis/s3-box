@@ -7,6 +7,7 @@ import (
 const (
 	CreatedEventType event.Type = "event.directory.created"
 	DeletedEventType event.Type = "event.directory.deleted"
+	LoadEventType    event.Type = "event.directory.load"
 )
 
 type withDirectory struct {
@@ -104,5 +105,39 @@ type DeletedFailureEvent struct {
 func NewDeletedFailureEvent(err error) DeletedFailureEvent {
 	return DeletedFailureEvent{
 		event.NewBaseErrorEvent(DeletedEventType.AsFailure(), err),
+	}
+}
+
+type LoadEvent struct {
+	event.BaseEvent
+	withDirectory
+}
+
+func NewLoadEvent(directory *Directory, opts ...event.Option) LoadEvent {
+	return LoadEvent{
+		event.NewBaseEvent(LoadEventType, opts...),
+		withDirectory{directory},
+	}
+}
+
+type LoadSuccessEvent struct {
+	event.BaseEvent
+	withDirectory
+}
+
+func NewLoadSuccessEvent(directory *Directory, opts ...event.Option) LoadSuccessEvent {
+	return LoadSuccessEvent{
+		event.NewBaseEvent(LoadEventType.AsSuccess(), opts...),
+		withDirectory{directory},
+	}
+}
+
+type LoadFailureEvent struct {
+	event.BaseErrorEvent
+}
+
+func NewLoadFailureEvent(err error) LoadFailureEvent {
+	return LoadFailureEvent{
+		event.NewBaseErrorEvent(LoadEventType.AsFailure(), err),
 	}
 }

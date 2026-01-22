@@ -31,8 +31,10 @@ type directoryNodeImpl struct {
 	dirPath directory.Path
 }
 
-var _ Node = &directoryNodeImpl{}
-var _ DirectoryNode = &directoryNodeImpl{}
+var (
+	_ Node          = (*directoryNodeImpl)(nil)
+	_ DirectoryNode = (*directoryNodeImpl)(nil)
+)
 
 func NewDirectoryNode(path directory.Path, opts ...Option) DirectoryNode {
 	var icon = theme.FolderIcon()

@@ -2,9 +2,10 @@ package directory
 
 import (
 	"fmt"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"path/filepath"
 	"strings"
+
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 )
@@ -23,6 +24,8 @@ type Directory struct {
 	parentPath     Path
 	subDirectories []Path
 	files          []*File
+
+	currentState State
 }
 
 // New creates a new S3 directory entity.
@@ -51,6 +54,8 @@ func New(
 		subDirectories: make([]Path, 0),
 		files:          make([]*File, 0),
 	}
+
+	d.currentState = &NotLoadedState{d}
 
 	for _, opt := range opts {
 		opt(d)
@@ -262,4 +267,36 @@ func (d *Directory) Equal(other *Directory) bool {
 	}
 
 	return true
+}
+
+func (d *Directory) IsLoading() bool {
+	return d.currentState.Type() == stateTypeLoading
+}
+
+func (d *Directory) IsLoaded() bool {
+	return d.currentState.Type() == stateTypeLoaded || d.currentState.Type() == stateTypeOpened
+}
+
+func (d *Directory) IsOpened() bool {
+	return d.currentState.Type() == stateTypeOpened
+}
+
+func (d *Directory) Load() (LoadEvent, error) {
+	return d.currentState.Load()
+}
+
+func (d *Directory) SetLoaded(loaded bool) {
+	d.currentState.SetLoaded(loaded)
+}
+
+func (d *Directory) Open() {
+	d.currentState.Open()
+}
+
+func (d *Directory) Close() {
+	d.currentState.Close()
+}
+
+func (d *Directory) setState(state State) {
+	d.currentState = state
 }
