@@ -389,9 +389,10 @@ func (vm *explorerViewModelImpl) listenEvents() {
 				(vm.selectedConnectionVal != nil && !vm.selectedConnectionVal.Is(conn))
 			if hasChanged {
 				vm.selectedConnectionVal = conn
-				vm.selectedConnection.Set(conn)                     //nolint:errcheck
-				if err := vm.initializeTreeData(conn); err != nil { //nolint:staticcheck
-					// TODO: handle error
+				vm.selectedConnection.Set(conn) //nolint:errcheck
+				if err := vm.initializeTreeData(conn); err != nil {
+					vm.errorMessage.Set(err.Error()) //nolint:errcheck
+					continue
 				}
 			}
 
@@ -499,8 +500,5 @@ func (vm *explorerViewModelImpl) handleLoadDirectorySuccess(e directory.LoadSucc
 		dir.SetLoaded(false)
 		return fmt.Errorf("error filling sub tree: %w", err)
 	}
-	//if err := vm.updateDirNode(dir); err != nil {
-	//	return fmt.Errorf("error updating directory node: %w", err)
-	//}
 	return nil
 }

@@ -47,7 +47,11 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 			noConn.Show()
 			content.Hide()
 		} else {
-			headingData.Set("File explorer: " + conn.Name()) //nolint:errcheck
+			val := "File explorer: " + conn.Name()
+			if conn.ReadOnly() {
+				val += " (read-only)"
+			}
+			headingData.Set(val) //nolint:errcheck
 			noConn.Hide()
 			content.Show()
 		}
