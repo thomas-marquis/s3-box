@@ -40,13 +40,10 @@ func NewDirectoryNode(dir *directory.Directory, opts ...Option) DirectoryNode {
 
 	return &directoryNodeImpl{
 		baseNode: b,
-		dir:      nil,
+		dir:      dir,
 	}
 }
 
 func (n *directoryNodeImpl) Directory() *directory.Directory {
-	if n.dir == nil {
-		panic("programming error, directory not loaded")
-	}
 	return n.dir
 }

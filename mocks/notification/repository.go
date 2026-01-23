@@ -53,11 +53,9 @@ func (mr *MockRepositoryMockRecorder) Notify(arg0 any) *gomock.Call {
 }
 
 // NotifyError mocks base method.
-func (m *MockRepository) NotifyError(err error) error {
+func (m *MockRepository) NotifyError(err error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NotifyError", err)
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "NotifyError", err)
 }
 
 // NotifyError indicates an expected call of NotifyError.

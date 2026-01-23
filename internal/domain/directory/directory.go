@@ -32,7 +32,6 @@ func New(
 	connectionID connection_deck.ConnectionID,
 	name string,
 	parentPath Path,
-	opts ...Option,
 ) (*Directory, error) {
 	if name == RootDirName && parentPath != NilParentPath {
 		return nil, fmt.Errorf("directory name is empty")
@@ -52,10 +51,6 @@ func New(
 	}
 
 	d.currentState = newNotLoadedState(d)
-
-	for _, opt := range opts {
-		opt(d)
-	}
 
 	return d, nil
 }

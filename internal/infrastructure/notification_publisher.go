@@ -4,11 +4,13 @@ import "github.com/thomas-marquis/s3-box/internal/domain/notification"
 
 type notificationPublisher struct {
 	subscribersSet map[chan notification.Notification]struct{}
+	level          notification.Level
 }
 
-func NewNotificationPublisher() notification.Repository {
+func NewNotificationPublisher(level notification.Level) notification.Repository {
 	return &notificationPublisher{
 		subscribersSet: make(map[chan notification.Notification]struct{}),
+		level:          level,
 	}
 }
 
@@ -29,9 +31,19 @@ func (p *notificationPublisher) Notify(notification notification.Notification) {
 }
 
 func (p *notificationPublisher) NotifyError(err error) {
-	p.Notify(notification.NewError(err))
+	if p.level.IsAtLeast(notification.LevelError) {
+		p.Notify(notification.NewError(err))
+	}
 }
 
 func (p *notificationPublisher) NotifyInfo(message string) {
-	p.Notify(notification.NewInfo(message))
+	if p.level.IsAtLeast(notification.LevelInfo) {
+		p.Notify(notification.NewInfo(message))
+	}
+}
+
+func (p *notificationPublisher) NotifyDebug(message string) {
+	if p.level.IsAtLeast(notification.LevelDebug) {
+		p.Notify(notification.NewInfo(message))
+	}
 }

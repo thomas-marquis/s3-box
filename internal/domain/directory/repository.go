@@ -7,6 +7,5 @@ import (
 )
 
 type Repository interface {
-	GetByPath(ctx context.Context, connID connection_deck.ConnectionID, path Path) (*Directory, error)
 	GetFileContent(ctx context.Context, connID connection_deck.ConnectionID, file *File) (*Content, error)
 }

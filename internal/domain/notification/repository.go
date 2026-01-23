@@ -6,4 +6,5 @@ type Repository interface {
 	Notify(notification Notification)
 	NotifyError(err error)
 	NotifyInfo(message string)
+	NotifyDebug(message string)
 }

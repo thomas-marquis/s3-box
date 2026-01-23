@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
@@ -34,7 +33,7 @@ type S3DirectoryRepository struct {
 	cache                map[connection_deck.ConnectionID]*s3Session
 }
 
-var _ directory.Repository = &S3DirectoryRepository{}
+var _ directory.Repository = (*S3DirectoryRepository)(nil)
 
 func NewS3DirectoryRepository(
 	connectionsRepository connection_deck.Repository,
@@ -53,72 +52,6 @@ func NewS3DirectoryRepository(
 	}
 
 	return r, nil
-}
-
-func (r *S3DirectoryRepository) GetByPath(
-	ctx context.Context, connID connection_deck.ConnectionID, path directory.Path,
-) (*directory.Directory, error) { // TODO: remove this
-	searchKey := mapPathToSearchKey(path)
-
-	s, err := r.getSession(ctx, connID)
-	if err != nil {
-		return nil, fmt.Errorf("GetByID: %w", err)
-	}
-
-	inputs := &s3.ListObjectsV2Input{
-		Bucket:    aws.String(s.connection.Bucket()),
-		Prefix:    aws.String(searchKey),
-		Delimiter: aws.String("/"),
-		MaxKeys:   aws.Int32(1000),
-	}
-
-	files := make([]*directory.File, 0)
-	subDirectoriesPaths := make([]directory.Path, 0)
-
-	paginator := s3.NewListObjectsV2Paginator(s.client, inputs)
-	for paginator.HasMorePages() {
-		page, err := paginator.NextPage(ctx)
-		if err != nil {
-			return nil, r.manageAwsSdkError(
-				fmt.Errorf("error while fetching next objects page: %w", err),
-				searchKey,
-				s)
-		}
-
-		for _, obj := range page.Contents {
-			key := *obj.Key
-			if key == searchKey {
-				continue
-			}
-			f, err := directory.NewFile(mapKeyToObjectName(key), path,
-				directory.WithFileSize(int(*obj.Size)),
-				directory.WithFileLastModified(*obj.LastModified))
-			if err != nil {
-				return nil, fmt.Errorf("error while creating a file: %w", err)
-			}
-			files = append(files, f)
-		}
-
-		for _, obj := range page.CommonPrefixes {
-			if *obj.Prefix == searchKey {
-				continue
-			}
-			s3Prefix := *obj.Prefix
-			isDir := strings.HasSuffix(s3Prefix, "/")
-			if isDir {
-				subDirectoriesPaths = append(subDirectoriesPaths, directory.NewPath(s3Prefix))
-			}
-		}
-	}
-
-	dir, err := directory.New(connID, path.DirectoryName(), path.ParentPath(),
-		directory.WithFiles(files),
-		directory.WithSubDirectories(subDirectoriesPaths))
-	if err != nil {
-		return nil, fmt.Errorf("GetByID: %w", err)
-	}
-
-	return dir, nil
 }
 
 func (r *S3DirectoryRepository) GetFileContent(

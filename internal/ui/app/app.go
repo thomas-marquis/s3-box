@@ -66,9 +66,9 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	w := a.NewWindow(appName)
 
 	terminated := make(chan struct{})
-	eventBus := newEventBusImpl(terminated)
-
 	notifier := infrastructure.NewNotificationPublisher()
+
+	eventBus := newEventBusImpl(terminated, notifier)
 
 	fyneSettings := a.Settings()
 

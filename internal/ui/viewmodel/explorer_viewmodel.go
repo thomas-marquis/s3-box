@@ -154,19 +154,6 @@ func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error
 	}
 	vm.bus.Publish(evt)
 
-	//dir, err := vm.fetchDirectory(dirNode.Path())
-	//if err != nil {
-	//	return vm.notifier.NotifyError(fmt.Errorf("error getting directory: %w", err))
-	//}
-	//
-	//if err := dirNode.Load(dir); err != nil {
-	//	return vm.notifier.NotifyError(fmt.Errorf("error loading directory: %w", err))
-	//}
-	//
-	//if err := vm.fillSubTree(dirNode, dir); err != nil {
-	//	return vm.notifier.NotifyError(fmt.Errorf("error filling sub tree: %w", err))
-	//}
-
 	return nil
 }
 
@@ -306,7 +293,13 @@ func (vm *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connectio
 
 	displayLabel := "Bucket: " + c.Bucket()
 
-	rootNode := node.NewDirectoryNode(directory.RootPath, node.WithDisplayName(displayLabel))
+	rootDir, err := directory.New(c.ID(), directory.RootDirName, directory.NilParentPath)
+	if err != nil {
+		newErr := fmt.Errorf("error initializing the root directory: %w", err)
+		vm.notifier.NotifyError(newErr)
+		return newErr
+	}
+	rootNode := node.NewDirectoryNode(rootDir, node.WithDisplayName(displayLabel))
 	if err := vm.tree.Append("", rootNode.ID(), rootNode); err != nil {
 		newErr := fmt.Errorf("error appending directory to tree: %w", err)
 		vm.notifier.NotifyError(newErr)
@@ -323,7 +316,16 @@ func (vm *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connectio
 }
 
 func (vm *explorerViewModelImpl) fillSubTree(dir *directory.Directory) error {
-	for _, file := range dir.Files() {
+	var err error
+	var subDirs []*directory.Directory
+	files, err := dir.Files()
+	subDirs, err = dir.SubDirectories()
+	if err != nil {
+		vm.notifier.NotifyError(fmt.Errorf("error getting files and subdirectories: %w", err))
+		return err
+	}
+
+	for _, file := range files {
 		fileNode := node.NewFileNode(file)
 		if err := vm.tree.Append(dir.Path().String(), fileNode.ID(), fileNode); err != nil {
 			vm.notifier.NotifyError(fmt.Errorf("error appending file to tree: %w", err))
@@ -331,28 +333,28 @@ func (vm *explorerViewModelImpl) fillSubTree(dir *directory.Directory) error {
 		}
 	}
 
-	for _, subDirPath := range dir.SubDirectories() {
+	for _, subDirPath := range subDirs {
 		subDirNode := node.NewDirectoryNode(subDirPath)
 		if err := vm.tree.Append(dir.Path().String(), subDirNode.ID(), subDirNode); err != nil {
 			vm.notifier.NotifyError(fmt.Errorf("error appending subdirectory to tree: %w", err))
 			continue
 		}
 	}
+
 	return nil
 }
 
-func (vm *explorerViewModelImpl) updateDirNode(dir *directory.Directory) error {
-	treeNode, err := vm.tree.GetValue(dir.Path().String())
-	if err != nil {
-		return fmt.Errorf("error retrieving directory node from tree: %w", err)
-	}
-	if treeNode.NodeType() != node.FolderNodeType {
-		return fmt.Errorf("node at path %s is not a directory node", dir.Path())
-	}
-	dirNode := treeNode.(node.DirectoryNode)
-	dirNode.
-	return nil
-}
+//func (vm *explorerViewModelImpl) updateDirNode(dir *directory.Directory) error {
+//	treeNode, err := vm.tree.GetValue(dir.Path().String())
+//	if err != nil {
+//		return fmt.Errorf("error retrieving directory node from tree: %w", err)
+//	}
+//	if treeNode.NodeType() != node.FolderNodeType {
+//		return fmt.Errorf("node at path %s is not a directory node", dir.Path())
+//	}
+//	dirNode := treeNode.(node.DirectoryNode)
+//	return nil
+//}
 
 func (vm *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Directory) error {
 	parentPath := dirToAdd.Path().ParentPath()
@@ -360,7 +362,7 @@ func (vm *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Direc
 	if err != nil {
 		return fmt.Errorf("impossible to retrieve the parent directory from path: %s", parentPath)
 	}
-	childNode := node.NewDirectoryNode(dirToAdd.Path())
+	childNode := node.NewDirectoryNode(dirToAdd)
 	if err := vm.tree.Append(parentNodeItem.(node.DirectoryNode).ID(), childNode.ID(), childNode); err != nil {
 		return fmt.Errorf("error appending directory to tree: %w", err)
 	}
@@ -501,6 +503,7 @@ func (vm *explorerViewModelImpl) listenEvents() {
 			e := evt.(directory.ContentUploadedSuccessEvent)
 			if err := e.Directory().Notify(e); err != nil {
 				vm.notifier.NotifyError(err)
+				continue
 			}
 			vm.loading.Set(false) //nolint:errcheck
 			vm.infoMessage.Set(   //nolint:errcheck
@@ -519,14 +522,9 @@ func (vm *explorerViewModelImpl) listenEvents() {
 
 		case directory.LoadEventType.AsSuccess():
 			e := evt.(directory.LoadSuccessEvent)
-			dir := e.Directory()
-			if err := dir.Notify(e); err != nil {
+			if err := vm.handleLoadDirectorySuccess(e); err != nil {
 				vm.notifier.NotifyError(err)
 				continue
-			}
-			if err := vm.fillSubTree(dir); err != nil {
-				dir.SetLoaded(false)
-				vm.notifier.NotifyError(fmt.Errorf("error filling sub tree: %w", err))
 			}
 
 		case directory.LoadEventType.AsFailure():
@@ -540,4 +538,19 @@ func (vm *explorerViewModelImpl) listenEvents() {
 			vm.infoMessage.Set(e.Error().Error()) //nolint:errcheck
 		}
 	}
+}
+
+func (vm *explorerViewModelImpl) handleLoadDirectorySuccess(e directory.LoadSuccessEvent) error {
+	dir := e.Directory()
+	if err := dir.Notify(e); err != nil {
+		return err
+	}
+	if err := vm.fillSubTree(dir); err != nil {
+		dir.SetLoaded(false)
+		return fmt.Errorf("error filling sub tree: %w", err)
+	}
+	//if err := vm.updateDirNode(dir); err != nil {
+	//	return fmt.Errorf("error updating directory node: %w", err)
+	//}
+	return nil
 }
