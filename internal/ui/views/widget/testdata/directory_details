@@ -1,25 +1,32 @@
-<canvas padded size="276x118">
+<canvas padded size="276x119">
 	<content>
-		<widget pos="4,4" size="268x110" type="*widget.DirectoryDetails">
-			<container size="268x110">
-				<container size="268x35">
-					<widget size="20x35" type="*widget.Icon">
-						<image fillMode="contain" rsc="folderIcon" size="20x35" themed="foreground"/>
-					</widget>
-					<widget pos="24,0" size="73x35" type="*widget.Label">
-						<widget size="73x35" type="*widget.focusSelectable">
+		<widget pos="4,4" size="268x111" type="*widget.DirectoryDetails">
+			<container size="268x111">
+				<container size="268x36">
+					<container size="97x36">
+						<widget size="20x36" type="*widget.Icon">
+							<image fillMode="contain" rsc="folderIcon" size="20x36" themed="foreground"/>
 						</widget>
-						<widget size="73x35" type="*widget.RichText">
-							<text pos="8,8" size="57x19">/test-dir/</text>
+						<widget pos="24,0" size="73x36" type="*widget.Label">
+							<widget size="73x36" type="*widget.focusSelectable">
+							</widget>
+							<widget size="73x36" type="*widget.RichText">
+								<text pos="8,8" size="57x19">/test-dir/</text>
+							</widget>
 						</widget>
+					</container>
+					<widget pos="232,0" size="36x36" type="*widget.Button">
+						<rectangle fillColor="button" radius="4" size="36x36"/>
+						<rectangle size="36x36"/>
+						<image fillMode="contain" pos="8,8" rsc="contentCopyIcon" size="iconInlineSize" themed="foreground"/>
 					</widget>
 				</container>
-				<container pos="0,39" size="268x31">
+				<container pos="0,40" size="268x31">
 					<widget pos="0,10" size="268x1" type="*widget.Separator">
 						<rectangle fillColor="separator" size="268x1"/>
 					</widget>
 				</container>
-				<container pos="0,74" size="268x36">
+				<container pos="0,75" size="268x36">
 					<widget pos="5,0" size="258x36" type="*widget.Toolbar">
 						<widget size="138x36" type="*widget.Button">
 							<rectangle fillColor="button" radius="4" size="138x36"/>

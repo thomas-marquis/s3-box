@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -108,25 +109,28 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
 		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
 
-		rootDir, err := directory.New(fakeConnID, directory.RootDirName, directory.RootPath)
+		rootDir, err := directory.New(fakeConnID, directory.RootDirName, directory.NilParentPath)
 		require.NoError(t, err)
 
-		fakeEventChan := make(chan event.Event)
+		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
 
 		mockBus.EXPECT().
 			Subscribe().
 			Return(fakeEventChan)
 
+		done := make(chan struct{})
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
 				e, ok := evt.(directory.LoadSuccessEvent)
-				return assert.True(t, ok) &&
+				res := assert.True(t, ok) &&
 					assert.Len(t, e.SubDirectories(), 1) &&
 					assert.Equal(t, "/mydir/", e.SubDirectories()[0].Path().String()) &&
 					assert.Len(t, e.Files(), 1) &&
 					assert.Equal(t, "root_file.txt", e.Files()[0].Name().String())
+				close(done)
+				return res
 			})).
 			Times(1)
 
@@ -140,6 +144,14 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 
 		// When
 		fakeEventChan <- directory.NewLoadEvent(rootDir)
+		assert.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+				return false
+			}
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("should returns subdirectory and its content", func(t *testing.T) {
@@ -149,7 +161,7 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
 		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
 
-		fakeEventChan := make(chan event.Event)
+		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
 
 		mockBus.EXPECT().
@@ -161,17 +173,20 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 			Return(fakeDeck, nil).
 			Times(1)
 
-		dir, err := directory.New(fakeConnID, "mydir", directory.NewPath("/mydir/"))
+		dir, err := directory.New(fakeConnID, "mydir", directory.RootPath)
 		require.NoError(t, err)
 
+		done := make(chan struct{})
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
 				e, ok := evt.(directory.LoadSuccessEvent)
-				return assert.True(t, ok) &&
+				res := assert.True(t, ok) &&
 					assert.Len(t, e.SubDirectories(), 0) &&
 					assert.Len(t, e.Files(), 1) &&
 					assert.Equal(t, "file_in_dir.txt", e.Files()[0].Name().String())
+				close(done)
+				return res
 			})).
 			Times(1)
 
@@ -180,6 +195,14 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 
 		// When
 		fakeEventChan <- directory.NewLoadEvent(dir)
+		assert.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+				return false
+			}
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("should handle AWS connection without custom endpoint", func(t *testing.T) {
@@ -189,7 +212,9 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
 		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
 
-		fakeEventChan := make(chan event.Event)
+		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(1)
+
+		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
 
 		mockBus.EXPECT().
@@ -208,18 +233,21 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 			Return(awsDeck, nil).
 			Times(1)
 
+		done := make(chan struct{})
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
 				e, ok := evt.(directory.LoadFailureEvent)
-				return assert.True(t, ok) &&
+				res := assert.True(t, ok) &&
 					assert.Error(t, e.Error()) &&
 					assert.Contains(t, e.Error().Error(),
 						"api error PermanentRedirect: The bucket you are attempting to access must be addressed using the specified endpoint.")
+				close(done)
+				return res
 			})).
 			Times(1)
 
-		dir, err := directory.New(awsConnID, directory.RootDirName, directory.RootPath)
+		dir, err := directory.New(awsConnID, directory.RootDirName, directory.NilParentPath)
 		require.NoError(t, err)
 
 		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
@@ -227,6 +255,14 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 
 		// When
 		fakeEventChan <- directory.NewLoadEvent(dir)
+		assert.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+				return false
+			}
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 }
 

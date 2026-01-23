@@ -105,6 +105,7 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 			if err := r.handleDirectoryCreation(ctx, e); err != nil {
 				notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
 				publisher(directory.NewCreatedFailureEvent(err, e.Parent()))
+				continue
 			}
 			publisher(directory.NewCreatedSuccessEvent(e.Parent(), e.Directory()))
 
@@ -123,6 +124,7 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 			if err := r.handleFileDeletion(ctx, e); err != nil {
 				notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
 				publisher(directory.NewFileDeletedFailureEvent(err, e.Parent()))
+				continue
 			}
 			publisher(directory.NewFileDeletedSuccessEvent(e.Parent(), e.File()))
 
@@ -131,6 +133,7 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 			if err := r.handleUpload(ctx, e); err != nil {
 				notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
 				publisher(directory.NewContentUploadedFailureEvent(err, e.Directory()))
+				continue
 			}
 			publisher(directory.NewContentUploadedSuccessEvent(e.Directory(), e.Content()))
 
@@ -139,6 +142,7 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 			if err := r.handleDownload(ctx, e); err != nil {
 				notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
 				publisher(directory.NewContentDownloadedFailureEvent(err))
+				continue
 			}
 			publisher(directory.NewContentDownloadedSuccessEvent(e.Content()))
 
@@ -149,6 +153,7 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 			if err != nil {
 				notifier.NotifyError(fmt.Errorf("failed loading directory: %w", err))
 				publisher(directory.NewLoadFailureEvent(err, dir))
+				continue
 			}
 			publisher(directory.NewLoadSuccessEvent(dir, subDirs, files))
 		}

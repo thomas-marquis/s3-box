@@ -42,21 +42,6 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
-// GetByPath mocks base method.
-func (m *MockRepository) GetByPath(ctx context.Context, connID connection_deck.ConnectionID, path directory.Path) (*directory.Directory, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByPath", ctx, connID, path)
-	ret0, _ := ret[0].(*directory.Directory)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetByPath indicates an expected call of GetByPath.
-func (mr *MockRepositoryMockRecorder) GetByPath(ctx, connID, path any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByPath", reflect.TypeOf((*MockRepository)(nil).GetByPath), ctx, connID, path)
-}
-
 // GetFileContent mocks base method.
 func (m *MockRepository) GetFileContent(ctx context.Context, connID connection_deck.ConnectionID, file *directory.File) (*directory.Content, error) {
 	m.ctrl.T.Helper()
