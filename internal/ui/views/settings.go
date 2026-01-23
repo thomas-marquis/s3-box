@@ -55,7 +55,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		theme.NavigateBackIcon(),
 		func() {
 			if _, err := ctx.Navigate(navigation.ExplorerRoute); err != nil { //nolint:staticcheck
-				// TODO: handle error
+				dialog.ShowError(err, ctx.Window())
 			}
 		},
 	)
