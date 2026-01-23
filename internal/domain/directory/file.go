@@ -8,6 +8,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 )
 
+// FileName is a value object representing a file name.
 type FileName string
 
 func NewFileName(name string) (FileName, error) {
@@ -63,10 +64,12 @@ func (f *File) Equal(other *File) bool {
 		f.lastModified.Equal(other.lastModified)
 }
 
+// Name is the File entity's unique ID within a given Directory.
 func (f *File) Name() FileName {
 	return f.name
 }
 
+// DirectoryPath returns the path of the directory containing the file.
 func (f *File) DirectoryPath() Path {
 	return f.directoryPath
 }
@@ -79,6 +82,8 @@ func (f *File) LastModified() time.Time {
 	return f.lastModified
 }
 
+// FullPath returns the full path of the file in the directory.
+// FullPath is unique within a given bucket.
 func (f *File) FullPath() string {
 	return f.directoryPath.String() + f.name.String()
 }

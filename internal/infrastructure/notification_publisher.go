@@ -28,9 +28,8 @@ func (p *notificationPublisher) Notify(notification notification.Notification) {
 	}()
 }
 
-func (p *notificationPublisher) NotifyError(err error) error {
+func (p *notificationPublisher) NotifyError(err error) {
 	p.Notify(notification.NewError(err))
-	return err
 }
 
 func (p *notificationPublisher) NotifyInfo(message string) {

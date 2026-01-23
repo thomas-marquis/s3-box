@@ -123,17 +123,25 @@ func NewLoadEvent(directory *Directory, opts ...event.Option) LoadEvent {
 type LoadSuccessEvent struct {
 	event.BaseEvent
 	withDirectory
-	files       []*File
-	subDirPaths []Path
+	files   []*File
+	subDirs []*Directory
 }
 
-func NewLoadSuccessEvent(directory *Directory, subDirPaths []Path, files []*File) LoadSuccessEvent {
+func NewLoadSuccessEvent(directory *Directory, subDirs []*Directory, files []*File) LoadSuccessEvent {
 	return LoadSuccessEvent{
 		event.NewBaseEvent(LoadEventType.AsSuccess()),
 		withDirectory{directory},
 		files,
-		subDirPaths,
+		subDirs,
 	}
+}
+
+func (e *LoadSuccessEvent) Files() []*File {
+	return e.files
+}
+
+func (e *LoadSuccessEvent) SubDirectories() []*Directory {
+	return e.subDirs
 }
 
 type LoadFailureEvent struct {

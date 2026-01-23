@@ -54,7 +54,7 @@ func (vm *notificationViewModelImpl) Notifications() binding.StringList {
 }
 
 func (vm *notificationViewModelImpl) SendError(err error) {
-	vm.notifier.NotifyError(err) //nolint:errcheck
+	vm.notifier.NotifyError(err)
 }
 
 func (vm *notificationViewModelImpl) SendInfo(msg string) {

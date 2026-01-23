@@ -114,7 +114,7 @@ func (r *S3DirectoryRepository) handleDownload(ctx context.Context, evt director
 	return nil
 }
 
-func (r *S3DirectoryRepository) handleLoading(ctx context.Context, evt directory.LoadEvent) ([]directory.Path, []*directory.File, error) {
+func (r *S3DirectoryRepository) handleLoading(ctx context.Context, evt directory.LoadEvent) ([]*directory.Directory, []*directory.File, error) {
 	dir := evt.Directory()
 	searchKey := mapPathToSearchKey(dir.Path())
 
@@ -131,7 +131,7 @@ func (r *S3DirectoryRepository) handleLoading(ctx context.Context, evt directory
 	}
 
 	files := make([]*directory.File, 0)
-	subDirectoriesPaths := make([]directory.Path, 0)
+	subDirectories := make([]*directory.Directory, 0)
 
 	paginator := s3.NewListObjectsV2Paginator(s.client, inputs)
 	for paginator.HasMorePages() {
@@ -164,10 +164,14 @@ func (r *S3DirectoryRepository) handleLoading(ctx context.Context, evt directory
 			s3Prefix := *obj.Prefix
 			isDir := strings.HasSuffix(s3Prefix, "/")
 			if isDir {
-				subDirectoriesPaths = append(subDirectoriesPaths, directory.NewPath(s3Prefix))
+				d, err := directory.New(dir.ConnectionID(), directory.NewPath(s3Prefix).DirectoryName(), dir.Path())
+				if err != nil {
+					return nil, nil, fmt.Errorf("error while loading a directory: %w", err)
+				}
+				subDirectories = append(subDirectories, d)
 			}
 		}
 	}
 
-	return subDirectoriesPaths, files, nil
+	return subDirectories, files, nil
 }

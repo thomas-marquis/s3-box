@@ -20,10 +20,8 @@ type Directory struct {
 	connectionID connection_deck.ConnectionID
 	path         Path
 
-	name           string
-	parentPath     Path
-	subDirectories []Path
-	files          []*File
+	name       string
+	parentPath Path
 
 	currentState State
 }
@@ -47,15 +45,13 @@ func New(
 	}
 
 	d := &Directory{
-		connectionID:   connectionID,
-		name:           name,
-		parentPath:     parentPath,
-		path:           parentPath.NewSubPath(name),
-		subDirectories: make([]Path, 0),
-		files:          make([]*File, 0),
+		connectionID: connectionID,
+		name:         name,
+		parentPath:   parentPath,
+		path:         parentPath.NewSubPath(name),
 	}
 
-	d.currentState = &NotLoadedState{d}
+	d.currentState = newNotLoadedState(d)
 
 	for _, opt := range opts {
 		opt(d)
@@ -65,7 +61,11 @@ func New(
 }
 
 func (d *Directory) IsFileExists(name FileName) bool {
-	for _, file := range d.files {
+	files, err := d.currentState.Files()
+	if err != nil {
+		return false
+	}
+	for _, file := range files {
 		if file.Name() == name {
 			return true
 		}
@@ -78,7 +78,11 @@ func (d *Directory) IsRoot() bool {
 }
 
 func (d *Directory) GetFileByName(name FileName) (*File, error) {
-	for _, file := range d.files {
+	files, err := d.currentState.Files()
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
 		if file.Name() == name {
 			return file, nil
 		}
@@ -86,6 +90,8 @@ func (d *Directory) GetFileByName(name FileName) (*File, error) {
 	return nil, ErrNotFound
 }
 
+// Path acts as the primary and unique entity's ID.
+// A directory path is unique within a given bucket.
 func (d *Directory) Path() Path {
 	return d.path
 }
@@ -98,12 +104,12 @@ func (d *Directory) ParentPath() Path {
 	return d.parentPath
 }
 
-func (d *Directory) SubDirectories() []Path {
-	return d.subDirectories
+func (d *Directory) SubDirectories() ([]*Directory, error) { // TODO: to remove
+	return d.currentState.SubDirectories()
 }
 
-func (d *Directory) Files() []*File {
-	return d.files
+func (d *Directory) Files() ([]*File, error) {
+	return d.currentState.Files()
 }
 
 func (d *Directory) ConnectionID() connection_deck.ConnectionID {
@@ -114,14 +120,18 @@ func (d *Directory) ConnectionID() connection_deck.ConnectionID {
 // returns an error when the subdirectory already exists
 func (d *Directory) NewSubDirectory(name string) (CreatedEvent, error) {
 	path := d.path.NewSubPath(name)
-	for _, subDir := range d.subDirectories {
-		if subDir == path {
+	subDirs, err := d.currentState.SubDirectories()
+	if err != nil {
+		return CreatedEvent{}, fmt.Errorf("failed to get subdirectories: %w", err)
+	}
+	for _, subDir := range subDirs {
+		if subDir.Path() == path {
 			return CreatedEvent{}, fmt.Errorf("subdirectory %s already exists", path)
 		}
 	}
 	newDir, err := New(d.connectionID, name, d.path)
 	if err != nil {
-		return CreatedEvent{}, fmt.Errorf("failed to create sudirectory: %w", err)
+		return CreatedEvent{}, fmt.Errorf("failed to create subdirectory: %w", err)
 	}
 
 	return NewCreatedEvent(d, newDir), nil
@@ -130,11 +140,15 @@ func (d *Directory) NewSubDirectory(name string) (CreatedEvent, error) {
 // NewFile creates a new fileObj in the current directory
 // returns an error when the fileObj name is not valid or if the fileObj already exists
 func (d *Directory) NewFile(name string, opts ...FileOption) (FileCreatedEvent, error) {
+	files, err := d.currentState.Files()
+	if err != nil {
+		return FileCreatedEvent{}, fmt.Errorf("failed to get files: %w", err)
+	}
 	file, err := NewFile(name, d.Path(), opts...)
 	if err != nil {
 		return FileCreatedEvent{}, fmt.Errorf("failed to create fileObj: %w", err)
 	}
-	for _, f := range d.files {
+	for _, f := range files {
 		if f.Is(file) {
 			return FileCreatedEvent{}, fmt.Errorf("fileObj %s already exists in directory %s", name, d.path)
 		}
@@ -144,7 +158,11 @@ func (d *Directory) NewFile(name string, opts ...FileOption) (FileCreatedEvent, 
 }
 
 func (d *Directory) RemoveFile(name FileName) (FileDeletedEvent, error) {
-	for _, file := range d.files {
+	files, err := d.currentState.Files()
+	if err != nil {
+		return FileDeletedEvent{}, fmt.Errorf("failed to get files: %w", err)
+	}
+	for _, file := range files {
 		if file.Name() == name {
 			return NewFileDeletedEvent(d.connectionID, d, file), nil
 		}
@@ -154,9 +172,12 @@ func (d *Directory) RemoveFile(name FileName) (FileDeletedEvent, error) {
 
 func (d *Directory) RemoveSubDirectory(name string) (DeletedEvent, error) {
 	path := d.parentPath.NewSubPath(name)
-	for i, subDirPath := range d.subDirectories {
-		if subDirPath == path {
-			d.subDirectories = append(d.subDirectories[:i], d.subDirectories[i+1:]...)
+	subDirectories, err := d.currentState.SubDirectories()
+	if err != nil {
+		return DeletedEvent{}, fmt.Errorf("failed to get subdirectories: %w", err)
+	}
+	for _, sd := range subDirectories {
+		if sd.Path() == path {
 			return NewDeletedEvent(d, path), nil
 		}
 	}
@@ -177,51 +198,93 @@ func (d *Directory) UploadFile(localPath string) (ContentUploadedEvent, error) {
 }
 
 // Notify processes of various event types and updates the state of the directory accordingly.
-func (d *Directory) Notify(evt event.Event) {
+func (d *Directory) Notify(evt event.Event) error {
 	switch evt.Type() {
 	case DeletedEventType.AsSuccess():
 		e := evt.(DeletedSuccessEvent)
-		for i, subDirPath := range d.subDirectories {
+		subDirectories, err := d.currentState.SubDirectories()
+		if err != nil {
+			return fmt.Errorf("failed to get subdirectories: %w", err)
+		}
+		for i, subDirPath := range subDirectories {
 			if subDirPath.Is(e.Directory()) {
-				d.subDirectories = append(d.subDirectories[:i], d.subDirectories[i+1:]...)
-				return
+				if err := d.currentState.SetSubDirectories(append(subDirectories[:i], subDirectories[i+1:]...)); err != nil {
+					return fmt.Errorf("failed to remove subdirectory: %w", err)
+				}
+				return nil
 			}
 		}
 
 	case FileDeletedEventType.AsSuccess():
 		e := evt.(FileDeletedSuccessEvent)
-		for i, file := range d.files {
+		files, err := d.currentState.Files()
+		if err != nil {
+			return fmt.Errorf("failed to get files: %w", err)
+		}
+		for i, file := range files {
 			if file.Is(e.File()) {
-				d.files = append(d.files[:i], d.files[i+1:]...)
-				return
+				if err := d.currentState.SetFiles(append(files[:i], files[i+1:]...)); err != nil {
+					return fmt.Errorf("failed to remove file: %w", err)
+				}
+				return nil
 			}
 		}
 
 	case FileCreatedEventType.AsSuccess():
 		e := evt.(FileCreatedSuccessEvent)
-		d.files = append(d.files, e.File())
+		files, err := d.currentState.Files()
+		if err != nil {
+			return fmt.Errorf("failed to get files: %w", err)
+		}
+		if err := d.currentState.SetFiles(append(files, e.File())); err != nil {
+			return fmt.Errorf("failed to add file: %w", err)
+		}
 
 	case CreatedEventType.AsSuccess():
 		e := evt.(CreatedSuccessEvent)
-		d.subDirectories = append(d.subDirectories, e.Directory().Path())
+		subDirectories, err := d.currentState.SubDirectories()
+		if err != nil {
+			return fmt.Errorf("failed to get subdirectories: %w", err)
+		}
+		if err := d.currentState.SetSubDirectories(append(subDirectories, e.Directory())); err != nil {
+			return fmt.Errorf("failed to add subdirectory: %w", err)
+		}
 
 	case ContentUploadedEventType.AsSuccess():
 		e := evt.(ContentUploadedSuccessEvent)
 		newFile := e.Content().File()
-		for i, file := range d.files {
+		files, err := d.currentState.Files()
+		if err != nil {
+			return fmt.Errorf("failed to get files: %w", err)
+		}
+		for i, file := range files {
 			if file.Is(newFile) {
 				// If a file with the same name has been created in the meantime, we overwrite it
-				d.files[i] = newFile
-				return
+				files[i] = newFile
+				if err := d.currentState.SetFiles(files); err != nil {
+					return fmt.Errorf("failed to update file: %w", err)
+				}
+				return nil
 			}
 		}
-		d.files = append(d.files, newFile)
+		if err := d.currentState.SetFiles(append(files, newFile)); err != nil {
+			return fmt.Errorf("failed to add file: %w", err)
+		}
 
 	case LoadEventType.AsSuccess():
 		e := evt.(LoadSuccessEvent)
-		d.subDirectories = e.subDirPaths
-		d.files = e.files
+		d.SetLoaded(true)
+		if err := d.currentState.SetSubDirectories(e.SubDirectories()); err != nil {
+			d.SetLoaded(false)
+			return fmt.Errorf("failed to set subdirectories: %w", err)
+		}
+		if err := d.currentState.SetFiles(e.Files()); err != nil {
+			d.SetLoaded(false)
+			return fmt.Errorf("failed to set files: %w", err)
+		}
 	}
+
+	return nil
 }
 
 // Is checks if the current directory is equivalent to another in their identity.
@@ -238,13 +301,19 @@ func (d *Directory) Equal(other *Directory) bool {
 		return false
 	}
 
-	if len(d.subDirectories) != len(other.subDirectories) {
+	subDirectories, _ := d.currentState.SubDirectories() //nolint:errcheck
+	files, _ := d.currentState.Files()                   //nolint:errcheck
+
+	otherSubDirectories, _ := other.currentState.SubDirectories()
+	otherFiles, _ := other.currentState.Files()
+
+	if len(subDirectories) != len(otherSubDirectories) {
 		return false
 	}
 
-	for _, subDir := range d.subDirectories {
+	for _, subDir := range subDirectories {
 		foundInOther := false
-		for _, otherSubDir := range other.subDirectories {
+		for _, otherSubDir := range otherSubDirectories {
 			if subDir == otherSubDir {
 				foundInOther = true
 				break
@@ -255,12 +324,12 @@ func (d *Directory) Equal(other *Directory) bool {
 		}
 	}
 
-	if len(d.files) != len(other.files) {
+	if len(files) != len(otherFiles) {
 		return false
 	}
-	for _, file := range d.files {
+	for _, file := range files {
 		foundInOther := false
-		for _, otherFile := range other.files {
+		for _, otherFile := range otherFiles {
 			if file.Equal(otherFile) {
 				foundInOther = true
 				break

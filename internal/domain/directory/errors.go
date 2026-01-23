@@ -8,6 +8,7 @@ import (
 var (
 	ErrNotFound  = errors.New("object not found in directory")
 	ErrTechnical = errors.New("technical error occurred")
+	ErrNotLoaded = errors.New("directory must be loaded first")
 )
 
 type Error struct {

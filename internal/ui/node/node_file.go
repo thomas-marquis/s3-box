@@ -12,8 +12,10 @@ type fileNodeImpl struct {
 	file *directory.File
 }
 
-var _ Node = &fileNodeImpl{}
-var _ FileNode = &fileNodeImpl{}
+var (
+	_ Node     = (*fileNodeImpl)(nil)
+	_ FileNode = (*fileNodeImpl)(nil)
+)
 
 func NewFileNode(file *directory.File, opts ...Option) FileNode {
 	b := baseNode{
