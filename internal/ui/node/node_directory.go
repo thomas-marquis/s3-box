@@ -1,41 +1,28 @@
 package node
 
 import (
-	"errors"
-
-	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
-var (
-	ErrDirectoryAlreadyLoaded = errors.New("this directory is already loaded")
-	ErrWrongDirectory         = errors.New("wrong directory")
-)
-
 type DirectoryNode interface {
 	Node
-	Path() directory.Path
 	Directory() *directory.Directory
-	Load(*directory.Directory) error
-	IsLoaded() bool
-	Opened() bool
-	Open(bool)
 }
 
 type directoryNodeImpl struct {
 	baseNode
-	dir     *directory.Directory
-	loaded  bool
-	opened  bool
-	dirPath directory.Path
+	dir *directory.Directory
 }
 
-var _ Node = &directoryNodeImpl{}
-var _ DirectoryNode = &directoryNodeImpl{}
+var (
+	_ Node          = (*directoryNodeImpl)(nil)
+	_ DirectoryNode = (*directoryNodeImpl)(nil)
+)
 
-func NewDirectoryNode(path directory.Path, opts ...Option) DirectoryNode {
+func NewDirectoryNode(dir *directory.Directory, opts ...Option) DirectoryNode {
 	var icon = theme.FolderIcon()
+	path := dir.Path()
 	if path == directory.RootPath {
 		icon = theme.StorageIcon()
 	}
@@ -53,47 +40,10 @@ func NewDirectoryNode(path directory.Path, opts ...Option) DirectoryNode {
 
 	return &directoryNodeImpl{
 		baseNode: b,
-		dir:      nil,
-		dirPath:  path,
+		dir:      dir,
 	}
-}
-
-func (n *directoryNodeImpl) Path() directory.Path {
-	return n.dirPath
 }
 
 func (n *directoryNodeImpl) Directory() *directory.Directory {
-	if n.dir == nil {
-		panic("programming error, directory not loaded")
-	}
 	return n.dir
-}
-
-func (n *directoryNodeImpl) Load(dir *directory.Directory) error {
-	if n.loaded {
-		return ErrDirectoryAlreadyLoaded
-	}
-	if n.dirPath != dir.Path() {
-		return ErrWrongDirectory
-	}
-
-	n.loaded = true
-	n.dir = dir
-	return nil
-}
-
-func (n *directoryNodeImpl) IsLoaded() bool {
-	return n.loaded
-}
-
-func (n *directoryNodeImpl) Opened() bool {
-	return n.opened
-}
-
-func (n *directoryNodeImpl) Open(opened bool) {
-	if !n.loaded && opened {
-		fyne.LogError("cannot open unloaded directory", nil)
-		return
-	}
-	n.opened = opened
 }

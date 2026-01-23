@@ -1,9 +1,19 @@
 package app
 
-import "github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+import (
+	"fmt"
+
+	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+)
 
 const (
-	publicationWorkers = 5
+	// publicationWorkers defines the number of concurrent worker goroutines responsible for managing app events.
+	publicationWorkers = 16
+
+	// pubChanBufferSize defines the size of the channel used to publish events.
+	// Increase this value to manage more subscribers without blocking event publishing.
+	pubChanBufferSize = 100
 )
 
 type publishedLoad struct {
@@ -15,13 +25,15 @@ type eventBusImpl struct {
 	subscribers    map[chan event.Event]struct{}
 	publishingChan chan publishedLoad
 	done           <-chan struct{}
+	notifier       notification.Repository
 }
 
-func newEventBusImpl(done <-chan struct{}) event.Bus {
+func newEventBusImpl(done <-chan struct{}, notifier notification.Repository) event.Bus {
 	b := &eventBusImpl{
 		subscribers:    make(map[chan event.Event]struct{}),
-		publishingChan: make(chan publishedLoad),
+		publishingChan: make(chan publishedLoad, pubChanBufferSize),
 		done:           done,
+		notifier:       notifier,
 	}
 
 	for i := 0; i < publicationWorkers; i++ {
@@ -61,6 +73,7 @@ func (b *eventBusImpl) Subscribe() <-chan event.Event {
 }
 
 func (b *eventBusImpl) Publish(evt event.Event) {
+	b.notifier.NotifyDebug(fmt.Sprintf("publishing event: %s", evt.Type()))
 	for subscriber := range b.subscribers {
 		select {
 		case b.publishingChan <- publishedLoad{evt, subscriber}:

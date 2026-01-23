@@ -32,11 +32,14 @@ func NewNotificationViewModel(notifier notification.Repository, terminated <-cha
 			case notif := <-notifStream:
 				formattedDt := notif.Time().Format("2006-01-02 15:04:05")
 				switch notif.Type() {
-				case notification.Error:
-					notifications.Prepend(fmt.Sprintf("%s: Error: %s", //nolint:errcheck
+				case notification.LevelError:
+					notifications.Prepend(fmt.Sprintf("%s: LevelError: %s", //nolint:errcheck
 						formattedDt, notif.(notification.ErrorNotification).Error().Error()))
-				case notification.Info:
-					notifications.Prepend(fmt.Sprintf("%s: Info: %s", //nolint:errcheck
+				case notification.LevelInfo:
+					notifications.Prepend(fmt.Sprintf("%s: LevelInfo: %s", //nolint:errcheck
+						formattedDt, notif.(notification.LogNotification).Message()))
+				case notification.LevelDebug:
+					notifications.Prepend(fmt.Sprintf("%s: Debug: %s", //nolint:errcheck
 						formattedDt, notif.(notification.LogNotification).Message()))
 				}
 			}
@@ -54,7 +57,7 @@ func (vm *notificationViewModelImpl) Notifications() binding.StringList {
 }
 
 func (vm *notificationViewModelImpl) SendError(err error) {
-	vm.notifier.NotifyError(err) //nolint:errcheck
+	vm.notifier.NotifyError(err)
 }
 
 func (vm *notificationViewModelImpl) SendInfo(msg string) {

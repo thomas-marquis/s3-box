@@ -2,15 +2,32 @@ package notification
 
 import "time"
 
-type Type string
+type Level string
+
+func (l Level) String() string {
+	return string(l)
+}
+
+func (l Level) IsAtLeast(other Level) bool {
+	switch other {
+	case LevelDebug:
+		return true
+	case LevelInfo:
+		return l == LevelInfo || l == LevelError
+	case LevelError:
+		return l == LevelError
+	}
+	return false
+}
 
 const (
-	Error Type = "notification.error"
-	Info  Type = "notification.info"
+	LevelError Level = "notification.level.error"
+	LevelInfo  Level = "notification.level.info"
+	LevelDebug Level = "notification.level.debug"
 )
 
 type Notification interface {
-	Type() Type
+	Type() Level
 	Time() time.Time
 }
 
@@ -45,8 +62,8 @@ func NewError(err error) ErrorNotification {
 	return errorNotificationImpl{baseNotification: newBaseNotification(), err: err}
 }
 
-func (n errorNotificationImpl) Type() Type {
-	return Error
+func (n errorNotificationImpl) Type() Level {
+	return LevelError
 }
 
 func (n errorNotificationImpl) Error() error {
@@ -62,10 +79,27 @@ func NewInfo(message string) LogNotification {
 	return infoNotificationImpl{baseNotification: newBaseNotification(), message: message}
 }
 
-func (n infoNotificationImpl) Type() Type {
-	return Info
+func (n infoNotificationImpl) Type() Level {
+	return LevelInfo
 }
 
 func (n infoNotificationImpl) Message() string {
+	return n.message
+}
+
+type debugNotificationImpl struct {
+	baseNotification
+	message string
+}
+
+func NewDebug(message string) LogNotification {
+	return debugNotificationImpl{baseNotification: newBaseNotification(), message: message}
+}
+
+func (n debugNotificationImpl) Type() Level {
+	return LevelDebug
+}
+
+func (n debugNotificationImpl) Message() string {
 	return n.message
 }

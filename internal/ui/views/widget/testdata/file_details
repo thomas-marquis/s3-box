@@ -1,26 +1,33 @@
-<canvas padded size="318x226">
+<canvas padded size="318x227">
 	<content>
-		<widget pos="4,4" size="310x218" type="*widget.FileDetails">
-			<container size="310x218">
-				<container size="310x35">
-					<widget size="20x35" type="*widget.FileIcon">
-						<image fillMode="contain" rsc="fileTextIcon" size="20x35" themed="foreground"/>
-						<text alignment="center" color="background" pos="0,16" size="20x5" textSize="4">.txt</text>
-					</widget>
-					<widget pos="24,0" size="67x35" type="*widget.Label">
-						<widget size="67x35" type="*widget.focusSelectable">
+		<widget pos="4,4" size="310x219" type="*widget.FileDetails">
+			<container size="310x219">
+				<container size="310x36">
+					<container size="91x36">
+						<widget size="20x36" type="*widget.FileIcon">
+							<image fillMode="contain" rsc="fileTextIcon" size="20x36" themed="foreground"/>
+							<text alignment="center" color="background" pos="0,17" size="20x5" textSize="4">.txt</text>
 						</widget>
-						<widget size="67x35" type="*widget.RichText">
-							<text pos="8,8" size="51x19">/test.txt</text>
+						<widget pos="24,0" size="67x36" type="*widget.Label">
+							<widget size="67x36" type="*widget.focusSelectable">
+							</widget>
+							<widget size="67x36" type="*widget.RichText">
+								<text pos="8,8" size="51x19">/test.txt</text>
+							</widget>
 						</widget>
+					</container>
+					<widget pos="274,0" size="36x36" type="*widget.Button">
+						<rectangle fillColor="button" radius="4" size="36x36"/>
+						<rectangle size="36x36"/>
+						<image fillMode="contain" pos="8,8" rsc="contentCopyIcon" size="iconInlineSize" themed="foreground"/>
 					</widget>
 				</container>
-				<container pos="0,39" size="310x31">
+				<container pos="0,40" size="310x31">
 					<widget pos="0,10" size="310x1" type="*widget.Separator">
 						<rectangle fillColor="separator" size="310x1"/>
 					</widget>
 				</container>
-				<container pos="0,74" size="310x36">
+				<container pos="0,75" size="310x36">
 					<widget pos="5,0" size="300x36" type="*widget.Toolbar">
 						<widget size="110x36" type="*widget.Button">
 							<rectangle fillColor="button" radius="4" size="110x36"/>
@@ -48,7 +55,7 @@
 						</widget>
 					</widget>
 				</container>
-				<container pos="0,114" size="310x104">
+				<container pos="0,115" size="310x104">
 					<container pos="5,30" size="300x74">
 						<widget size="148x35" type="*widget.Label">
 							<widget size="148x35" type="*widget.RichText">

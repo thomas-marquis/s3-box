@@ -75,7 +75,7 @@ func NewConnectionViewModel(
 
 	deck, err := connectionRepository.Get(ctx)
 	if err != nil {
-		notifier.NotifyError(fmt.Errorf("error getting initial connections: %w", err)) //nolint:errcheck
+		notifier.NotifyError(fmt.Errorf("error getting initial connections: %w", err))
 		return nil
 	}
 
@@ -156,7 +156,8 @@ func (vm *connectionViewModelImpl) ExportAsJSON(writer io.Writer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsViewModel.CurrentTimeout())
 	defer cancel()
 	if err := vm.connectionRepository.Export(ctx, writer); err != nil {
-		return vm.notifier.NotifyError(err)
+		vm.notifier.NotifyError(err)
+		return err
 	}
 
 	return nil

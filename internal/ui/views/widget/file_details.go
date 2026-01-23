@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	maxFileNameLength = 80
+	maxFileNameLength = 60
 )
 
 type FileDetails struct {
@@ -34,6 +34,8 @@ type FileDetails struct {
 
 	fileSizeBinding     binding.String
 	lastModifiedBinding binding.String
+
+	currentSelectedFile *directory.File
 }
 
 func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
@@ -52,6 +54,8 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		downloadAction: NewToolbarButton("Download", theme.DownloadIcon(), func() {}),
 		previewAction:  NewToolbarButton("Preview", theme.VisibilityIcon(), func() {}),
 		deleteAction:   NewToolbarButton("Delete", theme.DeleteIcon(), func() {}),
+
+		currentSelectedFile: nil,
 	}
 	w.ExtendBaseWidget(w)
 	return w
@@ -60,6 +64,13 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 	fileSize := widget.NewLabelWithData(w.fileSizeBinding)
 	fileSize.Selectable = true
+
+	copyPath := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
+		if w.currentSelectedFile == nil {
+			return
+		}
+		fyne.CurrentApp().Clipboard().SetContent(w.currentSelectedFile.FullPath())
+	})
 
 	lastModified := widget.NewLabelWithData(w.lastModifiedBinding)
 	lastModified.Selectable = true
@@ -79,7 +90,9 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 
 	return widget.NewSimpleRenderer(
 		container.NewVBox(
-			container.NewHBox(w.fileIcon, w.pathLabel),
+			container.NewBorder(nil, nil,
+				container.NewHBox(w.fileIcon, w.pathLabel),
+				copyPath),
 			container.New(
 				layout.NewCustomPaddedLayout(10, 20, 0, 0),
 				widget.NewSeparator(),
@@ -96,13 +109,18 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 	)
 }
 
-func (w *FileDetails) Render(file *directory.File) {
+func (w *FileDetails) Select(file *directory.File) {
 	vm := w.appCtx.ExplorerViewModel()
+	w.currentSelectedFile = file
 
 	var path string
 	originalPath := file.FullPath()
 	if len(originalPath) > maxFileNameLength {
-		path = ".../" + file.Name().String()
+		path = file.Name().String()
+		if len(path) > maxFileNameLength {
+			path = "..." + path[len(path)-maxFileNameLength+3:]
+		}
+		path = ".../" + path
 	} else {
 		path = originalPath
 	}

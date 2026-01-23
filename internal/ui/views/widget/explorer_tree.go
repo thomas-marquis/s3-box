@@ -49,7 +49,9 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 			displayLabel := widget.NewLabel("")
 			icon := widget.NewIcon(theme.FolderIcon())
 			icon.Hide()
-			return container.NewHBox(icon, displayLabel)
+			loading := widget.NewIcon(theme.ViewRefreshIcon())
+			loading.Hide()
+			return container.NewHBox(icon, displayLabel, loading)
 		},
 		func(i binding.DataItem, branch bool, o fyne.CanvasObject) {
 			nodeItem, err := i.(binding.Item[node.Node]).Get()
@@ -60,6 +62,7 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 			c, _ := o.(*fyne.Container)
 			icon := c.Objects[0].(*widget.Icon)
 			displayLabel := c.Objects[1].(*widget.Label)
+			loading := c.Objects[2].(*widget.Icon)
 
 			displayLabel.SetText(nodeItem.DisplayName())
 
@@ -68,6 +71,14 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 				icon.Show()
 			} else {
 				icon.Hide()
+			}
+
+			if dirNode, ok := nodeItem.(node.DirectoryNode); ok {
+				if dirNode.Directory().IsLoading() {
+					loading.Show()
+				} else {
+					loading.Hide()
+				}
 			}
 		},
 	)
@@ -87,7 +98,7 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 		switch nodeItem.NodeType() {
 		case node.FolderNodeType:
 			dirNode := nodeItem.(node.DirectoryNode)
-			if !dirNode.IsLoaded() {
+			if !dirNode.Directory().IsLoaded() && !dirNode.Directory().IsLoading() {
 				if err := vm.LoadDirectory(dirNode); err != nil {
 					dialog.ShowError(err, w.appCtx.Window())
 					return
@@ -117,7 +128,7 @@ func (w *ExplorerTree) reopenOpenedDirectories(tree *widget.Tree) {
 	for key, n := range treeContent {
 		if n.NodeType() == node.FolderNodeType {
 			dirNode := n.(node.DirectoryNode)
-			if dirNode.Opened() {
+			if dirNode.Directory().IsOpened() {
 				tree.OpenBranch(key)
 			}
 		}
@@ -136,6 +147,10 @@ func (w *ExplorerTree) makeOnBranchCallback(shouldOpen bool, data binding.Tree[n
 			return
 		}
 		dirNode := nodeItem.(node.DirectoryNode)
-		dirNode.Open(shouldOpen)
+		if shouldOpen {
+			dirNode.Directory().Open()
+		} else {
+			dirNode.Directory().Close()
+		}
 	}
 }

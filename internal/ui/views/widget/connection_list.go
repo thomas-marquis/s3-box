@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 )
 
 type ConnectionList struct {
@@ -44,11 +45,23 @@ func (w *ConnectionList) makeRowListItem() fyne.CanvasObject {
 
 	name := widget.NewLabel("")
 	bucket := widget.NewLabel("")
+
+	viewFilesBtn := widget.NewButtonWithIcon(
+		"View files",
+		theme.NavigateNextIcon(),
+		func() {
+			if _, err := w.appCtx.Navigate(navigation.ExplorerRoute); err != nil { //nolint:staticcheck
+				dialog.ShowError(err, w.appCtx.Window())
+			}
+		},
+	)
+	viewFilesBtn.Hide()
+
 	left := container.NewHBox(selected, name, widget.NewLabel("-"), bucket)
 
 	editBtn := widget.NewButtonWithIcon("Edit", theme.DocumentCreateIcon(), func() {})
 	deleteBtn := widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), func() {})
-	buttons := container.NewHBox(editBtn, deleteBtn)
+	buttons := container.NewHBox(viewFilesBtn, editBtn, deleteBtn)
 	return container.NewBorder(
 		nil, nil,
 		left, buttons,
@@ -63,11 +76,17 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 	c, _ := o.(*fyne.Container)
 
 	leftGroup := c.Objects[0].(*fyne.Container)
+	btnGroup := c.Objects[1].(*fyne.Container)
+
 	selected := leftGroup.Objects[0].(*widget.Button)
+	viewFilesBtn := btnGroup.Objects[0].(*widget.Button)
+
 	if conn.Is(vm.Deck().SelectedConnection()) {
 		selected.SetIcon(theme.RadioButtonCheckedIcon())
+		viewFilesBtn.Show()
 	} else {
 		selected.SetIcon(theme.RadioButtonIcon())
+		viewFilesBtn.Hide()
 	}
 	selected.OnTapped = func() {
 		if conn.Is(vm.Deck().SelectedConnection()) {
@@ -96,8 +115,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 	bucket := leftGroup.Objects[3].(*widget.Label)
 	bucket.SetText(fmt.Sprintf("%s/%s", conn.Server(), conn.Bucket()))
 
-	btnGroup := c.Objects[1].(*fyne.Container)
-	editBtn := btnGroup.Objects[0].(*widget.Button)
+	editBtn := btnGroup.Objects[1].(*widget.Button)
 	editBtn.OnTapped = NewConnectionForm(w.appCtx, conn, true,
 		func(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) {
 			opts := make([]connection_deck.ConnectionOption, 0, len(options)+3)
@@ -111,7 +129,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 		},
 	).AsDialog("Edit connection").Show
 
-	deleteBtn := btnGroup.Objects[1].(*widget.Button)
+	deleteBtn := btnGroup.Objects[2].(*widget.Button)
 	deleteBtn.OnTapped = func() {
 		dialog.ShowConfirm("Delete connection",
 			fmt.Sprintf("Are you sure you want to delete the connection '%s'?", conn.Name()),

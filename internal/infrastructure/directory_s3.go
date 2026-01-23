@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
@@ -34,7 +33,7 @@ type S3DirectoryRepository struct {
 	cache                map[connection_deck.ConnectionID]*s3Session
 }
 
-var _ directory.Repository = &S3DirectoryRepository{}
+var _ directory.Repository = (*S3DirectoryRepository)(nil)
 
 func NewS3DirectoryRepository(
 	connectionsRepository connection_deck.Repository,
@@ -53,72 +52,6 @@ func NewS3DirectoryRepository(
 	}
 
 	return r, nil
-}
-
-func (r *S3DirectoryRepository) GetByPath(
-	ctx context.Context, connID connection_deck.ConnectionID, path directory.Path,
-) (*directory.Directory, error) {
-	searchKey := mapPathToSearchKey(path)
-
-	s, err := r.getSession(ctx, connID)
-	if err != nil {
-		return nil, fmt.Errorf("GetByID: %w", err)
-	}
-
-	inputs := &s3.ListObjectsV2Input{
-		Bucket:    aws.String(s.connection.Bucket()),
-		Prefix:    aws.String(searchKey),
-		Delimiter: aws.String("/"),
-		MaxKeys:   aws.Int32(1000),
-	}
-
-	files := make([]*directory.File, 0)
-	subDirectoriesPaths := make([]directory.Path, 0)
-
-	paginator := s3.NewListObjectsV2Paginator(s.client, inputs)
-	for paginator.HasMorePages() {
-		page, err := paginator.NextPage(ctx)
-		if err != nil {
-			return nil, r.manageAwsSdkError(
-				fmt.Errorf("error while fetching next objects page: %w", err),
-				searchKey,
-				s)
-		}
-
-		for _, obj := range page.Contents {
-			key := *obj.Key
-			if key == searchKey {
-				continue
-			}
-			f, err := directory.NewFile(mapKeyToObjectName(key), path,
-				directory.WithFileSize(int(*obj.Size)),
-				directory.WithFileLastModified(*obj.LastModified))
-			if err != nil {
-				return nil, fmt.Errorf("error while creating a file: %w", err)
-			}
-			files = append(files, f)
-		}
-
-		for _, obj := range page.CommonPrefixes {
-			if *obj.Prefix == searchKey {
-				continue
-			}
-			s3Prefix := *obj.Prefix
-			isDir := strings.HasSuffix(s3Prefix, "/")
-			if isDir {
-				subDirectoriesPaths = append(subDirectoriesPaths, directory.NewPath(s3Prefix))
-			}
-		}
-	}
-
-	dir, err := directory.New(connID, path.DirectoryName(), path.ParentPath(),
-		directory.WithFiles(files),
-		directory.WithSubDirectories(subDirectoriesPaths))
-	if err != nil {
-		return nil, fmt.Errorf("GetByID: %w", err)
-	}
-
-	return dir, nil
 }
 
 func (r *S3DirectoryRepository) GetFileContent(
@@ -170,44 +103,59 @@ func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func
 		case directory.CreatedEventType:
 			e := evt.(directory.CreatedEvent)
 			if err := r.handleDirectoryCreation(ctx, e); err != nil {
-				notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err)) //nolint:errcheck
+				notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
 				publisher(directory.NewCreatedFailureEvent(err, e.Parent()))
+				continue
 			}
 			publisher(directory.NewCreatedSuccessEvent(e.Parent(), e.Directory()))
 
 		case directory.DeletedEventType:
 			err := fmt.Errorf("deleting directories is not yet implemented")
-			notifier.NotifyError(err) //nolint:errcheck
+			notifier.NotifyError(err)
 			publisher(directory.NewDeletedFailureEvent(err))
 
 		case directory.FileCreatedEventType:
 			err := fmt.Errorf("file creation is not yet implemented")
-			notifier.NotifyError(err) //nolint:errcheck
+			notifier.NotifyError(err)
 			publisher(directory.NewFileCreatedFailureEvent(err))
 
 		case directory.FileDeletedEventType:
 			e := evt.(directory.FileDeletedEvent)
 			if err := r.handleFileDeletion(ctx, e); err != nil {
-				notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err)) //nolint:errcheck
+				notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
 				publisher(directory.NewFileDeletedFailureEvent(err, e.Parent()))
+				continue
 			}
 			publisher(directory.NewFileDeletedSuccessEvent(e.Parent(), e.File()))
 
 		case directory.ContentUploadedEventType:
 			e := evt.(directory.ContentUploadedEvent)
 			if err := r.handleUpload(ctx, e); err != nil {
-				notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err)) //nolint:errcheck
+				notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
 				publisher(directory.NewContentUploadedFailureEvent(err, e.Directory()))
+				continue
 			}
 			publisher(directory.NewContentUploadedSuccessEvent(e.Directory(), e.Content()))
 
 		case directory.ContentDownloadEventType:
 			e := evt.(directory.ContentDownloadedEvent)
 			if err := r.handleDownload(ctx, e); err != nil {
-				notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err)) //nolint:errcheck
+				notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
 				publisher(directory.NewContentDownloadedFailureEvent(err))
+				continue
 			}
 			publisher(directory.NewContentDownloadedSuccessEvent(e.Content()))
+
+		case directory.LoadEventType:
+			e := evt.(directory.LoadEvent)
+			dir := e.Directory()
+			subDirs, files, err := r.handleLoading(ctx, e)
+			if err != nil {
+				notifier.NotifyError(fmt.Errorf("failed loading directory: %w", err))
+				publisher(directory.NewLoadFailureEvent(err, dir))
+				continue
+			}
+			publisher(directory.NewLoadSuccessEvent(dir, subDirs, files))
 		}
 	}
 }

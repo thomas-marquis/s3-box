@@ -5,6 +5,7 @@ import (
 
 	"fyne.io/fyne/v2/data/binding"
 	fyne_test "fyne.io/fyne/v2/test"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
@@ -26,15 +27,18 @@ func TestExplorerTree(t *testing.T) {
 		return n1.ID() == n2.ID()
 	})
 
-	root := node.NewDirectoryNode(directory.RootPath)
-	_ = treeData.Append("", root.ID(), root)
+	connID := connection_deck.NewConnectionID()
+	root, _ := directory.New(connID, directory.RootDirName, directory.NilParentPath)
+	rootNode := node.NewDirectoryNode(root)
+	_ = treeData.Append("", rootNode.ID(), rootNode)
 
-	childDir := node.NewDirectoryNode(directory.NewPath("/child"))
-	_ = treeData.Append(root.ID(), childDir.ID(), childDir)
+	child, _ := directory.New(connID, "child", root.Path())
+	childDir := node.NewDirectoryNode(child)
+	_ = treeData.Append(rootNode.ID(), childDir.ID(), childDir)
 
-	file, _ := directory.NewFile("test.txt", directory.RootPath)
+	file, _ := directory.NewFile("test.txt", root.Path())
 	childFile := node.NewFileNode(file)
-	_ = treeData.Append(root.ID(), childFile.ID(), childFile)
+	_ = treeData.Append(rootNode.ID(), childFile.ID(), childFile)
 
 	t.Run("should display explorer tree", func(t *testing.T) {
 		// Given

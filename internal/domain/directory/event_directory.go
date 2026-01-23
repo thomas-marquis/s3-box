@@ -7,6 +7,7 @@ import (
 const (
 	CreatedEventType event.Type = "event.directory.created"
 	DeletedEventType event.Type = "event.directory.deleted"
+	LoadEventType    event.Type = "event.directory.load"
 )
 
 type withDirectory struct {
@@ -104,5 +105,53 @@ type DeletedFailureEvent struct {
 func NewDeletedFailureEvent(err error) DeletedFailureEvent {
 	return DeletedFailureEvent{
 		event.NewBaseErrorEvent(DeletedEventType.AsFailure(), err),
+	}
+}
+
+type LoadEvent struct {
+	event.BaseEvent
+	withDirectory
+}
+
+func NewLoadEvent(directory *Directory, opts ...event.Option) LoadEvent {
+	return LoadEvent{
+		event.NewBaseEvent(LoadEventType, opts...),
+		withDirectory{directory},
+	}
+}
+
+type LoadSuccessEvent struct {
+	event.BaseEvent
+	withDirectory
+	files   []*File
+	subDirs []*Directory
+}
+
+func NewLoadSuccessEvent(directory *Directory, subDirs []*Directory, files []*File) LoadSuccessEvent {
+	return LoadSuccessEvent{
+		event.NewBaseEvent(LoadEventType.AsSuccess()),
+		withDirectory{directory},
+		files,
+		subDirs,
+	}
+}
+
+func (e *LoadSuccessEvent) Files() []*File {
+	return e.files
+}
+
+func (e *LoadSuccessEvent) SubDirectories() []*Directory {
+	return e.subDirs
+}
+
+type LoadFailureEvent struct {
+	event.BaseErrorEvent
+	withDirectory
+}
+
+func NewLoadFailureEvent(err error, dir *Directory) LoadFailureEvent {
+	return LoadFailureEvent{
+		event.NewBaseErrorEvent(LoadEventType.AsFailure(), err),
+		withDirectory{dir},
 	}
 }

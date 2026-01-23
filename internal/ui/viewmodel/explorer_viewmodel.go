@@ -98,7 +98,6 @@ func NewExplorerViewModel(
 ) ExplorerViewModel {
 	vm := &explorerViewModelImpl{
 		baseViewModel: baseViewModel{
-			loading:      binding.NewBool(),
 			errorMessage: binding.NewString(),
 			infoMessage:  binding.NewString(),
 		},
@@ -115,7 +114,7 @@ func NewExplorerViewModel(
 			vm.selectedConnection.Set(nil) //nolint:errcheck
 			vm.selectedConnectionVal = nil
 		}
-		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err)) //nolint:errcheck
+		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err))
 	}
 
 	go vm.listenEvents()
@@ -137,36 +136,37 @@ func (vm *explorerViewModelImpl) CurrentSelectedConnection() *connection_deck.Co
 
 func (vm *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error {
 	if vm.selectedConnectionVal == nil {
-		return vm.notifier.NotifyError(ErrNoConnectionSelected)
+		err := ErrNoConnectionSelected
+		vm.notifier.NotifyError(err)
+		return err
 	}
 
-	if dirNode.IsLoaded() {
+	if dirNode.Directory().IsLoaded() {
 		return nil
 	}
 
-	dir, err := vm.fetchDirectory(dirNode.Path())
+	evt, err := dirNode.Directory().Load()
 	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error getting directory: %w", err))
+		wErr := fmt.Errorf("error loading directory: %w", err)
+		vm.notifier.NotifyError(wErr)
+		return wErr
 	}
-
-	if err := dirNode.Load(dir); err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error loading directory: %w", err))
-	}
-
-	if err := vm.fillSubTree(dirNode, dir); err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error filling sub tree: %w", err))
-	}
+	vm.bus.Publish(evt)
 
 	return nil
 }
 
 func (vm *explorerViewModelImpl) GetFileContent(file *directory.File) (*directory.Content, error) {
 	if vm.selectedConnectionVal == nil {
-		return nil, vm.notifier.NotifyError(ErrNoConnectionSelected)
+		err := ErrNoConnectionSelected
+		vm.notifier.NotifyError(err)
+		return nil, err
 	}
 
 	if file.SizeBytes() > vm.settingsVm.CurrentMaxFilePreviewSizeBytes() {
-		return nil, vm.notifier.NotifyError(fmt.Errorf("file is too big to GetFileContent"))
+		err := fmt.Errorf("file is too big to GetFileContent")
+		vm.notifier.NotifyError(err)
+		return nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
@@ -174,7 +174,9 @@ func (vm *explorerViewModelImpl) GetFileContent(file *directory.File) (*director
 
 	content, err := vm.directoryRepository.GetFileContent(ctx, vm.selectedConnectionVal.ID(), file)
 	if err != nil {
-		return nil, vm.notifier.NotifyError(fmt.Errorf("error getting file content: %w", err))
+		newErr := fmt.Errorf("error getting file content: %w", err)
+		vm.notifier.NotifyError(newErr)
+		return nil, newErr
 	}
 
 	return content, nil
@@ -187,14 +189,16 @@ func (vm *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
 
 func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory) {
 	if vm.selectedConnectionVal == nil {
-		err := vm.notifier.NotifyError(ErrNoConnectionSelected)
+		err := ErrNoConnectionSelected
+		vm.notifier.NotifyError(err)
 		vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
 		return
 	}
 
 	evt, err := dir.UploadFile(localPath)
 	if err != nil {
-		err := vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", err))
+		err := fmt.Errorf("error uploading file: %w", err)
+		vm.notifier.NotifyError(err)
 		vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
 		return
 	}
@@ -233,7 +237,9 @@ func (vm *explorerViewModelImpl) UpdateLastDownloadLocation(filePath string) err
 	uri := storage.NewFileURI(dirPath)
 	uriLister, err := storage.ListerForURI(uri)
 	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("update download location: %w", err))
+		wErr := fmt.Errorf("update download location: %w", err)
+		vm.notifier.NotifyError(wErr)
+		return wErr
 	}
 	vm.lastDownloadLocation = uriLister
 	return nil
@@ -248,7 +254,7 @@ func (vm *explorerViewModelImpl) UpdateLastUploadLocation(filePath string) {
 	uri := storage.NewFileURI(dirPath)
 	uriLister, err := storage.ListerForURI(uri)
 	if err != nil {
-		vm.notifier.NotifyError(fmt.Errorf("update upload location: %w", err)) //nolint:errcheck
+		vm.notifier.NotifyError(fmt.Errorf("update upload location: %w", err))
 		return
 	}
 	vm.lastUploadDir = uriLister
@@ -256,15 +262,17 @@ func (vm *explorerViewModelImpl) UpdateLastUploadLocation(filePath string) {
 
 func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory, name string) {
 	if vm.selectedConnectionVal == nil {
-		err := vm.notifier.NotifyError(ErrNoConnectionSelected)
+		err := ErrNoConnectionSelected
+		vm.notifier.NotifyError(err)
 		vm.bus.Publish(directory.NewCreatedFailureEvent(err, parent))
 		return
 	}
 
 	evt, err := parent.NewSubDirectory(name)
 	if err != nil {
-		err := vm.notifier.NotifyError(fmt.Errorf("error creating subdirectory: %w", err))
-		vm.bus.Publish(directory.NewCreatedFailureEvent(err, parent))
+		wErr := fmt.Errorf("error creating subdirectory: %w", err)
+		vm.notifier.NotifyError(wErr)
+		vm.bus.Publish(directory.NewCreatedFailureEvent(wErr, parent))
 		return
 	}
 
@@ -277,51 +285,64 @@ func (vm *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connectio
 	})
 
 	if c == nil {
-		return vm.notifier.NotifyError(ErrNoConnectionSelected)
+		err := ErrNoConnectionSelected
+		vm.notifier.NotifyError(err)
+		return err
 	}
 
 	displayLabel := "Bucket: " + c.Bucket()
 
-	rootNode := node.NewDirectoryNode(directory.RootPath, node.WithDisplayName(displayLabel))
+	rootDir, err := directory.New(c.ID(), directory.RootDirName, directory.NilParentPath)
+	if err != nil {
+		newErr := fmt.Errorf("error initializing the root directory: %w", err)
+		vm.notifier.NotifyError(newErr)
+		return newErr
+	}
+	rootNode := node.NewDirectoryNode(rootDir, node.WithDisplayName(displayLabel))
 	if err := vm.tree.Append("", rootNode.ID(), rootNode); err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error appending directory to tree: %w", err))
+		newErr := fmt.Errorf("error appending directory to tree: %w", err)
+		vm.notifier.NotifyError(newErr)
+		return newErr
 	}
 
 	if err := vm.LoadDirectory(rootNode); err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error loading root directory: %w", err))
+		newErr := fmt.Errorf("error loading root directory: %w", err)
+		vm.notifier.NotifyError(newErr)
+		return newErr
 	}
 
 	return nil
 }
 
-func (vm *explorerViewModelImpl) fetchDirectory(dirID directory.Path) (*directory.Directory, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), vm.settingsVm.CurrentTimeout())
-	defer cancel()
-
-	dir, err := vm.directoryRepository.GetByPath(ctx, vm.selectedConnectionVal.ID(), dirID)
+func (vm *explorerViewModelImpl) fillSubTree(dir *directory.Directory) error {
+	files, err := dir.Files()
 	if err != nil {
-		return nil, vm.notifier.NotifyError(fmt.Errorf("error getting directory: %w", err))
+		vm.notifier.NotifyError(fmt.Errorf("error getting files: %w", err))
+		return err
 	}
 
-	return dir, nil
-}
+	subDirs, err := dir.SubDirectories()
+	if err != nil {
+		vm.notifier.NotifyError(fmt.Errorf("error getting subdirectories: %w", err))
+		return err
+	}
 
-func (vm *explorerViewModelImpl) fillSubTree(startNode node.DirectoryNode, dir *directory.Directory) error {
-	for _, file := range dir.Files() {
+	for _, file := range files {
 		fileNode := node.NewFileNode(file)
-		if err := vm.tree.Append(startNode.ID(), fileNode.ID(), fileNode); err != nil {
-			vm.notifier.NotifyError(fmt.Errorf("error appending file to tree: %w", err)) //nolint:errcheck
+		if err := vm.tree.Append(dir.Path().String(), fileNode.ID(), fileNode); err != nil {
+			vm.notifier.NotifyError(fmt.Errorf("error appending file to tree: %w", err))
 			continue
 		}
 	}
 
-	for _, subDirPath := range dir.SubDirectories() {
+	for _, subDirPath := range subDirs {
 		subDirNode := node.NewDirectoryNode(subDirPath)
-		if err := vm.tree.Append(startNode.ID(), subDirNode.ID(), subDirNode); err != nil {
-			vm.notifier.NotifyError(fmt.Errorf("error appending subdirectory to tree: %w", err)) //nolint:errcheck
+		if err := vm.tree.Append(dir.Path().String(), subDirNode.ID(), subDirNode); err != nil {
+			vm.notifier.NotifyError(fmt.Errorf("error appending subdirectory to tree: %w", err))
 			continue
 		}
 	}
+
 	return nil
 }
 
@@ -329,9 +350,9 @@ func (vm *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Direc
 	parentPath := dirToAdd.Path().ParentPath()
 	parentNodeItem, err := vm.tree.GetValue(parentPath.String())
 	if err != nil {
-		return fmt.Errorf("impossible to retreive the parent direcotry from path: %s", parentPath)
+		return fmt.Errorf("impossible to retrieve the parent directory from path: %s", parentPath)
 	}
-	childNode := node.NewDirectoryNode(dirToAdd.Path())
+	childNode := node.NewDirectoryNode(dirToAdd)
 	if err := vm.tree.Append(parentNodeItem.(node.DirectoryNode).ID(), childNode.ID(), childNode); err != nil {
 		return fmt.Errorf("error appending directory to tree: %w", err)
 	}
@@ -370,13 +391,12 @@ func (vm *explorerViewModelImpl) listenEvents() {
 				(vm.selectedConnectionVal != nil && conn == nil) ||
 				(vm.selectedConnectionVal != nil && !vm.selectedConnectionVal.Is(conn))
 			if hasChanged {
-				vm.loading.Set(true) //nolint:errcheck
 				vm.selectedConnectionVal = conn
-				vm.selectedConnection.Set(conn)                     //nolint:errcheck
-				if err := vm.initializeTreeData(conn); err != nil { //nolint:staticcheck
-					// TODO: handle error
+				vm.selectedConnection.Set(conn) //nolint:errcheck
+				if err := vm.initializeTreeData(conn); err != nil {
+					vm.errorMessage.Set(err.Error()) //nolint:errcheck
+					continue
 				}
-				vm.loading.Set(false) //nolint:errcheck
 			}
 
 		case connection_deck.RemoveEventType.AsSuccess():
@@ -387,95 +407,118 @@ func (vm *explorerViewModelImpl) listenEvents() {
 				vm.selectedConnection.Set(nil) //nolint:errcheck
 			}
 
-		case directory.ContentUploadedEventType:
-			if vm.IsLoading() {
-				continue
-			}
-			vm.loading.Set(true) //nolint:errcheck
-
 		case directory.ContentUploadedEventType.AsSuccess():
 			e := evt.(directory.ContentUploadedSuccessEvent)
 			if err := vm.addNewFileToTree(e.Content().File()); err != nil {
 				vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, e.Directory()))
-				vm.loading.Set(false) //nolint:errcheck
 				continue
 			}
-			e.Directory().Notify(e)
-			vm.loading.Set(false) //nolint:errcheck
+			if err := e.Directory().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
 
 		case directory.ContentUploadedEventType.AsFailure():
 			e := evt.(directory.ContentUploadedFailureEvent)
-			e.Directory().Notify(e)
-			err := vm.notifier.NotifyError(fmt.Errorf("error uploading file: %w", e.Error()))
-			vm.errorMessage.Set(err.Error()) //nolint:errcheck
-			vm.loading.Set(false)            //nolint:errcheck
-
-		case directory.CreatedEventType:
-			if vm.IsLoading() {
+			if err := e.Directory().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
 				continue
 			}
-			vm.loading.Set(true) //nolint:errcheck
+			err := fmt.Errorf("error uploading file: %w", e.Error())
+			vm.notifier.NotifyError(err)
+			vm.errorMessage.Set(err.Error()) //nolint:errcheck
 
 		case directory.CreatedEventType.AsSuccess():
 			e := evt.(directory.CreatedSuccessEvent)
 			if err := vm.addNewDirectoryToTree(e.Directory()); err != nil {
 				vm.bus.Publish(directory.NewCreatedFailureEvent(err, e.Parent()))
-				vm.loading.Set(false) //nolint:errcheck
 				continue
 			}
-			e.Parent().Notify(e)
-			vm.loading.Set(false) //nolint:errcheck
+			if err := e.Parent().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+			}
 
 		case directory.CreatedEventType.AsFailure():
 			e := evt.(directory.CreatedFailureEvent)
-			e.Parent().Notify(e)
-			err := vm.notifier.NotifyError(fmt.Errorf("error creating directory: %w", e.Error()))
-			vm.errorMessage.Set(err.Error()) //nolint:errcheck
-			vm.loading.Set(false)            //nolint:errcheck
-
-		case directory.FileDeletedEventType:
-			if vm.IsLoading() {
+			if err := e.Parent().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
 				continue
 			}
-			vm.loading.Set(true) //nolint:errcheck
+			err := fmt.Errorf("error creating directory: %w", e.Error())
+			vm.notifier.NotifyError(err)
+			vm.errorMessage.Set(err.Error()) //nolint:errcheck
 
 		case directory.FileDeletedEventType.AsSuccess():
 			e := evt.(directory.FileDeletedSuccessEvent)
 
 			if err := vm.removeFileFromTree(e.File()); err != nil {
 				vm.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
-				vm.loading.Set(false) //nolint:errcheck
 				continue
 			}
-			e.Parent().Notify(e)
-			vm.loading.Set(false)                                               //nolint:errcheck
-			vm.infoMessage.Set(fmt.Sprintf("File %s deleted", e.File().Name())) //nolint:errcheck
+			if err := e.Parent().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
+			vm.infoMessage.Set( //nolint:errcheck
+				fmt.Sprintf("File %s deleted", e.File().Name()))
 
 		case directory.FileDeletedEventType.AsFailure():
 			e := evt.(directory.FileDeletedFailureEvent)
-			e.Parent().Notify(e)
-			err := vm.notifier.NotifyError(fmt.Errorf("error deleting file: %w", e.Error()))
-			vm.errorMessage.Set(err.Error()) //nolint:errcheck
-			vm.loading.Set(false)            //nolint:errcheck
-
-		case directory.ContentDownloadEventType:
-			if vm.IsLoading() {
+			if err := e.Parent().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
 				continue
 			}
-			vm.loading.Set(true) //nolint:errcheck
+			err := fmt.Errorf("error deleting file: %w", e.Error())
+			vm.notifier.NotifyError(err)
+			vm.errorMessage.Set(err.Error()) //nolint:errcheck
 
 		case directory.ContentDownloadEventType.AsSuccess():
 			e := evt.(directory.ContentUploadedSuccessEvent)
-			e.Directory().Notify(e)
-			vm.loading.Set(false)                                                            //nolint:errcheck
-			vm.infoMessage.Set(fmt.Sprintf("File %s downloaded", e.Content().File().Name())) //nolint:errcheck
+			if err := e.Directory().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
+			vm.infoMessage.Set( //nolint:errcheck
+				fmt.Sprintf("File %s downloaded", e.Content().File().Name()))
 
 		case directory.ContentDownloadEventType.AsFailure():
 			e := evt.(directory.ContentUploadedFailureEvent)
-			e.Directory().Notify(e)
-			err := vm.notifier.NotifyError(fmt.Errorf("error downloading file: %w", e.Error()))
+			if err := e.Directory().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
+			err := fmt.Errorf("error downloading file: %w", e.Error())
+			vm.notifier.NotifyError(err)
 			vm.errorMessage.Set(err.Error()) //nolint:errcheck
-			vm.loading.Set(false)            //nolint:errcheck
+
+		case directory.LoadEventType.AsSuccess():
+			e := evt.(directory.LoadSuccessEvent)
+			if err := vm.handleLoadDirectorySuccess(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
+
+		case directory.LoadEventType.AsFailure():
+			e := evt.(directory.LoadFailureEvent)
+			dir := e.Directory()
+			if err := dir.Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
+			dir.SetLoaded(false)
+			vm.infoMessage.Set(e.Error().Error()) //nolint:errcheck
 		}
 	}
+}
+
+func (vm *explorerViewModelImpl) handleLoadDirectorySuccess(e directory.LoadSuccessEvent) error {
+	dir := e.Directory()
+	if err := dir.Notify(e); err != nil {
+		return err
+	}
+	if err := vm.fillSubTree(dir); err != nil {
+		dir.SetLoaded(false)
+		return fmt.Errorf("error filling sub tree: %w", err)
+	}
+	return nil
 }

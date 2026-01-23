@@ -6,6 +6,7 @@ import (
 	fyne_test "fyne.io/fyne/v2/test"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 	mocks_appcontext "github.com/thomas-marquis/s3-box/mocks/context"
 	mocks_viewmodel "github.com/thomas-marquis/s3-box/mocks/viewmodel"
@@ -28,10 +29,12 @@ func TestDirectoryDetails(t *testing.T) {
 	t.Run("should display directory details", func(t *testing.T) {
 		// Given
 		mockConnVM.EXPECT().IsReadOnly().Return(false)
+		events := make(chan event.Event)
+		defer close(events)
 
 		// When
-		res := widget.NewDirectoryDetails(mockAppCtx)
-		res.Render(dir)
+		res := widget.NewDirectoryDetails(mockAppCtx, events)
+		res.Select(dir)
 		c := fyne_test.NewWindow(res).Canvas()
 
 		// Then
@@ -41,10 +44,12 @@ func TestDirectoryDetails(t *testing.T) {
 	t.Run("should display directory details in read-only mode", func(t *testing.T) {
 		// Given
 		mockConnVM.EXPECT().IsReadOnly().Return(true)
+		events := make(chan event.Event)
+		defer close(events)
 
 		// When
-		res := widget.NewDirectoryDetails(mockAppCtx)
-		res.Render(dir)
+		res := widget.NewDirectoryDetails(mockAppCtx, events)
+		res.Select(dir)
 		c := fyne_test.NewWindow(res).Canvas()
 
 		// Then

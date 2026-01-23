@@ -48,7 +48,7 @@ func NewSettingsViewModel(
 	defer cancel()
 	s, err := settingsRepo.Get(ctx)
 	if err != nil {
-		notifier.NotifyError(fmt.Errorf("error getting settings: %w", err)) //nolint:errcheck
+		notifier.NotifyError(fmt.Errorf("error getting settings: %w", err))
 	}
 	fyneSettings.SetTheme(apptheme.GetByName(s.Color))
 	themeBinding := binding.NewString()
@@ -56,12 +56,12 @@ func NewSettingsViewModel(
 	themeBinding.AddListener(binding.NewDataListener(func() {
 		currThemeName, err := themeBinding.Get()
 		if err != nil {
-			notifier.NotifyError(fmt.Errorf("error getting color theme: %w", err)) //nolint:errcheck
+			notifier.NotifyError(fmt.Errorf("error getting color theme: %w", err))
 			return
 		}
 		currTheme, err := settings.NewColorThemeFromString(currThemeName)
 		if err != nil {
-			notifier.NotifyError(fmt.Errorf("error converting color theme: %w", err)) //nolint:errcheck
+			notifier.NotifyError(fmt.Errorf("error converting color theme: %w", err))
 			return
 		}
 		fyneSettings.SetTheme(apptheme.GetByName(currTheme))
@@ -85,24 +85,34 @@ func NewSettingsViewModel(
 func (vm *settingsViewModelImpl) Save() error {
 	timeout, err := vm.timeoutInSeconds.Get()
 	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error getting timeout in seconds: %w", err))
+		wErr := fmt.Errorf("error getting timeout in seconds: %w", err)
+		vm.notifier.NotifyError(wErr)
+		return wErr
 	}
 	maxFilePreviewSizeMegaBytes, err := vm.maxFilePreviewSizeBytes.Get()
 	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error getting max file preview size in mega bytes: %w", err))
+		wErr := fmt.Errorf("error getting max file preview size in mega bytes: %w", err)
+		vm.notifier.NotifyError(wErr)
+		return wErr
 	}
 	colorThemeString, err := vm.colorTheme.Get()
 	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error getting color theme: %w", err))
+		wErr := fmt.Errorf("error getting color theme: %w", err)
+		vm.notifier.NotifyError(wErr)
+		return wErr
 	}
 	colorTheme, err := settings.NewColorThemeFromString(colorThemeString)
 	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error converting color theme: %w", err))
+		wErr := fmt.Errorf("error converting color theme: %w", err)
+		vm.notifier.NotifyError(wErr)
+		return wErr
 	}
 
 	s, err := settings.NewSettings(timeout, utils.MegaToBytes(maxFilePreviewSizeMegaBytes))
 	if err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error creating settings: %w", err))
+		wErr := fmt.Errorf("error creating settings: %w", err)
+		vm.notifier.NotifyError(wErr)
+		return wErr
 	}
 	s.Color = colorTheme
 
@@ -110,7 +120,9 @@ func (vm *settingsViewModelImpl) Save() error {
 	defer cancel()
 
 	if err := vm.settingsRepo.Save(ctx, s); err != nil {
-		return vm.notifier.NotifyError(fmt.Errorf("error saving settings: %w", err))
+		wErr := fmt.Errorf("error saving settings: %w", err)
+		vm.notifier.NotifyError(wErr)
+		return wErr
 	}
 
 	vm.synchronize(s)
@@ -125,7 +137,7 @@ func (vm *settingsViewModelImpl) TimeoutInSeconds() binding.Int {
 func (vm *settingsViewModelImpl) CurrentTimeout() time.Duration {
 	val, err := vm.timeoutInSeconds.Get()
 	if err != nil {
-		vm.notifier.NotifyError(fmt.Errorf("error getting timeout in seconds: %w", err)) //nolint:errcheck
+		vm.notifier.NotifyError(fmt.Errorf("error getting timeout in seconds: %w", err))
 		return settings.DefaultTimeoutInSeconds * time.Second
 	}
 	return time.Duration(val) * time.Second
@@ -138,7 +150,7 @@ func (vm *settingsViewModelImpl) MaxFilePreviewSizeBytes() binding.Int {
 func (vm *settingsViewModelImpl) CurrentMaxFilePreviewSizeBytes() int {
 	val, err := vm.maxFilePreviewSizeBytes.Get()
 	if err != nil {
-		vm.notifier.NotifyError(fmt.Errorf("error getting max file preview size in mega bytes: %w", err)) //nolint:errcheck
+		vm.notifier.NotifyError(fmt.Errorf("error getting max file preview size in mega bytes: %w", err))
 		return settings.DefaultMaxFilePreviewSizeBytes
 	}
 	return val
@@ -151,7 +163,7 @@ func (vm *settingsViewModelImpl) ColorTheme() binding.String {
 func (vm *settingsViewModelImpl) synchronize(s settings.Settings) {
 	vm.timeoutInSeconds.Set(s.TimeoutInSeconds) //nolint:errcheck
 	if s.MaxFilePreviewSizeBytes > math.MaxInt {
-		vm.notifier.NotifyError( //nolint:errcheck
+		vm.notifier.NotifyError(
 			fmt.Errorf("max file preview size exceeds maximum allowed value: clamping to max int"))
 		vm.maxFilePreviewSizeBytes.Set(math.MaxInt) //nolint:errcheck
 	} else {

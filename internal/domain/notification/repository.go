@@ -4,6 +4,7 @@ type Repository interface {
 	Subscribe(channel chan Notification)
 	Unsubscribe(channel chan Notification)
 	Notify(notification Notification)
-	NotifyError(err error) error
+	NotifyError(err error)
 	NotifyInfo(message string)
+	NotifyDebug(message string)
 }

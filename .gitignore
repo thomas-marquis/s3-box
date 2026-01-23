@@ -40,3 +40,4 @@ go.work.sum
 
 # Test failed data
 **/testdata/failed/
+.output.txt
