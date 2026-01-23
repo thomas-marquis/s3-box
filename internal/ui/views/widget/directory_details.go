@@ -53,9 +53,7 @@ func NewDirectoryDetails(appCtx appcontext.AppContext, events <-chan event.Event
 	}
 	w.ExtendBaseWidget(w)
 
-	fyne.Do(func() {
-		w.listen(events)
-	})
+	go w.listen(events)
 
 	return w
 }
@@ -63,12 +61,21 @@ func NewDirectoryDetails(appCtx appcontext.AppContext, events <-chan event.Event
 func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
+	copyPath := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
+		if w.currentSelectedDir == nil {
+			return
+		}
+		fyne.CurrentApp().Clipboard().SetContent(w.currentSelectedDir.Path().String())
+	})
+
 	return widget.NewSimpleRenderer(container.NewVBox(
 		w.loadingBar,
-		container.NewHBox(
-			widget.NewIcon(theme.FolderIcon()),
-			w.pathLabel,
-		),
+		container.NewBorder(nil, nil,
+			container.NewHBox(
+				widget.NewIcon(theme.FolderIcon()),
+				w.pathLabel,
+			),
+			copyPath),
 		container.New(
 			layout.NewCustomPaddedLayout(10, 20, 0, 0),
 			widget.NewSeparator(),
@@ -93,7 +100,18 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.loadingBar.Hide()
 	}
 
-	w.pathLabel.SetText(dir.Path().String())
+	var path string
+	originalPath := dir.Path().String()
+	if len(originalPath) > maxFileNameLength {
+		path = dir.Name()
+		if len(path) > maxFileNameLength {
+			path = "..." + path[len(path)-maxFileNameLength+3:]
+		}
+		path = ".../" + path
+	} else {
+		path = originalPath
+	}
+	w.pathLabel.SetText(path)
 
 	w.uploadAction.SetOnTapped(w.makeOnUpload(vm, dir))
 	w.newDirectoryAction.SetOnTapped(w.makeOnCreateDirectory(vm, dir))
@@ -114,10 +132,14 @@ func (w *DirectoryDetails) listen(events <-chan event.Event) {
 		case directory.LoadEventType.AsFailure():
 			e := evt.(directory.LoadFailureEvent)
 			dirFromEvt = e.Directory()
+		default:
+			continue
 		}
 		if dirFromEvt != nil && w.currentSelectedDir != nil && w.currentSelectedDir.Is(dirFromEvt) {
-			w.loadingBar.Stop()
-			w.loadingBar.Hide()
+			fyne.Do(func() {
+				w.loadingBar.Stop()
+				w.loadingBar.Hide()
+			})
 		}
 	}
 }

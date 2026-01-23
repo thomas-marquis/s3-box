@@ -98,7 +98,7 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 		switch nodeItem.NodeType() {
 		case node.FolderNodeType:
 			dirNode := nodeItem.(node.DirectoryNode)
-			if !dirNode.Directory().IsLoaded() {
+			if !dirNode.Directory().IsLoaded() && !dirNode.Directory().IsLoading() {
 				if err := vm.LoadDirectory(dirNode); err != nil {
 					dialog.ShowError(err, w.appCtx.Window())
 					return

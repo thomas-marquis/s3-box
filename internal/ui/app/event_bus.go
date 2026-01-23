@@ -8,7 +8,12 @@ import (
 )
 
 const (
-	publicationWorkers = 5
+	// publicationWorkers defines the number of concurrent worker goroutines responsible for managing app events.
+	publicationWorkers = 16
+
+	// pubChanBufferSize defines the size of the channel used to publish events.
+	// Increase this value to manage more subscribers without blocking event publishing.
+	pubChanBufferSize = 100
 )
 
 type publishedLoad struct {
@@ -26,7 +31,7 @@ type eventBusImpl struct {
 func newEventBusImpl(done <-chan struct{}, notifier notification.Repository) event.Bus {
 	b := &eventBusImpl{
 		subscribers:    make(map[chan event.Event]struct{}),
-		publishingChan: make(chan publishedLoad),
+		publishingChan: make(chan publishedLoad, pubChanBufferSize),
 		done:           done,
 		notifier:       notifier,
 	}

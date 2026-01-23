@@ -44,6 +44,6 @@ func (p *notificationPublisher) NotifyInfo(message string) {
 
 func (p *notificationPublisher) NotifyDebug(message string) {
 	if p.level.IsAtLeast(notification.LevelDebug) {
-		p.Notify(notification.NewInfo(message))
+		p.Notify(notification.NewDebug(message))
 	}
 }

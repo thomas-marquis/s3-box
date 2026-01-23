@@ -407,7 +407,7 @@ func (vm *explorerViewModelImpl) listenEvents() {
 			}
 
 		case directory.ContentUploadedEventType:
-			if vm.IsLoading() {
+			if vm.IsLoading() { // TODO: remove explorer vm loading state
 				continue
 			}
 			vm.loading.Set(true) //nolint:errcheck

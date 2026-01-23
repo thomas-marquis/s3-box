@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3manager "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
@@ -118,8 +117,6 @@ func (r *S3DirectoryRepository) handleDownload(ctx context.Context, evt director
 func (r *S3DirectoryRepository) handleLoading(ctx context.Context, evt directory.LoadEvent) ([]*directory.Directory, []*directory.File, error) {
 	dir := evt.Directory()
 	searchKey := mapPathToSearchKey(dir.Path())
-
-	time.Sleep(4 * time.Second) // TODO: remove this
 
 	s, err := r.getSession(ctx, dir.ConnectionID())
 	if err != nil {
