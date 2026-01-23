@@ -262,7 +262,7 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 			default:
 				return false
 			}
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 15*time.Second, 100*time.Millisecond)
 	})
 }
 

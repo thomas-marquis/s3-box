@@ -124,7 +124,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 
 func (w *DirectoryDetails) listen(events <-chan event.Event) {
 	for evt := range events {
-		var dirFromEvt *directory.Directory = nil
+		var dirFromEvt *directory.Directory
 		switch evt.Type() {
 		case directory.LoadEventType.AsSuccess():
 			e := evt.(directory.LoadSuccessEvent)

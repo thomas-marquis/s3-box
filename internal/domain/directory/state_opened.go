@@ -23,7 +23,7 @@ func (s *OpenedState) SetLoaded(bool) {}
 func (s *OpenedState) Open() {}
 
 func (s *OpenedState) Close() {
-	s.d.setState(&LoadedState{s.baseState.Clone()})
+	s.d.setState(&LoadedState{s.Clone()})
 }
 
 func (s *OpenedState) SubDirectories() ([]*Directory, error) {

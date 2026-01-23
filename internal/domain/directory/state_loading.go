@@ -20,7 +20,7 @@ func (s *LoadingState) Load() (LoadEvent, error) {
 
 func (s *LoadingState) SetLoaded(loaded bool) {
 	if loaded {
-		bs := s.baseState.Clone()
+		bs := s.Clone()
 		bs.files = make([]*File, 0)
 		bs.subDirs = make([]*Directory, 0)
 		s.d.setState(newLoadedState(bs))

@@ -315,12 +315,15 @@ func (vm *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connectio
 }
 
 func (vm *explorerViewModelImpl) fillSubTree(dir *directory.Directory) error {
-	var err error
-	var subDirs []*directory.Directory
 	files, err := dir.Files()
-	subDirs, err = dir.SubDirectories()
 	if err != nil {
-		vm.notifier.NotifyError(fmt.Errorf("error getting files and subdirectories: %w", err))
+		vm.notifier.NotifyError(fmt.Errorf("error getting files: %w", err))
+		return err
+	}
+
+	subDirs, err := dir.SubDirectories()
+	if err != nil {
+		vm.notifier.NotifyError(fmt.Errorf("error getting subdirectories: %w", err))
 		return err
 	}
 
@@ -410,11 +413,17 @@ func (vm *explorerViewModelImpl) listenEvents() {
 				vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, e.Directory()))
 				continue
 			}
-			e.Directory().Notify(e)
+			if err := e.Directory().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
 
 		case directory.ContentUploadedEventType.AsFailure():
 			e := evt.(directory.ContentUploadedFailureEvent)
-			e.Directory().Notify(e)
+			if err := e.Directory().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
 			err := fmt.Errorf("error uploading file: %w", e.Error())
 			vm.notifier.NotifyError(err)
 			vm.errorMessage.Set(err.Error()) //nolint:errcheck
@@ -425,11 +434,16 @@ func (vm *explorerViewModelImpl) listenEvents() {
 				vm.bus.Publish(directory.NewCreatedFailureEvent(err, e.Parent()))
 				continue
 			}
-			e.Parent().Notify(e)
+			if err := e.Parent().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+			}
 
 		case directory.CreatedEventType.AsFailure():
 			e := evt.(directory.CreatedFailureEvent)
-			e.Parent().Notify(e)
+			if err := e.Parent().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
 			err := fmt.Errorf("error creating directory: %w", e.Error())
 			vm.notifier.NotifyError(err)
 			vm.errorMessage.Set(err.Error()) //nolint:errcheck
@@ -441,13 +455,19 @@ func (vm *explorerViewModelImpl) listenEvents() {
 				vm.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
 				continue
 			}
-			e.Parent().Notify(e)
+			if err := e.Parent().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
 			vm.infoMessage.Set( //nolint:errcheck
 				fmt.Sprintf("File %s deleted", e.File().Name()))
 
 		case directory.FileDeletedEventType.AsFailure():
 			e := evt.(directory.FileDeletedFailureEvent)
-			e.Parent().Notify(e)
+			if err := e.Parent().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
 			err := fmt.Errorf("error deleting file: %w", e.Error())
 			vm.notifier.NotifyError(err)
 			vm.errorMessage.Set(err.Error()) //nolint:errcheck
