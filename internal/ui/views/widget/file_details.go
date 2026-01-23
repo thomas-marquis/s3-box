@@ -96,7 +96,7 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 	)
 }
 
-func (w *FileDetails) Render(file *directory.File) {
+func (w *FileDetails) Select(file *directory.File) {
 	vm := w.appCtx.ExplorerViewModel()
 
 	var path string

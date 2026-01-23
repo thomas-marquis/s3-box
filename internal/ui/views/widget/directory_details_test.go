@@ -31,7 +31,7 @@ func TestDirectoryDetails(t *testing.T) {
 
 		// When
 		res := widget.NewDirectoryDetails(mockAppCtx)
-		res.Render(dir)
+		res.Select(dir)
 		c := fyne_test.NewWindow(res).Canvas()
 
 		// Then
@@ -44,7 +44,7 @@ func TestDirectoryDetails(t *testing.T) {
 
 		// When
 		res := widget.NewDirectoryDetails(mockAppCtx)
-		res.Render(dir)
+		res.Select(dir)
 		c := fyne_test.NewWindow(res).Canvas()
 
 		// Then

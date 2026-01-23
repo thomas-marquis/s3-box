@@ -39,7 +39,7 @@ func TestFileDetails(t *testing.T) {
 
 		// When
 		res := widget.NewFileDetails(mockAppCtx)
-		res.Render(file)
+		res.Select(file)
 		c := fyne_test.NewWindow(res).Canvas()
 
 		// Then
@@ -53,7 +53,7 @@ func TestFileDetails(t *testing.T) {
 
 		// When
 		res := widget.NewFileDetails(mockAppCtx)
-		res.Render(file)
+		res.Select(file)
 		c := fyne_test.NewWindow(res).Canvas()
 
 		// Then
@@ -67,7 +67,7 @@ func TestFileDetails(t *testing.T) {
 
 		// When
 		res := widget.NewFileDetails(mockAppCtx)
-		res.Render(file)
+		res.Select(file)
 		c := fyne_test.NewWindow(res).Canvas()
 
 		// Then

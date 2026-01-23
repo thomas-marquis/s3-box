@@ -271,9 +271,9 @@ func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Director
 
 	evt, err := parent.NewSubDirectory(name)
 	if err != nil {
-		errr := fmt.Errorf("error creating subdirectory: %w", err)
-		vm.notifier.NotifyError(errr)
-		vm.bus.Publish(directory.NewCreatedFailureEvent(errr, parent))
+		wErr := fmt.Errorf("error creating subdirectory: %w", err)
+		vm.notifier.NotifyError(wErr)
+		vm.bus.Publish(directory.NewCreatedFailureEvent(wErr, parent))
 		return
 	}
 
@@ -343,18 +343,6 @@ func (vm *explorerViewModelImpl) fillSubTree(dir *directory.Directory) error {
 
 	return nil
 }
-
-//func (vm *explorerViewModelImpl) updateDirNode(dir *directory.Directory) error {
-//	treeNode, err := vm.tree.GetValue(dir.Path().String())
-//	if err != nil {
-//		return fmt.Errorf("error retrieving directory node from tree: %w", err)
-//	}
-//	if treeNode.NodeType() != node.FolderNodeType {
-//		return fmt.Errorf("node at path %s is not a directory node", dir.Path())
-//	}
-//	dirNode := treeNode.(node.DirectoryNode)
-//	return nil
-//}
 
 func (vm *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Directory) error {
 	parentPath := dirToAdd.Path().ParentPath()

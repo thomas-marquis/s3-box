@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	fyne_app "fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/theme"
+	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
@@ -66,7 +67,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	w := a.NewWindow(appName)
 
 	terminated := make(chan struct{})
-	notifier := infrastructure.NewNotificationPublisher()
+	notifier := infrastructure.NewNotificationPublisher(notification.LevelDebug)
 
 	eventBus := newEventBusImpl(terminated, notifier)
 

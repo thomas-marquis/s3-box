@@ -49,7 +49,9 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 			displayLabel := widget.NewLabel("")
 			icon := widget.NewIcon(theme.FolderIcon())
 			icon.Hide()
-			return container.NewHBox(icon, displayLabel)
+			loading := widget.NewIcon(theme.ViewRefreshIcon())
+			loading.Hide()
+			return container.NewHBox(icon, displayLabel, loading)
 		},
 		func(i binding.DataItem, branch bool, o fyne.CanvasObject) {
 			nodeItem, err := i.(binding.Item[node.Node]).Get()
@@ -60,6 +62,7 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 			c, _ := o.(*fyne.Container)
 			icon := c.Objects[0].(*widget.Icon)
 			displayLabel := c.Objects[1].(*widget.Label)
+			loading := c.Objects[2].(*widget.Icon)
 
 			displayLabel.SetText(nodeItem.DisplayName())
 
@@ -68,6 +71,14 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 				icon.Show()
 			} else {
 				icon.Hide()
+			}
+
+			if dirNode, ok := nodeItem.(node.DirectoryNode); ok {
+				if dirNode.Directory().IsLoading() {
+					loading.Show()
+				} else {
+					loading.Hide()
+				}
 			}
 		},
 	)

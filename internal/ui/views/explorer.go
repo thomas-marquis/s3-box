@@ -73,15 +73,15 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 
 	detailsContainer := container.NewVBox()
 	fileDetails := widget.NewFileDetails(appCtx)
-	dirDetails := widget.NewDirectoryDetails(appCtx)
+	dirDetails := widget.NewDirectoryDetails(appCtx, appCtx.Bus().Subscribe())
 
 	tree := widget.NewExplorerTree(appCtx,
 		func(dir *directory.Directory) {
-			dirDetails.Render(dir)
+			dirDetails.Select(dir)
 			detailsContainer.Objects = []fyne.CanvasObject{dirDetails}
 		},
 		func(file *directory.File) {
-			fileDetails.Render(file)
+			fileDetails.Select(file)
 			detailsContainer.Objects = []fyne.CanvasObject{fileDetails}
 		},
 	)
