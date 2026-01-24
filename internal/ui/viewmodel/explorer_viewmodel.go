@@ -366,7 +366,7 @@ func (vm *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Direc
 func (vm *explorerViewModelImpl) addNewFileToTree(fileToAdd *directory.File) error {
 	fileNodePath := fileToAdd.FullPath()
 	if _, err := vm.tree.GetValue(fileNodePath); err == nil {
-		vm.tree.SetValue(fileNodePath, node.NewFileNode(fileToAdd)) //nolint:errorcheck
+		vm.tree.SetValue(fileNodePath, node.NewFileNode(fileToAdd)) //nolint:errcheck
 		return nil
 	}
 
