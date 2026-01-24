@@ -57,7 +57,7 @@ type ExplorerViewModel interface {
 	DownloadFile(f *directory.File, dest string)
 
 	// UploadFile uploads a local file to the specified remote directory
-	UploadFile(localPath string, dir *directory.Directory)
+	UploadFile(localPath string, dir *directory.Directory, overwrite bool) error
 
 	// DeleteFile removes a file from storage and updates the tree
 	DeleteFile(file *directory.File)
@@ -187,22 +187,26 @@ func (vm *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
 	vm.bus.Publish(evt)
 }
 
-func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory) {
+func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory, overwrite bool) error {
 	if vm.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
 		vm.notifier.NotifyError(err)
 		vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
-		return
+		return nil
 	}
 
-	evt, err := dir.UploadFile(localPath)
+	evt, err := dir.UploadFile(localPath, overwrite)
 	if err != nil {
+		if errors.Is(err, directory.ErrAlreadyExists) {
+			return err
+		}
 		err := fmt.Errorf("error uploading file: %w", err)
 		vm.notifier.NotifyError(err)
 		vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
-		return
+		return nil
 	}
 	vm.bus.Publish(evt)
+	return nil
 }
 
 func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) {
@@ -360,16 +364,17 @@ func (vm *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Direc
 }
 
 func (vm *explorerViewModelImpl) addNewFileToTree(fileToAdd *directory.File) error {
+	fileNodePath := fileToAdd.FullPath()
+	if _, err := vm.tree.GetValue(fileNodePath); err == nil {
+		vm.tree.SetValue(fileNodePath, node.NewFileNode(fileToAdd)) //nolint:errorcheck
+		return nil
+	}
+
 	newFileNode := node.NewFileNode(fileToAdd)
-	if err := vm.tree.Append(fileToAdd.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
-		return fmt.Errorf("error appending file to tree: %w", err)
+	if err := vm.tree.Prepend(fileToAdd.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
+		return fmt.Errorf("error appending file to the tree: %w", err)
 	}
 	return nil
-}
-
-func (vm *explorerViewModelImpl) removeFileFromTree(file *directory.File) error {
-	fileNodePath := file.FullPath()
-	return vm.tree.Remove(fileNodePath)
 }
 
 func (vm *explorerViewModelImpl) listenEvents() {
@@ -451,7 +456,7 @@ func (vm *explorerViewModelImpl) listenEvents() {
 		case directory.FileDeletedEventType.AsSuccess():
 			e := evt.(directory.FileDeletedSuccessEvent)
 
-			if err := vm.removeFileFromTree(e.File()); err != nil {
+			if err := vm.tree.Remove(e.File().FullPath()); err != nil {
 				vm.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
 				continue
 			}

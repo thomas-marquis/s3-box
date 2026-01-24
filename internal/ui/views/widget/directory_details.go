@@ -1,6 +1,7 @@
 package widget
 
 import (
+	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -156,7 +157,20 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 			}
 
 			localDestFilePath := reader.URI().Path()
-			vm.UploadFile(localDestFilePath, dir)
+			if err := vm.UploadFile(localDestFilePath, dir, false); err != nil && errors.Is(err, directory.ErrAlreadyExists) {
+				dialog.ShowConfirm(
+					"This file already exists",
+					"Do you want to overwrite it?",
+					func(b bool) {
+						if b {
+							if err := vm.UploadFile(localDestFilePath, dir, true); err != nil {
+								dialog.ShowError(err, w.appCtx.Window())
+							}
+						}
+					},
+					w.appCtx.Window())
+				return
+			}
 			vm.UpdateLastUploadLocation(localDestFilePath)
 			dialog.ShowInformation("Upload", "File uploaded", w.appCtx.Window())
 		}, w.appCtx.Window())
