@@ -450,13 +450,13 @@ func TestDirectory_UploadFile(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
-		file, _ := directory.NewFile("tmp/report.csv", dir.Path(), directory.WithFileSize(1337))
-
 		// When
 		evt, err := dir.UploadFile("tmp/report.csv", true)
 
 		// Then
 		assert.NoError(t, err)
+
+		file, _ := directory.NewFile("report.csv", dir.Path(), directory.WithFileSize(1337))
 		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
