@@ -6,9 +6,10 @@ import (
 )
 
 var (
-	ErrNotFound  = errors.New("object not found in directory")
-	ErrTechnical = errors.New("technical error occurred")
-	ErrNotLoaded = errors.New("directory must be loaded first")
+	ErrNotFound      = errors.New("object not found in directory")
+	ErrTechnical     = errors.New("technical error occurred")
+	ErrNotLoaded     = errors.New("directory must be loaded first")
+	ErrAlreadyExists = errors.New("file or directory already exists")
 )
 
 type Error struct {

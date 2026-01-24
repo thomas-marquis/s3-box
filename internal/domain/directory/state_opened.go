@@ -49,3 +49,6 @@ func (s *OpenedState) SetSubDirectories(subDirs []*Directory) error {
 	s.subDirs = subDirs
 	return nil
 }
+func (s *OpenedState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {
+	return s.d.uploadFile(localPtah, overwrite)
+}

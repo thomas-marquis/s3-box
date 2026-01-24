@@ -473,20 +473,12 @@ func (vm *explorerViewModelImpl) listenEvents() {
 			vm.errorMessage.Set(err.Error()) //nolint:errcheck
 
 		case directory.ContentDownloadEventType.AsSuccess():
-			e := evt.(directory.ContentUploadedSuccessEvent)
-			if err := e.Directory().Notify(e); err != nil {
-				vm.notifier.NotifyError(err)
-				continue
-			}
+			e := evt.(directory.ContentDownloadedSuccessEvent)
 			vm.infoMessage.Set( //nolint:errcheck
 				fmt.Sprintf("File %s downloaded", e.Content().File().Name()))
 
 		case directory.ContentDownloadEventType.AsFailure():
-			e := evt.(directory.ContentUploadedFailureEvent)
-			if err := e.Directory().Notify(e); err != nil {
-				vm.notifier.NotifyError(err)
-				continue
-			}
+			e := evt.(directory.ContentDownloadedFailureEvent)
 			err := fmt.Errorf("error downloading file: %w", e.Error())
 			vm.notifier.NotifyError(err)
 			vm.errorMessage.Set(err.Error()) //nolint:errcheck

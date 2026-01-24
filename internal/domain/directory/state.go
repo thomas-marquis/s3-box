@@ -21,6 +21,8 @@ type State interface {
 
 	SetFiles([]*File) error
 	SetSubDirectories([]*Directory) error
+
+	UploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error)
 }
 
 type baseState struct {
@@ -31,4 +33,8 @@ type baseState struct {
 
 func (s *baseState) Clone() baseState {
 	return baseState{d: s.d, files: s.files, subDirs: s.subDirs}
+}
+
+func (s *baseState) UploadFile(string, bool) (ContentUploadedEvent, error) {
+	return ContentUploadedEvent{}, ErrNotLoaded
 }

@@ -320,3 +320,128 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 		assert.Len(t, resSubDirs, 2)
 	})
 }
+
+func TestDirectory_UploadFile(t *testing.T) {
+	t.Run("should emit upload event and add file on success", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
+		require.NoError(t, err)
+
+		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
+		_, err = dir.Load()
+		require.NoError(t, err)
+		require.NoError(t, dir.Notify(loadEvt))
+
+		// When
+		evt, err := dir.UploadFile("local/report.csv", false)
+
+		// Then
+		assert.NoError(t, err)
+		assert.Equal(t, directory.ContentUploadedEventType, evt.Type())
+		assert.Equal(t, dir, evt.Directory())
+		assert.Equal(t, "report.csv", evt.Content().File().Name().String())
+
+		successEvt := directory.NewContentUploadedSuccessEvent(dir, evt.Content())
+		assert.NoError(t, dir.Notify(successEvt))
+
+		files, _ := dir.Files()
+		require.Len(t, files, 1)
+		assert.Equal(t, "report.csv", files[0].Name().String())
+	})
+
+	t.Run("should emit upload event and add file on success on a non empty directory", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		dir, _ := directory.New(connID, "data", directory.RootPath)
+		d1, _ := directory.New(connID, "d1", dir.Path())
+		d2, _ := directory.New(connID, "d2", dir.Path())
+		subDirs := []*directory.Directory{d1, d2}
+		f1, _ := directory.NewFile("main.go", dir.Path())
+		f2, _ := directory.NewFile("readme.md", dir.Path())
+		files := []*directory.File{f1, f2}
+
+		loadEvt := directory.NewLoadSuccessEvent(dir, subDirs, files)
+		_, err := dir.Load()
+		require.NoError(t, err)
+		require.NoError(t, dir.Notify(loadEvt))
+
+		// When
+		evt, err := dir.UploadFile("local/report.csv", false)
+
+		// Then
+		assert.NoError(t, err)
+		assert.Equal(t, directory.ContentUploadedEventType, evt.Type())
+		assert.Equal(t, dir, evt.Directory())
+		assert.Equal(t, "report.csv", evt.Content().File().Name().String())
+
+		successEvt := directory.NewContentUploadedSuccessEvent(dir, evt.Content())
+		assert.NoError(t, dir.Notify(successEvt))
+
+		resFiles, _ := dir.Files()
+		require.Len(t, resFiles, 3)
+		assert.Equal(t, "main.go", resFiles[0].Name().String())
+		assert.Equal(t, "readme.md", resFiles[1].Name().String())
+		assert.Equal(t, "report.csv", resFiles[2].Name().String())
+	})
+
+	t.Run("should overwrite existing file when upload succeeds", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
+		require.NoError(t, err)
+
+		existing, _ := directory.NewFile("report.csv", dir.Path(), directory.WithFileSize(42))
+		loadEvt := directory.NewLoadSuccessEvent(dir, nil, []*directory.File{existing})
+		_, err = dir.Load()
+		require.NoError(t, err)
+		require.NoError(t, dir.Notify(loadEvt))
+
+		// When
+		evt, err := dir.UploadFile("tmp/report.csv", true)
+
+		// Then
+		assert.NoError(t, err)
+		successEvt := directory.NewContentUploadedSuccessEvent(dir, evt.Content())
+		assert.NoError(t, dir.Notify(successEvt))
+
+		files, _ := dir.Files()
+		require.Len(t, files, 1)
+		assert.True(t, files[0].Equal(evt.Content().File()))
+		assert.Equal(t, 0, files[0].SizeBytes())
+	})
+
+	t.Run("should return an error when the file already exists remotely in the directory", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
+		require.NoError(t, err)
+
+		existing, _ := directory.NewFile("report.csv", dir.Path(), directory.WithFileSize(42))
+		loadEvt := directory.NewLoadSuccessEvent(dir, nil, []*directory.File{existing})
+		_, err = dir.Load()
+		require.NoError(t, err)
+		require.NoError(t, dir.Notify(loadEvt))
+
+		// When
+		_, err = dir.UploadFile("tmp/report.csv", false)
+
+		// Then
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, directory.ErrAlreadyExists)
+		assert.Contains(t, err.Error(), "file report.csv already exists in directory /")
+	})
+
+	t.Run("should return error when directory is not loaded", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
+		require.NoError(t, err)
+
+		// When
+		_, err = dir.UploadFile("local/report.csv", false)
+
+		// Then
+		assert.ErrorIs(t, err, directory.ErrNotLoaded)
+	})
+}
