@@ -1,6 +1,7 @@
 package directory
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -133,20 +134,17 @@ func (d *Directory) NewSubDirectory(name string) (CreatedEvent, error) {
 }
 
 // NewFile creates a new fileObj in the current directory
-// returns an error when the fileObj name is not valid or if the fileObj already exists
-func (d *Directory) NewFile(name string, opts ...FileOption) (FileCreatedEvent, error) {
-	files, err := d.currentState.Files()
-	if err != nil {
-		return FileCreatedEvent{}, fmt.Errorf("failed to get files: %w", err)
-	}
+// returns an error when the file name is not valid or if the file already exists if overwrite is false
+func (d *Directory) NewFile(name string, overwrite bool, opts ...FileOption) (FileCreatedEvent, error) {
 	file, err := NewFile(name, d.Path(), opts...)
 	if err != nil {
-		return FileCreatedEvent{}, fmt.Errorf("failed to create fileObj: %w", err)
+		return FileCreatedEvent{}, fmt.Errorf("failed to create file: %w", err)
 	}
-	for _, f := range files {
-		if f.Is(file) {
-			return FileCreatedEvent{}, fmt.Errorf("fileObj %s already exists in directory %s", name, d.path)
-		}
+
+	if !overwrite && d.IsFileExists(file.Name()) {
+		return FileCreatedEvent{}, errors.Join(
+			ErrAlreadyExists,
+			fmt.Errorf("file %s already exists in directory %s", name, d.path))
 	}
 
 	return NewFileCreatedEvent(d.connectionID, file), nil
@@ -179,17 +177,8 @@ func (d *Directory) RemoveSubDirectory(name string) (DeletedEvent, error) {
 	return DeletedEvent{}, ErrNotFound
 }
 
-func (d *Directory) UploadFile(localPath string) (ContentUploadedEvent, error) {
-	fileName := filepath.Base(localPath)
-	newFileEvt, err := d.NewFile(fileName)
-	if err != nil {
-		return ContentUploadedEvent{}, err
-	}
-	newFile := newFileEvt.File()
-
-	uploadedEvt := NewContentUploadedEvent(d, NewFileContent(newFile, FromLocalFile(localPath)))
-
-	return uploadedEvt, nil
+func (d *Directory) UploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error) {
+	return d.currentState.UploadFile(localPath, overwrite)
 }
 
 // Notify processes of various event types and updates the state of the directory accordingly.
@@ -218,7 +207,8 @@ func (d *Directory) Notify(evt event.Event) error {
 		}
 		for i, file := range files {
 			if file.Is(e.File()) {
-				if err := d.currentState.SetFiles(append(files[:i], files[i+1:]...)); err != nil {
+				newFiles := append(files[:i], files[i+1:]...)
+				if err := d.currentState.SetFiles(newFiles); err != nil {
 					return fmt.Errorf("failed to remove file: %w", err)
 				}
 				return nil
@@ -247,7 +237,7 @@ func (d *Directory) Notify(evt event.Event) error {
 
 	case ContentUploadedEventType.AsSuccess():
 		e := evt.(ContentUploadedSuccessEvent)
-		newFile := e.Content().File()
+		newFile := e.File()
 		files, err := d.currentState.Files()
 		if err != nil {
 			return fmt.Errorf("failed to get files: %w", err)
@@ -368,4 +358,17 @@ func (d *Directory) Close() {
 
 func (d *Directory) setState(state State) {
 	d.currentState = state
+}
+
+func (d *Directory) uploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error) {
+	fileName := filepath.Base(localPath)
+	newFileEvt, err := d.NewFile(fileName, overwrite)
+	if err != nil {
+		return ContentUploadedEvent{}, err
+	}
+	newFile := newFileEvt.File()
+
+	uploadedEvt := NewContentUploadedEvent(d, NewFileContent(newFile, FromLocalFile(localPath)))
+
+	return uploadedEvt, nil
 }

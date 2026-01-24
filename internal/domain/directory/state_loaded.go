@@ -35,17 +35,15 @@ func (s *LoadedState) Files() ([]*File, error) {
 }
 
 func (s *LoadedState) SetFiles(files []*File) error {
-	if len(files) == 0 {
-		return nil
-	}
 	s.files = files
 	return nil
 }
 
 func (s *LoadedState) SetSubDirectories(subDirs []*Directory) error {
-	if len(subDirs) == 0 {
-		return nil
-	}
 	s.subDirs = subDirs
 	return nil
+}
+
+func (s *LoadedState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {
+	return s.d.uploadFile(localPtah, overwrite)
 }

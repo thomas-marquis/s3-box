@@ -3,6 +3,8 @@ package infrastructure_test
 import (
 	"context"
 	"io"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -359,5 +361,135 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 		resContent, err = io.ReadAll(f)
 		assert.NoError(t, err)
 		assert.Equal(t, "lolo", string(resContent))
+	})
+}
+
+func TestS3DirectoryRepository_Download(t *testing.T) {
+	ctx := context.Background()
+	endpoint, terminate := setupS3testContainer(ctx, t)
+	defer terminate()
+	client := setupS3Client(t, endpoint)
+
+	bucketName := "test-bucket"
+
+	setupS3Bucket(ctx, t, client, bucketName, []fakeS3Object{
+		{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("download-me")},
+	})
+
+	fakeConnID := connection_deck.NewConnectionID()
+	fakeDeck := connection_deck.New()
+	fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, bucketName,
+		connection_deck.AsS3Like(endpoint, false),
+		connection_deck.WithID(fakeConnID))
+
+	t.Run("should download file content and publish success", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+
+		fakeEventChan := make(chan event.Event, 1)
+		defer close(fakeEventChan)
+
+		mockBus.EXPECT().
+			Subscribe().
+			Return(fakeEventChan)
+
+		mockConnRepo.EXPECT().
+			Get(gomock.AssignableToTypeOf(ctxType)).
+			Return(fakeDeck, nil).
+			Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(gomock.Cond(func(evt event.Event) bool {
+				// Then
+				e, ok := evt.(directory.ContentDownloadedSuccessEvent)
+				res := assert.True(t, ok) &&
+					assert.Equal(t, "file_in_dir.txt", e.Content().File().Name().String())
+				close(done)
+				return res
+			})).
+			Times(1)
+
+		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		require.NoError(t, err)
+
+		file, err := directory.NewFile("file_in_dir.txt", directory.NewPath("/mydir/"))
+		require.NoError(t, err)
+
+		destPath := filepath.Join(t.TempDir(), "file_in_dir.txt")
+		content := directory.NewFileContent(file, directory.FromLocalFile(destPath), directory.WithOpenModeWrite())
+
+		// When
+		fakeEventChan <- directory.NewContentDownloadedEvent(fakeConnID, content)
+		assert.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+				return false
+			}
+		}, 5*time.Second, 100*time.Millisecond)
+
+		downloaded, err := os.ReadFile(destPath)
+		require.NoError(t, err)
+		assert.Equal(t, "download-me", string(downloaded))
+	})
+
+	t.Run("should publish failure when object is missing", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+
+		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(1)
+
+		fakeEventChan := make(chan event.Event, 1)
+		defer close(fakeEventChan)
+
+		mockBus.EXPECT().
+			Subscribe().
+			Return(fakeEventChan)
+
+		mockConnRepo.EXPECT().
+			Get(gomock.AssignableToTypeOf(ctxType)).
+			Return(fakeDeck, nil).
+			Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(gomock.Cond(func(evt event.Event) bool {
+				// Then
+				e, ok := evt.(directory.ContentDownloadedFailureEvent)
+				res := assert.True(t, ok) &&
+					assert.Error(t, e.Error()) &&
+					assert.ErrorIs(t, e.Error(), directory.ErrNotFound)
+				close(done)
+				return res
+			})).
+			Times(1)
+
+		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		require.NoError(t, err)
+
+		file, err := directory.NewFile("missing.txt", directory.NewPath("/mydir/"))
+		require.NoError(t, err)
+
+		destPath := filepath.Join(t.TempDir(), "missing.txt")
+		content := directory.NewFileContent(file, directory.FromLocalFile(destPath), directory.WithOpenModeWrite())
+
+		// When
+		fakeEventChan <- directory.NewContentDownloadedEvent(fakeConnID, content)
+		assert.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+				return false
+			}
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 }

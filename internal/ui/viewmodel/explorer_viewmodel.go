@@ -57,7 +57,7 @@ type ExplorerViewModel interface {
 	DownloadFile(f *directory.File, dest string)
 
 	// UploadFile uploads a local file to the specified remote directory
-	UploadFile(localPath string, dir *directory.Directory)
+	UploadFile(localPath string, dir *directory.Directory, overwrite bool) error
 
 	// DeleteFile removes a file from storage and updates the tree
 	DeleteFile(file *directory.File)
@@ -187,29 +187,33 @@ func (vm *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
 	vm.bus.Publish(evt)
 }
 
-func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory) {
+func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Directory, overwrite bool) error {
 	if vm.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
 		vm.notifier.NotifyError(err)
 		vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
-		return
+		return nil
 	}
 
-	evt, err := dir.UploadFile(localPath)
+	evt, err := dir.UploadFile(localPath, overwrite)
 	if err != nil {
+		if errors.Is(err, directory.ErrAlreadyExists) {
+			return err
+		}
 		err := fmt.Errorf("error uploading file: %w", err)
 		vm.notifier.NotifyError(err)
 		vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
-		return
+		return nil
 	}
 	vm.bus.Publish(evt)
+	return nil
 }
 
 func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) {
 	dirNodeItem, err := vm.tree.GetValue(file.DirectoryPath().String())
 	if err != nil {
 		panic(
-			fmt.Sprintf("impossible to retreive the direcotry you want to refresh: %s",
+			fmt.Sprintf("impossible to retrieve the directory you want to refresh: %s",
 				file.DirectoryPath().String()))
 	}
 
@@ -222,7 +226,7 @@ func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) {
 	evt, err := parent.RemoveFile(file.Name())
 	if err != nil {
 		vm.bus.Publish(directory.NewFileDeletedFailureEvent(
-			fmt.Errorf("error removing file from tthe direcory %s: %w", parent.Path(), err), parent))
+			fmt.Errorf("error removing file from the directory %s: %w", parent.Path(), err), parent))
 		return
 	}
 	vm.bus.Publish(evt)
@@ -360,16 +364,17 @@ func (vm *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Direc
 }
 
 func (vm *explorerViewModelImpl) addNewFileToTree(fileToAdd *directory.File) error {
+	fileNodePath := fileToAdd.FullPath()
+	if _, err := vm.tree.GetValue(fileNodePath); err == nil {
+		vm.tree.SetValue(fileNodePath, node.NewFileNode(fileToAdd)) //nolint:errcheck
+		return nil
+	}
+
 	newFileNode := node.NewFileNode(fileToAdd)
-	if err := vm.tree.Append(fileToAdd.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
-		return fmt.Errorf("error appending file to tree: %w", err)
+	if err := vm.tree.Prepend(fileToAdd.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
+		return fmt.Errorf("error appending file to the tree: %w", err)
 	}
 	return nil
-}
-
-func (vm *explorerViewModelImpl) removeFileFromTree(file *directory.File) error {
-	fileNodePath := file.FullPath()
-	return vm.tree.Remove(fileNodePath)
 }
 
 func (vm *explorerViewModelImpl) listenEvents() {
@@ -409,7 +414,7 @@ func (vm *explorerViewModelImpl) listenEvents() {
 
 		case directory.ContentUploadedEventType.AsSuccess():
 			e := evt.(directory.ContentUploadedSuccessEvent)
-			if err := vm.addNewFileToTree(e.Content().File()); err != nil {
+			if err := vm.addNewFileToTree(e.File()); err != nil {
 				vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, e.Directory()))
 				continue
 			}
@@ -417,14 +422,14 @@ func (vm *explorerViewModelImpl) listenEvents() {
 				vm.notifier.NotifyError(err)
 				continue
 			}
+			fyne.CurrentApp().SendNotification(fyne.NewNotification("File upload", "success"))
 
 		case directory.ContentUploadedEventType.AsFailure():
 			e := evt.(directory.ContentUploadedFailureEvent)
-			if err := e.Directory().Notify(e); err != nil {
-				vm.notifier.NotifyError(err)
-				continue
-			}
 			err := fmt.Errorf("error uploading file: %w", e.Error())
+			if notifErr := e.Directory().Notify(e); notifErr != nil {
+				err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
+			}
 			vm.notifier.NotifyError(err)
 			vm.errorMessage.Set(err.Error()) //nolint:errcheck
 
@@ -451,16 +456,18 @@ func (vm *explorerViewModelImpl) listenEvents() {
 		case directory.FileDeletedEventType.AsSuccess():
 			e := evt.(directory.FileDeletedSuccessEvent)
 
-			if err := vm.removeFileFromTree(e.File()); err != nil {
-				vm.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
-				continue
-			}
 			if err := e.Parent().Notify(e); err != nil {
 				vm.notifier.NotifyError(err)
 				continue
 			}
-			vm.infoMessage.Set( //nolint:errcheck
-				fmt.Sprintf("File %s deleted", e.File().Name()))
+
+			if err := vm.tree.Remove(e.File().FullPath()); err != nil {
+				vm.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
+				continue
+			}
+
+			fyne.CurrentApp().SendNotification(fyne.NewNotification("File deleted",
+				fmt.Sprintf("File %s deleted", e.File().Name())))
 
 		case directory.FileDeletedEventType.AsFailure():
 			e := evt.(directory.FileDeletedFailureEvent)
@@ -473,20 +480,12 @@ func (vm *explorerViewModelImpl) listenEvents() {
 			vm.errorMessage.Set(err.Error()) //nolint:errcheck
 
 		case directory.ContentDownloadEventType.AsSuccess():
-			e := evt.(directory.ContentUploadedSuccessEvent)
-			if err := e.Directory().Notify(e); err != nil {
-				vm.notifier.NotifyError(err)
-				continue
-			}
+			e := evt.(directory.ContentDownloadedSuccessEvent)
 			vm.infoMessage.Set( //nolint:errcheck
 				fmt.Sprintf("File %s downloaded", e.Content().File().Name()))
 
 		case directory.ContentDownloadEventType.AsFailure():
-			e := evt.(directory.ContentUploadedFailureEvent)
-			if err := e.Directory().Notify(e); err != nil {
-				vm.notifier.NotifyError(err)
-				continue
-			}
+			e := evt.(directory.ContentDownloadedFailureEvent)
 			err := fmt.Errorf("error downloading file: %w", e.Error())
 			vm.notifier.NotifyError(err)
 			vm.errorMessage.Set(err.Error()) //nolint:errcheck

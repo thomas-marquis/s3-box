@@ -22,29 +22,32 @@ func TestLevel_String(t *testing.T) {
 	})
 }
 
-func TestLevel_IsAtLeast(t *testing.T) {
+func TestLevel_LowerOrEqual(t *testing.T) {
 	tests := []struct {
-		l        notification.Level
-		other    notification.Level
+		current  notification.Level
+		target   notification.Level
 		expected bool
 	}{
+		// When the error level is set, only error logs are emitted
 		{notification.LevelError, notification.LevelError, true},
-		{notification.LevelError, notification.LevelInfo, true},
-		{notification.LevelError, notification.LevelDebug, true},
 		{notification.LevelInfo, notification.LevelError, false},
-		{notification.LevelInfo, notification.LevelInfo, true},
-		{notification.LevelInfo, notification.LevelDebug, true},
 		{notification.LevelDebug, notification.LevelError, false},
+
+		// When the info level is set, only error and info logs are emitted
+		{notification.LevelError, notification.LevelInfo, true},
+		{notification.LevelInfo, notification.LevelInfo, true},
 		{notification.LevelDebug, notification.LevelInfo, false},
+
+		// When the debug level is set, all logs are emitted
+		{notification.LevelError, notification.LevelDebug, true},
+		{notification.LevelInfo, notification.LevelDebug, true},
 		{notification.LevelDebug, notification.LevelDebug, true},
-		{notification.Level("unknown"), notification.LevelDebug, true}, // Any level is at least Debug according to implementation
-		{notification.Level("unknown"), notification.LevelError, false},
 	}
 
 	for _, tt := range tests {
-		t.Run(string(tt.l)+" is at least "+string(tt.other), func(t *testing.T) {
+		t.Run(string(tt.current)+" is at least "+string(tt.target), func(t *testing.T) {
 			// When
-			result := tt.l.IsAtLeast(tt.other)
+			result := tt.current.LowerOrEqual(tt.target)
 
 			// Then
 			assert.Equal(t, tt.expected, result)

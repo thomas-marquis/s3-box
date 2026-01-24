@@ -34,14 +34,14 @@ func NewContentUploadedEvent(directory *Directory, content *Content, opts ...eve
 
 type ContentUploadedSuccessEvent struct {
 	event.BaseEvent
-	withContent
+	withFile
 	withDirectory
 }
 
-func NewContentUploadedSuccessEvent(directory *Directory, content *Content, opts ...event.Option) ContentUploadedSuccessEvent {
+func NewContentUploadedSuccessEvent(directory *Directory, file *File, opts ...event.Option) ContentUploadedSuccessEvent {
 	return ContentUploadedSuccessEvent{
 		event.NewBaseEvent(ContentUploadedEventType.AsSuccess(), opts...),
-		withContent{content},
+		withFile{file},
 		withDirectory{directory},
 	}
 }

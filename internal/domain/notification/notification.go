@@ -8,8 +8,8 @@ func (l Level) String() string {
 	return string(l)
 }
 
-func (l Level) IsAtLeast(other Level) bool {
-	switch other {
+func (l Level) LowerOrEqual(target Level) bool {
+	switch target {
 	case LevelDebug:
 		return true
 	case LevelInfo:

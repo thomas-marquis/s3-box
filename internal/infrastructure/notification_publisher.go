@@ -31,19 +31,19 @@ func (p *notificationPublisher) Notify(notification notification.Notification) {
 }
 
 func (p *notificationPublisher) NotifyError(err error) {
-	if p.level.IsAtLeast(notification.LevelError) {
+	if notification.LevelError.LowerOrEqual(p.level) {
 		p.Notify(notification.NewError(err))
 	}
 }
 
 func (p *notificationPublisher) NotifyInfo(message string) {
-	if p.level.IsAtLeast(notification.LevelInfo) {
+	if notification.LevelInfo.LowerOrEqual(p.level) {
 		p.Notify(notification.NewInfo(message))
 	}
 }
 
 func (p *notificationPublisher) NotifyDebug(message string) {
-	if p.level.IsAtLeast(notification.LevelDebug) {
+	if notification.LevelDebug.LowerOrEqual(p.level) {
 		p.Notify(notification.NewDebug(message))
 	}
 }

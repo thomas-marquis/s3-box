@@ -89,5 +89,5 @@ func (f *File) FullPath() string {
 }
 
 func (f *File) Download(connID connection_deck.ConnectionID, toPath string) ContentDownloadedEvent {
-	return NewContentDownloadedEvent(connID, NewFileContent(f, FromLocalFile(toPath)))
+	return NewContentDownloadedEvent(connID, NewFileContent(f, FromLocalFile(toPath), WithOpenModeWrite()))
 }

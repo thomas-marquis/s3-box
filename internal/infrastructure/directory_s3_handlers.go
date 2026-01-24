@@ -3,7 +3,6 @@ package infrastructure
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -58,37 +57,49 @@ func (r *S3DirectoryRepository) handleFileDeletion(ctx context.Context, evt dire
 	return nil
 }
 
-func (r *S3DirectoryRepository) handleUpload(ctx context.Context, evt directory.ContentUploadedEvent) error {
+func (r *S3DirectoryRepository) handleUpload(ctx context.Context, evt directory.ContentUploadedEvent) (*directory.File, error) {
 	sess, err := r.getSession(ctx, evt.Directory().ConnectionID())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	content := evt.Content()
 	if content == nil {
-		return fmt.Errorf("content is nil for upload event")
+		return nil, fmt.Errorf("content is nil for upload event")
 	}
 
 	fileObj, err := content.Open()
 	if err != nil {
-		return fmt.Errorf("failed opening the file to upload: %w", err)
+		return nil, fmt.Errorf("failed opening the file to upload: %w", err)
 	}
-	defer func(fileObj io.ReadCloser) {
-		if err := fileObj.Close(); err != nil {
-			logger.Printf("failed closing file: %v", err)
-		}
-	}(fileObj)
+	defer fileObj.Close() //nolint:errcheck
 
-	uploader := s3manager.NewUploader(sess.client)
-	if _, err = uploader.Upload(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(sess.connection.Bucket()),
-		Key:    aws.String(mapFileToKey(content.File())),
-		Body:   fileObj,
+	info, err := fileObj.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("failed reading the file info: %w", err)
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("failed opening the file to upload: path is a directory")
+	}
+
+	if _, err = sess.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:        aws.String(sess.connection.Bucket()),
+		Key:           aws.String(mapFileToKey(content.File())),
+		Body:          fileObj,
+		ContentLength: aws.Int64(info.Size()),
 	}); err != nil {
-		return r.manageAwsSdkError(err, content.File().FullPath(), sess)
+		return nil, r.manageAwsSdkError(err, content.File().FullPath(), sess)
 	}
 
-	return nil
+	uploadedFile, err := directory.NewFile(
+		content.File().Name().String(), content.File().DirectoryPath(),
+		directory.WithFileSize(int(info.Size())),
+		directory.WithFileLastModified(info.ModTime()))
+	if err != nil {
+		return nil, fmt.Errorf("failed creating uploaded file: %w", err)
+	}
+
+	return uploadedFile, nil
 }
 
 func (r *S3DirectoryRepository) handleDownload(ctx context.Context, evt directory.ContentDownloadedEvent) error {

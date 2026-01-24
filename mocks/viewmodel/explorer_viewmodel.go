@@ -262,13 +262,15 @@ func (mr *MockExplorerViewModelMockRecorder) UpdateLastUploadLocation(filePath a
 }
 
 // UploadFile mocks base method.
-func (m *MockExplorerViewModel) UploadFile(localPath string, dir *directory.Directory) {
+func (m *MockExplorerViewModel) UploadFile(localPath string, dir *directory.Directory, overwrite bool) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "UploadFile", localPath, dir)
+	ret := m.ctrl.Call(m, "UploadFile", localPath, dir, overwrite)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // UploadFile indicates an expected call of UploadFile.
-func (mr *MockExplorerViewModelMockRecorder) UploadFile(localPath, dir any) *gomock.Call {
+func (mr *MockExplorerViewModelMockRecorder) UploadFile(localPath, dir, overwrite any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadFile", reflect.TypeOf((*MockExplorerViewModel)(nil).UploadFile), localPath, dir)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadFile", reflect.TypeOf((*MockExplorerViewModel)(nil).UploadFile), localPath, dir, overwrite)
 }
