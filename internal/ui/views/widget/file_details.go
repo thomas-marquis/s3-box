@@ -162,7 +162,7 @@ func (w *FileDetails) Select(file *directory.File) {
 			if err := vm.UpdateLastDownloadLocation(localDestFilePath); err != nil { //nolint:staticcheck
 				// TODO: handle error
 			}
-			dialog.ShowInformation("Download", "File downloaded", w.appCtx.Window())
+			fyne.CurrentApp().SendNotification(fyne.NewNotification("File download", "success"))
 		}, w.appCtx.Window())
 		saveDialog.SetFileName(file.Name().String())
 		saveDialog.SetLocation(vm.LastDownloadLocation())

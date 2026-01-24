@@ -207,7 +207,8 @@ func (d *Directory) Notify(evt event.Event) error {
 		}
 		for i, file := range files {
 			if file.Is(e.File()) {
-				if err := d.currentState.SetFiles(append(files[:i], files[i+1:]...)); err != nil {
+				newFiles := append(files[:i], files[i+1:]...)
+				if err := d.currentState.SetFiles(newFiles); err != nil {
 					return fmt.Errorf("failed to remove file: %w", err)
 				}
 				return nil

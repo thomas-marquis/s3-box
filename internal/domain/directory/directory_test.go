@@ -162,7 +162,7 @@ func TestDirectory_Load(t *testing.T) {
 }
 
 func TestDirectory_RemoveFile(t *testing.T) {
-	t.Run("should create file deleted event when file exists", func(t *testing.T) {
+	t.Run("should create file deleted event when file exists, then recreated", func(t *testing.T) {
 		// Given
 		connID := connection_deck.NewConnectionID()
 		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
@@ -190,6 +190,57 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		assert.NoError(t, dir.Notify(successEvt))
 		resFiles, _ := dir.Files()
 		assert.Len(t, resFiles, 1)
+
+		// Then, we recreate the deleted file
+		newFileEvt, err := dir.NewFile("main.go", false)
+		assert.NoError(t, err)
+
+		newFileSuccessEvt := directory.NewFileCreatedSuccessEvent(newFileEvt.File())
+		assert.NoError(t, dir.Notify(newFileSuccessEvt))
+
+		resFiles, _ = dir.Files()
+		assert.Len(t, resFiles, 2)
+		assert.Equal(t, "main.go", resFiles[1].Name().String())
+	})
+
+	t.Run("should create file deleted event when file exists, then re-uploaded", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
+		require.NoError(t, err)
+
+		f1, _ := directory.NewFile("main.go", dir.Path())
+		loadEvt := directory.NewLoadSuccessEvent(dir, nil, []*directory.File{f1})
+
+		_, err = dir.Load()
+		require.NoError(t, err)
+		require.NoError(t, dir.Notify(loadEvt))
+
+		successEvt := directory.NewFileDeletedSuccessEvent(dir, f1)
+
+		// When
+		evt, err := dir.RemoveFile(f1.Name())
+
+		// Then
+		assert.NoError(t, err)
+		assert.Equal(t, directory.FileDeletedEventType, evt.Type())
+		assert.Equal(t, dir, evt.Parent())
+		assert.Equal(t, f1, evt.File())
+
+		assert.NoError(t, dir.Notify(successEvt))
+		resFiles, _ := dir.Files()
+		assert.Len(t, resFiles, 0)
+
+		// Then, we upload again the deleted file
+		uploadFileEvt, err := dir.UploadFile("project/src/main.go", false)
+		assert.NoError(t, err)
+
+		uploadedSuccessFileEvt := directory.NewContentUploadedSuccessEvent(dir, uploadFileEvt.Content().File())
+		assert.NoError(t, dir.Notify(uploadedSuccessFileEvt))
+
+		resFiles, _ = dir.Files()
+		assert.Len(t, resFiles, 1)
+		assert.Equal(t, "main.go", resFiles[0].Name().String())
 	})
 
 	t.Run("should return error when file does not exist", func(t *testing.T) {

@@ -157,19 +157,22 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 			}
 
 			localDestFilePath := reader.URI().Path()
-			if err := vm.UploadFile(localDestFilePath, dir, false); err != nil && errors.Is(err, directory.ErrAlreadyExists) {
-				dialog.ShowConfirm(
-					"This file already exists",
-					"Do you want to overwrite it?",
-					func(b bool) {
-						if b {
-							if err := vm.UploadFile(localDestFilePath, dir, true); err != nil {
-								dialog.ShowError(err, w.appCtx.Window())
+			if err := vm.UploadFile(localDestFilePath, dir, false); err != nil {
+				if errors.Is(err, directory.ErrAlreadyExists) {
+					dialog.ShowConfirm(
+						"This file already exists",
+						"Do you want to overwrite it?",
+						func(b bool) {
+							if b {
+								if err := vm.UploadFile(localDestFilePath, dir, true); err != nil {
+									dialog.ShowError(err, w.appCtx.Window())
+								}
 							}
-						}
-					},
-					w.appCtx.Window())
-				return
+						},
+						w.appCtx.Window())
+					return
+				}
+				dialog.ShowError(err, w.appCtx.Window())
 			}
 			vm.UpdateLastUploadLocation(localDestFilePath)
 		}, w.appCtx.Window())

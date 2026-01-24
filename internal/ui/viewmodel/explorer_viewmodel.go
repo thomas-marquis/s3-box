@@ -213,7 +213,7 @@ func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) {
 	dirNodeItem, err := vm.tree.GetValue(file.DirectoryPath().String())
 	if err != nil {
 		panic(
-			fmt.Sprintf("impossible to retreive the direcotry you want to refresh: %s",
+			fmt.Sprintf("impossible to retrieve the directory you want to refresh: %s",
 				file.DirectoryPath().String()))
 	}
 
@@ -226,7 +226,7 @@ func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) {
 	evt, err := parent.RemoveFile(file.Name())
 	if err != nil {
 		vm.bus.Publish(directory.NewFileDeletedFailureEvent(
-			fmt.Errorf("error removing file from tthe direcory %s: %w", parent.Path(), err), parent))
+			fmt.Errorf("error removing file from the directory %s: %w", parent.Path(), err), parent))
 		return
 	}
 	vm.bus.Publish(evt)
@@ -456,16 +456,18 @@ func (vm *explorerViewModelImpl) listenEvents() {
 		case directory.FileDeletedEventType.AsSuccess():
 			e := evt.(directory.FileDeletedSuccessEvent)
 
-			if err := vm.tree.Remove(e.File().FullPath()); err != nil {
-				vm.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
-				continue
-			}
 			if err := e.Parent().Notify(e); err != nil {
 				vm.notifier.NotifyError(err)
 				continue
 			}
-			vm.infoMessage.Set( //nolint:errcheck
-				fmt.Sprintf("File %s deleted", e.File().Name()))
+
+			if err := vm.tree.Remove(e.File().FullPath()); err != nil {
+				vm.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
+				continue
+			}
+
+			fyne.CurrentApp().SendNotification(fyne.NewNotification("File deleted",
+				fmt.Sprintf("File %s deleted", e.File().Name())))
 
 		case directory.FileDeletedEventType.AsFailure():
 			e := evt.(directory.FileDeletedFailureEvent)
