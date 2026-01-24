@@ -172,7 +172,6 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 				return
 			}
 			vm.UpdateLastUploadLocation(localDestFilePath)
-			dialog.ShowInformation("Upload", "File uploaded", w.appCtx.Window())
 		}, w.appCtx.Window())
 
 		selectDialog.SetLocation(vm.LastUploadLocation())

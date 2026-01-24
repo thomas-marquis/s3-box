@@ -342,7 +342,8 @@ func TestDirectory_UploadFile(t *testing.T) {
 		assert.Equal(t, dir, evt.Directory())
 		assert.Equal(t, "report.csv", evt.Content().File().Name().String())
 
-		successEvt := directory.NewContentUploadedSuccessEvent(dir, evt.Content())
+		file, _ := directory.NewFile("report.csv", dir.Path())
+		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
 		files, _ := dir.Files()
@@ -375,7 +376,8 @@ func TestDirectory_UploadFile(t *testing.T) {
 		assert.Equal(t, dir, evt.Directory())
 		assert.Equal(t, "report.csv", evt.Content().File().Name().String())
 
-		successEvt := directory.NewContentUploadedSuccessEvent(dir, evt.Content())
+		file, _ := directory.NewFile("report.csv", dir.Path())
+		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
 		resFiles, _ := dir.Files()
@@ -397,18 +399,23 @@ func TestDirectory_UploadFile(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
+		file, _ := directory.NewFile("tmp/report.csv", dir.Path(), directory.WithFileSize(1337))
+
 		// When
 		evt, err := dir.UploadFile("tmp/report.csv", true)
 
 		// Then
 		assert.NoError(t, err)
-		successEvt := directory.NewContentUploadedSuccessEvent(dir, evt.Content())
+		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
+
+		assert.Equal(t, "report.csv", evt.Content().File().Name().String())
 
 		files, _ := dir.Files()
 		require.Len(t, files, 1)
-		assert.True(t, files[0].Equal(evt.Content().File()))
-		assert.Equal(t, 0, files[0].SizeBytes())
+		assert.True(t, files[0].Equal(file))
+		assert.Equal(t, 1337, files[0].SizeBytes())
+		assert.Equal(t, "report.csv", files[0].Name().String())
 	})
 
 	t.Run("should return an error when the file already exists remotely in the directory", func(t *testing.T) {

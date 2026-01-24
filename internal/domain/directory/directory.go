@@ -236,7 +236,7 @@ func (d *Directory) Notify(evt event.Event) error {
 
 	case ContentUploadedEventType.AsSuccess():
 		e := evt.(ContentUploadedSuccessEvent)
-		newFile := e.Content().File()
+		newFile := e.File()
 		files, err := d.currentState.Files()
 		if err != nil {
 			return fmt.Errorf("failed to get files: %w", err)

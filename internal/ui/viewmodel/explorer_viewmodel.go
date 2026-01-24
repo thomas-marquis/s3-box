@@ -414,7 +414,7 @@ func (vm *explorerViewModelImpl) listenEvents() {
 
 		case directory.ContentUploadedEventType.AsSuccess():
 			e := evt.(directory.ContentUploadedSuccessEvent)
-			if err := vm.addNewFileToTree(e.Content().File()); err != nil {
+			if err := vm.addNewFileToTree(e.File()); err != nil {
 				vm.bus.Publish(directory.NewContentUploadedFailureEvent(err, e.Directory()))
 				continue
 			}
@@ -422,14 +422,14 @@ func (vm *explorerViewModelImpl) listenEvents() {
 				vm.notifier.NotifyError(err)
 				continue
 			}
+			fyne.CurrentApp().SendNotification(fyne.NewNotification("File upload", "success"))
 
 		case directory.ContentUploadedEventType.AsFailure():
 			e := evt.(directory.ContentUploadedFailureEvent)
-			if err := e.Directory().Notify(e); err != nil {
-				vm.notifier.NotifyError(err)
-				continue
-			}
 			err := fmt.Errorf("error uploading file: %w", e.Error())
+			if notifErr := e.Directory().Notify(e); notifErr != nil {
+				err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
+			}
 			vm.notifier.NotifyError(err)
 			vm.errorMessage.Set(err.Error()) //nolint:errcheck
 
