@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -27,6 +28,7 @@ type DirectoryDetails struct {
 	toolbar            *widget.Toolbar
 	newDirectoryAction *ToolbarButton
 	uploadAction       *ToolbarButton
+	createFileAction   *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
 }
 
@@ -34,10 +36,12 @@ func NewDirectoryDetails(appCtx appcontext.AppContext, events <-chan event.Event
 	pathLabel := widget.NewLabel("")
 	pathLabel.Selectable = true
 
-	createDirAction := NewToolbarButton("New directory", theme.FolderNewIcon(), func() {})
+	createDirAction := NewToolbarButton("New empty directory", theme.FolderNewIcon(), func() {})
+	createFileAction := NewToolbarButton("New empty file", theme.ContentAddIcon(), func() {})
 	uploadAction := NewToolbarButton("Upload file", theme.UploadIcon(), func() {})
 	toolbar := widget.NewToolbar(
 		createDirAction,
+		createFileAction,
 		uploadAction,
 	)
 	loadingBar := widget.NewProgressBarInfinite()
@@ -49,6 +53,7 @@ func NewDirectoryDetails(appCtx appcontext.AppContext, events <-chan event.Event
 		toolbar:            toolbar,
 		newDirectoryAction: createDirAction,
 		uploadAction:       uploadAction,
+		createFileAction:   createFileAction,
 		loadingBar:         loadingBar,
 		currentSelectedDir: nil,
 	}
@@ -116,6 +121,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 
 	w.uploadAction.SetOnTapped(w.makeOnUpload(vm, dir))
 	w.newDirectoryAction.SetOnTapped(w.makeOnCreateDirectory(vm, dir))
+	w.createFileAction.SetOnTapped(w.makeOnCreateFile(vm, dir))
 
 	if w.appCtx.ConnectionViewModel().IsReadOnly() {
 		w.newDirectoryAction.Disable()
@@ -185,12 +191,12 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 func (w *DirectoryDetails) makeOnCreateDirectory(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
 	return func() {
 		nameEntry := widget.NewEntry()
-		dialog.ShowForm(
+		d := dialog.NewForm(
 			fmt.Sprintf("New directory under %s", dir.Name()),
 			"Create",
 			"Cancel",
 			[]*widget.FormItem{
-				widget.NewFormItem("Type", nameEntry),
+				widget.NewFormItem("Name", nameEntry),
 			},
 			func(ok bool) {
 				if !ok {
@@ -201,5 +207,42 @@ func (w *DirectoryDetails) makeOnCreateDirectory(vm viewmodel.ExplorerViewModel,
 			},
 			w.appCtx.Window(),
 		)
+		d.Resize(fyne.NewSize(400, 150))
+		d.Show()
+	}
+}
+
+func (w *DirectoryDetails) makeOnCreateFile(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
+	return func() {
+		var d *dialog.FormDialog
+		nameEntry := NewEntryWithShortcuts([]ActionShortcuts{
+			{
+				Shortcuts: []desktop.CustomShortcut{
+					{KeyName: fyne.KeyReturn, Modifier: fyne.KeyModifierControl},
+				},
+				Callback: func() {
+					d.Submit()
+				},
+			},
+		})
+		d = dialog.NewForm(
+			fmt.Sprintf("New empty file in %s", dir.Path()),
+			"Create",
+			"Cancel",
+			[]*widget.FormItem{
+				widget.NewFormItem("Name", nameEntry),
+			},
+			func(ok bool) {
+				if !ok {
+					return
+				}
+				name := nameEntry.Text
+				fmt.Println(name)
+				//vm.CreateEmptyDirectory(dir, name)
+			},
+			w.appCtx.Window(),
+		)
+		d.Resize(fyne.NewSize(400, 150))
+		d.Show()
 	}
 }
