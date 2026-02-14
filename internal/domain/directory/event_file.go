@@ -8,6 +8,7 @@ import (
 const (
 	FileCreatedEventType event.Type = "event.file.created"
 	FileDeletedEventType event.Type = "event.file.deleted"
+	FileLoadEventType    event.Type = "event.file.load"
 )
 
 type withFile struct {
@@ -101,5 +102,45 @@ func NewFileDeletedFailureEvent(err error, parent *Directory) FileDeletedFailure
 	return FileDeletedFailureEvent{
 		event.NewBaseErrorEvent(FileDeletedEventType.AsFailure(), err),
 		withParentDirectory{parent},
+	}
+}
+
+type FileLoadEvent struct {
+	event.BaseEvent
+	withFile
+	withConnectionID
+}
+
+func NewFileLoadEvent(connectionID connection_deck.ConnectionID, file *File, opts ...event.Option) FileLoadEvent {
+	return FileLoadEvent{
+		event.NewBaseEvent(FileLoadEventType, opts...),
+		withFile{file},
+		withConnectionID{connectionID},
+	}
+}
+
+type FileLoadSuccessEvent struct {
+	event.BaseEvent
+	withFile
+	Content FileObject
+}
+
+func NewFileLoadSuccessEvent(file *File, content FileObject) FileLoadSuccessEvent {
+	return FileLoadSuccessEvent{
+		event.NewBaseEvent(FileLoadEventType.AsSuccess()),
+		withFile{file},
+		content,
+	}
+}
+
+type FileLoadFailureEvent struct {
+	event.BaseErrorEvent
+	withFile
+}
+
+func NewFileLoadFailureEvent(err error, file *File) FileLoadFailureEvent {
+	return FileLoadFailureEvent{
+		event.NewBaseErrorEvent(FileLoadEventType.AsFailure(), err),
+		withFile{file},
 	}
 }

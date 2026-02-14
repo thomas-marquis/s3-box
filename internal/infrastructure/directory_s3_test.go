@@ -84,6 +84,29 @@ func setupS3Bucket(ctx context.Context, t *testing.T, client *s3.Client, bucketN
 	}
 }
 
+func getObject(t *testing.T, client *s3.Client, bucketName, key string) io.ReadCloser {
+	t.Helper()
+
+	res, err := client.GetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key),
+	})
+	require.NoError(t, err)
+
+	return res.Body
+}
+
+func putObject(t *testing.T, client *s3.Client, bucketName, key string, body io.Reader) {
+	t.Helper()
+
+	_, err := client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key),
+		Body:   body,
+	})
+	require.NoError(t, err)
+}
+
 func TestS3DirectoryRepository_Load(t *testing.T) {
 	ctx := context.Background()
 	endpoint, terminate := setupS3testContainer(ctx, t)

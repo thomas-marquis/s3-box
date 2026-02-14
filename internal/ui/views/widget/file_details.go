@@ -1,7 +1,9 @@
 package widget
 
 import (
+	"context"
 	"fmt"
+	"io"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -31,6 +33,7 @@ type FileDetails struct {
 	downloadAction *ToolbarButton
 	previewAction  *ToolbarButton
 	deleteAction   *ToolbarButton
+	editAction     *ToolbarButton
 
 	fileSizeBinding     binding.String
 	lastModifiedBinding binding.String
@@ -54,6 +57,7 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		downloadAction: NewToolbarButton("Download", theme.DownloadIcon(), func() {}),
 		previewAction:  NewToolbarButton("Preview", theme.VisibilityIcon(), func() {}),
 		deleteAction:   NewToolbarButton("Delete", theme.DeleteIcon(), func() {}),
+		editAction:     NewToolbarButton("Edit", theme.DocumentCreateIcon(), func() {}),
 
 		currentSelectedFile: nil,
 	}
@@ -85,6 +89,7 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 	actionToolbar := widget.NewToolbar(
 		w.downloadAction,
 		w.previewAction,
+		w.editAction,
 		w.deleteAction,
 	)
 
@@ -147,6 +152,61 @@ func (w *FileDetails) Select(file *directory.File) {
 	} else {
 		w.previewAction.Disable()
 	}
+
+	w.editAction.SetOnTapped(func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		editWin := fyne.CurrentApp().NewWindow("Edit File")
+
+		contentChan, errChan, err := w.appCtx.ExplorerViewModel().LoadFile(ctx, file)
+		if err != nil {
+			vm.ErrorMessage().Set(err.Error())
+			return
+		}
+
+		fileContent := binding.NewString()
+		errorMsg := binding.NewString()
+		isLoaded := binding.NewBool()
+
+		editor := NewFileEditor(fileContent, errorMsg, isLoaded, editWin)
+
+		go func() {
+			select {
+			case content := <-contentChan:
+				if _, err := content.Seek(0, io.SeekStart); err != nil {
+					errorMsg.Set(err.Error())
+					isLoaded.Set(true)
+					return
+				}
+				val, err := io.ReadAll(content)
+				if err != nil {
+					errorMsg.Set(err.Error())
+					isLoaded.Set(true)
+					return
+				}
+				editor.OnSave = func(newContent string) error {
+					if _, err := content.Seek(0, io.SeekStart); err != nil {
+						return err
+					}
+					if _, err := fmt.Fprint(content, newContent); err != nil { // TODO: blocking operation
+						return err
+					}
+					return nil
+				}
+				fileContent.Set(string(val))
+				isLoaded.Set(true)
+			case err := <-errChan:
+				errorMsg.Set(err.Error())
+				isLoaded.Set(true)
+				return
+			}
+		}()
+
+		editWin.SetOnClosed(cancel)
+		editWin.SetContent(editor)
+		editWin.SetFixedSize(false)
+		editWin.Resize(fyne.NewSize(700, 500))
+		editWin.Show()
+	})
 
 	w.downloadAction.SetOnTapped(func() {
 		saveDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {

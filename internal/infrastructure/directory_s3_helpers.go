@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/logging"
@@ -91,6 +92,8 @@ func (r *S3DirectoryRepository) getSession(ctx context.Context, id connection_de
 	s := &s3Session{
 		client:     s3Client,
 		connection: conn,
+		downloader: manager.NewDownloader(s3Client),
+		uploader:   manager.NewUploader(s3Client),
 	}
 	r.Lock()
 	defer r.Unlock()

@@ -186,3 +186,12 @@ func (r *S3DirectoryRepository) handleLoading(ctx context.Context, evt directory
 
 	return subDirectories, files, nil
 }
+
+func (r *S3DirectoryRepository) handleLoadFile(ctx context.Context, evt directory.FileLoadEvent) (directory.FileObject, error) {
+	sess, err := r.getSession(ctx, evt.ConnectionID())
+	if err != nil {
+		return nil, err
+	}
+
+	return NewS3Object(ctx, sess.downloader, sess.uploader, sess.connection, evt.File())
+}

@@ -3,6 +3,7 @@ package viewmodel
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 
@@ -46,7 +47,7 @@ type ExplorerViewModel interface {
 	// Action methods
 	////////////////////////
 
-	// LoadDirectory sync a directory with the actual s3 one and load its files dans children.
+	// LoadDirectory sync a directory with the actual s3 one and load its files and children.
 	// If the directory is already open, it will do nothing.
 	LoadDirectory(dirNode node.DirectoryNode) error // TODO: use this method for refreshing the content too
 
@@ -58,6 +59,9 @@ type ExplorerViewModel interface {
 
 	// UploadFile uploads a local file to the specified remote directory
 	UploadFile(localPath string, dir *directory.Directory, overwrite bool) error
+
+	// LoadFile fetches a file's content in memory
+	LoadFile(ctx context.Context, file *directory.File) (<-chan directory.FileObject, <-chan error, error)
 
 	// DeleteFile removes a file from storage and updates the tree
 	DeleteFile(file *directory.File)
@@ -207,6 +211,57 @@ func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Dir
 	}
 	vm.bus.Publish(evt)
 	return nil
+}
+
+func (vm *explorerViewModelImpl) LoadFile(ctx context.Context, file *directory.File) (<-chan directory.FileObject, <-chan error, error) {
+	if vm.selectedConnectionVal == nil {
+		err := ErrNoConnectionSelected
+		vm.notifier.NotifyError(err)
+		vm.bus.Publish(directory.NewFileLoadFailureEvent(err, file))
+		return nil, nil, nil
+	}
+
+	vm.bus.Publish(file.Load(vm.selectedConnectionVal.ID(), event.WithContext(ctx)))
+
+	var (
+		contentChan = make(chan directory.FileObject)
+		errChan     = make(chan error)
+	)
+
+	timer := time.NewTimer(vm.settingsVm.CurrentTimeout())
+
+	go func() {
+		defer close(contentChan)
+		defer close(errChan)
+
+		events := vm.bus.Subscribe(
+			directory.FileLoadEventType.AsFailure(),
+			directory.FileLoadEventType.AsSuccess(),
+		)
+
+		for {
+			select {
+			case <-timer.C:
+				errChan <- fmt.Errorf("timeout reached while loading file")
+				return
+			case evt := <-events:
+				if evt == nil {
+					continue
+				}
+				switch evt.Type() {
+				case directory.FileLoadEventType.AsFailure():
+					errChan <- fmt.Errorf("error loading file: %w", evt.(directory.FileLoadFailureEvent).Error())
+					return
+				case directory.FileLoadEventType.AsSuccess():
+					e := evt.(directory.FileLoadSuccessEvent)
+					contentChan <- e.Content
+					return
+				}
+			}
+		}
+	}()
+
+	return contentChan, errChan, nil
 }
 
 func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) {
@@ -378,7 +433,22 @@ func (vm *explorerViewModelImpl) addNewFileToTree(fileToAdd *directory.File) err
 }
 
 func (vm *explorerViewModelImpl) listenEvents() {
-	for evt := range vm.bus.Subscribe() {
+	events := vm.bus.Subscribe(
+		connection_deck.SelectEventType.AsSuccess(),
+		connection_deck.UpdateEventType.AsSuccess(),
+		connection_deck.RemoveEventType.AsSuccess(),
+		directory.ContentUploadedEventType.AsSuccess(),
+		directory.ContentUploadedEventType.AsFailure(),
+		directory.CreatedEventType.AsSuccess(),
+		directory.CreatedEventType.AsFailure(),
+		directory.FileDeletedEventType.AsSuccess(),
+		directory.FileDeletedEventType.AsFailure(),
+		directory.ContentDownloadEventType.AsSuccess(),
+		directory.ContentDownloadEventType.AsFailure(),
+		directory.LoadEventType.AsSuccess(),
+		directory.LoadEventType.AsFailure(),
+	)
+	for evt := range events {
 		switch evt.Type() {
 		case connection_deck.SelectEventType.AsSuccess(), connection_deck.UpdateEventType.AsSuccess():
 			var conn *connection_deck.Connection

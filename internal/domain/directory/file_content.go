@@ -11,6 +11,7 @@ var (
 	ErrContentWriting = errors.New("error writing file content")
 )
 
+// TODO: remove this struct
 type Content struct {
 	file                 *File
 	fileObj              *os.File
@@ -104,4 +105,10 @@ func (c *Content) Open() (*os.File, error) {
 
 func (c *Content) File() *File {
 	return c.file
+}
+
+// TODO: rename to Content
+type FileObject interface {
+	io.ReadWriteCloser
+	io.Seeker
 }
