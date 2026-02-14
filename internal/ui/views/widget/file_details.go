@@ -2,8 +2,8 @@ package widget
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -15,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/utils"
 )
 
@@ -34,6 +35,8 @@ type FileDetails struct {
 	previewAction  *ToolbarButton
 	deleteAction   *ToolbarButton
 	editAction     *ToolbarButton
+
+	actionToolbar *widget.Toolbar
 
 	fileSizeBinding     binding.String
 	lastModifiedBinding binding.String
@@ -61,6 +64,14 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 
 		currentSelectedFile: nil,
 	}
+
+	w.actionToolbar = widget.NewToolbar(
+		w.downloadAction,
+		w.previewAction,
+		w.editAction,
+		w.deleteAction,
+	)
+
 	w.ExtendBaseWidget(w)
 	return w
 }
@@ -86,13 +97,6 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 		lastModified,
 	)
 
-	actionToolbar := widget.NewToolbar(
-		w.downloadAction,
-		w.previewAction,
-		w.editAction,
-		w.deleteAction,
-	)
-
 	return widget.NewSimpleRenderer(
 		container.NewVBox(
 			container.NewBorder(nil, nil,
@@ -104,7 +108,7 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 			),
 			container.New(
 				layout.NewCustomPaddedLayout(0, 0, 5, 5),
-				actionToolbar,
+				w.actionToolbar,
 			),
 			container.New(
 				layout.NewCustomPaddedLayout(30, 0, 5, 5),
@@ -115,7 +119,16 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (w *FileDetails) Select(file *directory.File) {
-	vm := w.appCtx.ExplorerViewModel()
+	exVm := w.appCtx.ExplorerViewModel()
+	edVm := w.appCtx.EditorVewModel()
+
+	if edVm.IsOpened(file) {
+		w.editAction.Icon = theme.WindowMaximizeIcon()
+	} else {
+		w.editAction.Icon = theme.DocumentCreateIcon()
+	}
+	w.actionToolbar.Refresh()
+
 	w.currentSelectedFile = file
 
 	var path string
@@ -155,57 +168,32 @@ func (w *FileDetails) Select(file *directory.File) {
 
 	w.editAction.SetOnTapped(func() {
 		ctx, cancel := context.WithCancel(context.Background())
-		editWin := fyne.CurrentApp().NewWindow("Edit File")
 
-		contentChan, errChan, err := w.appCtx.ExplorerViewModel().LoadFile(ctx, file)
+		oe, err := edVm.Open(ctx, file)
 		if err != nil {
-			vm.ErrorMessage().Set(err.Error())
+			if !errors.Is(err, viewmodel.ErrEditorAlreadyOpened) {
+				dialog.ShowError(err, w.appCtx.Window())
+			}
+			cancel()
 			return
 		}
+		editor := NewFileEditor(oe)
 
-		fileContent := binding.NewString()
-		errorMsg := binding.NewString()
-		isLoaded := binding.NewBool()
+		oe.Window.SetOnClosed(func() {
+			cancel()
+			edVm.Close(oe)
+			w.editAction.Icon = theme.DocumentCreateIcon()
+			w.actionToolbar.Refresh()
+		})
+		oe.Window.SetContent(editor)
+		oe.Window.SetFixedSize(false)
+		oe.Window.Resize(fyne.NewSize(700, 500))
+		oe.Window.Show()
 
-		editor := NewFileEditor(fileContent, errorMsg, isLoaded, editWin)
+		w.editAction.Icon = theme.WindowMaximizeIcon()
+		w.editAction.Text = "COUCOOU"
 
-		go func() {
-			select {
-			case content := <-contentChan:
-				if _, err := content.Seek(0, io.SeekStart); err != nil {
-					errorMsg.Set(err.Error())
-					isLoaded.Set(true)
-					return
-				}
-				val, err := io.ReadAll(content)
-				if err != nil {
-					errorMsg.Set(err.Error())
-					isLoaded.Set(true)
-					return
-				}
-				editor.OnSave = func(newContent string) error {
-					if _, err := content.Seek(0, io.SeekStart); err != nil {
-						return err
-					}
-					if _, err := fmt.Fprint(content, newContent); err != nil { // TODO: blocking operation
-						return err
-					}
-					return nil
-				}
-				fileContent.Set(string(val))
-				isLoaded.Set(true)
-			case err := <-errChan:
-				errorMsg.Set(err.Error())
-				isLoaded.Set(true)
-				return
-			}
-		}()
-
-		editWin.SetOnClosed(cancel)
-		editWin.SetContent(editor)
-		editWin.SetFixedSize(false)
-		editWin.Resize(fyne.NewSize(700, 500))
-		editWin.Show()
+		oe.Window.RequestFocus()
 	})
 
 	w.downloadAction.SetOnTapped(func() {
@@ -218,14 +206,14 @@ func (w *FileDetails) Select(file *directory.File) {
 				return
 			}
 			localDestFilePath := writer.URI().Path()
-			vm.DownloadFile(file, localDestFilePath)
-			if err := vm.UpdateLastDownloadLocation(localDestFilePath); err != nil { //nolint:staticcheck
+			exVm.DownloadFile(file, localDestFilePath)
+			if err := exVm.UpdateLastDownloadLocation(localDestFilePath); err != nil { //nolint:staticcheck
 				// TODO: handle error
 			}
 			fyne.CurrentApp().SendNotification(fyne.NewNotification("File download", "success"))
 		}, w.appCtx.Window())
 		saveDialog.SetFileName(file.Name().String())
-		saveDialog.SetLocation(vm.LastDownloadLocation())
+		saveDialog.SetLocation(exVm.LastDownloadLocation())
 		saveDialog.Show()
 	})
 
@@ -234,11 +222,12 @@ func (w *FileDetails) Select(file *directory.File) {
 			fmt.Sprintf("Are you sure you want to delete '%s'?", file.Name()),
 			func(b bool) {
 				if b {
-					vm.DeleteFile(file)
+					exVm.DeleteFile(file)
 				}
 			}, w.appCtx.Window())
 	})
 	if w.appCtx.ConnectionViewModel().IsReadOnly() {
 		w.deleteAction.Disable()
+		w.editAction.Disable()
 	}
 }

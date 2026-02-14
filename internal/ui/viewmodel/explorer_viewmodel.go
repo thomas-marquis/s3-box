@@ -3,7 +3,6 @@ package viewmodel
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 
@@ -59,9 +58,6 @@ type ExplorerViewModel interface {
 
 	// UploadFile uploads a local file to the specified remote directory
 	UploadFile(localPath string, dir *directory.Directory, overwrite bool) error
-
-	// LoadFile fetches a file's content in memory
-	LoadFile(ctx context.Context, file *directory.File) (<-chan directory.FileObject, <-chan error, error)
 
 	// DeleteFile removes a file from storage and updates the tree
 	DeleteFile(file *directory.File)
@@ -211,57 +207,6 @@ func (vm *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Dir
 	}
 	vm.bus.Publish(evt)
 	return nil
-}
-
-func (vm *explorerViewModelImpl) LoadFile(ctx context.Context, file *directory.File) (<-chan directory.FileObject, <-chan error, error) {
-	if vm.selectedConnectionVal == nil {
-		err := ErrNoConnectionSelected
-		vm.notifier.NotifyError(err)
-		vm.bus.Publish(directory.NewFileLoadFailureEvent(err, file))
-		return nil, nil, nil
-	}
-
-	vm.bus.Publish(file.Load(vm.selectedConnectionVal.ID(), event.WithContext(ctx)))
-
-	var (
-		contentChan = make(chan directory.FileObject)
-		errChan     = make(chan error)
-	)
-
-	timer := time.NewTimer(vm.settingsVm.CurrentTimeout())
-
-	go func() {
-		defer close(contentChan)
-		defer close(errChan)
-
-		events := vm.bus.Subscribe(
-			directory.FileLoadEventType.AsFailure(),
-			directory.FileLoadEventType.AsSuccess(),
-		)
-
-		for {
-			select {
-			case <-timer.C:
-				errChan <- fmt.Errorf("timeout reached while loading file")
-				return
-			case evt := <-events:
-				if evt == nil {
-					continue
-				}
-				switch evt.Type() {
-				case directory.FileLoadEventType.AsFailure():
-					errChan <- fmt.Errorf("error loading file: %w", evt.(directory.FileLoadFailureEvent).Error())
-					return
-				case directory.FileLoadEventType.AsSuccess():
-					e := evt.(directory.FileLoadSuccessEvent)
-					contentChan <- e.Content
-					return
-				}
-			}
-		}
-	}()
-
-	return contentChan, errChan, nil
 }
 
 func (vm *explorerViewModelImpl) DeleteFile(file *directory.File) {

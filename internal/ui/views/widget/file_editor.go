@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -14,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 )
 
 type textEditorEntry struct {
@@ -47,98 +49,67 @@ func newTextEditorEntry(onValidate func(string)) *textEditorEntry {
 type FileEditor struct {
 	widget.BaseWidget
 
-	win fyne.Window
-
-	data     binding.String
-	errorMsg binding.String
-	isLoaded binding.Bool
-
-	updated bool
-
-	OnSave func(fileContent string) error
+	openedEditor *viewmodel.OpenedEditor
+	contentHash  string
+	stateLabel   binding.String
 }
 
-func NewFileEditor(data, errorMsg binding.String, isLoaded binding.Bool, win fyne.Window) *FileEditor {
+func NewFileEditor(openedEditor *viewmodel.OpenedEditor) *FileEditor {
 	w := &FileEditor{
-		data:     data,
-		errorMsg: errorMsg,
-		isLoaded: isLoaded,
-		OnSave:   func(string) error { return nil },
-		win:      win,
+		openedEditor: openedEditor,
+		stateLabel:   binding.NewString(),
 	}
 	w.ExtendBaseWidget(w)
 
-	//var contentLoaded bool
-	//data.AddListener(binding.NewDataListener(func() {
-	//	loaded, _ := isLoaded.Get()
-	//	if loaded {
-	//		if !contentLoaded {
-	//			contentLoaded = true
-	//		} else {
-	//			w.updated = true
-	//		}
-	//	}
-	//}))
+	once := sync.Once{}
 
-	win.SetCloseIntercept(func() {
-		if w.updated {
+	openedEditor.Content.AddListener(binding.NewDataListener(func() {
+		once.Do(func() {
+			val, _ := openedEditor.Content.Get()
+			w.contentHash = sha256Hex(val)
+		})
+	}))
+
+	openedEditor.Window.SetCloseIntercept(func() {
+		val, _ := openedEditor.Content.Get()
+		if w.hasChanged(val) {
 			dialog.ShowConfirm("Discard changes?", "Do you want to discard your changes?", func(confirmed bool) {
 				if confirmed {
-					w.updated = false
-					win.Close()
+					openedEditor.Window.Close()
 				}
-			}, win)
+			}, openedEditor.Window)
 		} else {
-			win.Close()
+			openedEditor.Window.Close()
 		}
 	})
 
-	errorMsg.AddListener(binding.NewDataListener(func() {
-		msg, _ := errorMsg.Get()
+	openedEditor.ErrorMsg.AddListener(binding.NewDataListener(func() {
+		msg, _ := openedEditor.ErrorMsg.Get()
 		if msg == "" {
 			return
 		}
-		dialog.ShowError(errors.New(msg), win)
+		dialog.ShowError(errors.New(msg), openedEditor.Window)
 	}))
+
 	return w
 }
 
 func (w *FileEditor) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
-	stateLabel := binding.NewString()
-
-	editor := newTextEditorEntry(func(s string) {
-		if err := w.OnSave(s); err != nil {
-			stateLabel.Set("error")
-			dialog.ShowError(err, w.win)
-		}
-		stateLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05")))
-	})
-	editor.Bind(w.data)
-
-	editor.OnChanged = func(val string) {
-		loaded, _ := w.isLoaded.Get()
-		if loaded {
-			w.updated = true
-		}
-	}
+	editor := newTextEditorEntry(w.handleSave)
+	editor.Bind(w.openedEditor.Content)
 
 	toolbar := widget.NewToolbar(
 		widget.NewToolbarAction(theme.DocumentSaveIcon(), func() {
-			if err := w.OnSave(editor.Text); err != nil {
-				stateLabel.Set("error")
-				dialog.ShowError(err, w.win)
-				return
-			}
-			stateLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05")))
+			w.handleSave(editor.Text)
 		}),
 	)
 
 	loader := widget.NewProgressBarInfinite()
 	loader.Hide()
-	w.isLoaded.AddListener(binding.NewDataListener(func() {
-		loaded, _ := w.isLoaded.Get()
+	w.openedEditor.IsLoaded.AddListener(binding.NewDataListener(func() {
+		loaded, _ := w.openedEditor.IsLoaded.Get()
 		if loaded {
 			loader.Hide()
 		} else {
@@ -148,23 +119,38 @@ func (w *FileEditor) CreateRenderer() fyne.WidgetRenderer {
 
 	btns := container.NewBorder(nil, nil,
 		widget.NewButtonWithIcon("Save & Exit", theme.DocumentSaveIcon(), func() {
-			if err := w.OnSave(editor.Text); err != nil {
-				stateLabel.Set("error")
-				dialog.ShowError(err, w.win)
-				return
-			}
-			w.win.Close()
+			w.handleSave(editor.Text)
+			w.openedEditor.Window.Close()
 		}), nil,
 		loader,
 	)
 
 	c := container.NewBorder(
-		container.NewBorder(nil, nil, toolbar, widget.NewLabelWithData(stateLabel)),
+		container.NewBorder(nil, nil, toolbar, widget.NewLabelWithData(w.stateLabel)),
 		btns,
 		nil, nil,
 		editor)
 
 	return widget.NewSimpleRenderer(c)
+}
+
+func (w *FileEditor) handleSave(content string) {
+	if err := w.openedEditor.OnSave(content); err != nil {
+		w.stateLabel.Set("error")
+		dialog.ShowError(err, w.openedEditor.Window)
+		return
+	}
+	w.contentHash = sha256Hex(content)
+	w.stateLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05")))
+}
+
+func (w *FileEditor) hasChanged(newContent string) bool {
+	newHash := sha256Hex(newContent)
+	if w.contentHash != newHash {
+		w.contentHash = newHash
+		return true
+	}
+	return false
 }
 
 func sha256Hex(s string) string {
