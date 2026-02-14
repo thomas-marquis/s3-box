@@ -14,10 +14,10 @@ type FileName string
 
 func NewFileName(name string) (FileName, error) {
 	if name == "" {
-		return "", errors.New("fileObj name is empty")
+		return "", errors.New("file name is empty")
 	}
 	if name == "/" || strings.Contains(name, "/") {
-		return "", errors.New("fileObj name is not valid: should not be '/' or contain '/'")
+		return "", errors.New("file name is not valid: should not be '/' or contain '/'")
 	}
 
 	return FileName(name), nil
