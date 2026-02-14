@@ -70,6 +70,9 @@ type ExplorerViewModel interface {
 
 	// CreateEmptyDirectory creates an empty subdirectory in the given parent directory
 	CreateEmptyDirectory(parent *directory.Directory, name string)
+
+	// CreateEmptyFile creates an empty file in the given parent directory
+	CreateEmptyFile(parent *directory.Directory, name string)
 }
 
 type explorerViewModelImpl struct {
@@ -283,6 +286,25 @@ func (vm *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Director
 	vm.bus.Publish(evt)
 }
 
+func (vm *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, name string) {
+	if vm.selectedConnectionVal == nil {
+		err := ErrNoConnectionSelected
+		vm.notifier.NotifyError(err)
+		vm.bus.Publish(directory.NewCreatedFailureEvent(err, parent))
+		return
+	}
+
+	evt, err := parent.NewFile(name, false)
+	if err != nil {
+		wErr := fmt.Errorf("error creating file: %w", err)
+		vm.notifier.NotifyError(wErr)
+		vm.bus.Publish(directory.NewCreatedFailureEvent(wErr, parent))
+		return
+	}
+
+	vm.bus.Publish(evt)
+}
+
 func (vm *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection) error {
 	vm.tree = binding.NewTree[node.Node](func(n1 node.Node, n2 node.Node) bool {
 		return n1.ID() == n2.ID()
@@ -392,6 +414,8 @@ func (vm *explorerViewModelImpl) listenEvents() {
 		directory.ContentDownloadEventType.AsFailure(),
 		directory.LoadEventType.AsSuccess(),
 		directory.LoadEventType.AsFailure(),
+		directory.FileCreatedEventType.AsFailure(),
+		directory.FileCreatedEventType.AsSuccess(),
 	)
 	for evt := range events {
 		switch evt.Type() {
@@ -442,6 +466,26 @@ func (vm *explorerViewModelImpl) listenEvents() {
 		case directory.ContentUploadedEventType.AsFailure():
 			e := evt.(directory.ContentUploadedFailureEvent)
 			err := fmt.Errorf("error uploading file: %w", e.Error())
+			if notifErr := e.Directory().Notify(e); notifErr != nil {
+				err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
+			}
+			vm.notifier.NotifyError(err)
+			vm.errorMessage.Set(err.Error()) //nolint:errcheck
+
+		case directory.FileCreatedEventType.AsSuccess():
+			e := evt.(directory.FileCreatedSuccessEvent)
+			if err := vm.addNewFileToTree(e.File()); err != nil {
+				vm.bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory()))
+				continue
+			}
+			if err := e.Directory().Notify(e); err != nil {
+				vm.notifier.NotifyError(err)
+				continue
+			}
+
+		case directory.FileCreatedEventType.AsFailure():
+			e := evt.(directory.FileCreatedFailureEvent)
+			err := fmt.Errorf("error creating file: %w", e.Error())
 			if notifErr := e.Directory().Notify(e); notifErr != nil {
 				err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
 			}

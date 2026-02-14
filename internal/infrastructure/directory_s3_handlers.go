@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3manager "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
@@ -187,11 +188,11 @@ func (r *S3DirectoryRepository) handleLoading(ctx context.Context, evt directory
 	return subDirectories, files, nil
 }
 
-func (r *S3DirectoryRepository) handleLoadFile(ctx context.Context, evt directory.FileLoadEvent) (directory.FileObject, error) {
-	sess, err := r.getSession(ctx, evt.ConnectionID())
+func (r *S3DirectoryRepository) handleLoadFile(ctx context.Context, file *directory.File, connID connection_deck.ConnectionID) (directory.FileObject, error) {
+	sess, err := r.getSession(ctx, connID)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewS3Object(ctx, sess.downloader, sess.uploader, sess.connection, evt.File())
+	return NewS3Object(ctx, sess.downloader, sess.uploader, sess.connection, file)
 }

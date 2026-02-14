@@ -44,10 +44,10 @@ func NewS3Object(ctx context.Context, downloader *manager.Downloader, uploader *
 		uploader:   uploader,
 	}
 
-	// Check if object exists to determine initial state
+	// Check if an object exists to determine the initial state
 	buff := manager.NewWriteAtBuffer([]byte{})
 	key := buildS3Key(file)
-	_, err := downloader.Download(ctx, buff, &s3.GetObjectInput{
+	_, err := downloader.Download(ctx, buff, &s3.GetObjectInput{ // TODO: use a better way
 		Bucket: aws.String(conn.Bucket()),
 		Key:    aws.String(key),
 	})

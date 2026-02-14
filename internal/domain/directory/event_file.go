@@ -31,35 +31,41 @@ type FileCreatedEvent struct {
 	event.BaseEvent
 	withFile
 	withConnectionID
+	withDirectory
 }
 
-func NewFileCreatedEvent(connectionID connection_deck.ConnectionID, file *File, opts ...event.Option) FileCreatedEvent {
+func NewFileCreatedEvent(connectionID connection_deck.ConnectionID, dir *Directory, file *File, opts ...event.Option) FileCreatedEvent {
 	return FileCreatedEvent{
 		event.NewBaseEvent(FileCreatedEventType, opts...),
 		withFile{file},
 		withConnectionID{connectionID},
+		withDirectory{dir},
 	}
 }
 
 type FileCreatedSuccessEvent struct {
 	event.BaseEvent
 	withFile
+	withDirectory
 }
 
-func NewFileCreatedSuccessEvent(file *File, opts ...event.Option) FileCreatedSuccessEvent {
+func NewFileCreatedSuccessEvent(dir *Directory, file *File, opts ...event.Option) FileCreatedSuccessEvent {
 	return FileCreatedSuccessEvent{
 		event.NewBaseEvent(FileCreatedEventType.AsSuccess(), opts...),
 		withFile{file},
+		withDirectory{dir},
 	}
 }
 
 type FileCreatedFailureEvent struct {
 	event.BaseErrorEvent
+	withDirectory
 }
 
-func NewFileCreatedFailureEvent(err error) FileCreatedFailureEvent {
+func NewFileCreatedFailureEvent(err error, dir *Directory) FileCreatedFailureEvent {
 	return FileCreatedFailureEvent{
 		event.NewBaseErrorEvent(FileCreatedEventType.AsFailure(), err),
+		withDirectory{dir},
 	}
 }
 

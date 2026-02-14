@@ -224,6 +224,14 @@ func (w *DirectoryDetails) makeOnCreateFile(vm viewmodel.ExplorerViewModel, dir 
 					d.Submit()
 				},
 			},
+			{
+				Shortcuts: []desktop.CustomShortcut{
+					{KeyName: fyne.KeyQ, Modifier: fyne.KeyModifierControl},
+				},
+				Callback: func() {
+					d.Dismiss()
+				},
+			},
 		})
 		d = dialog.NewForm(
 			fmt.Sprintf("New empty file in %s", dir.Path()),
@@ -237,8 +245,7 @@ func (w *DirectoryDetails) makeOnCreateFile(vm viewmodel.ExplorerViewModel, dir 
 					return
 				}
 				name := nameEntry.Text
-				fmt.Println(name)
-				//vm.CreateEmptyDirectory(dir, name)
+				vm.CreateEmptyFile(dir, name)
 			},
 			w.appCtx.Window(),
 		)

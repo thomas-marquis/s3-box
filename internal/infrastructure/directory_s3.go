@@ -129,9 +129,20 @@ func (r *S3DirectoryRepository) listen(bus event.Bus, notifier notification.Repo
 				bus.Publish(directory.NewDeletedFailureEvent(err))
 
 			case directory.FileCreatedEventType:
-				err := fmt.Errorf("file creation is not yet implemented")
-				notifier.NotifyError(err)
-				bus.Publish(directory.NewFileCreatedFailureEvent(err))
+				e := evt.(directory.FileCreatedEvent)
+				obj, err := r.handleLoadFile(ctx, e.File(), e.ConnectionID())
+				if err != nil {
+					notifier.NotifyError(fmt.Errorf("failed creating file: %w", err))
+					bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory()))
+					return
+				}
+				if _, err := obj.Write([]byte{}); err != nil {
+					notifier.NotifyError(fmt.Errorf("failed creating file: %w", err))
+					bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory()))
+					return
+				}
+
+				bus.Publish(directory.NewFileCreatedSuccessEvent(e.Directory(), e.File()))
 
 			case directory.FileDeletedEventType:
 				e := evt.(directory.FileDeletedEvent)
@@ -178,7 +189,7 @@ func (r *S3DirectoryRepository) listen(bus event.Bus, notifier notification.Repo
 			case directory.FileLoadEventType:
 				notifier.NotifyDebug("[INFRA] loading file...")
 				e := evt.(directory.FileLoadEvent)
-				obj, err := r.handleLoadFile(ctx, e)
+				obj, err := r.handleLoadFile(ctx, e.File(), e.ConnectionID())
 				if err != nil {
 					notifier.NotifyError(fmt.Errorf("failed loading file: %w", err))
 					bus.Publish(directory.NewFileLoadFailureEvent(err, e.File()))
