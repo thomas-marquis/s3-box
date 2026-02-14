@@ -18,10 +18,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
-const (
-	nbWorkers = 5
-)
-
 type s3Session struct {
 	connection *connection_deck.Connection
 	client     *s3.Client

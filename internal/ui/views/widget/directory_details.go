@@ -188,23 +188,6 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 	}
 }
 
-func entryWithShortcuts(onSubmit, onDismiss func()) *EntryWithShortcuts {
-	return NewEntryWithShortcuts([]ActionShortcuts{
-		{
-			Shortcuts: []desktop.CustomShortcut{
-				{KeyName: fyne.KeyReturn, Modifier: fyne.KeyModifierControl},
-			},
-			Callback: onSubmit,
-		},
-		{
-			Shortcuts: []desktop.CustomShortcut{
-				{KeyName: fyne.KeyQ, Modifier: fyne.KeyModifierControl},
-			},
-			Callback: onDismiss,
-		},
-	})
-}
-
 func (w *DirectoryDetails) makeOnCreateDirectory(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
 	return func() {
 		var d *dialog.FormDialog
@@ -253,4 +236,21 @@ func (w *DirectoryDetails) makeOnCreateFile(vm viewmodel.ExplorerViewModel, dir 
 		d.Resize(fyne.NewSize(400, 150))
 		d.Show()
 	}
+}
+
+func entryWithShortcuts(onSubmit, onDismiss func()) *EntryWithShortcuts {
+	return NewEntryWithShortcuts([]ActionShortcuts{
+		{
+			Shortcuts: []desktop.CustomShortcut{
+				{KeyName: fyne.KeyReturn, Modifier: fyne.KeyModifierControl},
+			},
+			Callback: onSubmit,
+		},
+		{
+			Shortcuts: []desktop.CustomShortcut{
+				{KeyName: fyne.KeyQ, Modifier: fyne.KeyModifierControl},
+			},
+			Callback: onDismiss,
+		},
+	})
 }
