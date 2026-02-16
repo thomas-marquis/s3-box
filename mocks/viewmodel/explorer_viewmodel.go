@@ -56,6 +56,18 @@ func (mr *MockExplorerViewModelMockRecorder) CreateEmptyDirectory(parent, name a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEmptyDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).CreateEmptyDirectory), parent, name)
 }
 
+// CreateEmptyFile mocks base method.
+func (m *MockExplorerViewModel) CreateEmptyFile(parent *directory.Directory, name string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "CreateEmptyFile", parent, name)
+}
+
+// CreateEmptyFile indicates an expected call of CreateEmptyFile.
+func (mr *MockExplorerViewModelMockRecorder) CreateEmptyFile(parent, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEmptyFile", reflect.TypeOf((*MockExplorerViewModel)(nil).CreateEmptyFile), parent, name)
+}
+
 // CurrentSelectedConnection mocks base method.
 func (m *MockExplorerViewModel) CurrentSelectedConnection() *connection_deck.Connection {
 	m.ctrl.T.Helper()

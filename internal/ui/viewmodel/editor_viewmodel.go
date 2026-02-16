@@ -155,14 +155,6 @@ func (vm *editorViewModelImpl) listen() {
 				continue
 			}
 
-			contentVal, err := io.ReadAll(content)
-			if err != nil {
-				vm.notifier.NotifyError(err)
-				oe.IsLoaded.Set(true)
-				oe.ErrorMsg.Set(err.Error())
-				continue
-			}
-
 			oe.OnSave = func(newContent string) error {
 				if _, err := content.Seek(0, io.SeekStart); err != nil {
 					return err
@@ -171,6 +163,14 @@ func (vm *editorViewModelImpl) listen() {
 					return err
 				}
 				return nil
+			}
+
+			contentVal, err := io.ReadAll(content)
+			if err != nil {
+				vm.notifier.NotifyError(err)
+				oe.IsLoaded.Set(true)
+				oe.ErrorMsg.Set(err.Error())
+				return
 			}
 
 			oe.Content.Set(string(contentVal))

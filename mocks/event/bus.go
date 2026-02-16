@@ -53,15 +53,19 @@ func (mr *MockBusMockRecorder) Publish(evt any) *gomock.Call {
 }
 
 // Subscribe mocks base method.
-func (m *MockBus) Subscribe() <-chan event.Event {
+func (m *MockBus) Subscribe(eventTypes ...event.Type) <-chan event.Event {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Subscribe")
+	varargs := []any{}
+	for _, a := range eventTypes {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Subscribe", varargs...)
 	ret0, _ := ret[0].(<-chan event.Event)
 	return ret0
 }
 
 // Subscribe indicates an expected call of Subscribe.
-func (mr *MockBusMockRecorder) Subscribe() *gomock.Call {
+func (mr *MockBusMockRecorder) Subscribe(eventTypes ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscribe", reflect.TypeOf((*MockBus)(nil).Subscribe))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscribe", reflect.TypeOf((*MockBus)(nil).Subscribe), eventTypes...)
 }

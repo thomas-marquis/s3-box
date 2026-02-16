@@ -122,13 +122,6 @@ func (w *FileDetails) Select(file *directory.File) {
 	exVm := w.appCtx.ExplorerViewModel()
 	edVm := w.appCtx.EditorVewModel()
 
-	if edVm.IsOpened(file) {
-		w.editAction.Icon = theme.WindowMaximizeIcon()
-	} else {
-		w.editAction.Icon = theme.DocumentCreateIcon()
-	}
-	w.actionToolbar.Refresh()
-
 	w.currentSelectedFile = file
 
 	var path string
@@ -189,9 +182,6 @@ func (w *FileDetails) Select(file *directory.File) {
 		oe.Window.SetFixedSize(false)
 		oe.Window.Resize(fyne.NewSize(700, 500))
 		oe.Window.Show()
-
-		w.editAction.Icon = theme.WindowMaximizeIcon()
-		w.editAction.Text = "COUCOOU"
 
 		oe.Window.RequestFocus()
 	})
