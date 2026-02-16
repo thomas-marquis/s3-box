@@ -1,0 +1,52 @@
+<canvas padded size="180x161">
+	<content>
+		<widget pos="4,4" size="172x153" type="*widget.FileEditor">
+			<container size="172x153">
+				<widget pos="0,40" size="172x73" type="*widget.textEditorEntry">
+					<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="168x69"/>
+					<rectangle pos="1,1" radius="4" size="169x70" strokeColor="inputBorder" strokeWidth="2"/>
+					<widget pos="0,2" size="140x69" type="*widget.Scroll">
+						<widget size="140x69" type="*widget.entryContent">
+							<widget size="140x69" type="*widget.RichText">
+								<text color="placeholder" pos="8,6" size="0x19"></text>
+							</widget>
+							<widget size="140x69" type="*widget.RichText">
+								<text pos="8,6" size="0x19"></text>
+							</widget>
+						</widget>
+					</widget>
+					<widget pos="144,8" size="20x20" type="*widget.validationStatus">
+					</widget>
+				</widget>
+				<container size="172x36">
+					<widget size="36x36" type="*widget.Toolbar">
+						<widget size="36x36" type="*widget.Button">
+							<rectangle radius="4" size="36x36"/>
+							<rectangle size="36x36"/>
+							<image fillMode="contain" pos="8,8" rsc="documentSaveIcon" size="iconInlineSize" themed="foreground"/>
+						</widget>
+					</widget>
+					<widget pos="156,0" size="16x36" type="*widget.Label">
+						<widget size="16x36" type="*widget.RichText">
+							<text pos="8,8" size="0x19"></text>
+						</widget>
+					</widget>
+				</container>
+				<container pos="0,117" size="172x36">
+					<widget pos="120,0" size="51x36" type="*widget.ProgressBarInfinite">
+						<rectangle fillColor="rgba(255,192,128,127)" radius="4" size="51x36"/>
+						<rectangle fillColor="primary" radius="4" size="0x0"/>
+					</widget>
+					<widget size="116x36" type="*widget.Button">
+						<rectangle fillColor="button" radius="4" size="116x36"/>
+						<rectangle size="116x36"/>
+						<widget pos="32,8" size="76x20" type="*widget.RichText">
+							<text alignment="center" bold size="76x19">Save & Exit</text>
+						</widget>
+						<image fillMode="contain" pos="8,8" rsc="documentSaveIcon" size="iconInlineSize" themed="foreground"/>
+					</widget>
+				</container>
+			</container>
+		</widget>
+	</content>
+</canvas>
