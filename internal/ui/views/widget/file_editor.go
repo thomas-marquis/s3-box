@@ -64,6 +64,10 @@ func NewFileEditor(openedEditor *viewmodel.OpenedEditor) *FileEditor {
 	once := sync.Once{}
 
 	openedEditor.Content.AddListener(binding.NewDataListener(func() {
+		loaded, _ := openedEditor.IsLoaded.Get()
+		if !loaded {
+			return
+		}
 		once.Do(func() {
 			val, _ := openedEditor.Content.Get()
 			w.contentHash = sha256Hex(val)
