@@ -195,7 +195,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		newFileEvt, err := dir.NewFile("main.go", false)
 		assert.NoError(t, err)
 
-		newFileSuccessEvt := directory.NewFileCreatedSuccessEvent(newFileEvt.File())
+		newFileSuccessEvt := directory.NewFileCreatedSuccessEvent(dir, newFileEvt.File())
 		assert.NoError(t, dir.Notify(newFileSuccessEvt))
 
 		resFiles, _ = dir.Files()

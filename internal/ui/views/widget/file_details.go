@@ -149,7 +149,11 @@ func (w *FileDetails) Select(file *directory.File) {
 			w.editAction.Disable()
 		} else {
 			w.previewAction.Enable()
-			w.editAction.Enable()
+			if w.appCtx.ConnectionViewModel().IsReadOnly() {
+				w.editAction.Disable()
+			} else {
+				w.editAction.Enable()
+			}
 		}
 	}))
 

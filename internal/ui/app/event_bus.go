@@ -40,7 +40,7 @@ func newEventBusImpl(done <-chan struct{}, notifier notification.Repository) eve
 	}
 
 	for i := 0; i < publicationWorkers; i++ {
-		go b.pubWorker(i)
+		go b.pubWorker()
 	}
 
 	go b.terminate()
@@ -48,8 +48,7 @@ func newEventBusImpl(done <-chan struct{}, notifier notification.Repository) eve
 	return b
 }
 
-func (b *eventBusImpl) pubWorker(idx int) {
-	var j int
+func (b *eventBusImpl) pubWorker() {
 	for {
 		select {
 		case <-b.done:
@@ -57,8 +56,6 @@ func (b *eventBusImpl) pubWorker(idx int) {
 		case i := <-b.publishingChan:
 			select {
 			case i.subscriberChanel <- i.evt:
-				b.notifier.NotifyDebug(fmt.Sprintf("[BUS] Published event: %s (idx=%d; j=%d)", i.evt.Type(), idx, j))
-				j++
 			case <-b.done:
 			}
 		}
