@@ -143,21 +143,26 @@ func (w *FileDetails) Select(file *directory.File) {
 	w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05")) //nolint:errcheck
 	w.fileSizeBinding.Set(utils.FormatSizeBytes(file.SizeBytes()))               //nolint:errcheck
 
-	if file.SizeBytes() <= w.appCtx.SettingsViewModel().CurrentFileSizeLimitBytes() {
-		w.previewAction.Enable()
-		w.previewAction.SetOnTapped(func() {
-			viewerDialog := dialog.NewCustom(
-				file.Name().String(),
-				"Close",
-				NewFileViewer(w.appCtx, file),
-				w.appCtx.Window(),
-			)
-			viewerDialog.Resize(fyne.NewSize(700, 500))
-			viewerDialog.Show()
-		})
-	} else {
-		w.previewAction.Disable()
-	}
+	w.appCtx.SettingsViewModel().FileSizeLimitKB().AddListener(binding.NewDataListener(func() {
+		if file.SizeBytes() > w.appCtx.SettingsViewModel().CurrentFileSizeLimitBytes() {
+			w.previewAction.Disable()
+			w.editAction.Disable()
+		} else {
+			w.previewAction.Enable()
+			w.editAction.Enable()
+		}
+	}))
+
+	w.previewAction.SetOnTapped(func() {
+		viewerDialog := dialog.NewCustom(
+			file.Name().String(),
+			"Close",
+			NewFileViewer(w.appCtx, file),
+			w.appCtx.Window(),
+		)
+		viewerDialog.Resize(fyne.NewSize(700, 500))
+		viewerDialog.Show()
+	})
 
 	w.editAction.SetOnTapped(func() {
 		ctx, cancel := context.WithCancel(context.Background())
