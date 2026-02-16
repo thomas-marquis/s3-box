@@ -143,7 +143,7 @@ func (w *FileDetails) Select(file *directory.File) {
 	w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05")) //nolint:errcheck
 	w.fileSizeBinding.Set(utils.FormatSizeBytes(file.SizeBytes()))               //nolint:errcheck
 
-	if file.SizeBytes() <= w.appCtx.SettingsViewModel().CurrentMaxFilePreviewSizeBytes() {
+	if file.SizeBytes() <= w.appCtx.SettingsViewModel().CurrentFileSizeLimitBytes() {
 		w.previewAction.Enable()
 		w.previewAction.SetOnTapped(func() {
 			viewerDialog := dialog.NewCustom(

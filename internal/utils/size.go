@@ -29,10 +29,10 @@ func FormatSizeBytes(b int) string {
 	return fmt.Sprintf("%.2f PB", float64(b)/float64(peta))
 }
 
-func BytesToMB(b int) int {
-	return b / mega
+func BytesToKB(b int) int {
+	return b / kilo
 }
 
-func MegaToBytes(mb int) int {
-	return mb * mega
+func KBToBytes(mb int) int {
+	return mb * kilo
 }

@@ -54,7 +54,7 @@ var ErrInvalidTimeout = errors.New("timeout must be positive")
 
 const (
 	DefaultTimeoutInSeconds        = 15
-	DefaultMaxFilePreviewSizeBytes = 1024 * 1024 * 5 // 5MB
+	DefaultMaxFilePreviewSizeBytes = 1024 * 10
 )
 
 func NewSettings(timeoutInSeconds int, maxFilePreviewSizeBytes int) (Settings, error) {

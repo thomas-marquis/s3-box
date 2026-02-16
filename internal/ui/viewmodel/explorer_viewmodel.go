@@ -166,7 +166,7 @@ func (vm *explorerViewModelImpl) GetFileContent(file *directory.File) (*director
 		return nil, err
 	}
 
-	if file.SizeBytes() > vm.settingsVm.CurrentMaxFilePreviewSizeBytes() {
+	if file.SizeBytes() > vm.settingsVm.CurrentFileSizeLimitBytes() {
 		err := fmt.Errorf("file is too big to GetFileContent")
 		vm.notifier.NotifyError(err)
 		return nil, err
