@@ -46,20 +46,20 @@
 							<image fillMode="contain" pos="8,8" rsc="visibilityIcon" size="iconInlineSize" themed="foreground"/>
 						</widget>
 						<widget pos="213,0" size="67x36" type="*widget.Button">
-							<rectangle fillColor="button" radius="4" size="67x36"/>
+							<rectangle fillColor="disabled button" radius="4" size="67x36"/>
 							<rectangle size="67x36"/>
 							<widget pos="32,8" size="27x20" type="*widget.RichText">
-								<text alignment="center" bold size="27x19">Edit</text>
+								<text alignment="center" bold color="disabled" size="27x19">Edit</text>
 							</widget>
-							<image fillMode="contain" pos="8,8" rsc="documentCreateIcon" size="iconInlineSize" themed="foreground"/>
+							<image fillMode="contain" pos="8,8" rsc="documentCreateIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
 						<widget pos="284,0" size="85x36" type="*widget.Button">
-							<rectangle fillColor="button" radius="4" size="85x36"/>
+							<rectangle fillColor="disabled button" radius="4" size="85x36"/>
 							<rectangle size="85x36"/>
 							<widget pos="32,8" size="45x20" type="*widget.RichText">
-								<text alignment="center" bold size="45x19">Delete</text>
+								<text alignment="center" bold color="disabled" size="45x19">Delete</text>
 							</widget>
-							<image fillMode="contain" pos="8,8" rsc="deleteIcon" size="iconInlineSize" themed="foreground"/>
+							<image fillMode="contain" pos="8,8" rsc="deleteIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
 					</widget>
 				</container>
@@ -74,7 +74,7 @@
 							<widget size="182x35" type="*widget.focusSelectable">
 							</widget>
 							<widget size="182x35" type="*widget.RichText">
-								<text pos="8,8" size="49x19">1.00 KB</text>
+								<text pos="8,8" size="49x19">2.00 KB</text>
 							</widget>
 						</widget>
 						<widget pos="0,39" size="182x35" type="*widget.Label">

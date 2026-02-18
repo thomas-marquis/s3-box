@@ -74,7 +74,7 @@
 							<widget size="182x35" type="*widget.focusSelectable">
 							</widget>
 							<widget size="182x35" type="*widget.RichText">
-								<text pos="8,8" size="49x19">1.00 KB</text>
+								<text pos="8,8" size="49x19">2.00 KB</text>
 							</widget>
 						</widget>
 						<widget pos="0,39" size="182x35" type="*widget.Label">
