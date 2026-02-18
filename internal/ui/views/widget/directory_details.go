@@ -6,13 +6,13 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 )
@@ -22,8 +22,7 @@ type DirectoryDetails struct {
 
 	appCtx appcontext.AppContext
 
-	pathLabel          *widget.Label
-	currentSelectedDir *directory.Directory
+	pathLabel *widget.Label
 
 	toolbar            *widget.Toolbar
 	newDirectoryAction *ToolbarButton
@@ -32,7 +31,7 @@ type DirectoryDetails struct {
 	loadingBar         *widget.ProgressBarInfinite
 }
 
-func NewDirectoryDetails(appCtx appcontext.AppContext, events <-chan event.Event) *DirectoryDetails {
+func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	pathLabel := widget.NewLabel("")
 	pathLabel.Selectable = true
 
@@ -55,11 +54,19 @@ func NewDirectoryDetails(appCtx appcontext.AppContext, events <-chan event.Event
 		uploadAction:       uploadAction,
 		createFileAction:   createFileAction,
 		loadingBar:         loadingBar,
-		currentSelectedDir: nil,
 	}
 	w.ExtendBaseWidget(w)
 
-	go w.listen(events)
+	appCtx.ExplorerViewModel().IsSelectedDirectoryLoading().AddListener(binding.NewDataListener(func() {
+		loading, _ := appCtx.ExplorerViewModel().IsSelectedDirectoryLoading().Get()
+		if loading {
+			loadingBar.Show()
+			loadingBar.Start()
+		} else {
+			w.loadingBar.Stop()
+			w.loadingBar.Hide()
+		}
+	}))
 
 	return w
 }
@@ -68,10 +75,11 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
 	copyPath := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		if w.currentSelectedDir == nil {
+		sd := w.appCtx.ExplorerViewModel().SelectedDirectory()
+		if sd == nil {
 			return
 		}
-		fyne.CurrentApp().Clipboard().SetContent(w.currentSelectedDir.Path().String())
+		fyne.CurrentApp().Clipboard().SetContent(sd.Path().String())
 	})
 
 	return widget.NewSimpleRenderer(container.NewVBox(
@@ -94,9 +102,8 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (w *DirectoryDetails) Select(dir *directory.Directory) {
-	w.currentSelectedDir = dir
-
 	vm := w.appCtx.ExplorerViewModel()
+	vm.SetSelectedDirectory(dir)
 
 	if dir.IsLoading() {
 		w.loadingBar.Show()
@@ -126,28 +133,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	if w.appCtx.ConnectionViewModel().IsReadOnly() {
 		w.newDirectoryAction.Disable()
 		w.uploadAction.Disable()
-	}
-}
-
-func (w *DirectoryDetails) listen(events <-chan event.Event) {
-	for evt := range events {
-		var dirFromEvt *directory.Directory
-		switch evt.Type() {
-		case directory.LoadEventType.AsSuccess():
-			e := evt.(directory.LoadSuccessEvent)
-			dirFromEvt = e.Directory()
-		case directory.LoadEventType.AsFailure():
-			e := evt.(directory.LoadFailureEvent)
-			dirFromEvt = e.Directory()
-		default:
-			continue
-		}
-		if dirFromEvt != nil && w.currentSelectedDir != nil && w.currentSelectedDir.Is(dirFromEvt) {
-			fyne.Do(func() {
-				w.loadingBar.Stop()
-				w.loadingBar.Hide()
-			})
-		}
 	}
 }
 

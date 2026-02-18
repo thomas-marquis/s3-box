@@ -40,18 +40,6 @@ func (m *MockBus) EXPECT() *MockBusMockRecorder {
 	return m.recorder
 }
 
-// Publish mocks base method.
-func (m *MockBus) Publish(evt event.Event) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Publish", evt)
-}
-
-// Publish indicates an expected call of Publish.
-func (mr *MockBusMockRecorder) Publish(evt any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockBus)(nil).Publish), evt)
-}
-
 // PublishV2 mocks base method.
 func (m *MockBus) PublishV2(evt event.Event) {
 	m.ctrl.T.Helper()
@@ -62,20 +50,6 @@ func (m *MockBus) PublishV2(evt event.Event) {
 func (mr *MockBusMockRecorder) PublishV2(evt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishV2", reflect.TypeOf((*MockBus)(nil).PublishV2), evt)
-}
-
-// Subscribe mocks base method.
-func (m *MockBus) Subscribe() <-chan event.Event {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Subscribe")
-	ret0, _ := ret[0].(<-chan event.Event)
-	return ret0
-}
-
-// Subscribe indicates an expected call of Subscribe.
-func (mr *MockBusMockRecorder) Subscribe() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscribe", reflect.TypeOf((*MockBus)(nil).Subscribe))
 }
 
 // SubscribeV2 mocks base method.

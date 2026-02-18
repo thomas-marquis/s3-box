@@ -42,6 +42,10 @@ type ExplorerViewModel interface {
 	// LastUploadLocation returns the URI of the last used upload directory
 	LastUploadLocation() fyne.ListableURI
 
+	SelectedDirectory() *directory.Directory
+	SetSelectedDirectory(dir *directory.Directory)
+	IsSelectedDirectoryLoading() binding.Bool
+
 	////////////////////////
 	// Action methods
 	////////////////////////
@@ -88,6 +92,9 @@ type explorerViewModelImpl struct {
 	lastDownloadLocation fyne.ListableURI
 	lastUploadDir        fyne.ListableURI
 
+	selectedDirectory    *directory.Directory
+	isSelectedDirLoading binding.Bool
+
 	notifier notification.Repository
 	bus      event.Bus
 }
@@ -110,6 +117,8 @@ func NewExplorerViewModel(
 		selectedConnectionVal: initialConnection,
 		selectedConnection:    binding.NewUntyped(),
 		bus:                   bus,
+		selectedDirectory:     nil,
+		isSelectedDirLoading:  binding.NewBool(),
 	}
 
 	if err := v.initializeTreeData(initialConnection); err != nil {
@@ -121,9 +130,10 @@ func NewExplorerViewModel(
 	}
 
 	bus.SubscribeV2().
-		On(
-			event.IsOneOf(connection_deck.SelectEventType.AsSuccess(), connection_deck.UpdateEventType.AsSuccess()),
-			v.handleConnectionChange).
+		On(event.IsOneOf(
+			connection_deck.SelectEventType.AsSuccess(),
+			connection_deck.UpdateEventType.AsSuccess(),
+		), v.handleConnectionChange).
 		On(event.IsOneOf(connection_deck.RemoveEventType.AsSuccess()), v.handleConnectionRemoved).
 		On(event.Is(directory.ContentUploadedEventType.AsSuccess()), v.handleFileUploadSuccess).
 		On(event.Is(directory.ContentUploadedEventType.AsFailure()), v.handleFileUploadFailure).
@@ -154,6 +164,18 @@ func (v *explorerViewModelImpl) CurrentSelectedConnection() *connection_deck.Con
 	return v.selectedConnectionVal
 }
 
+func (v *explorerViewModelImpl) SelectedDirectory() *directory.Directory {
+	return v.selectedDirectory
+}
+
+func (v *explorerViewModelImpl) SetSelectedDirectory(dir *directory.Directory) {
+	v.selectedDirectory = dir
+}
+
+func (v *explorerViewModelImpl) IsSelectedDirectoryLoading() binding.Bool {
+	return v.isSelectedDirLoading
+}
+
 func (v *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error {
 	if v.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
@@ -171,6 +193,7 @@ func (v *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error 
 		v.notifier.NotifyError(wErr)
 		return wErr
 	}
+	v.isSelectedDirLoading.Set(true)
 	v.bus.PublishV2(evt)
 
 	return nil
@@ -187,6 +210,10 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 		dir.SetLoaded(false)
 		v.notifier.NotifyError(fmt.Errorf("error filling sub tree: %w", err))
 	}
+
+	if v.selectedDirectory != nil && v.selectedDirectory.Is(dir) {
+		v.isSelectedDirLoading.Set(false)
+	}
 }
 
 func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
@@ -198,6 +225,10 @@ func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
 	}
 	dir.SetLoaded(false)
 	v.infoMessage.Set(e.Error().Error()) //nolint:errcheck
+
+	if v.selectedDirectory != nil && v.selectedDirectory.Is(dir) {
+		v.isSelectedDirLoading.Set(false)
+	}
 }
 
 func (v *explorerViewModelImpl) GetFileContent(file *directory.File) (*directory.Content, error) {

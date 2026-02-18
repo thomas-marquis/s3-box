@@ -37,6 +37,7 @@ type eventBusImpl struct {
 func newEventBusImpl(done <-chan struct{}, notifier notification.Repository) event.Bus {
 	b := &eventBusImpl{
 		subscribers:    make(map[chan event.Event]struct{}),
+		subscribersV2:  make(map[chan event.Event]*event.Subscriber),
 		publishingChan: make(chan publishedLoad, pubChanBufferSize),
 		done:           done,
 		notifier:       notifier,
@@ -72,15 +73,6 @@ func (b *eventBusImpl) terminate() {
 	}
 }
 
-func (b *eventBusImpl) Subscribe() <-chan event.Event {
-	b.Lock()
-	defer b.Unlock()
-
-	channel := make(chan event.Event)
-	b.subscribers[channel] = struct{}{}
-	return channel
-}
-
 func (b *eventBusImpl) SubscribeV2() *event.Subscriber {
 	b.Lock()
 	defer b.Unlock()
@@ -89,20 +81,6 @@ func (b *eventBusImpl) SubscribeV2() *event.Subscriber {
 	subscriber := event.NewSubscriber(events)
 	b.subscribersV2[events] = subscriber
 	return subscriber
-}
-
-func (b *eventBusImpl) Publish(evt event.Event) {
-	b.notifier.NotifyDebug(fmt.Sprintf("publishing event: %s", evt.Type()))
-	b.Lock()
-	defer b.Unlock()
-
-	for subscriber := range b.subscribers {
-		select {
-		case b.publishingChan <- publishedLoad{evt, subscriber}:
-		case <-b.done:
-		}
-	}
-	b.notifier.NotifyDebug(fmt.Sprintf("Published event: %s", evt.Type()))
 }
 
 func (b *eventBusImpl) PublishV2(evt event.Event) {
