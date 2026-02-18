@@ -29,6 +29,8 @@ type OpenedEditor struct {
 }
 
 type EditorViewModel interface {
+	SelectedConnection() *connection_deck.Connection
+
 	// Open opens the given file in a new editor window.
 	// Returns an ErrAlreadyOpened error if the file is already opened.
 	Open(ctx context.Context, file *directory.File) (*OpenedEditor, error)
@@ -59,19 +61,33 @@ func NewEditorViewModel(
 		selectedConnection: initialConnection,
 	}
 
-	go vm.listen()
+	bus.SubscribeV2().
+		On(event.Is(directory.FileLoadEventType.AsSuccess()), vm.handleFileLoadingSuccess).
+		On(event.Is(directory.FileLoadEventType.AsFailure()), vm.handleFileLoadingFailure).
+		On(event.IsOneOf(connection_deck.SelectEventType.AsSuccess(),
+			connection_deck.UpdateEventType.AsSuccess(),
+			connection_deck.RemoveEventType.AsSuccess()), vm.handleConnectionChanged).
+		ListenWithWorkers(1)
 
 	return vm
 }
 
+func (v *editorViewModelImpl) SelectedConnection() *connection_deck.Connection {
+	return v.selectedConnection
+}
+
 func (v *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (*OpenedEditor, error) {
+	if v.selectedConnection == nil {
+		return nil, ErrNoConnectionSelected
+	}
+
 	if oe, ok := v.openedEditors[file.FullPath()]; ok {
 		oe.Window.RequestFocus()
 		return nil, ErrEditorAlreadyOpened
 	}
 
 	oe := &OpenedEditor{
-		Window:   fyne.CurrentApp().NewWindow(file.Name().String()), // TODO: use the dynamically truncated display name here
+		Window:   fyne.CurrentApp().NewWindow(file.Name().String()),
 		File:     file,
 		OnSave:   func(string) error { return nil },
 		Content:  binding.NewString(),
@@ -80,7 +96,7 @@ func (v *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (*
 	}
 	v.openedEditors[file.FullPath()] = oe
 
-	v.bus.Publish(file.Load(v.selectedConnection.ID(), event.WithContext(ctx)))
+	v.bus.PublishV2(file.Load(v.selectedConnection.ID(), event.WithContext(ctx)))
 
 	return oe, nil
 }
@@ -131,8 +147,8 @@ func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
 		// The editor has been closed before the file was loaded. And it's okay
 		return
 	}
-	oe.IsLoaded.Set(true)
 	oe.ErrorMsg.Set(e.Error().Error())
+	oe.IsLoaded.Set(true)
 }
 
 func (v *editorViewModelImpl) IsOpened(file *directory.File) bool {
@@ -173,24 +189,5 @@ func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {
 			v.Close(oe)
 		}
 		v.selectedConnection = conn
-	}
-}
-
-func (v *editorViewModelImpl) listen() {
-	events := v.bus.Subscribe()
-
-	for evt := range events {
-		switch evt.Type() {
-		case connection_deck.SelectEventType.AsSuccess(),
-			connection_deck.UpdateEventType.AsSuccess(),
-			connection_deck.RemoveEventType.AsSuccess():
-			v.handleConnectionChanged(evt)
-
-		case directory.FileLoadEventType.AsSuccess():
-			v.handleFileLoadingSuccess(evt)
-
-		case directory.FileLoadEventType.AsFailure():
-			v.handleFileLoadingFailure(evt)
-		}
 	}
 }

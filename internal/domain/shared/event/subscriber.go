@@ -42,13 +42,15 @@ func (s *Subscriber) ListenWithWorkers(workers int) {
 
 func (s *Subscriber) ListenNonBlocking() {
 	s.started = true
-	for event := range s.events {
-		for matcher, callback := range s.registered {
-			if matcher.Match(event) {
-				go callback(event)
+	go func() {
+		for event := range s.events {
+			for matcher, callback := range s.registered {
+				if matcher.Match(event) {
+					go callback(event)
+				}
 			}
 		}
-	}
+	}()
 }
 
 func (s *Subscriber) Accept(event Event) bool {

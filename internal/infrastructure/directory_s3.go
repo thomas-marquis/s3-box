@@ -49,7 +49,16 @@ func NewS3DirectoryRepository(
 		notifier:             notifier,
 	}
 
-	go r.listen(bus, notifier)
+	bus.SubscribeV2().
+		On(event.Is(directory.CreatedEventType), r.handleCreateDirectory).
+		On(event.Is(directory.DeletedEventType), r.handleDeleteDirectory).
+		On(event.Is(directory.FileCreatedEventType), r.handleCreateFile).
+		On(event.Is(directory.FileDeletedEventType), r.handleDeleteFile).
+		On(event.Is(directory.ContentUploadedEventType), r.handleUploadFile).
+		On(event.Is(directory.ContentDownloadEventType), r.handleDownloadFile).
+		On(event.Is(directory.LoadEventType), r.handleLoading).
+		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
+		ListenNonBlocking()
 
 	return r, nil
 }
@@ -90,17 +99,4 @@ func (r *S3DirectoryRepository) GetFileContent(
 	content := directory.NewFileContent(file, directory.ContentFromFile(rd))
 
 	return content, nil
-}
-
-func (r *S3DirectoryRepository) listen(bus event.Bus, notifier notification.Repository) {
-	bus.SubscribeV2().
-		On(event.Is(directory.CreatedEventType), r.handleCreateDirectory).
-		On(event.Is(directory.DeletedEventType), r.handleDeleteDirectory).
-		On(event.Is(directory.FileCreatedEventType), r.handleCreateFile).
-		On(event.Is(directory.FileDeletedEventType), r.handleDeleteFile).
-		On(event.Is(directory.ContentUploadedEventType), r.handleUploadFile).
-		On(event.Is(directory.ContentDownloadEventType), r.handleDownloadFile).
-		On(event.Is(directory.LoadEventType), r.handleLoading).
-		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
-		ListenNonBlocking()
 }
