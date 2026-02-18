@@ -58,7 +58,7 @@ func NewS3DirectoryRepository(
 		On(event.Is(directory.ContentDownloadEventType), r.handleDownloadFile).
 		On(event.Is(directory.LoadEventType), r.handleLoading).
 		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
-		ListenNonBlocking()
+		ListenNonBlocking() // TODO: set a limit of simultaneous tasks
 
 	return r, nil
 }

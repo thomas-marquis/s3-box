@@ -25,19 +25,15 @@ type publishedLoad struct {
 type eventBusImpl struct {
 	sync.Mutex
 
-	subscribers   map[chan event.Event]struct{}
-	subscribersV2 map[chan event.Event]*event.Subscriber
-
+	subscribers    map[chan event.Event]*event.Subscriber
 	publishingChan chan publishedLoad
-
-	done     <-chan struct{}
-	notifier notification.Repository
+	done           <-chan struct{}
+	notifier       notification.Repository
 }
 
 func newEventBusImpl(done <-chan struct{}, notifier notification.Repository) event.Bus {
 	b := &eventBusImpl{
-		subscribers:    make(map[chan event.Event]struct{}),
-		subscribersV2:  make(map[chan event.Event]*event.Subscriber),
+		subscribers:    make(map[chan event.Event]*event.Subscriber),
 		publishingChan: make(chan publishedLoad, pubChanBufferSize),
 		done:           done,
 		notifier:       notifier,
@@ -79,7 +75,7 @@ func (b *eventBusImpl) Subscribe() *event.Subscriber {
 
 	events := make(chan event.Event)
 	subscriber := event.NewSubscriber(events)
-	b.subscribersV2[events] = subscriber
+	b.subscribers[events] = subscriber
 	return subscriber
 }
 
@@ -88,7 +84,7 @@ func (b *eventBusImpl) Publish(evt event.Event) {
 	b.Lock()
 	defer b.Unlock()
 
-	for channel, subscriber := range b.subscribersV2 {
+	for channel, subscriber := range b.subscribers {
 		if !subscriber.Accept(evt) {
 			continue
 		}
