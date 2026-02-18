@@ -29,6 +29,8 @@ type OpenedEditor struct {
 }
 
 type EditorViewModel interface {
+	ViewModel
+
 	SelectedConnection() *connection_deck.Connection
 
 	// Open opens the given file in a new editor window.

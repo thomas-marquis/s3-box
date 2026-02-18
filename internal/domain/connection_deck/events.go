@@ -9,6 +9,11 @@ const (
 	UpdateEventType event.Type = "deck.update"
 )
 
+type ConnectionEvent interface {
+	event.Event
+	Connection() *Connection
+}
+
 type withDeck struct {
 	deck *Deck
 }
@@ -220,3 +225,25 @@ func NewUpdateFailureEvent(err error, previous *Connection) UpdateFailureEvent {
 		withConnection{previous},
 	}
 }
+
+var (
+	_ event.ErrorEvent = (*SelectFailureEvent)(nil)
+	_ event.ErrorEvent = (*RemoveFailureEvent)(nil)
+	_ event.ErrorEvent = (*UpdateFailureEvent)(nil)
+	_ event.ErrorEvent = (*CreateFailureEvent)(nil)
+
+	_ ConnectionEvent = (*SelectEvent)(nil)
+	_ ConnectionEvent = (*RemoveEvent)(nil)
+	_ ConnectionEvent = (*CreateEvent)(nil)
+	_ ConnectionEvent = (*UpdateEvent)(nil)
+
+	_ ConnectionEvent = (*SelectSuccessEvent)(nil)
+	_ ConnectionEvent = (*UpdateSuccessEvent)(nil)
+	_ ConnectionEvent = (*RemoveSuccessEvent)(nil)
+	_ ConnectionEvent = (*CreateSuccessEvent)(nil)
+
+	_ ConnectionEvent = (*SelectFailureEvent)(nil)
+	_ ConnectionEvent = (*RemoveFailureEvent)(nil)
+	_ ConnectionEvent = (*UpdateFailureEvent)(nil)
+	_ ConnectionEvent = (*CreateFailureEvent)(nil)
+)
