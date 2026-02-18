@@ -58,8 +58,8 @@ func TestFyneConnectionsRepository_Get(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			Subscribe().
-			Return(make(chan event.Event)).
+			SubscribeV2().
+			Return(event.NewSubscriber(make(chan event.Event))).
 			Times(1)
 
 		repo := infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
@@ -84,8 +84,8 @@ func TestFyneConnectionsRepository_Get(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			Subscribe().
-			Return(make(chan event.Event)).
+			SubscribeV2().
+			Return(event.NewSubscriber(make(chan event.Event))).
 			Times(1)
 
 		repo := infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
@@ -100,157 +100,157 @@ func TestFyneConnectionsRepository_Get(t *testing.T) {
 	})
 }
 
-func TestFyneConnectionsRepository(t *testing.T) {
-	t.Run("SelectEventType", func(t *testing.T) {
-		t.Run("should save connections to json and publish the selected connection on success", func(t *testing.T) {
-			// Given & Then
-			ctrl := gomock.NewController(t)
-			mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
-			mockBus := mocks_event.NewMockBus(ctrl)
-			events := make(chan event.Event)
+func TestFyneConnectionsRepository_select(t *testing.T) {
+	t.Run("should save connections to json and publish the selected connection on success", func(t *testing.T) {
+		// Given & Then
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		events := make(chan event.Event)
 
-			done := make(chan struct{})
+		done := make(chan struct{})
 
-			mockBus.EXPECT().
-				Subscribe().
-				Return(events).
-				Times(1)
+		mockBus.EXPECT().
+			SubscribeV2().
+			Return(event.NewSubscriber(events)).
+			Times(1)
 
-			_ = infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
-			defer close(events)
+		_ = infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
+		defer close(events)
 
-			deck := connection_deck.New()
-			c1 := deck.New("conn 1", "ak", "sk", "bucket").Connection()
-			evt, err := deck.Select(c1.ID())
-			require.NoError(t, err)
+		deck := connection_deck.New()
+		c1 := deck.New("conn 1", "ak", "sk", "bucket").Connection()
+		evt, err := deck.Select(c1.ID())
+		require.NoError(t, err)
 
-			mockPrefs.EXPECT().
-				SetString(gomock.Eq("allConnections"), gomock.Any()).
-				Times(1)
+		mockPrefs.EXPECT().
+			SetString(gomock.Eq("allConnections"), gomock.Any()).
+			Times(1)
 
-			mockBus.EXPECT().
-				Publish(gomock.Eq(connection_deck.NewSelectSuccessEvent(deck, c1))).
-				Do(func(e event.Event) { close(done) }).
-				Times(1)
+		mockBus.EXPECT().
+			PublishV2(gomock.Eq(connection_deck.NewSelectSuccessEvent(deck, c1))).
+			Do(func(e event.Event) {
+				close(done)
+			}).
+			Times(1)
 
-			// When
-			events <- evt
-			<-done
-		})
+		// When
+		events <- evt
+		<-done
 	})
+}
 
-	t.Run("CreateEventType", func(t *testing.T) {
-		t.Run("should save connections to json and publish the new connection on success", func(t *testing.T) {
-			// Given & Then
-			ctrl := gomock.NewController(t)
-			mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
-			mockBus := mocks_event.NewMockBus(ctrl)
-			events := make(chan event.Event)
+func TestFyneConnectionsRepository_create(t *testing.T) {
+	t.Run("should save connections to json and publish the new connection on success", func(t *testing.T) {
+		// Given & Then
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		events := make(chan event.Event)
 
-			done := make(chan struct{})
+		done := make(chan struct{})
 
-			mockBus.EXPECT().
-				Subscribe().
-				Return(events).
-				Times(1)
+		mockBus.EXPECT().
+			SubscribeV2().
+			Return(event.NewSubscriber(events)).
+			Times(1)
 
-			_ = infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
-			defer close(events)
+		_ = infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
+		defer close(events)
 
-			deck := connection_deck.New()
-			evt := deck.New("conn 1", "ak", "sk", "bucket")
-			c1 := evt.Connection()
+		deck := connection_deck.New()
+		evt := deck.New("conn 1", "ak", "sk", "bucket")
+		c1 := evt.Connection()
 
-			mockPrefs.EXPECT().
-				SetString(gomock.Eq("allConnections"), gomock.Any()).
-				Times(1)
+		mockPrefs.EXPECT().
+			SetString(gomock.Eq("allConnections"), gomock.Any()).
+			Times(1)
 
-			mockBus.EXPECT().
-				Publish(gomock.Eq(connection_deck.NewCreateSuccessEvent(deck, c1))).
-				Do(func(e event.Event) { close(done) }).
-				Times(1)
+		mockBus.EXPECT().
+			PublishV2(gomock.Eq(connection_deck.NewCreateSuccessEvent(deck, c1))).
+			Do(func(e event.Event) { close(done) }).
+			Times(1)
 
-			// When
-			events <- evt
-			<-done
-		})
+		// When
+		events <- evt
+		<-done
 	})
+}
 
-	t.Run("RemoveEventType", func(t *testing.T) {
-		t.Run("should save connections to json and publish the removed connection on success", func(t *testing.T) {
-			// Given & Then
-			ctrl := gomock.NewController(t)
-			mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
-			mockBus := mocks_event.NewMockBus(ctrl)
-			events := make(chan event.Event)
+func TestFyneConnectionsRepository_remove(t *testing.T) {
+	t.Run("should save connections to json and publish the removed connection on success", func(t *testing.T) {
+		// Given & Then
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		events := make(chan event.Event)
 
-			done := make(chan struct{})
+		done := make(chan struct{})
 
-			mockBus.EXPECT().
-				Subscribe().
-				Return(events).
-				Times(1)
+		mockBus.EXPECT().
+			SubscribeV2().
+			Return(event.NewSubscriber(events)).
+			Times(1)
 
-			_ = infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
-			defer close(events)
+		_ = infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
+		defer close(events)
 
-			deck := connection_deck.New()
-			c1 := deck.New("conn 1", "ak", "sk", "bucket").Connection()
-			evt, err := deck.RemoveAConnection(c1.ID())
-			require.NoError(t, err)
+		deck := connection_deck.New()
+		c1 := deck.New("conn 1", "ak", "sk", "bucket").Connection()
+		evt, err := deck.RemoveAConnection(c1.ID())
+		require.NoError(t, err)
 
-			mockPrefs.EXPECT().
-				SetString(gomock.Eq("allConnections"), gomock.Any()).
-				Times(1)
+		mockPrefs.EXPECT().
+			SetString(gomock.Eq("allConnections"), gomock.Any()).
+			Times(1)
 
-			mockBus.EXPECT().
-				Publish(gomock.Eq(connection_deck.NewRemoveSuccessEvent(deck, c1))).
-				Do(func(e event.Event) { close(done) }).
-				Times(1)
+		mockBus.EXPECT().
+			PublishV2(gomock.Eq(connection_deck.NewRemoveSuccessEvent(deck, c1))).
+			Do(func(e event.Event) { close(done) }).
+			Times(1)
 
-			// When
-			events <- evt
-			<-done
-		})
+		// When
+		events <- evt
+		<-done
 	})
+}
 
-	t.Run("UpdateEventType", func(t *testing.T) {
-		t.Run("should save connections to json and publish the updated connection on success", func(t *testing.T) {
-			// Given & Then
-			ctrl := gomock.NewController(t)
-			mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
-			mockBus := mocks_event.NewMockBus(ctrl)
-			events := make(chan event.Event)
+func TestFyneConnectionsRepository_update(t *testing.T) {
+	t.Run("should save connections to json and publish the updated connection on success", func(t *testing.T) {
+		// Given & Then
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		events := make(chan event.Event)
 
-			done := make(chan struct{})
+		done := make(chan struct{})
 
-			mockBus.EXPECT().
-				Subscribe().
-				Return(events).
-				Times(1)
+		mockBus.EXPECT().
+			SubscribeV2().
+			Return(event.NewSubscriber(events)).
+			Times(1)
 
-			_ = infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
-			defer close(events)
+		_ = infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
+		defer close(events)
 
-			deck := connection_deck.New()
-			c1 := deck.New("conn 1", "ak", "sk", "bucket").Connection()
-			evt, err := deck.Update(c1.ID(), connection_deck.WithName("new name"))
-			require.NoError(t, err)
-			c2 := evt.Connection()
+		deck := connection_deck.New()
+		c1 := deck.New("conn 1", "ak", "sk", "bucket").Connection()
+		evt, err := deck.Update(c1.ID(), connection_deck.WithName("new name"))
+		require.NoError(t, err)
+		c2 := evt.Connection()
 
-			mockPrefs.EXPECT().
-				SetString(gomock.Eq("allConnections"), gomock.Any()).
-				Times(1)
+		mockPrefs.EXPECT().
+			SetString(gomock.Eq("allConnections"), gomock.Any()).
+			Times(1)
 
-			mockBus.EXPECT().
-				Publish(gomock.Eq(connection_deck.NewUpdateSuccessEvent(deck, c2))).
-				Do(func(e event.Event) { close(done) }).
-				Times(1)
+		mockBus.EXPECT().
+			PublishV2(gomock.Eq(connection_deck.NewUpdateSuccessEvent(deck, c2))).
+			Do(func(e event.Event) { close(done) }).
+			Times(1)
 
-			// When
-			events <- evt
-			<-done
-		})
+		// When
+		events <- evt
+		<-done
 	})
 }
 
@@ -271,8 +271,8 @@ func TestFyneConnectionsRepository_Export(t *testing.T) {
 			Return(connJson).
 			Times(1)
 		mockBus.EXPECT().
-			Subscribe().
-			Return(make(chan event.Event)).
+			SubscribeV2().
+			Return(event.NewSubscriber(make(chan event.Event))).
 			Times(1)
 
 		repo := infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
@@ -297,8 +297,8 @@ func TestFyneConnectionsRepository_Export(t *testing.T) {
 			Return("invalid json").
 			Times(1)
 		mockBus.EXPECT().
-			Subscribe().
-			Return(make(chan event.Event)).
+			SubscribeV2().
+			Return(event.NewSubscriber(make(chan event.Event))).
 			Times(1)
 
 		repo := infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)
