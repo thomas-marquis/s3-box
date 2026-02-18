@@ -30,6 +30,8 @@ type S3DirectoryRepository struct {
 	connectionRepository connection_deck.Repository
 	logger               *log.Logger
 	cache                map[connection_deck.ConnectionID]*s3Session
+	bus                  event.Bus
+	notifier             notification.Repository
 }
 
 var _ directory.Repository = (*S3DirectoryRepository)(nil)
@@ -43,6 +45,8 @@ func NewS3DirectoryRepository(
 		connectionRepository: connectionsRepository,
 		logger:               log.New(os.Stdout, "S3Repository: ", log.LstdFlags),
 		cache:                make(map[connection_deck.ConnectionID]*s3Session),
+		bus:                  bus,
+		notifier:             notifier,
 	}
 
 	go r.listen(bus, notifier)
@@ -89,114 +93,14 @@ func (r *S3DirectoryRepository) GetFileContent(
 }
 
 func (r *S3DirectoryRepository) listen(bus event.Bus, notifier notification.Repository) {
-	events := bus.Subscribe(
-		directory.CreatedEventType,
-		directory.DeletedEventType,
-		directory.FileCreatedEventType,
-		directory.FileDeletedEventType,
-		directory.ContentUploadedEventType,
-		directory.ContentDownloadEventType,
-		directory.LoadEventType,
-		directory.FileLoadEventType,
-	)
-
-	for evt := range events {
-		go func() {
-			notifier.NotifyDebug(fmt.Sprintf("[INFRA] received event: %s", evt.Type()))
-
-			ctx := evt.Context()
-			if ctx == nil {
-				ctx = context.Background()
-			}
-
-			switch evt.Type() {
-			case directory.CreatedEventType:
-				e := evt.(directory.CreatedEvent)
-				if err := r.handleDirectoryCreation(ctx, e); err != nil {
-					notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
-					bus.Publish(directory.NewCreatedFailureEvent(err, e.Parent()))
-					return
-				}
-				bus.Publish(directory.NewCreatedSuccessEvent(e.Parent(), e.Directory()))
-
-			case directory.DeletedEventType:
-				err := fmt.Errorf("deleting directories is not yet implemented")
-				notifier.NotifyError(err)
-				bus.Publish(directory.NewDeletedFailureEvent(err))
-
-			case directory.FileCreatedEventType:
-				e := evt.(directory.FileCreatedEvent)
-				obj, err := r.handleLoadFile(ctx, e.File(), e.ConnectionID())
-				if err != nil {
-					notifier.NotifyError(fmt.Errorf("failed creating file: %w", err))
-					bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory()))
-					return
-				}
-				if _, err := obj.Write([]byte{}); err != nil {
-					notifier.NotifyError(fmt.Errorf("failed creating file: %w", err))
-					bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory()))
-					return
-				}
-
-				bus.Publish(directory.NewFileCreatedSuccessEvent(e.Directory(), e.File()))
-
-			case directory.FileDeletedEventType:
-				e := evt.(directory.FileDeletedEvent)
-				if err := r.handleFileDeletion(ctx, e); err != nil {
-					notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
-					bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
-					return
-				}
-				bus.Publish(directory.NewFileDeletedSuccessEvent(e.Parent(), e.File()))
-
-			case directory.ContentUploadedEventType:
-				e := evt.(directory.ContentUploadedEvent)
-				file, err := r.handleUpload(ctx, e)
-				if err != nil {
-					notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
-					bus.Publish(directory.NewContentUploadedFailureEvent(err, e.Directory()))
-					return
-				}
-				bus.Publish(directory.NewContentUploadedSuccessEvent(e.Directory(), file))
-
-			case directory.ContentDownloadEventType:
-				e := evt.(directory.ContentDownloadedEvent)
-				if err := r.handleDownload(ctx, e); err != nil {
-					notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
-					bus.Publish(directory.NewContentDownloadedFailureEvent(err))
-					return
-				}
-				bus.Publish(directory.NewContentDownloadedSuccessEvent(e.Content()))
-
-			case directory.LoadEventType:
-				notifier.NotifyDebug("[INFRA] loading directory...")
-				e := evt.(directory.LoadEvent)
-				dir := e.Directory()
-				subDirs, files, err := r.handleLoading(ctx, e)
-				if err != nil {
-					notifier.NotifyError(fmt.Errorf("failed loading directory: %w", err))
-					bus.Publish(directory.NewLoadFailureEvent(err, dir))
-					return
-				}
-				notifier.NotifyDebug("[INFRA] loading directory success, publishing...")
-				bus.Publish(directory.NewLoadSuccessEvent(dir, subDirs, files))
-				notifier.NotifyDebug("[INFRA] loading directory success, published.")
-
-			case directory.FileLoadEventType:
-				notifier.NotifyDebug("[INFRA] loading file...")
-				e := evt.(directory.FileLoadEvent)
-				obj, err := r.handleLoadFile(ctx, e.File(), e.ConnectionID())
-				if err != nil {
-					notifier.NotifyError(fmt.Errorf("failed loading file: %w", err))
-					bus.Publish(directory.NewFileLoadFailureEvent(err, e.File()))
-					return
-				}
-				notifier.NotifyDebug("[INFRA] loading file success, publishing...")
-				bus.Publish(directory.NewFileLoadSuccessEvent(e.File(), obj))
-				notifier.NotifyDebug("[INFRA] loading file success, published.")
-			}
-
-			notifier.NotifyDebug(fmt.Sprintf("[INFRA] event: %s processed", evt.Type()))
-		}()
-	}
+	bus.SubscribeV2().
+		On(event.Is(directory.CreatedEventType), r.handleCreateDirectory).
+		On(event.Is(directory.DeletedEventType), r.handleDeleteDirectory).
+		On(event.Is(directory.FileCreatedEventType), r.handleCreateFile).
+		On(event.Is(directory.FileDeletedEventType), r.handleDeleteFile).
+		On(event.Is(directory.ContentUploadedEventType), r.handleUploadFile).
+		On(event.Is(directory.ContentDownloadEventType), r.handleDownloadFile).
+		On(event.Is(directory.LoadEventType), r.handleLoading).
+		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
+		ListenNonBlocking()
 }

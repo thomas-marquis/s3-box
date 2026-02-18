@@ -64,8 +64,8 @@ func NewEditorViewModel(
 	return vm
 }
 
-func (vm *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (*OpenedEditor, error) {
-	if oe, ok := vm.openedEditors[file.FullPath()]; ok {
+func (v *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (*OpenedEditor, error) {
+	if oe, ok := v.openedEditors[file.FullPath()]; ok {
 		oe.Window.RequestFocus()
 		return nil, ErrEditorAlreadyOpened
 	}
@@ -78,115 +78,119 @@ func (vm *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (
 		IsLoaded: binding.NewBool(),
 		ErrorMsg: binding.NewString(),
 	}
-	vm.openedEditors[file.FullPath()] = oe
+	v.openedEditors[file.FullPath()] = oe
 
-	vm.bus.Publish(file.Load(vm.selectedConnection.ID(), event.WithContext(ctx)))
+	v.bus.Publish(file.Load(v.selectedConnection.ID(), event.WithContext(ctx)))
 
 	return oe, nil
 }
 
-func (vm *editorViewModelImpl) IsOpened(file *directory.File) bool {
-	_, ok := vm.openedEditors[file.FullPath()]
+func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
+	e := evt.(directory.FileLoadSuccessEvent)
+	content := e.Content
+	oe, ok := v.openedEditors[e.File().FullPath()]
+	if !ok {
+		// The editor has been closed before the file was loaded. And it's okay
+		return
+	}
+
+	if _, err := content.Seek(0, io.SeekStart); err != nil {
+		v.notifier.NotifyError(err)
+		oe.IsLoaded.Set(true)
+		oe.ErrorMsg.Set(err.Error())
+		return
+	}
+
+	oe.OnSave = func(newContent string) error {
+		if _, err := content.Seek(0, io.SeekStart); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprint(content, newContent); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	contentVal, err := io.ReadAll(content)
+	if err != nil {
+		v.notifier.NotifyError(err)
+		oe.IsLoaded.Set(true)
+		oe.ErrorMsg.Set(err.Error())
+		return
+	}
+
+	oe.Content.Set(string(contentVal))
+	oe.IsLoaded.Set(true)
+}
+
+func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
+	e := evt.(directory.FileLoadFailureEvent)
+	v.notifier.NotifyError(e.Error())
+	oe, ok := v.openedEditors[e.File().FullPath()]
+	if !ok {
+		// The editor has been closed before the file was loaded. And it's okay
+		return
+	}
+	oe.IsLoaded.Set(true)
+	oe.ErrorMsg.Set(e.Error().Error())
+}
+
+func (v *editorViewModelImpl) IsOpened(file *directory.File) bool {
+	_, ok := v.openedEditors[file.FullPath()]
 	return ok
 }
 
-func (vm *editorViewModelImpl) Close(editor *OpenedEditor) {
-	if _, ok := vm.openedEditors[editor.File.FullPath()]; ok {
-		delete(vm.openedEditors, editor.File.FullPath())
+func (v *editorViewModelImpl) Close(editor *OpenedEditor) {
+	if _, ok := v.openedEditors[editor.File.FullPath()]; ok {
+		delete(v.openedEditors, editor.File.FullPath())
 	}
 }
 
-func (vm *editorViewModelImpl) listen() {
-	events := vm.bus.Subscribe(
-		connection_deck.SelectEventType.AsSuccess(),
-		connection_deck.UpdateEventType.AsSuccess(),
-		connection_deck.RemoveEventType.AsSuccess(),
-		directory.FileLoadEventType.AsFailure(),
-		directory.FileLoadEventType.AsSuccess(),
-	)
+func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {
+	var hasChanged bool
+	var conn *connection_deck.Connection
+	if _, ok := evt.(connection_deck.RemoveSuccessEvent); ok {
+		hasChanged = true
+	} else {
+		e, ok := evt.(connection_deck.SelectSuccessEvent)
+		if ok {
+			conn = e.Connection()
+		} else {
+			e := evt.(connection_deck.UpdateSuccessEvent)
+			conn = e.Connection()
+			if conn.ID() != v.selectedConnection.ID() {
+				return
+			}
+		}
+
+		hasChanged = (v.selectedConnection == nil && conn != nil) ||
+			(v.selectedConnection != nil && conn == nil) ||
+			(v.selectedConnection != nil && !v.selectedConnection.Is(conn))
+	}
+
+	if hasChanged {
+		for _, oe := range v.openedEditors {
+			v.Close(oe)
+		}
+		v.selectedConnection = conn
+	}
+}
+
+func (v *editorViewModelImpl) listen() {
+	events := v.bus.Subscribe()
 
 	for evt := range events {
 		switch evt.Type() {
-		case connection_deck.SelectEventType.AsSuccess(), connection_deck.UpdateEventType.AsSuccess():
-			var conn *connection_deck.Connection
-			e, ok := evt.(connection_deck.SelectSuccessEvent)
-			if ok {
-				conn = e.Connection()
-			} else {
-				e := evt.(connection_deck.UpdateSuccessEvent)
-				conn = e.Connection()
-				if conn.ID() != vm.selectedConnection.ID() {
-					continue
-				}
-			}
-			hasChanged := (vm.selectedConnection == nil && conn != nil) ||
-				(vm.selectedConnection != nil && conn == nil) ||
-				(vm.selectedConnection != nil && !vm.selectedConnection.Is(conn))
-			if hasChanged {
-				for _, oe := range vm.openedEditors {
-					vm.Close(oe)
-				}
-				vm.selectedConnection = conn
-			}
-
-		case connection_deck.RemoveEventType.AsSuccess():
-			e := evt.(connection_deck.RemoveSuccessEvent)
-			conn := e.Connection()
-			if vm.selectedConnection != nil && vm.selectedConnection.Is(conn) {
-				for _, oe := range vm.openedEditors {
-					vm.Close(oe)
-				}
-				vm.selectedConnection = nil
-			}
+		case connection_deck.SelectEventType.AsSuccess(),
+			connection_deck.UpdateEventType.AsSuccess(),
+			connection_deck.RemoveEventType.AsSuccess():
+			v.handleConnectionChanged(evt)
 
 		case directory.FileLoadEventType.AsSuccess():
-			e := evt.(directory.FileLoadSuccessEvent)
-			content := e.Content
-			oe, ok := vm.openedEditors[e.File().FullPath()]
-			if !ok {
-				// The editor has been closed before the file was loaded. And it's okay
-				continue
-			}
-
-			if _, err := content.Seek(0, io.SeekStart); err != nil {
-				vm.notifier.NotifyError(err)
-				oe.IsLoaded.Set(true)
-				oe.ErrorMsg.Set(err.Error())
-				continue
-			}
-
-			oe.OnSave = func(newContent string) error {
-				if _, err := content.Seek(0, io.SeekStart); err != nil {
-					return err
-				}
-				if _, err := fmt.Fprint(content, newContent); err != nil {
-					return err
-				}
-				return nil
-			}
-
-			contentVal, err := io.ReadAll(content)
-			if err != nil {
-				vm.notifier.NotifyError(err)
-				oe.IsLoaded.Set(true)
-				oe.ErrorMsg.Set(err.Error())
-				return
-			}
-
-			oe.Content.Set(string(contentVal))
-			oe.IsLoaded.Set(true)
+			v.handleFileLoadingSuccess(evt)
 
 		case directory.FileLoadEventType.AsFailure():
-			e := evt.(directory.FileLoadFailureEvent)
-			vm.notifier.NotifyError(e.Error())
-			oe, ok := vm.openedEditors[e.File().FullPath()]
-			if !ok {
-				// The editor has been closed before the file was loaded. And it's okay
-				continue
-			}
-			oe.IsLoaded.Set(true)
-			oe.ErrorMsg.Set(e.Error().Error())
-
+			v.handleFileLoadingFailure(evt)
 		}
 	}
 }

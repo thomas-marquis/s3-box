@@ -82,11 +82,7 @@ func (r *FyneConnectionsRepository) loadConnectionsDTO() (*dto.ConnectionsDTO, e
 }
 
 func (r *FyneConnectionsRepository) listen(bus event.Bus) {
-	events := bus.Subscribe(
-		connection_deck.SelectEventType,
-		connection_deck.CreateEventType,
-		connection_deck.RemoveEventType,
-		connection_deck.UpdateEventType)
+	events := bus.Subscribe()
 
 	for evt := range events {
 		ctx := evt.Context()

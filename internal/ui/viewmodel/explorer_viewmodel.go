@@ -400,23 +400,7 @@ func (vm *explorerViewModelImpl) addNewFileToTree(fileToAdd *directory.File) err
 }
 
 func (vm *explorerViewModelImpl) listenEvents() {
-	events := vm.bus.Subscribe(
-		connection_deck.SelectEventType.AsSuccess(),
-		connection_deck.UpdateEventType.AsSuccess(),
-		connection_deck.RemoveEventType.AsSuccess(),
-		directory.ContentUploadedEventType.AsSuccess(),
-		directory.ContentUploadedEventType.AsFailure(),
-		directory.CreatedEventType.AsSuccess(),
-		directory.CreatedEventType.AsFailure(),
-		directory.FileDeletedEventType.AsSuccess(),
-		directory.FileDeletedEventType.AsFailure(),
-		directory.ContentDownloadEventType.AsSuccess(),
-		directory.ContentDownloadEventType.AsFailure(),
-		directory.LoadEventType.AsSuccess(),
-		directory.LoadEventType.AsFailure(),
-		directory.FileCreatedEventType.AsFailure(),
-		directory.FileCreatedEventType.AsSuccess(),
-	)
+	events := vm.bus.Subscribe()
 	for evt := range events {
 		switch evt.Type() {
 		case connection_deck.SelectEventType.AsSuccess(), connection_deck.UpdateEventType.AsSuccess():

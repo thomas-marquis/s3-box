@@ -232,20 +232,7 @@ func (vm *connectionViewModelImpl) initConnections(deck *connection_deck.Deck) {
 }
 
 func (vm *connectionViewModelImpl) listenUiEvents() {
-	events := vm.bus.Subscribe(
-		connection_deck.SelectEventType,
-		connection_deck.SelectEventType.AsFailure(),
-		connection_deck.SelectEventType.AsSuccess(),
-		connection_deck.CreateEventType,
-		connection_deck.CreateEventType.AsFailure(),
-		connection_deck.CreateEventType.AsSuccess(),
-		connection_deck.RemoveEventType,
-		connection_deck.RemoveEventType.AsFailure(),
-		connection_deck.RemoveEventType.AsSuccess(),
-		connection_deck.UpdateEventType,
-		connection_deck.UpdateEventType.AsFailure(),
-		connection_deck.UpdateEventType.AsSuccess(),
-	)
+	events := vm.bus.Subscribe()
 
 	for evt := range events {
 		switch evt.Type() {

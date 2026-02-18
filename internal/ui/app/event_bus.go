@@ -25,15 +25,18 @@ type publishedLoad struct {
 type eventBusImpl struct {
 	sync.Mutex
 
-	subscribers    map[chan event.Event][]event.Type
+	subscribers   map[chan event.Event]struct{}
+	subscribersV2 map[chan event.Event]*event.Subscriber
+
 	publishingChan chan publishedLoad
-	done           <-chan struct{}
-	notifier       notification.Repository
+
+	done     <-chan struct{}
+	notifier notification.Repository
 }
 
 func newEventBusImpl(done <-chan struct{}, notifier notification.Repository) event.Bus {
 	b := &eventBusImpl{
-		subscribers:    make(map[chan event.Event][]event.Type),
+		subscribers:    make(map[chan event.Event]struct{}),
 		publishingChan: make(chan publishedLoad, pubChanBufferSize),
 		done:           done,
 		notifier:       notifier,
@@ -69,13 +72,23 @@ func (b *eventBusImpl) terminate() {
 	}
 }
 
-func (b *eventBusImpl) Subscribe(eventTypes ...event.Type) <-chan event.Event {
+func (b *eventBusImpl) Subscribe() <-chan event.Event {
 	b.Lock()
 	defer b.Unlock()
 
 	channel := make(chan event.Event)
-	b.subscribers[channel] = eventTypes
+	b.subscribers[channel] = struct{}{}
 	return channel
+}
+
+func (b *eventBusImpl) SubscribeV2() *event.Subscriber {
+	b.Lock()
+	defer b.Unlock()
+
+	events := make(chan event.Event)
+	subscriber := event.NewSubscriber(events)
+	b.subscribersV2[events] = subscriber
+	return subscriber
 }
 
 func (b *eventBusImpl) Publish(evt event.Event) {
@@ -84,13 +97,26 @@ func (b *eventBusImpl) Publish(evt event.Event) {
 	defer b.Unlock()
 
 	for subscriber := range b.subscribers {
-		for _, eventType := range b.subscribers[subscriber] {
-			if evt.Type() == eventType {
-				select {
-				case b.publishingChan <- publishedLoad{evt, subscriber}:
-				case <-b.done:
-				}
-			}
+		select {
+		case b.publishingChan <- publishedLoad{evt, subscriber}:
+		case <-b.done:
+		}
+	}
+	b.notifier.NotifyDebug(fmt.Sprintf("Published event: %s", evt.Type()))
+}
+
+func (b *eventBusImpl) PublishV2(evt event.Event) {
+	b.notifier.NotifyDebug(fmt.Sprintf("publishing event: %s", evt.Type()))
+	b.Lock()
+	defer b.Unlock()
+
+	for channel, subscriber := range b.subscribersV2 {
+		if !subscriber.Accept(evt) {
+			continue
+		}
+		select {
+		case b.publishingChan <- publishedLoad{evt, channel}:
+		case <-b.done:
 		}
 	}
 	b.notifier.NotifyDebug(fmt.Sprintf("Published event: %s", evt.Type()))

@@ -55,7 +55,7 @@ func (mr *MockSettingsViewModelMockRecorder) ColorTheme() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ColorTheme", reflect.TypeOf((*MockSettingsViewModel)(nil).ColorTheme))
 }
 
-// CurrentMaxFilePreviewSizeBytes mocks base method.
+// CurrentFileSizeLimitBytes mocks base method.
 func (m *MockSettingsViewModel) CurrentFileSizeLimitBytes() int {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CurrentFileSizeLimitBytes")
@@ -63,8 +63,8 @@ func (m *MockSettingsViewModel) CurrentFileSizeLimitBytes() int {
 	return ret0
 }
 
-// CurrentMaxFilePreviewSizeBytes indicates an expected call of CurrentMaxFilePreviewSizeBytes.
-func (mr *MockSettingsViewModelMockRecorder) CurrentMaxFilePreviewSizeBytes() *gomock.Call {
+// CurrentFileSizeLimitBytes indicates an expected call of CurrentFileSizeLimitBytes.
+func (mr *MockSettingsViewModelMockRecorder) CurrentFileSizeLimitBytes() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentFileSizeLimitBytes", reflect.TypeOf((*MockSettingsViewModel)(nil).CurrentFileSizeLimitBytes))
 }
@@ -83,7 +83,7 @@ func (mr *MockSettingsViewModelMockRecorder) CurrentTimeout() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentTimeout", reflect.TypeOf((*MockSettingsViewModel)(nil).CurrentTimeout))
 }
 
-// MaxFilePreviewSizeBytes mocks base method.
+// FileSizeLimitKB mocks base method.
 func (m *MockSettingsViewModel) FileSizeLimitKB() binding.Int {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FileSizeLimitKB")
@@ -91,8 +91,8 @@ func (m *MockSettingsViewModel) FileSizeLimitKB() binding.Int {
 	return ret0
 }
 
-// MaxFilePreviewSizeBytes indicates an expected call of MaxFilePreviewSizeBytes.
-func (mr *MockSettingsViewModelMockRecorder) MaxFilePreviewSizeBytes() *gomock.Call {
+// FileSizeLimitKB indicates an expected call of FileSizeLimitKB.
+func (mr *MockSettingsViewModelMockRecorder) FileSizeLimitKB() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileSizeLimitKB", reflect.TypeOf((*MockSettingsViewModel)(nil).FileSizeLimitKB))
 }
