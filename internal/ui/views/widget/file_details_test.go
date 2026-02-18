@@ -26,7 +26,7 @@ func TestFileDetails(t *testing.T) {
 	mockAppCtx.EXPECT().ExplorerViewModel().Return(mockExplorerVM).AnyTimes()
 	mockAppCtx.EXPECT().ConnectionViewModel().Return(mockConnVM).AnyTimes()
 	mockAppCtx.EXPECT().SettingsViewModel().Return(mockSettingsVM).AnyTimes()
-	mockAppCtx.EXPECT().EditorVewModel().Return(mockEditorVM).AnyTimes()
+	mockAppCtx.EXPECT().EditorViewModel().Return(mockEditorVM).AnyTimes()
 	mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
 
 	sizeLimit := binding.NewInt()
