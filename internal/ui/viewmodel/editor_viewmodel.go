@@ -63,7 +63,7 @@ func NewEditorViewModel(
 		selectedConnection: initialConnection,
 	}
 
-	bus.SubscribeV2().
+	bus.Subscribe().
 		On(event.Is(directory.FileLoadEventType.AsSuccess()), vm.handleFileLoadingSuccess).
 		On(event.Is(directory.FileLoadEventType.AsFailure()), vm.handleFileLoadingFailure).
 		On(event.IsOneOf(connection_deck.SelectEventType.AsSuccess(),
@@ -98,7 +98,7 @@ func (v *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (*
 	}
 	v.openedEditors[file.FullPath()] = oe
 
-	v.bus.PublishV2(file.Load(v.selectedConnection.ID(), event.WithContext(ctx)))
+	v.bus.Publish(file.Load(v.selectedConnection.ID(), event.WithContext(ctx)))
 
 	return oe, nil
 }

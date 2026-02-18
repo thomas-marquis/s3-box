@@ -19,7 +19,7 @@ func (r *S3DirectoryRepository) handleCreateDirectory(e event.Event) {
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
-		r.bus.PublishV2(directory.NewCreatedFailureEvent(err, evt.Parent()))
+		r.bus.Publish(directory.NewCreatedFailureEvent(err, evt.Parent()))
 	}
 
 	sess, err := r.getSession(ctx, evt.Parent().ConnectionID())
@@ -44,14 +44,14 @@ func (r *S3DirectoryRepository) handleCreateDirectory(e event.Event) {
 		return
 	}
 
-	r.bus.PublishV2(
+	r.bus.Publish(
 		directory.NewCreatedSuccessEvent(evt.Parent(), evt.Directory()))
 }
 
 func (r *S3DirectoryRepository) handleDeleteDirectory(_ event.Event) {
 	err := fmt.Errorf("deleting directories is not yet implemented")
 	r.notifier.NotifyError(err)
-	r.bus.PublishV2(directory.NewDeletedFailureEvent(err))
+	r.bus.Publish(directory.NewDeletedFailureEvent(err))
 }
 
 func (r *S3DirectoryRepository) handleDeleteFile(evt event.Event) {
@@ -60,7 +60,7 @@ func (r *S3DirectoryRepository) handleDeleteFile(evt event.Event) {
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
-		r.bus.PublishV2(directory.NewFileDeletedFailureEvent(err, e.Parent()))
+		r.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
 	}
 
 	sess, err := r.getSession(ctx, e.ConnectionID())
@@ -88,7 +88,7 @@ func (r *S3DirectoryRepository) handleDeleteFile(evt event.Event) {
 		return
 	}
 
-	r.bus.PublishV2(
+	r.bus.Publish(
 		directory.NewFileDeletedSuccessEvent(e.Parent(), e.File()))
 }
 
@@ -98,7 +98,7 @@ func (r *S3DirectoryRepository) handleUploadFile(e event.Event) {
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
-		r.bus.PublishV2(directory.NewContentUploadedFailureEvent(err, evt.Directory()))
+		r.bus.Publish(directory.NewContentUploadedFailureEvent(err, evt.Directory()))
 	}
 
 	sess, err := r.getSession(ctx, evt.Directory().ConnectionID())
@@ -149,7 +149,7 @@ func (r *S3DirectoryRepository) handleUploadFile(e event.Event) {
 		return
 	}
 
-	r.bus.PublishV2(directory.NewContentUploadedSuccessEvent(evt.Directory(), uploadedFile))
+	r.bus.Publish(directory.NewContentUploadedSuccessEvent(evt.Directory(), uploadedFile))
 }
 
 func (r *S3DirectoryRepository) handleDownloadFile(e event.Event) {
@@ -158,7 +158,7 @@ func (r *S3DirectoryRepository) handleDownloadFile(e event.Event) {
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
-		r.bus.PublishV2(directory.NewContentDownloadedFailureEvent(err))
+		r.bus.Publish(directory.NewContentDownloadedFailureEvent(err))
 	}
 
 	sess, err := r.getSession(ctx, evt.ConnectionID())
@@ -184,7 +184,7 @@ func (r *S3DirectoryRepository) handleDownloadFile(e event.Event) {
 		return
 	}
 
-	r.bus.PublishV2(directory.NewContentDownloadedSuccessEvent(evt.Content()))
+	r.bus.Publish(directory.NewContentDownloadedSuccessEvent(evt.Content()))
 }
 
 func (r *S3DirectoryRepository) handleLoading(e event.Event) {
@@ -194,7 +194,7 @@ func (r *S3DirectoryRepository) handleLoading(e event.Event) {
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed loading directory: %w", err))
-		r.bus.PublishV2(directory.NewLoadFailureEvent(err, dir))
+		r.bus.Publish(directory.NewLoadFailureEvent(err, dir))
 	}
 
 	searchKey := mapPathToSearchKey(dir.Path())
@@ -257,7 +257,7 @@ func (r *S3DirectoryRepository) handleLoading(e event.Event) {
 			}
 		}
 	}
-	r.bus.PublishV2(directory.NewLoadSuccessEvent(dir, subDirectories, files))
+	r.bus.Publish(directory.NewLoadSuccessEvent(dir, subDirectories, files))
 }
 
 func (r *S3DirectoryRepository) handleCreateFile(evt event.Event) {
@@ -267,7 +267,7 @@ func (r *S3DirectoryRepository) handleCreateFile(evt event.Event) {
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed creating file: %w", err))
-		r.bus.PublishV2(directory.NewFileCreatedFailureEvent(err, e.Directory()))
+		r.bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory()))
 	}
 
 	obj, err := r.loadFile(ctx, e.File(), e.ConnectionID())
@@ -280,7 +280,7 @@ func (r *S3DirectoryRepository) handleCreateFile(evt event.Event) {
 		return
 	}
 
-	r.bus.PublishV2(directory.NewFileCreatedSuccessEvent(e.Directory(), e.File()))
+	r.bus.Publish(directory.NewFileCreatedSuccessEvent(e.Directory(), e.File()))
 }
 
 func (r *S3DirectoryRepository) handleLoadFile(e event.Event) {
@@ -289,10 +289,10 @@ func (r *S3DirectoryRepository) handleLoadFile(e event.Event) {
 	obj, err := r.loadFile(ctx, evt.File(), evt.ConnectionID())
 	if err != nil {
 		r.notifier.NotifyError(fmt.Errorf("failed loading file: %w", err))
-		r.bus.PublishV2(directory.NewFileLoadFailureEvent(err, evt.File()))
+		r.bus.Publish(directory.NewFileLoadFailureEvent(err, evt.File()))
 		return
 	}
-	r.bus.PublishV2(directory.NewFileLoadSuccessEvent(evt.File(), obj))
+	r.bus.Publish(directory.NewFileLoadSuccessEvent(evt.File(), obj))
 }
 
 func (r *S3DirectoryRepository) loadFile(ctx context.Context, file *directory.File, connID connection_deck.ConnectionID) (directory.FileObject, error) {

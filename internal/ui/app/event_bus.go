@@ -73,7 +73,7 @@ func (b *eventBusImpl) terminate() {
 	}
 }
 
-func (b *eventBusImpl) SubscribeV2() *event.Subscriber {
+func (b *eventBusImpl) Subscribe() *event.Subscriber {
 	b.Lock()
 	defer b.Unlock()
 
@@ -83,7 +83,7 @@ func (b *eventBusImpl) SubscribeV2() *event.Subscriber {
 	return subscriber
 }
 
-func (b *eventBusImpl) PublishV2(evt event.Event) {
+func (b *eventBusImpl) Publish(evt event.Event) {
 	b.notifier.NotifyDebug(fmt.Sprintf("publishing event: %s", evt.Type()))
 	b.Lock()
 	defer b.Unlock()

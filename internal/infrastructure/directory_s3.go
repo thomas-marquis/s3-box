@@ -49,7 +49,7 @@ func NewS3DirectoryRepository(
 		notifier:             notifier,
 	}
 
-	bus.SubscribeV2().
+	bus.Subscribe().
 		On(event.Is(directory.CreatedEventType), r.handleCreateDirectory).
 		On(event.Is(directory.DeletedEventType), r.handleDeleteDirectory).
 		On(event.Is(directory.FileCreatedEventType), r.handleCreateFile).

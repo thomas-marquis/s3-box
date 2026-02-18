@@ -129,7 +129,7 @@ func NewExplorerViewModel(
 		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err))
 	}
 
-	bus.SubscribeV2().
+	bus.Subscribe().
 		On(event.IsOneOf(
 			connection_deck.SelectEventType.AsSuccess(),
 			connection_deck.UpdateEventType.AsSuccess(),
@@ -194,7 +194,7 @@ func (v *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error 
 		return wErr
 	}
 	v.isSelectedDirLoading.Set(true)
-	v.bus.PublishV2(evt)
+	v.bus.Publish(evt)
 
 	return nil
 }
@@ -259,7 +259,7 @@ func (v *explorerViewModelImpl) GetFileContent(file *directory.File) (*directory
 
 func (v *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
 	evt := f.Download(v.selectedConnectionVal.ID(), dest)
-	v.bus.PublishV2(evt)
+	v.bus.Publish(evt)
 }
 
 func (v *explorerViewModelImpl) handleDownloadFileSuccess(evt event.Event) {
@@ -279,7 +279,7 @@ func (v *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Dire
 	if v.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
-		v.bus.PublishV2(directory.NewContentUploadedFailureEvent(err, dir))
+		v.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
 		return nil
 	}
 
@@ -290,17 +290,17 @@ func (v *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Dire
 		}
 		err := fmt.Errorf("error uploading file: %w", err)
 		v.notifier.NotifyError(err)
-		v.bus.PublishV2(directory.NewContentUploadedFailureEvent(err, dir))
+		v.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
 		return nil
 	}
-	v.bus.PublishV2(evt)
+	v.bus.Publish(evt)
 	return nil
 }
 
 func (v *explorerViewModelImpl) handleFileUploadSuccess(evt event.Event) {
 	e := evt.(directory.ContentUploadedSuccessEvent)
 	if err := v.addNewFileToTree(e.File()); err != nil {
-		v.bus.PublishV2(directory.NewContentUploadedFailureEvent(err, e.Directory()))
+		v.bus.Publish(directory.NewContentUploadedFailureEvent(err, e.Directory()))
 		return
 	}
 	if err := e.Directory().Notify(e); err != nil {
@@ -336,11 +336,11 @@ func (v *explorerViewModelImpl) DeleteFile(file *directory.File) {
 	parent := dirNode.Directory()
 	evt, err := parent.RemoveFile(file.Name())
 	if err != nil {
-		v.bus.PublishV2(directory.NewFileDeletedFailureEvent(
+		v.bus.Publish(directory.NewFileDeletedFailureEvent(
 			fmt.Errorf("error removing file from the directory %s: %w", parent.Path(), err), parent))
 		return
 	}
-	v.bus.PublishV2(evt)
+	v.bus.Publish(evt)
 }
 
 func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
@@ -352,7 +352,7 @@ func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
 	}
 
 	if err := v.tree.Remove(e.File().FullPath()); err != nil {
-		v.bus.PublishV2(directory.NewFileDeletedFailureEvent(err, e.Parent()))
+		v.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
 		return
 	}
 
@@ -407,7 +407,7 @@ func (v *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory
 	if v.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
-		v.bus.PublishV2(directory.NewCreatedFailureEvent(err, parent))
+		v.bus.Publish(directory.NewCreatedFailureEvent(err, parent))
 		return
 	}
 
@@ -415,17 +415,17 @@ func (v *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory
 	if err != nil {
 		wErr := fmt.Errorf("error creating subdirectory: %w", err)
 		v.notifier.NotifyError(wErr)
-		v.bus.PublishV2(directory.NewCreatedFailureEvent(wErr, parent))
+		v.bus.Publish(directory.NewCreatedFailureEvent(wErr, parent))
 		return
 	}
 
-	v.bus.PublishV2(evt)
+	v.bus.Publish(evt)
 }
 
 func (v *explorerViewModelImpl) handleCreateDirSuccess(evt event.Event) {
 	e := evt.(directory.CreatedSuccessEvent)
 	if err := v.addNewDirectoryToTree(e.Directory()); err != nil {
-		v.bus.PublishV2(directory.NewCreatedFailureEvent(err, e.Parent()))
+		v.bus.Publish(directory.NewCreatedFailureEvent(err, e.Parent()))
 		return
 	}
 	if err := e.Parent().Notify(e); err != nil {
@@ -448,7 +448,7 @@ func (v *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, nam
 	if v.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
-		v.bus.PublishV2(directory.NewCreatedFailureEvent(err, parent))
+		v.bus.Publish(directory.NewCreatedFailureEvent(err, parent))
 		return
 	}
 
@@ -456,17 +456,17 @@ func (v *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, nam
 	if err != nil {
 		wErr := fmt.Errorf("error creating file: %w", err)
 		v.notifier.NotifyError(wErr)
-		v.bus.PublishV2(directory.NewCreatedFailureEvent(wErr, parent))
+		v.bus.Publish(directory.NewCreatedFailureEvent(wErr, parent))
 		return
 	}
 
-	v.bus.PublishV2(evt)
+	v.bus.Publish(evt)
 }
 
 func (v *explorerViewModelImpl) handleCreateFileSuccess(evt event.Event) {
 	e := evt.(directory.FileCreatedSuccessEvent)
 	if err := v.addNewFileToTree(e.File()); err != nil {
-		v.bus.PublishV2(directory.NewFileCreatedFailureEvent(err, e.Directory()))
+		v.bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory()))
 		return
 	}
 	if err := e.Directory().Notify(e); err != nil {
