@@ -133,6 +133,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	if w.appCtx.ConnectionViewModel().IsReadOnly() {
 		w.newDirectoryAction.Disable()
 		w.uploadAction.Disable()
+		w.createFileAction.Disable()
 	}
 }
 

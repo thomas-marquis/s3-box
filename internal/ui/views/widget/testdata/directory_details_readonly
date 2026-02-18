@@ -37,12 +37,12 @@
 							<image fillMode="contain" pos="8,8" rsc="folderNewIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
 						<widget pos="191,0" size="145x36" type="*widget.Button">
-							<rectangle fillColor="button" radius="4" size="145x36"/>
+							<rectangle fillColor="disabled button" radius="4" size="145x36"/>
 							<rectangle size="145x36"/>
 							<widget pos="32,8" size="105x20" type="*widget.RichText">
-								<text alignment="center" bold size="105x19">New empty file</text>
+								<text alignment="center" bold color="disabled" size="105x19">New empty file</text>
 							</widget>
-							<image fillMode="contain" pos="8,8" rsc="contentAddIcon" size="iconInlineSize" themed="foreground"/>
+							<image fillMode="contain" pos="8,8" rsc="contentAddIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
 						<widget pos="341,0" size="115x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="115x36"/>
