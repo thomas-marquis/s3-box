@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 // FileName is a value object representing a file name.
@@ -13,10 +14,10 @@ type FileName string
 
 func NewFileName(name string) (FileName, error) {
 	if name == "" {
-		return "", errors.New("fileObj name is empty")
+		return "", errors.New("file name is empty")
 	}
 	if name == "/" || strings.Contains(name, "/") {
-		return "", errors.New("fileObj name is not valid: should not be '/' or contain '/'")
+		return "", errors.New("file name is not valid: should not be '/' or contain '/'")
 	}
 
 	return FileName(name), nil
@@ -90,4 +91,8 @@ func (f *File) FullPath() string {
 
 func (f *File) Download(connID connection_deck.ConnectionID, toPath string) ContentDownloadedEvent {
 	return NewContentDownloadedEvent(connID, NewFileContent(f, FromLocalFile(toPath), WithOpenModeWrite()))
+}
+
+func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) FileLoadEvent {
+	return NewFileLoadEvent(connId, f, opts...)
 }

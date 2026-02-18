@@ -161,6 +161,39 @@ func TestDirectory_Load(t *testing.T) {
 	})
 }
 
+func TestDirectory_NewFile(t *testing.T) {
+	t.Run("should create a file and add it to the directory on success", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
+		require.NoError(t, err)
+
+		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
+		_, err = dir.Load()
+		require.NoError(t, err)
+		require.NoError(t, dir.Notify(loadEvt))
+
+		// When
+		evt, err := dir.NewFile("report.csv", false)
+
+		// Then
+		assert.NoError(t, err)
+		assert.Equal(t, directory.FileCreatedEventType, evt.Type())
+		assert.Equal(t, dir, evt.Directory())
+		assert.Equal(t, "report.csv", evt.File().Name().String())
+		files, _ := dir.Files()
+		require.Len(t, files, 0)
+
+		// Then, when notified of the success
+		successEvt := directory.NewContentUploadedSuccessEvent(dir, evt.File())
+		assert.NoError(t, dir.Notify(successEvt))
+
+		files, _ = dir.Files()
+		require.Len(t, files, 1)
+		assert.Equal(t, "report.csv", files[0].Name().String())
+	})
+}
+
 func TestDirectory_RemoveFile(t *testing.T) {
 	t.Run("should create file deleted event when file exists, then recreated", func(t *testing.T) {
 		// Given
@@ -195,7 +228,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		newFileEvt, err := dir.NewFile("main.go", false)
 		assert.NoError(t, err)
 
-		newFileSuccessEvt := directory.NewFileCreatedSuccessEvent(newFileEvt.File())
+		newFileSuccessEvt := directory.NewFileCreatedSuccessEvent(dir, newFileEvt.File())
 		assert.NoError(t, dir.Notify(newFileSuccessEvt))
 
 		resFiles, _ = dir.Files()

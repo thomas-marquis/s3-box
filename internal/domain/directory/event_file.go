@@ -8,6 +8,7 @@ import (
 const (
 	FileCreatedEventType event.Type = "event.file.created"
 	FileDeletedEventType event.Type = "event.file.deleted"
+	FileLoadEventType    event.Type = "event.file.load"
 )
 
 type withFile struct {
@@ -30,35 +31,41 @@ type FileCreatedEvent struct {
 	event.BaseEvent
 	withFile
 	withConnectionID
+	withDirectory
 }
 
-func NewFileCreatedEvent(connectionID connection_deck.ConnectionID, file *File, opts ...event.Option) FileCreatedEvent {
+func NewFileCreatedEvent(connectionID connection_deck.ConnectionID, dir *Directory, file *File, opts ...event.Option) FileCreatedEvent {
 	return FileCreatedEvent{
 		event.NewBaseEvent(FileCreatedEventType, opts...),
 		withFile{file},
 		withConnectionID{connectionID},
+		withDirectory{dir},
 	}
 }
 
 type FileCreatedSuccessEvent struct {
 	event.BaseEvent
 	withFile
+	withDirectory
 }
 
-func NewFileCreatedSuccessEvent(file *File, opts ...event.Option) FileCreatedSuccessEvent {
+func NewFileCreatedSuccessEvent(dir *Directory, file *File, opts ...event.Option) FileCreatedSuccessEvent {
 	return FileCreatedSuccessEvent{
 		event.NewBaseEvent(FileCreatedEventType.AsSuccess(), opts...),
 		withFile{file},
+		withDirectory{dir},
 	}
 }
 
 type FileCreatedFailureEvent struct {
 	event.BaseErrorEvent
+	withDirectory
 }
 
-func NewFileCreatedFailureEvent(err error) FileCreatedFailureEvent {
+func NewFileCreatedFailureEvent(err error, dir *Directory) FileCreatedFailureEvent {
 	return FileCreatedFailureEvent{
 		event.NewBaseErrorEvent(FileCreatedEventType.AsFailure(), err),
+		withDirectory{dir},
 	}
 }
 
@@ -101,5 +108,45 @@ func NewFileDeletedFailureEvent(err error, parent *Directory) FileDeletedFailure
 	return FileDeletedFailureEvent{
 		event.NewBaseErrorEvent(FileDeletedEventType.AsFailure(), err),
 		withParentDirectory{parent},
+	}
+}
+
+type FileLoadEvent struct {
+	event.BaseEvent
+	withFile
+	withConnectionID
+}
+
+func NewFileLoadEvent(connectionID connection_deck.ConnectionID, file *File, opts ...event.Option) FileLoadEvent {
+	return FileLoadEvent{
+		event.NewBaseEvent(FileLoadEventType, opts...),
+		withFile{file},
+		withConnectionID{connectionID},
+	}
+}
+
+type FileLoadSuccessEvent struct {
+	event.BaseEvent
+	withFile
+	Content FileObject
+}
+
+func NewFileLoadSuccessEvent(file *File, content FileObject) FileLoadSuccessEvent {
+	return FileLoadSuccessEvent{
+		event.NewBaseEvent(FileLoadEventType.AsSuccess()),
+		withFile{file},
+		content,
+	}
+}
+
+type FileLoadFailureEvent struct {
+	event.BaseErrorEvent
+	withFile
+}
+
+func NewFileLoadFailureEvent(err error, file *File) FileLoadFailureEvent {
+	return FileLoadFailureEvent{
+		event.NewBaseErrorEvent(FileLoadEventType.AsFailure(), err),
+		withFile{file},
 	}
 }

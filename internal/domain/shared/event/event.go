@@ -46,6 +46,10 @@ func NewBaseEvent(eventType Type, opts ...Option) BaseEvent {
 		e = opt(e)
 	}
 
+	if e.ctx == nil {
+		e.ctx = context.Background()
+	}
+
 	return e
 }
 

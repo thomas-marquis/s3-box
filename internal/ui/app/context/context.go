@@ -17,6 +17,7 @@ type AppContext interface {
 	ConnectionViewModel() viewmodel.ConnectionViewModel
 	SettingsViewModel() viewmodel.SettingsViewModel
 	NotificationViewModel() viewmodel.NotificationViewModel
+	EditorViewModel() viewmodel.EditorViewModel
 
 	Window() fyne.Window
 	L() *zap.Logger
@@ -31,6 +32,7 @@ type AppContextImpl struct {
 	connectionsViewModel  viewmodel.ConnectionViewModel
 	settingsViewModel     viewmodel.SettingsViewModel
 	notificationViewModel viewmodel.NotificationViewModel
+	editorViewModel       viewmodel.EditorViewModel
 
 	window       fyne.Window
 	logger       *zap.Logger
@@ -53,6 +55,7 @@ func New(
 	connectionViewModel viewmodel.ConnectionViewModel,
 	settingsViewModel viewmodel.SettingsViewModel,
 	notificationViewModel viewmodel.NotificationViewModel,
+	editorViewModel viewmodel.EditorViewModel,
 	initialRoute navigation.Route,
 	menu map[navigation.Route]Menu,
 	logger *zap.Logger,
@@ -70,6 +73,7 @@ func New(
 		connectionsViewModel:  connectionViewModel,
 		settingsViewModel:     settingsViewModel,
 		notificationViewModel: notificationViewModel,
+		editorViewModel:       editorViewModel,
 		window:                window,
 		logger:                logger,
 		currentRoute:          initialRoute,
@@ -105,6 +109,10 @@ func (ctx *AppContextImpl) SettingsViewModel() viewmodel.SettingsViewModel {
 
 func (ctx *AppContextImpl) NotificationViewModel() viewmodel.NotificationViewModel {
 	return ctx.notificationViewModel
+}
+
+func (ctx *AppContextImpl) EditorViewModel() viewmodel.EditorViewModel {
+	return ctx.editorViewModel
 }
 
 func (ctx *AppContextImpl) Window() fyne.Window {

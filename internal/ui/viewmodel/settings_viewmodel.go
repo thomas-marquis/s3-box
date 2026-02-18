@@ -23,8 +23,8 @@ type SettingsViewModel interface {
 	Save() error
 	TimeoutInSeconds() binding.Int
 	CurrentTimeout() time.Duration
-	MaxFilePreviewSizeBytes() binding.Int
-	CurrentMaxFilePreviewSizeBytes() int
+	FileSizeLimitKB() binding.Int
+	CurrentFileSizeLimitBytes() int
 	ColorTheme() binding.String
 }
 
@@ -33,10 +33,10 @@ type settingsViewModelImpl struct {
 	loading      binding.Bool
 	notifier     notification.Repository
 
-	timeoutInSeconds        binding.Int
-	maxFilePreviewSizeBytes binding.Int
-	fyneSettings            fyne.Settings
-	colorTheme              binding.String
+	timeoutInSeconds binding.Int
+	fileSizeLimitKB  binding.Int
+	fyneSettings     fyne.Settings
+	colorTheme       binding.String
 }
 
 func NewSettingsViewModel(
@@ -68,13 +68,13 @@ func NewSettingsViewModel(
 	}))
 
 	vm := &settingsViewModelImpl{
-		settingsRepo:            settingsRepo,
-		loading:                 binding.NewBool(),
-		notifier:                notifier,
-		timeoutInSeconds:        binding.NewInt(),
-		maxFilePreviewSizeBytes: binding.NewInt(),
-		fyneSettings:            fyneSettings,
-		colorTheme:              themeBinding,
+		settingsRepo:     settingsRepo,
+		loading:          binding.NewBool(),
+		notifier:         notifier,
+		timeoutInSeconds: binding.NewInt(),
+		fileSizeLimitKB:  binding.NewInt(),
+		fyneSettings:     fyneSettings,
+		colorTheme:       themeBinding,
 	}
 
 	vm.synchronize(s)
@@ -89,7 +89,7 @@ func (vm *settingsViewModelImpl) Save() error {
 		vm.notifier.NotifyError(wErr)
 		return wErr
 	}
-	maxFilePreviewSizeMegaBytes, err := vm.maxFilePreviewSizeBytes.Get()
+	maxFilePreviewSizeKB, err := vm.fileSizeLimitKB.Get()
 	if err != nil {
 		wErr := fmt.Errorf("error getting max file preview size in mega bytes: %w", err)
 		vm.notifier.NotifyError(wErr)
@@ -108,7 +108,7 @@ func (vm *settingsViewModelImpl) Save() error {
 		return wErr
 	}
 
-	s, err := settings.NewSettings(timeout, utils.MegaToBytes(maxFilePreviewSizeMegaBytes))
+	s, err := settings.NewSettings(timeout, utils.KBToBytes(maxFilePreviewSizeKB))
 	if err != nil {
 		wErr := fmt.Errorf("error creating settings: %w", err)
 		vm.notifier.NotifyError(wErr)
@@ -143,17 +143,17 @@ func (vm *settingsViewModelImpl) CurrentTimeout() time.Duration {
 	return time.Duration(val) * time.Second
 }
 
-func (vm *settingsViewModelImpl) MaxFilePreviewSizeBytes() binding.Int {
-	return vm.maxFilePreviewSizeBytes
+func (vm *settingsViewModelImpl) FileSizeLimitKB() binding.Int {
+	return vm.fileSizeLimitKB
 }
 
-func (vm *settingsViewModelImpl) CurrentMaxFilePreviewSizeBytes() int {
-	val, err := vm.maxFilePreviewSizeBytes.Get()
+func (vm *settingsViewModelImpl) CurrentFileSizeLimitBytes() int {
+	val, err := vm.fileSizeLimitKB.Get()
 	if err != nil {
-		vm.notifier.NotifyError(fmt.Errorf("error getting max file preview size in mega bytes: %w", err))
+		vm.notifier.NotifyError(fmt.Errorf("error getting file preview/edit size limit: %w", err))
 		return settings.DefaultMaxFilePreviewSizeBytes
 	}
-	return val
+	return utils.KBToBytes(val)
 }
 
 func (vm *settingsViewModelImpl) ColorTheme() binding.String {
@@ -165,9 +165,9 @@ func (vm *settingsViewModelImpl) synchronize(s settings.Settings) {
 	if s.MaxFilePreviewSizeBytes > math.MaxInt {
 		vm.notifier.NotifyError(
 			fmt.Errorf("max file preview size exceeds maximum allowed value: clamping to max int"))
-		vm.maxFilePreviewSizeBytes.Set(math.MaxInt) //nolint:errcheck
+		vm.fileSizeLimitKB.Set(math.MaxInt) //nolint:errcheck
 	} else {
-		vm.maxFilePreviewSizeBytes.Set(s.MaxFilePreviewSizeBytes) //nolint:errcheck
+		vm.fileSizeLimitKB.Set(utils.BytesToKB(s.MaxFilePreviewSizeBytes)) //nolint:errcheck
 	}
 	vm.colorTheme.Set(s.Color.String()) //nolint:errcheck
 }

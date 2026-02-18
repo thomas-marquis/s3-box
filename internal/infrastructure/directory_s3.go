@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 
@@ -17,13 +18,11 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
-const (
-	nbWorkers = 5
-)
-
 type s3Session struct {
 	connection *connection_deck.Connection
 	client     *s3.Client
+	downloader *manager.Downloader
+	uploader   *manager.Uploader
 }
 
 type S3DirectoryRepository struct {
@@ -31,6 +30,8 @@ type S3DirectoryRepository struct {
 	connectionRepository connection_deck.Repository
 	logger               *log.Logger
 	cache                map[connection_deck.ConnectionID]*s3Session
+	bus                  event.Bus
+	notifier             notification.Repository
 }
 
 var _ directory.Repository = (*S3DirectoryRepository)(nil)
@@ -44,12 +45,20 @@ func NewS3DirectoryRepository(
 		connectionRepository: connectionsRepository,
 		logger:               log.New(os.Stdout, "S3Repository: ", log.LstdFlags),
 		cache:                make(map[connection_deck.ConnectionID]*s3Session),
+		bus:                  bus,
+		notifier:             notifier,
 	}
 
-	events := bus.Subscribe()
-	for i := 0; i < nbWorkers; i++ {
-		go r.listen(events, bus.Publish, notifier)
-	}
+	bus.Subscribe().
+		On(event.Is(directory.CreatedEventType), r.handleCreateDirectory).
+		On(event.Is(directory.DeletedEventType), r.handleDeleteDirectory).
+		On(event.Is(directory.FileCreatedEventType), r.handleCreateFile).
+		On(event.Is(directory.FileDeletedEventType), r.handleDeleteFile).
+		On(event.Is(directory.ContentUploadedEventType), r.handleUploadFile).
+		On(event.Is(directory.ContentDownloadEventType), r.handleDownloadFile).
+		On(event.Is(directory.LoadEventType), r.handleLoading).
+		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
+		ListenNonBlocking() // TODO: set a limit of simultaneous tasks
 
 	return r, nil
 }
@@ -90,73 +99,4 @@ func (r *S3DirectoryRepository) GetFileContent(
 	content := directory.NewFileContent(file, directory.ContentFromFile(rd))
 
 	return content, nil
-}
-
-func (r *S3DirectoryRepository) listen(events <-chan event.Event, publisher func(event.Event), notifier notification.Repository) {
-	for evt := range events {
-		ctx := evt.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
-
-		switch evt.Type() {
-		case directory.CreatedEventType:
-			e := evt.(directory.CreatedEvent)
-			if err := r.handleDirectoryCreation(ctx, e); err != nil {
-				notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
-				publisher(directory.NewCreatedFailureEvent(err, e.Parent()))
-				continue
-			}
-			publisher(directory.NewCreatedSuccessEvent(e.Parent(), e.Directory()))
-
-		case directory.DeletedEventType:
-			err := fmt.Errorf("deleting directories is not yet implemented")
-			notifier.NotifyError(err)
-			publisher(directory.NewDeletedFailureEvent(err))
-
-		case directory.FileCreatedEventType:
-			err := fmt.Errorf("file creation is not yet implemented")
-			notifier.NotifyError(err)
-			publisher(directory.NewFileCreatedFailureEvent(err))
-
-		case directory.FileDeletedEventType:
-			e := evt.(directory.FileDeletedEvent)
-			if err := r.handleFileDeletion(ctx, e); err != nil {
-				notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
-				publisher(directory.NewFileDeletedFailureEvent(err, e.Parent()))
-				continue
-			}
-			publisher(directory.NewFileDeletedSuccessEvent(e.Parent(), e.File()))
-
-		case directory.ContentUploadedEventType:
-			e := evt.(directory.ContentUploadedEvent)
-			file, err := r.handleUpload(ctx, e)
-			if err != nil {
-				notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
-				publisher(directory.NewContentUploadedFailureEvent(err, e.Directory()))
-				continue
-			}
-			publisher(directory.NewContentUploadedSuccessEvent(e.Directory(), file))
-
-		case directory.ContentDownloadEventType:
-			e := evt.(directory.ContentDownloadedEvent)
-			if err := r.handleDownload(ctx, e); err != nil {
-				notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
-				publisher(directory.NewContentDownloadedFailureEvent(err))
-				continue
-			}
-			publisher(directory.NewContentDownloadedSuccessEvent(e.Content()))
-
-		case directory.LoadEventType:
-			e := evt.(directory.LoadEvent)
-			dir := e.Directory()
-			subDirs, files, err := r.handleLoading(ctx, e)
-			if err != nil {
-				notifier.NotifyError(fmt.Errorf("failed loading directory: %w", err))
-				publisher(directory.NewLoadFailureEvent(err, dir))
-				continue
-			}
-			publisher(directory.NewLoadSuccessEvent(dir, subDirs, files))
-		}
-	}
 }

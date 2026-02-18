@@ -1,8 +1,8 @@
-<canvas padded size="276x119">
+<canvas padded size="474x119">
 	<content>
-		<widget pos="4,4" size="268x111" type="*widget.DirectoryDetails">
-			<container size="268x111">
-				<container size="268x36">
+		<widget pos="4,4" size="466x111" type="*widget.DirectoryDetails">
+			<container size="466x111">
+				<container size="466x36">
 					<container size="97x36">
 						<widget size="20x36" type="*widget.Icon">
 							<image fillMode="contain" rsc="folderIcon" size="20x36" themed="foreground"/>
@@ -15,28 +15,36 @@
 							</widget>
 						</widget>
 					</container>
-					<widget pos="232,0" size="36x36" type="*widget.Button">
+					<widget pos="430,0" size="36x36" type="*widget.Button">
 						<rectangle fillColor="button" radius="4" size="36x36"/>
 						<rectangle size="36x36"/>
 						<image fillMode="contain" pos="8,8" rsc="contentCopyIcon" size="iconInlineSize" themed="foreground"/>
 					</widget>
 				</container>
-				<container pos="0,40" size="268x31">
-					<widget pos="0,10" size="268x1" type="*widget.Separator">
-						<rectangle fillColor="separator" size="268x1"/>
+				<container pos="0,40" size="466x31">
+					<widget pos="0,10" size="466x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="466x1"/>
 					</widget>
 				</container>
-				<container pos="0,75" size="268x36">
-					<widget pos="5,0" size="258x36" type="*widget.Toolbar">
-						<widget size="138x36" type="*widget.Button">
-							<rectangle fillColor="disabled button" radius="4" size="138x36"/>
-							<rectangle size="138x36"/>
-							<widget pos="32,8" size="98x20" type="*widget.RichText">
-								<text alignment="center" bold color="disabled" size="98x19">New directory</text>
+				<container pos="0,75" size="466x36">
+					<widget pos="5,0" size="456x36" type="*widget.Toolbar">
+						<widget size="187x36" type="*widget.Button">
+							<rectangle fillColor="disabled button" radius="4" size="187x36"/>
+							<rectangle size="187x36"/>
+							<widget pos="32,8" size="147x20" type="*widget.RichText">
+								<text alignment="center" bold color="disabled" size="147x19">New empty directory</text>
 							</widget>
 							<image fillMode="contain" pos="8,8" rsc="folderNewIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
-						<widget pos="142,0" size="115x36" type="*widget.Button">
+						<widget pos="191,0" size="145x36" type="*widget.Button">
+							<rectangle fillColor="disabled button" radius="4" size="145x36"/>
+							<rectangle size="145x36"/>
+							<widget pos="32,8" size="105x20" type="*widget.RichText">
+								<text alignment="center" bold color="disabled" size="105x19">New empty file</text>
+							</widget>
+							<image fillMode="contain" pos="8,8" rsc="contentAddIcon" size="iconInlineSize" themed="disabled"/>
+						</widget>
+						<widget pos="341,0" size="115x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="115x36"/>
 							<rectangle size="115x36"/>
 							<widget pos="32,8" size="75x20" type="*widget.RichText">

@@ -55,18 +55,18 @@ func (mr *MockSettingsViewModelMockRecorder) ColorTheme() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ColorTheme", reflect.TypeOf((*MockSettingsViewModel)(nil).ColorTheme))
 }
 
-// CurrentMaxFilePreviewSizeBytes mocks base method.
-func (m *MockSettingsViewModel) CurrentMaxFilePreviewSizeBytes() int {
+// CurrentFileSizeLimitBytes mocks base method.
+func (m *MockSettingsViewModel) CurrentFileSizeLimitBytes() int {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CurrentMaxFilePreviewSizeBytes")
+	ret := m.ctrl.Call(m, "CurrentFileSizeLimitBytes")
 	ret0, _ := ret[0].(int)
 	return ret0
 }
 
-// CurrentMaxFilePreviewSizeBytes indicates an expected call of CurrentMaxFilePreviewSizeBytes.
-func (mr *MockSettingsViewModelMockRecorder) CurrentMaxFilePreviewSizeBytes() *gomock.Call {
+// CurrentFileSizeLimitBytes indicates an expected call of CurrentFileSizeLimitBytes.
+func (mr *MockSettingsViewModelMockRecorder) CurrentFileSizeLimitBytes() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentMaxFilePreviewSizeBytes", reflect.TypeOf((*MockSettingsViewModel)(nil).CurrentMaxFilePreviewSizeBytes))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentFileSizeLimitBytes", reflect.TypeOf((*MockSettingsViewModel)(nil).CurrentFileSizeLimitBytes))
 }
 
 // CurrentTimeout mocks base method.
@@ -83,18 +83,18 @@ func (mr *MockSettingsViewModelMockRecorder) CurrentTimeout() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentTimeout", reflect.TypeOf((*MockSettingsViewModel)(nil).CurrentTimeout))
 }
 
-// MaxFilePreviewSizeBytes mocks base method.
-func (m *MockSettingsViewModel) MaxFilePreviewSizeBytes() binding.Int {
+// FileSizeLimitKB mocks base method.
+func (m *MockSettingsViewModel) FileSizeLimitKB() binding.Int {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MaxFilePreviewSizeBytes")
+	ret := m.ctrl.Call(m, "FileSizeLimitKB")
 	ret0, _ := ret[0].(binding.Int)
 	return ret0
 }
 
-// MaxFilePreviewSizeBytes indicates an expected call of MaxFilePreviewSizeBytes.
-func (mr *MockSettingsViewModelMockRecorder) MaxFilePreviewSizeBytes() *gomock.Call {
+// FileSizeLimitKB indicates an expected call of FileSizeLimitKB.
+func (mr *MockSettingsViewModelMockRecorder) FileSizeLimitKB() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaxFilePreviewSizeBytes", reflect.TypeOf((*MockSettingsViewModel)(nil).MaxFilePreviewSizeBytes))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileSizeLimitKB", reflect.TypeOf((*MockSettingsViewModel)(nil).FileSizeLimitKB))
 }
 
 // Save mocks base method.

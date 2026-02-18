@@ -30,8 +30,12 @@ func NewFyneConnectionsRepository(
 ) *FyneConnectionsRepository {
 	r := &FyneConnectionsRepository{prefs: prefs, bus: bus}
 
-	events := bus.Subscribe()
-	go r.listen(events, bus.Publish)
+	bus.Subscribe().
+		On(event.Is(connection_deck.SelectEventType), r.handleSelect).
+		On(event.Is(connection_deck.CreateEventType), r.handleCreate).
+		On(event.Is(connection_deck.RemoveEventType), r.handleRemove).
+		On(event.Is(connection_deck.UpdateEventType), r.handleUpdate).
+		ListenWithWorkers(1)
 
 	return r
 }
@@ -82,41 +86,38 @@ func (r *FyneConnectionsRepository) loadConnectionsDTO() (*dto.ConnectionsDTO, e
 	return dto.NewConnectionsDTOFromJSON([]byte(content))
 }
 
-func (r *FyneConnectionsRepository) listen(events <-chan event.Event, publisher func(event.Event)) {
-	for evt := range events {
-		ctx := evt.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
-
-		switch evt.Type() {
-		case connection_deck.SelectEventType:
-			e := evt.(connection_deck.SelectEvent)
-			if err := r.saveDeck(ctx, e.Deck()); err != nil {
-				publisher(connection_deck.NewSelectFailureEvent(err, e.Connection()))
-			}
-			publisher(connection_deck.NewSelectSuccessEvent(e.Deck(), e.Connection()))
-
-		case connection_deck.CreateEventType:
-			e := evt.(connection_deck.CreateEvent)
-			if err := r.saveDeck(ctx, e.Deck()); err != nil {
-				publisher(connection_deck.NewCreateFailureEvent(err, e.Connection()))
-			}
-			publisher(connection_deck.NewCreateSuccessEvent(e.Deck(), e.Connection()))
-
-		case connection_deck.RemoveEventType:
-			e := evt.(connection_deck.RemoveEvent)
-			if err := r.saveDeck(ctx, e.Deck()); err != nil {
-				publisher(connection_deck.NewRemoveFailureEvent(err, e.RemovedIndex(), e.WasSelected(), e.Connection()))
-			}
-			publisher(connection_deck.NewRemoveSuccessEvent(e.Deck(), e.Connection()))
-
-		case connection_deck.UpdateEventType:
-			e := evt.(connection_deck.UpdateEvent)
-			if err := r.saveDeck(ctx, e.Deck()); err != nil {
-				publisher(connection_deck.NewUpdateFailureEvent(err, e.Previous()))
-			}
-			publisher(connection_deck.NewUpdateSuccessEvent(e.Deck(), e.Connection()))
-		}
+func (r *FyneConnectionsRepository) handleSelect(evt event.Event) {
+	ctx := evt.Context()
+	e := evt.(connection_deck.SelectEvent)
+	if err := r.saveDeck(ctx, e.Deck()); err != nil {
+		r.bus.Publish(connection_deck.NewSelectFailureEvent(err, e.Connection()))
 	}
+	r.bus.Publish(connection_deck.NewSelectSuccessEvent(e.Deck(), e.Connection()))
+}
+
+func (r *FyneConnectionsRepository) handleCreate(evt event.Event) {
+	ctx := evt.Context()
+	e := evt.(connection_deck.CreateEvent)
+	if err := r.saveDeck(ctx, e.Deck()); err != nil {
+		r.bus.Publish(connection_deck.NewCreateFailureEvent(err, e.Connection()))
+	}
+	r.bus.Publish(connection_deck.NewCreateSuccessEvent(e.Deck(), e.Connection()))
+}
+
+func (r *FyneConnectionsRepository) handleRemove(evt event.Event) {
+	ctx := evt.Context()
+	e := evt.(connection_deck.RemoveEvent)
+	if err := r.saveDeck(ctx, e.Deck()); err != nil {
+		r.bus.Publish(connection_deck.NewRemoveFailureEvent(err, e.RemovedIndex(), e.WasSelected(), e.Connection()))
+	}
+	r.bus.Publish(connection_deck.NewRemoveSuccessEvent(e.Deck(), e.Connection()))
+}
+
+func (r *FyneConnectionsRepository) handleUpdate(evt event.Event) {
+	ctx := evt.Context()
+	e := evt.(connection_deck.UpdateEvent)
+	if err := r.saveDeck(ctx, e.Deck()); err != nil {
+		r.bus.Publish(connection_deck.NewUpdateFailureEvent(err, e.Previous()))
+	}
+	r.bus.Publish(connection_deck.NewUpdateSuccessEvent(e.Deck(), e.Connection()))
 }

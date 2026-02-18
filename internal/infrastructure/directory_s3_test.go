@@ -84,7 +84,30 @@ func setupS3Bucket(ctx context.Context, t *testing.T, client *s3.Client, bucketN
 	}
 }
 
-func TestS3DirectoryRepository_Load(t *testing.T) {
+func getObject(t *testing.T, client *s3.Client, bucketName, key string) io.ReadCloser {
+	t.Helper()
+
+	res, err := client.GetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key),
+	})
+	require.NoError(t, err)
+
+	return res.Body
+}
+
+func putObject(t *testing.T, client *s3.Client, bucketName, key string, body io.Reader) {
+	t.Helper()
+
+	_, err := client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key),
+		Body:   body,
+	})
+	require.NoError(t, err)
+}
+
+func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 	ctx := context.Background()
 	endpoint, terminate := setupS3testContainer(ctx, t)
 	defer terminate()
@@ -119,7 +142,7 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 
 		mockBus.EXPECT().
 			Subscribe().
-			Return(fakeEventChan)
+			Return(event.NewSubscriber(fakeEventChan))
 
 		done := make(chan struct{})
 		mockBus.EXPECT().
@@ -168,7 +191,7 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 
 		mockBus.EXPECT().
 			Subscribe().
-			Return(fakeEventChan)
+			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
 			Get(gomock.AssignableToTypeOf(ctxType)).
@@ -221,7 +244,7 @@ func TestS3DirectoryRepository_Load(t *testing.T) {
 
 		mockBus.EXPECT().
 			Subscribe().
-			Return(fakeEventChan).
+			Return(event.NewSubscriber(fakeEventChan)).
 			AnyTimes()
 
 		awsConnID := connection_deck.NewConnectionID()
@@ -298,7 +321,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 		defer close(fakeEventChan)
 		mockBus.EXPECT().
 			Subscribe().
-			Return(fakeEventChan)
+			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
 			Get(gomock.AssignableToTypeOf(ctxType)).
@@ -336,7 +359,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 		defer close(fakeEventChan)
 		mockBus.EXPECT().
 			Subscribe().
-			Return(fakeEventChan)
+			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
 			Get(gomock.AssignableToTypeOf(ctxType)).
@@ -364,7 +387,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 	})
 }
 
-func TestS3DirectoryRepository_Download(t *testing.T) {
+func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 	ctx := context.Background()
 	endpoint, terminate := setupS3testContainer(ctx, t)
 	defer terminate()
@@ -394,7 +417,7 @@ func TestS3DirectoryRepository_Download(t *testing.T) {
 
 		mockBus.EXPECT().
 			Subscribe().
-			Return(fakeEventChan)
+			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
 			Get(gomock.AssignableToTypeOf(ctxType)).
@@ -452,7 +475,7 @@ func TestS3DirectoryRepository_Download(t *testing.T) {
 
 		mockBus.EXPECT().
 			Subscribe().
-			Return(fakeEventChan)
+			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
 			Get(gomock.AssignableToTypeOf(ctxType)).
@@ -491,5 +514,78 @@ func TestS3DirectoryRepository_Download(t *testing.T) {
 				return false
 			}
 		}, 5*time.Second, 100*time.Millisecond)
+	})
+}
+
+func TestNewS3DirectoryRepository_createFile(t *testing.T) {
+	ctx := context.Background()
+	endpoint, terminate := setupS3testContainer(ctx, t)
+	defer terminate()
+	client := setupS3Client(t, endpoint)
+
+	bucketName := "test-bucket"
+	setupS3Bucket(ctx, t, client, bucketName, []fakeS3Object{})
+
+	fakeConnID := connection_deck.NewConnectionID()
+	fakeDeck := connection_deck.New()
+	fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, bucketName,
+		connection_deck.AsS3Like(endpoint, false),
+		connection_deck.WithID(fakeConnID))
+
+	t.Run("should create an empty file", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+
+		dir, err := directory.New(fakeConnID, "mydir", directory.RootPath)
+		require.NoError(t, err)
+		newFile, err := directory.NewFile("new_file.txt", dir.Path())
+		require.NoError(t, err)
+
+		fakeEventChan := make(chan event.Event, 1)
+		defer close(fakeEventChan)
+
+		mockBus.EXPECT().
+			Subscribe().
+			Return(event.NewSubscriber(fakeEventChan))
+
+		mockConnRepo.EXPECT().
+			Get(gomock.AssignableToTypeOf(ctxType)).
+			Return(fakeDeck, nil).
+			Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(gomock.Cond(func(evt event.Event) bool {
+				// Then
+				e, ok := evt.(directory.FileCreatedSuccessEvent)
+				res := assert.True(t, ok) &&
+					assert.Equal(t, "new_file.txt", e.File().Name().String())
+				close(done)
+				return res
+			})).
+			Times(1)
+
+		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		require.NoError(t, err)
+
+		// When
+		fakeEventChan <- directory.NewFileCreatedEvent(fakeConnID, dir, newFile)
+		assert.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+				return false
+			}
+		}, 5*time.Second, 100*time.Millisecond)
+
+		remoteObj := getObject(t, client, bucketName, "mydir/new_file.txt")
+		defer remoteObj.Close() // nolint:errcheck
+		downloaded, err := io.ReadAll(remoteObj)
+		require.NoError(t, err)
+		assert.Equal(t, "", string(downloaded))
 	})
 }

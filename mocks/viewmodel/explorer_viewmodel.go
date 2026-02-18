@@ -56,6 +56,18 @@ func (mr *MockExplorerViewModelMockRecorder) CreateEmptyDirectory(parent, name a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEmptyDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).CreateEmptyDirectory), parent, name)
 }
 
+// CreateEmptyFile mocks base method.
+func (m *MockExplorerViewModel) CreateEmptyFile(parent *directory.Directory, name string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "CreateEmptyFile", parent, name)
+}
+
+// CreateEmptyFile indicates an expected call of CreateEmptyFile.
+func (mr *MockExplorerViewModelMockRecorder) CreateEmptyFile(parent, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEmptyFile", reflect.TypeOf((*MockExplorerViewModel)(nil).CreateEmptyFile), parent, name)
+}
+
 // CurrentSelectedConnection mocks base method.
 func (m *MockExplorerViewModel) CurrentSelectedConnection() *connection_deck.Connection {
 	m.ctrl.T.Helper()
@@ -151,6 +163,20 @@ func (mr *MockExplorerViewModelMockRecorder) IsLoading() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsLoading", reflect.TypeOf((*MockExplorerViewModel)(nil).IsLoading))
 }
 
+// IsSelectedDirectoryLoading mocks base method.
+func (m *MockExplorerViewModel) IsSelectedDirectoryLoading() binding.Bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsSelectedDirectoryLoading")
+	ret0, _ := ret[0].(binding.Bool)
+	return ret0
+}
+
+// IsSelectedDirectoryLoading indicates an expected call of IsSelectedDirectoryLoading.
+func (mr *MockExplorerViewModelMockRecorder) IsSelectedDirectoryLoading() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsSelectedDirectoryLoading", reflect.TypeOf((*MockExplorerViewModel)(nil).IsSelectedDirectoryLoading))
+}
+
 // LastDownloadLocation mocks base method.
 func (m *MockExplorerViewModel) LastDownloadLocation() fyne.ListableURI {
 	m.ctrl.T.Helper()
@@ -219,6 +245,32 @@ func (m *MockExplorerViewModel) SelectedConnection() binding.Untyped {
 func (mr *MockExplorerViewModelMockRecorder) SelectedConnection() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectedConnection", reflect.TypeOf((*MockExplorerViewModel)(nil).SelectedConnection))
+}
+
+// SelectedDirectory mocks base method.
+func (m *MockExplorerViewModel) SelectedDirectory() *directory.Directory {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectedDirectory")
+	ret0, _ := ret[0].(*directory.Directory)
+	return ret0
+}
+
+// SelectedDirectory indicates an expected call of SelectedDirectory.
+func (mr *MockExplorerViewModelMockRecorder) SelectedDirectory() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectedDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).SelectedDirectory))
+}
+
+// SetSelectedDirectory mocks base method.
+func (m *MockExplorerViewModel) SetSelectedDirectory(dir *directory.Directory) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetSelectedDirectory", dir)
+}
+
+// SetSelectedDirectory indicates an expected call of SetSelectedDirectory.
+func (mr *MockExplorerViewModelMockRecorder) SetSelectedDirectory(dir any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSelectedDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).SetSelectedDirectory), dir)
 }
 
 // Tree mocks base method.

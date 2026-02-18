@@ -11,6 +11,7 @@ var (
 	ErrContentWriting = errors.New("error writing file content")
 )
 
+// TODO: remove this struct
 type Content struct {
 	file                 *File
 	fileObj              *os.File
@@ -104,4 +105,57 @@ func (c *Content) Open() (*os.File, error) {
 
 func (c *Content) File() *File {
 	return c.file
+}
+
+// TODO: rename to Content
+type FileObject interface {
+	io.Reader
+	io.Writer
+	io.Closer
+	io.Seeker
+}
+
+var ErrInvalidSeek = errors.New("invalid seek")
+
+type InMemoryFileObject struct {
+	Data []byte
+	Pos  int64
+}
+
+func (f *InMemoryFileObject) Read(p []byte) (int, error) {
+	if f.Pos >= int64(len(f.Data)) {
+		return 0, io.EOF
+	}
+	n := copy(p, f.Data[f.Pos:])
+	f.Pos += int64(n)
+	return n, nil
+}
+
+func (f *InMemoryFileObject) Write(p []byte) (int, error) {
+	f.Data = append(f.Data, p...)
+	f.Pos += int64(len(p))
+	return len(p), nil
+}
+
+func (f *InMemoryFileObject) Close() error {
+	return nil
+}
+
+func (f *InMemoryFileObject) Seek(offset int64, whence int) (int64, error) {
+	var newPos int64
+	switch whence {
+	case io.SeekStart:
+		newPos = offset
+	case io.SeekCurrent:
+		newPos = f.Pos + offset
+	case io.SeekEnd:
+		newPos = int64(len(f.Data)) + offset
+	default:
+		return 0, ErrInvalidSeek
+	}
+	if newPos < 0 {
+		return 0, ErrInvalidSeek
+	}
+	f.Pos = newPos
+	return f.Pos, nil
 }

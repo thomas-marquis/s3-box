@@ -53,10 +53,10 @@ func (mr *MockBusMockRecorder) Publish(evt any) *gomock.Call {
 }
 
 // Subscribe mocks base method.
-func (m *MockBus) Subscribe() <-chan event.Event {
+func (m *MockBus) Subscribe() *event.Subscriber {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Subscribe")
-	ret0, _ := ret[0].(<-chan event.Event)
+	ret0, _ := ret[0].(*event.Subscriber)
 	return ret0
 }
 

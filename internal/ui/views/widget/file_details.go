@@ -1,6 +1,8 @@
 package widget
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -13,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/utils"
 )
 
@@ -31,6 +34,9 @@ type FileDetails struct {
 	downloadAction *ToolbarButton
 	previewAction  *ToolbarButton
 	deleteAction   *ToolbarButton
+	editAction     *ToolbarButton
+
+	actionToolbar *widget.Toolbar
 
 	fileSizeBinding     binding.String
 	lastModifiedBinding binding.String
@@ -54,9 +60,18 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		downloadAction: NewToolbarButton("Download", theme.DownloadIcon(), func() {}),
 		previewAction:  NewToolbarButton("Preview", theme.VisibilityIcon(), func() {}),
 		deleteAction:   NewToolbarButton("Delete", theme.DeleteIcon(), func() {}),
+		editAction:     NewToolbarButton("Edit", theme.DocumentCreateIcon(), func() {}),
 
 		currentSelectedFile: nil,
 	}
+
+	w.actionToolbar = widget.NewToolbar(
+		w.downloadAction,
+		w.previewAction,
+		w.editAction,
+		w.deleteAction,
+	)
+
 	w.ExtendBaseWidget(w)
 	return w
 }
@@ -82,12 +97,6 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 		lastModified,
 	)
 
-	actionToolbar := widget.NewToolbar(
-		w.downloadAction,
-		w.previewAction,
-		w.deleteAction,
-	)
-
 	return widget.NewSimpleRenderer(
 		container.NewVBox(
 			container.NewBorder(nil, nil,
@@ -99,7 +108,7 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 			),
 			container.New(
 				layout.NewCustomPaddedLayout(0, 0, 5, 5),
-				actionToolbar,
+				w.actionToolbar,
 			),
 			container.New(
 				layout.NewCustomPaddedLayout(30, 0, 5, 5),
@@ -110,7 +119,9 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (w *FileDetails) Select(file *directory.File) {
-	vm := w.appCtx.ExplorerViewModel()
+	exVm := w.appCtx.ExplorerViewModel()
+	edVm := w.appCtx.EditorViewModel()
+
 	w.currentSelectedFile = file
 
 	var path string
@@ -132,21 +143,57 @@ func (w *FileDetails) Select(file *directory.File) {
 	w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05")) //nolint:errcheck
 	w.fileSizeBinding.Set(utils.FormatSizeBytes(file.SizeBytes()))               //nolint:errcheck
 
-	if file.SizeBytes() <= w.appCtx.SettingsViewModel().CurrentMaxFilePreviewSizeBytes() {
-		w.previewAction.Enable()
-		w.previewAction.SetOnTapped(func() {
-			viewerDialog := dialog.NewCustom(
-				file.Name().String(),
-				"Close",
-				NewFileViewer(w.appCtx, file),
-				w.appCtx.Window(),
-			)
-			viewerDialog.Resize(fyne.NewSize(700, 500))
-			viewerDialog.Show()
+	w.appCtx.SettingsViewModel().FileSizeLimitKB().AddListener(binding.NewDataListener(func() {
+		if file.SizeBytes() > w.appCtx.SettingsViewModel().CurrentFileSizeLimitBytes() {
+			w.previewAction.Disable()
+			w.editAction.Disable()
+		} else {
+			w.previewAction.Enable()
+			if w.appCtx.ConnectionViewModel().IsReadOnly() {
+				w.editAction.Disable()
+			} else {
+				w.editAction.Enable()
+			}
+		}
+	}))
+
+	w.previewAction.SetOnTapped(func() {
+		viewerDialog := dialog.NewCustom(
+			file.Name().String(),
+			"Close",
+			NewFileViewer(w.appCtx, file),
+			w.appCtx.Window(),
+		)
+		viewerDialog.Resize(fyne.NewSize(700, 500))
+		viewerDialog.Show()
+	})
+
+	w.editAction.SetOnTapped(func() {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		oe, err := edVm.Open(ctx, file)
+		if err != nil {
+			if !errors.Is(err, viewmodel.ErrEditorAlreadyOpened) {
+				dialog.ShowError(err, w.appCtx.Window())
+			}
+			cancel()
+			return
+		}
+		editor := NewFileEditor(oe)
+
+		oe.Window.SetOnClosed(func() {
+			cancel()
+			edVm.Close(oe)
+			w.editAction.Icon = theme.DocumentCreateIcon()
+			w.actionToolbar.Refresh()
 		})
-	} else {
-		w.previewAction.Disable()
-	}
+		oe.Window.SetContent(editor)
+		oe.Window.SetFixedSize(false)
+		oe.Window.Resize(fyne.NewSize(700, 500))
+		oe.Window.Show()
+
+		oe.Window.RequestFocus()
+	})
 
 	w.downloadAction.SetOnTapped(func() {
 		saveDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
@@ -158,14 +205,14 @@ func (w *FileDetails) Select(file *directory.File) {
 				return
 			}
 			localDestFilePath := writer.URI().Path()
-			vm.DownloadFile(file, localDestFilePath)
-			if err := vm.UpdateLastDownloadLocation(localDestFilePath); err != nil { //nolint:staticcheck
+			exVm.DownloadFile(file, localDestFilePath)
+			if err := exVm.UpdateLastDownloadLocation(localDestFilePath); err != nil { //nolint:staticcheck
 				// TODO: handle error
 			}
 			fyne.CurrentApp().SendNotification(fyne.NewNotification("File download", "success"))
 		}, w.appCtx.Window())
 		saveDialog.SetFileName(file.Name().String())
-		saveDialog.SetLocation(vm.LastDownloadLocation())
+		saveDialog.SetLocation(exVm.LastDownloadLocation())
 		saveDialog.Show()
 	})
 
@@ -174,11 +221,12 @@ func (w *FileDetails) Select(file *directory.File) {
 			fmt.Sprintf("Are you sure you want to delete '%s'?", file.Name()),
 			func(b bool) {
 				if b {
-					vm.DeleteFile(file)
+					exVm.DeleteFile(file)
 				}
 			}, w.appCtx.Window())
 	})
 	if w.appCtx.ConnectionViewModel().IsReadOnly() {
 		w.deleteAction.Disable()
+		w.editAction.Disable()
 	}
 }

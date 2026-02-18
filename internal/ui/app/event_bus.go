@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
@@ -22,7 +23,9 @@ type publishedLoad struct {
 }
 
 type eventBusImpl struct {
-	subscribers    map[chan event.Event]struct{}
+	sync.Mutex
+
+	subscribers    map[chan event.Event]*event.Subscriber
 	publishingChan chan publishedLoad
 	done           <-chan struct{}
 	notifier       notification.Repository
@@ -30,7 +33,7 @@ type eventBusImpl struct {
 
 func newEventBusImpl(done <-chan struct{}, notifier notification.Repository) event.Bus {
 	b := &eventBusImpl{
-		subscribers:    make(map[chan event.Event]struct{}),
+		subscribers:    make(map[chan event.Event]*event.Subscriber),
 		publishingChan: make(chan publishedLoad, pubChanBufferSize),
 		done:           done,
 		notifier:       notifier,
@@ -66,18 +69,29 @@ func (b *eventBusImpl) terminate() {
 	}
 }
 
-func (b *eventBusImpl) Subscribe() <-chan event.Event {
-	channel := make(chan event.Event)
-	b.subscribers[channel] = struct{}{}
-	return channel
+func (b *eventBusImpl) Subscribe() *event.Subscriber {
+	b.Lock()
+	defer b.Unlock()
+
+	events := make(chan event.Event)
+	subscriber := event.NewSubscriber(events)
+	b.subscribers[events] = subscriber
+	return subscriber
 }
 
 func (b *eventBusImpl) Publish(evt event.Event) {
 	b.notifier.NotifyDebug(fmt.Sprintf("publishing event: %s", evt.Type()))
-	for subscriber := range b.subscribers {
+	b.Lock()
+	defer b.Unlock()
+
+	for channel, subscriber := range b.subscribers {
+		if !subscriber.Accept(evt) {
+			continue
+		}
 		select {
-		case b.publishingChan <- publishedLoad{evt, subscriber}:
+		case b.publishingChan <- publishedLoad{evt, channel}:
 		case <-b.done:
 		}
 	}
+	b.notifier.NotifyDebug(fmt.Sprintf("Published event: %s", evt.Type()))
 }

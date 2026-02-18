@@ -147,7 +147,7 @@ func (d *Directory) NewFile(name string, overwrite bool, opts ...FileOption) (Fi
 			fmt.Errorf("file %s already exists in directory %s", name, d.path))
 	}
 
-	return NewFileCreatedEvent(d.connectionID, file), nil
+	return NewFileCreatedEvent(d.connectionID, d, file), nil
 }
 
 func (d *Directory) RemoveFile(name FileName) (FileDeletedEvent, error) {
