@@ -44,8 +44,8 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		eventsChan := make(chan event.Event)
 		defer close(eventsChan)
 
-		mockBus.EXPECT().SubscribeV2().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().PublishV2(gomock.Any()).Do(func(event event.Event) {
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
+		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
 			eventsChan <- event
 		}).AnyTimes()
 
@@ -101,8 +101,8 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		eventsChan := make(chan event.Event)
 		defer close(eventsChan)
 
-		mockBus.EXPECT().SubscribeV2().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().PublishV2(gomock.Any()).Do(func(event event.Event) {
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
+		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
 			eventsChan <- event
 		}).AnyTimes()
 
@@ -154,8 +154,8 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		eventsChan := make(chan event.Event)
 		defer close(eventsChan)
 
-		mockBus.EXPECT().SubscribeV2().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().PublishV2(gomock.Any()).Do(func(event event.Event) {
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
+		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
 			eventsChan <- event
 		}).AnyTimes()
 
@@ -189,8 +189,8 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		eventsChan := make(chan event.Event)
 		defer close(eventsChan)
 
-		mockBus.EXPECT().SubscribeV2().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().PublishV2(gomock.Any()).Do(func(event event.Event) {
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
+		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
 			eventsChan <- event
 		}).AnyTimes()
 
@@ -235,8 +235,8 @@ func TestEditorViewModelImpl_IsOpened(t *testing.T) {
 		eventsChan := make(chan event.Event)
 		defer close(eventsChan)
 
-		mockBus.EXPECT().SubscribeV2().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().PublishV2(gomock.Any()).Do(func(event event.Event) {
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
+		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
 			eventsChan <- event
 		}).AnyTimes()
 
@@ -283,8 +283,8 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 		eventsChan := make(chan event.Event)
 		defer close(eventsChan)
 
-		mockBus.EXPECT().SubscribeV2().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().PublishV2(gomock.Any()).Do(func(event event.Event) {
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
+		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
 			eventsChan <- event
 		}).AnyTimes()
 
@@ -339,8 +339,8 @@ func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
 		eventsChan := make(chan event.Event)
 		defer close(eventsChan)
 
-		mockBus.EXPECT().SubscribeV2().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().PublishV2(gomock.Any()).Do(func(event event.Event) {
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
+		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
 			eventsChan <- event
 		}).AnyTimes()
 
@@ -368,8 +368,8 @@ func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
 		eventsChan := make(chan event.Event)
 		defer close(eventsChan)
 
-		mockBus.EXPECT().SubscribeV2().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().PublishV2(gomock.Any()).Do(func(event event.Event) {
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
+		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
 			eventsChan <- event
 		}).AnyTimes()
 
@@ -397,8 +397,8 @@ func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
 		eventsChan := make(chan event.Event)
 		defer close(eventsChan)
 
-		mockBus.EXPECT().SubscribeV2().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().PublishV2(gomock.Any()).Do(func(event event.Event) {
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
+		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
 			eventsChan <- event
 		}).AnyTimes()
 

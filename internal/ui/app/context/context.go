@@ -17,7 +17,7 @@ type AppContext interface {
 	ConnectionViewModel() viewmodel.ConnectionViewModel
 	SettingsViewModel() viewmodel.SettingsViewModel
 	NotificationViewModel() viewmodel.NotificationViewModel
-	EditorVewModel() viewmodel.EditorViewModel
+	EditorViewModel() viewmodel.EditorViewModel
 
 	Window() fyne.Window
 	L() *zap.Logger
@@ -111,7 +111,7 @@ func (ctx *AppContextImpl) NotificationViewModel() viewmodel.NotificationViewMod
 	return ctx.notificationViewModel
 }
 
-func (ctx *AppContextImpl) EditorVewModel() viewmodel.EditorViewModel {
+func (ctx *AppContextImpl) EditorViewModel() viewmodel.EditorViewModel {
 	return ctx.editorViewModel
 }
 

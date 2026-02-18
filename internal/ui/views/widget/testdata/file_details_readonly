@@ -1,8 +1,8 @@
-<canvas padded size="318x227">
+<canvas padded size="387x227">
 	<content>
-		<widget pos="4,4" size="310x219" type="*widget.FileDetails">
-			<container size="310x219">
-				<container size="310x36">
+		<widget pos="4,4" size="379x219" type="*widget.FileDetails">
+			<container size="379x219">
+				<container size="379x36">
 					<container size="91x36">
 						<widget size="20x36" type="*widget.FileIcon">
 							<image fillMode="contain" rsc="fileTextIcon" size="20x36" themed="foreground"/>
@@ -16,19 +16,19 @@
 							</widget>
 						</widget>
 					</container>
-					<widget pos="274,0" size="36x36" type="*widget.Button">
+					<widget pos="343,0" size="36x36" type="*widget.Button">
 						<rectangle fillColor="button" radius="4" size="36x36"/>
 						<rectangle size="36x36"/>
 						<image fillMode="contain" pos="8,8" rsc="contentCopyIcon" size="iconInlineSize" themed="foreground"/>
 					</widget>
 				</container>
-				<container pos="0,40" size="310x31">
-					<widget pos="0,10" size="310x1" type="*widget.Separator">
-						<rectangle fillColor="separator" size="310x1"/>
+				<container pos="0,40" size="379x31">
+					<widget pos="0,10" size="379x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="379x1"/>
 					</widget>
 				</container>
-				<container pos="0,75" size="310x36">
-					<widget pos="5,0" size="300x36" type="*widget.Toolbar">
+				<container pos="0,75" size="379x36">
+					<widget pos="5,0" size="369x36" type="*widget.Toolbar">
 						<widget size="110x36" type="*widget.Button">
 							<rectangle fillColor="button" radius="4" size="110x36"/>
 							<rectangle size="110x36"/>
@@ -45,39 +45,47 @@
 							</widget>
 							<image fillMode="contain" pos="8,8" rsc="visibilityIcon" size="iconInlineSize" themed="foreground"/>
 						</widget>
-						<widget pos="213,0" size="85x36" type="*widget.Button">
-							<rectangle fillColor="disabled button" radius="4" size="85x36"/>
+						<widget pos="213,0" size="67x36" type="*widget.Button">
+							<rectangle fillColor="button" radius="4" size="67x36"/>
+							<rectangle size="67x36"/>
+							<widget pos="32,8" size="27x20" type="*widget.RichText">
+								<text alignment="center" bold size="27x19">Edit</text>
+							</widget>
+							<image fillMode="contain" pos="8,8" rsc="documentCreateIcon" size="iconInlineSize" themed="foreground"/>
+						</widget>
+						<widget pos="284,0" size="85x36" type="*widget.Button">
+							<rectangle fillColor="button" radius="4" size="85x36"/>
 							<rectangle size="85x36"/>
 							<widget pos="32,8" size="45x20" type="*widget.RichText">
-								<text alignment="center" bold color="disabled" size="45x19">Delete</text>
+								<text alignment="center" bold size="45x19">Delete</text>
 							</widget>
-							<image fillMode="contain" pos="8,8" rsc="deleteIcon" size="iconInlineSize" themed="disabled"/>
+							<image fillMode="contain" pos="8,8" rsc="deleteIcon" size="iconInlineSize" themed="foreground"/>
 						</widget>
 					</widget>
 				</container>
-				<container pos="0,115" size="310x104">
-					<container pos="5,30" size="300x74">
-						<widget size="148x35" type="*widget.Label">
-							<widget size="148x35" type="*widget.RichText">
-								<text alignment="trailing" bold pos="113,8" size="27x19">Size</text>
+				<container pos="0,115" size="379x104">
+					<container pos="5,30" size="369x74">
+						<widget size="182x35" type="*widget.Label">
+							<widget size="182x35" type="*widget.RichText">
+								<text alignment="trailing" bold pos="147,8" size="27x19">Size</text>
 							</widget>
 						</widget>
-						<widget pos="152,0" size="148x35" type="*widget.Label">
-							<widget size="148x35" type="*widget.focusSelectable">
+						<widget pos="186,0" size="182x35" type="*widget.Label">
+							<widget size="182x35" type="*widget.focusSelectable">
 							</widget>
-							<widget size="148x35" type="*widget.RichText">
+							<widget size="182x35" type="*widget.RichText">
 								<text pos="8,8" size="49x19">1.00 KB</text>
 							</widget>
 						</widget>
-						<widget pos="0,39" size="148x35" type="*widget.Label">
-							<widget size="148x35" type="*widget.RichText">
-								<text alignment="trailing" bold pos="44,8" size="95x19">Last modified</text>
+						<widget pos="0,39" size="182x35" type="*widget.Label">
+							<widget size="182x35" type="*widget.RichText">
+								<text alignment="trailing" bold pos="79,8" size="95x19">Last modified</text>
 							</widget>
 						</widget>
-						<widget pos="152,39" size="148x35" type="*widget.Label">
-							<widget size="148x35" type="*widget.focusSelectable">
+						<widget pos="186,39" size="182x35" type="*widget.Label">
+							<widget size="182x35" type="*widget.focusSelectable">
 							</widget>
-							<widget size="148x35" type="*widget.RichText">
+							<widget size="182x35" type="*widget.RichText">
 								<text pos="8,8" size="132x19">2024-01-01 12:00:00</text>
 							</widget>
 						</widget>

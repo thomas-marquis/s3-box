@@ -141,12 +141,12 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		defer close(fakeEventChan)
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(fakeEventChan))
 
 		done := make(chan struct{})
 		mockBus.EXPECT().
-			PublishV2(gomock.Cond(func(evt event.Event) bool {
+			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
 				e, ok := evt.(directory.LoadSuccessEvent)
 				res := assert.True(t, ok) &&
@@ -190,7 +190,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		defer close(fakeEventChan)
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
@@ -203,7 +203,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 
 		done := make(chan struct{})
 		mockBus.EXPECT().
-			PublishV2(gomock.Cond(func(evt event.Event) bool {
+			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
 				e, ok := evt.(directory.LoadSuccessEvent)
 				res := assert.True(t, ok) &&
@@ -243,7 +243,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		defer close(fakeEventChan)
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(fakeEventChan)).
 			AnyTimes()
 
@@ -260,7 +260,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 
 		done := make(chan struct{})
 		mockBus.EXPECT().
-			PublishV2(gomock.Cond(func(evt event.Event) bool {
+			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
 				e, ok := evt.(directory.LoadFailureEvent)
 				res := assert.True(t, ok) &&
@@ -320,7 +320,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 		fakeEventChan := make(chan event.Event)
 		defer close(fakeEventChan)
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
@@ -358,7 +358,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 		fakeEventChan := make(chan event.Event)
 		defer close(fakeEventChan)
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
@@ -416,7 +416,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		defer close(fakeEventChan)
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
@@ -426,7 +426,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 
 		done := make(chan struct{})
 		mockBus.EXPECT().
-			PublishV2(gomock.Cond(func(evt event.Event) bool {
+			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
 				e, ok := evt.(directory.ContentDownloadedSuccessEvent)
 				res := assert.True(t, ok) &&
@@ -474,7 +474,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		defer close(fakeEventChan)
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
@@ -484,7 +484,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 
 		done := make(chan struct{})
 		mockBus.EXPECT().
-			PublishV2(gomock.Cond(func(evt event.Event) bool {
+			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
 				e, ok := evt.(directory.ContentDownloadedFailureEvent)
 				res := assert.True(t, ok) &&
@@ -548,7 +548,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		defer close(fakeEventChan)
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
@@ -558,7 +558,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 
 		done := make(chan struct{})
 		mockBus.EXPECT().
-			PublishV2(gomock.Cond(func(evt event.Event) bool {
+			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
 				e, ok := evt.(directory.FileCreatedSuccessEvent)
 				res := assert.True(t, ok) &&

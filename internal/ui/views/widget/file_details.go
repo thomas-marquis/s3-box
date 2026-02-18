@@ -120,7 +120,7 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 
 func (w *FileDetails) Select(file *directory.File) {
 	exVm := w.appCtx.ExplorerViewModel()
-	edVm := w.appCtx.EditorVewModel()
+	edVm := w.appCtx.EditorViewModel()
 
 	w.currentSelectedFile = file
 

@@ -13,6 +13,7 @@ import _ "go.uber.org/mock/gomock"
 //go:generate mockgen -package mocks_viewmodel -destination mocks/viewmodel/connection_viewmodel.go github.com/thomas-marquis/s3-box/internal/ui/viewmodel ConnectionViewModel
 //go:generate mockgen -package mocks_viewmodel -destination mocks/viewmodel/settings_viewmodel.go github.com/thomas-marquis/s3-box/internal/ui/viewmodel SettingsViewModel
 //go:generate mockgen -package mocks_viewmodel -destination mocks/viewmodel/notification_viewmodel.go github.com/thomas-marquis/s3-box/internal/ui/viewmodel NotificationViewModel
+//go:generate mockgen -package mocks_viewmodel -destination mocks/viewmodel/editor_viewmodel.go github.com/thomas-marquis/s3-box/internal/ui/viewmodel EditorViewModel
 
 // Global
 //go:generate mockgen -package mocks_appcontext -destination mocks/context/appcontext.go github.com/thomas-marquis/s3-box/internal/ui/app/context AppContext

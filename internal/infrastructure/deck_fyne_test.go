@@ -58,7 +58,7 @@ func TestFyneConnectionsRepository_Get(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(make(chan event.Event))).
 			Times(1)
 
@@ -84,7 +84,7 @@ func TestFyneConnectionsRepository_Get(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(make(chan event.Event))).
 			Times(1)
 
@@ -111,7 +111,7 @@ func TestFyneConnectionsRepository_select(t *testing.T) {
 		done := make(chan struct{})
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(events)).
 			Times(1)
 
@@ -128,7 +128,7 @@ func TestFyneConnectionsRepository_select(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			PublishV2(gomock.Eq(connection_deck.NewSelectSuccessEvent(deck, c1))).
+			Publish(gomock.Eq(connection_deck.NewSelectSuccessEvent(deck, c1))).
 			Do(func(e event.Event) {
 				close(done)
 			}).
@@ -151,7 +151,7 @@ func TestFyneConnectionsRepository_create(t *testing.T) {
 		done := make(chan struct{})
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(events)).
 			Times(1)
 
@@ -167,7 +167,7 @@ func TestFyneConnectionsRepository_create(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			PublishV2(gomock.Eq(connection_deck.NewCreateSuccessEvent(deck, c1))).
+			Publish(gomock.Eq(connection_deck.NewCreateSuccessEvent(deck, c1))).
 			Do(func(e event.Event) { close(done) }).
 			Times(1)
 
@@ -188,7 +188,7 @@ func TestFyneConnectionsRepository_remove(t *testing.T) {
 		done := make(chan struct{})
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(events)).
 			Times(1)
 
@@ -205,7 +205,7 @@ func TestFyneConnectionsRepository_remove(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			PublishV2(gomock.Eq(connection_deck.NewRemoveSuccessEvent(deck, c1))).
+			Publish(gomock.Eq(connection_deck.NewRemoveSuccessEvent(deck, c1))).
 			Do(func(e event.Event) { close(done) }).
 			Times(1)
 
@@ -226,7 +226,7 @@ func TestFyneConnectionsRepository_update(t *testing.T) {
 		done := make(chan struct{})
 
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(events)).
 			Times(1)
 
@@ -244,7 +244,7 @@ func TestFyneConnectionsRepository_update(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			PublishV2(gomock.Eq(connection_deck.NewUpdateSuccessEvent(deck, c2))).
+			Publish(gomock.Eq(connection_deck.NewUpdateSuccessEvent(deck, c2))).
 			Do(func(e event.Event) { close(done) }).
 			Times(1)
 
@@ -271,7 +271,7 @@ func TestFyneConnectionsRepository_Export(t *testing.T) {
 			Return(connJson).
 			Times(1)
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(make(chan event.Event))).
 			Times(1)
 
@@ -297,7 +297,7 @@ func TestFyneConnectionsRepository_Export(t *testing.T) {
 			Return("invalid json").
 			Times(1)
 		mockBus.EXPECT().
-			SubscribeV2().
+			Subscribe().
 			Return(event.NewSubscriber(make(chan event.Event))).
 			Times(1)
 

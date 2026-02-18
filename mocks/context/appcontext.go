@@ -101,9 +101,9 @@ func (mr *MockAppContextMockRecorder) CurrentRoute() *gomock.Call {
 }
 
 // EditorVewModel mocks base method.
-func (m *MockAppContext) EditorVewModel() viewmodel.EditorViewModel {
+func (m *MockAppContext) EditorViewModel() viewmodel.EditorViewModel {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EditorVewModel")
+	ret := m.ctrl.Call(m, "EditorViewModel")
 	ret0, _ := ret[0].(viewmodel.EditorViewModel)
 	return ret0
 }
@@ -111,7 +111,7 @@ func (m *MockAppContext) EditorVewModel() viewmodel.EditorViewModel {
 // EditorVewModel indicates an expected call of EditorVewModel.
 func (mr *MockAppContextMockRecorder) EditorVewModel() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditorVewModel", reflect.TypeOf((*MockAppContext)(nil).EditorVewModel))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditorViewModel", reflect.TypeOf((*MockAppContext)(nil).EditorViewModel))
 }
 
 // ExplorerViewModel mocks base method.
