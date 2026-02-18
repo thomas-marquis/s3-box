@@ -70,8 +70,8 @@ func TestFileEditor(t *testing.T) {
 		res := widget.NewFileEditor(oe)
 		w.Canvas().SetContent(res)
 
-		oe.Content.Set("Hello world!")
-		oe.IsLoaded.Set(true)
+		oe.Content.Set("Hello world!") // nolint:errcheck
+		oe.IsLoaded.Set(true)          // nolint:errcheck
 
 		// Then
 		fyne_test.AssertRendersToMarkup(t, "file_editor_with_content", w.Canvas())
@@ -93,8 +93,8 @@ func TestFileEditor(t *testing.T) {
 		res := widget.NewFileEditor(oe)
 		w.Canvas().SetContent(res)
 
-		oe.ErrorMsg.Set("Error loading file")
-		oe.IsLoaded.Set(true)
+		oe.ErrorMsg.Set("Error loading file") // nolint:errcheck
+		oe.IsLoaded.Set(true)                 // nolint:errcheck
 
 		// Then
 		fyne_test.AssertRendersToMarkup(t, "file_editor_with_error", w.Canvas())

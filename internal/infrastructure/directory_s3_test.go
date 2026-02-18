@@ -583,7 +583,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 
 		remoteObj := getObject(t, client, bucketName, "mydir/new_file.txt")
-		defer remoteObj.Close()
+		defer remoteObj.Close() // nolint:errcheck
 		downloaded, err := io.ReadAll(remoteObj)
 		require.NoError(t, err)
 		assert.Equal(t, "", string(downloaded))

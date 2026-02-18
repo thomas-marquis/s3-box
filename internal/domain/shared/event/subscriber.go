@@ -54,7 +54,7 @@ func (s *Subscriber) ListenNonBlocking() {
 }
 
 func (s *Subscriber) Accept(event Event) bool {
-	for matcher, _ := range s.registered {
+	for matcher := range s.registered {
 		if matcher.Match(event) {
 			return true
 		}

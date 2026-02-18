@@ -255,8 +255,8 @@ func TestEditorViewModelImpl_IsOpened(t *testing.T) {
 		assert.False(t, vm.IsOpened(file2))
 		assert.False(t, vm.IsOpened(file3))
 
-		vm.Open(ctx, file1)
-		vm.Open(ctx, file2)
+		vm.Open(ctx, file1) // nolint:errcheck
+		vm.Open(ctx, file2) // nolint:errcheck
 
 		assert.True(t, vm.IsOpened(file1))
 		assert.True(t, vm.IsOpened(file2))
@@ -300,7 +300,7 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 
 		// When & Then
 		oe1, _ := vm.Open(ctx, file1)
-		vm.Open(ctx, file3)
+		vm.Open(ctx, file3) // nolint:errcheck
 
 		vm.Close(oe1)
 

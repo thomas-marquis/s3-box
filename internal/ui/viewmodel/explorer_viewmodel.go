@@ -193,7 +193,7 @@ func (v *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error 
 		v.notifier.NotifyError(wErr)
 		return wErr
 	}
-	v.isSelectedDirLoading.Set(true)
+	v.isSelectedDirLoading.Set(true) // nolint:errcheck
 	v.bus.Publish(evt)
 
 	return nil
@@ -212,7 +212,7 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 	}
 
 	if v.selectedDirectory != nil && v.selectedDirectory.Is(dir) {
-		v.isSelectedDirLoading.Set(false)
+		v.isSelectedDirLoading.Set(false) // nolint:errcheck
 	}
 }
 
@@ -227,7 +227,7 @@ func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
 	v.infoMessage.Set(e.Error().Error()) //nolint:errcheck
 
 	if v.selectedDirectory != nil && v.selectedDirectory.Is(dir) {
-		v.isSelectedDirLoading.Set(false)
+		v.isSelectedDirLoading.Set(false) // nolint:errcheck
 	}
 }
 

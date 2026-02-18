@@ -140,12 +140,12 @@ func (w *FileEditor) CreateRenderer() fyne.WidgetRenderer {
 
 func (w *FileEditor) handleSave(content string) {
 	if err := w.openedEditor.OnSave(content); err != nil {
-		w.stateLabel.Set("error")
+		w.stateLabel.Set("error") // nolint:errcheck
 		dialog.ShowError(err, w.openedEditor.Window)
 		return
 	}
 	w.contentHash = sha256Hex(content)
-	w.stateLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05")))
+	w.stateLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
 }
 
 func (w *FileEditor) hasChanged(newContent string) bool {

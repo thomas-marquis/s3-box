@@ -30,7 +30,7 @@ func TestFileDetails(t *testing.T) {
 	mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
 
 	sizeLimit := binding.NewInt()
-	sizeLimit.Set(2048)
+	sizeLimit.Set(2048) // nolint:errcheck
 	mockSettingsVM.EXPECT().FileSizeLimitKB().Return(sizeLimit).AnyTimes()
 
 	mockConnVM.EXPECT().IsReadOnly().Return(false).AnyTimes()

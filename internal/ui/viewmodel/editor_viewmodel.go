@@ -114,8 +114,8 @@ func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
 
 	if _, err := content.Seek(0, io.SeekStart); err != nil {
 		v.notifier.NotifyError(err)
-		oe.IsLoaded.Set(true)
-		oe.ErrorMsg.Set(err.Error())
+		oe.IsLoaded.Set(true)        // nolint:errcheck
+		oe.ErrorMsg.Set(err.Error()) // nolint:errcheck
 		return
 	}
 
@@ -132,13 +132,13 @@ func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
 	contentVal, err := io.ReadAll(content)
 	if err != nil {
 		v.notifier.NotifyError(err)
-		oe.IsLoaded.Set(true)
-		oe.ErrorMsg.Set(err.Error())
+		oe.IsLoaded.Set(true)        // nolint:errcheck
+		oe.ErrorMsg.Set(err.Error()) // nolint:errcheck
 		return
 	}
 
-	oe.Content.Set(string(contentVal))
-	oe.IsLoaded.Set(true)
+	oe.Content.Set(string(contentVal)) // nolint:errcheck
+	oe.IsLoaded.Set(true)              // nolint:errcheck
 }
 
 func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
@@ -149,8 +149,8 @@ func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
 		// The editor has been closed before the file was loaded. And it's okay
 		return
 	}
-	oe.ErrorMsg.Set(e.Error().Error())
-	oe.IsLoaded.Set(true)
+	oe.ErrorMsg.Set(e.Error().Error()) // nolint:errcheck
+	oe.IsLoaded.Set(true)              // nolint:errcheck
 }
 
 func (v *editorViewModelImpl) IsOpened(file *directory.File) bool {
@@ -159,9 +159,7 @@ func (v *editorViewModelImpl) IsOpened(file *directory.File) bool {
 }
 
 func (v *editorViewModelImpl) Close(editor *OpenedEditor) {
-	if _, ok := v.openedEditors[editor.File.FullPath()]; ok {
-		delete(v.openedEditors, editor.File.FullPath())
-	}
+	delete(v.openedEditors, editor.File.FullPath())
 }
 
 func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {

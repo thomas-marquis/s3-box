@@ -132,13 +132,13 @@ func TestS3Object_Write(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 11, n)
 
-		obj.Seek(0, io.SeekStart)
+		obj.Seek(0, io.SeekStart) // nolint:errcheck
 		localContent, err := io.ReadAll(obj)
 		require.NoError(t, err)
 		assert.Equal(t, "new content", string(localContent))
 
 		remoteObj := getObject(t, client, bucketName, fileKey)
-		defer remoteObj.Close()
+		defer remoteObj.Close() // nolint:errcheck
 
 		uploadedContent, err := io.ReadAll(remoteObj)
 		require.NoError(t, err)
@@ -163,14 +163,14 @@ func TestS3Object_Write(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 9, n)
 
-		obj.Seek(0, io.SeekStart)
+		obj.Seek(0, io.SeekStart) // nolint:errcheck
 		localContent, err := io.ReadAll(obj)
 		assert.NoError(t, err)
 		assert.Equal(t, "initial content appended", string(localContent))
 
 		// Verify the content was updated in S3
 		remoteObj := getObject(t, client, bucketName, fileKey)
-		defer remoteObj.Close()
+		defer remoteObj.Close() // nolint:errcheck
 
 		uploadedContent, err := io.ReadAll(remoteObj)
 		require.NoError(t, err)
@@ -191,7 +191,7 @@ func TestS3Object_Write(t *testing.T) {
 		// When
 		n, err := obj.Seek(0, io.SeekStart)
 		n2, err2 := fmt.Fprint(obj, "New content")
-		obj.Seek(0, io.SeekStart)
+		obj.Seek(0, io.SeekStart) // nolint:errcheck
 
 		// Then
 		assert.NoError(t, err)
@@ -200,7 +200,7 @@ func TestS3Object_Write(t *testing.T) {
 		assert.Equal(t, 11, n2)
 
 		remoteObj := getObject(t, client, bucketName, fileKey)
-		defer remoteObj.Close()
+		defer remoteObj.Close() // nolint:errcheck
 		remoteContent, err := io.ReadAll(remoteObj)
 		require.NoError(t, err)
 		assert.Equal(t, "New content", string(remoteContent))
@@ -238,7 +238,7 @@ func TestS3Object_Write(t *testing.T) {
 		assert.Equal(t, "initial content", string(localContent))
 
 		remoteObj := getObject(t, client, bucketName, fileKey)
-		defer remoteObj.Close()
+		defer remoteObj.Close() // nolint:errcheck
 		remoteContent, err := io.ReadAll(remoteObj)
 		assert.NoError(t, err)
 		assert.Equal(t, "initial content", string(remoteContent))
@@ -272,13 +272,13 @@ func TestS3Object_Write(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "content", string(localContent))
 
-		obj.Seek(0, io.SeekStart)
+		obj.Seek(0, io.SeekStart) // nolint:errcheck
 		localContent, err = io.ReadAll(obj)
 		assert.NoError(t, err)
 		assert.Equal(t, "initial content", string(localContent))
 
 		remoteObj := getObject(t, client, bucketName, fileKey)
-		defer remoteObj.Close()
+		defer remoteObj.Close() // nolint:errcheck
 		remoteContent, err := io.ReadAll(remoteObj)
 		require.NoError(t, err)
 		assert.Equal(t, "initial content", string(remoteContent))
