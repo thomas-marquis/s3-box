@@ -28,5 +28,35 @@ services:
       exit 0;
       "
 
+  s3-2:
+    image: minio/minio:RELEASE.2023-11-20T22-40-07Z
+    container_name: minio2
+    command: server --console-address ":9001" /data
+    ports:
+      - "9902:9000"
+      - "9903:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin2
+      MINIO_ROOT_PASSWORD: minioadmin2
+    volumes:
+      - s3_storage_2:/data
+
+  createbuckets-2:
+    image: minio/mc:RELEASE.2023-11-20T16-30-59Z
+    container_name: minio-createbuckets2
+    depends_on:
+      - s3-2
+    volumes:
+      - ./:/data
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://s3-2:9000 minioadmin2 minioadmin2;
+      /usr/bin/mc mb myminio/mybucket;
+      /usr/bin/mc policy set public myminio/mybucket;
+      /usr/bin/mc cp --recursive /data/* myminio/mybucket;
+      exit 0;
+      "
+
 volumes:
   s3_storage: {}
+  s3_storage_2: {}
