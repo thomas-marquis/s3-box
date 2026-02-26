@@ -15,3 +15,8 @@ clean:
 .PHONY: test
 test:
 	@go test -v ./...
+
+.PHONY: check
+check:
+	@./tools/lint.sh
+	@go test -v ./...
