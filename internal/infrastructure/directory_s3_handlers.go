@@ -295,7 +295,14 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 		MaxKeys:   aws.Int32(1),
 	}
 
-	if _, err := sess.client.ListObjectsV2(ctx, listInput); err == nil {
+	result, err := sess.client.ListObjectsV2(ctx, listInput)
+	if err != nil {
+		handleError(r.manageAwsSdkError(err, newKeyPrefix, sess))
+		return
+	}
+
+	// Check if target directory actually exists (has objects or common prefixes)
+	if len(result.Contents) > 0 || len(result.CommonPrefixes) > 0 {
 		// Target directory exists
 		handleError(fmt.Errorf("target directory %s already exists", newKeyPrefix))
 		return

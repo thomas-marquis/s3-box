@@ -196,17 +196,14 @@ func (d *Directory) Rename(newName string) (RenamedEvent, error) {
 		return RenamedEvent{}, fmt.Errorf("directory name should not contain '/'s")
 	}
 
-	// Check if a directory with the new name already exists in the parent
-	subDirectories, err := d.currentState.SubDirectories()
-	if err != nil {
-		return RenamedEvent{}, fmt.Errorf("failed to get subdirectories: %w", err)
+	// Basic validation: check if the new name is different from current name
+	if newName == d.name {
+		return RenamedEvent{}, fmt.Errorf("new name must be different from current name %s", d.name)
 	}
-	newPath := d.parentPath.NewSubPath(newName)
-	for _, sd := range subDirectories {
-		if sd.Path() == newPath {
-			return RenamedEvent{}, fmt.Errorf("subdirectory %s already exists", newPath)
-		}
-	}
+
+	// Note: More thorough validation (checking if target directory exists in parent)
+	// is handled by the infrastructure layer when it processes the rename event
+	// and has access to the full directory structure from S3.
 
 	// Note: We don't update d.name or d.path here - that happens in Notify() on success
 	return NewRenamedEvent(d, d.path, newName), nil

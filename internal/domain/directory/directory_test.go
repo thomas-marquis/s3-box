@@ -609,7 +609,7 @@ func TestDirectory_Rename(t *testing.T) {
 		assert.Contains(t, err.Error(), "directory name should not be '/'")
 	})
 
-	t.Run("should return error when directory with new name already exists", func(t *testing.T) {
+	t.Run("should return error when trying to rename to same name", func(t *testing.T) {
 		// Given
 		connID := connection_deck.NewConnectionID()
 		parentDir, err := directory.New(connID, "parent", directory.RootPath)
@@ -618,20 +618,17 @@ func TestDirectory_Rename(t *testing.T) {
 		dir, err := directory.New(connID, "oldname", parentDir.Path())
 		require.NoError(t, err)
 
-		existingDir, err := directory.New(connID, "existing", parentDir.Path())
-		require.NoError(t, err)
-
-		loadEvt := directory.NewLoadSuccessEvent(dir, []*directory.Directory{existingDir}, nil)
+		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
 		_, err = dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
-		// When
-		_, err = dir.Rename("existing")
+		// When - try to rename to the same name
+		_, err = dir.Rename("oldname")
 
 		// Then
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "subdirectory ", "already exists")
+		assert.Contains(t, err.Error(), "new name must be different from current name")
 	})
 
 	t.Run("should update directory state on rename success event", func(t *testing.T) {
