@@ -180,6 +180,7 @@ func (d *Directory) RemoveSubDirectory(name string) (DeletedEvent, error) {
 // Rename changes the name of the directory.
 // Returns a RenamedEvent and the old path for reference.
 // Returns an error if the new name is invalid or if the directory is not loaded.
+// Note: The directory entity's name and path are NOT updated until a success event is received.
 func (d *Directory) Rename(newName string) (RenamedEvent, error) {
 	if !d.IsLoaded() {
 		return RenamedEvent{}, ErrNotLoaded
@@ -207,14 +208,8 @@ func (d *Directory) Rename(newName string) (RenamedEvent, error) {
 		}
 	}
 
-	// Store old path before changing the name
-	//oldPath := d.path
-
-	//// Update the directory's name and path
-	//d.name = newName
-	//d.path = newPath
-
-	return NewRenamedEvent(d, d.path), nil
+	// Note: We don't update d.name or d.path here - that happens in Notify() on success
+	return NewRenamedEvent(d, d.path, newName), nil
 }
 
 func (d *Directory) UploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error) {
@@ -328,8 +323,8 @@ func (d *Directory) Notify(evt event.Event) error {
 	case RenamedEventType.AsSuccess():
 		e := evt.(RenamedSuccessEvent)
 		// Update the directory's name and path to reflect the rename
-		d.name = e.Directory().Name()
-		d.path = e.Directory().Path()
+		d.name = e.NewName()
+		d.path = d.parentPath.NewSubPath(e.NewName())
 	}
 
 	return nil

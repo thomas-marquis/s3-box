@@ -165,17 +165,27 @@ func (e withOldPath) OldPath() Path {
 	return e.oldPath
 }
 
+type withNewName struct {
+	newName string
+}
+
+func (e withNewName) NewName() string {
+	return e.newName
+}
+
 type RenamedEvent struct {
 	event.BaseEvent
 	withDirectory
 	withOldPath
+	withNewName
 }
 
-func NewRenamedEvent(directory *Directory, oldPath Path, opts ...event.Option) RenamedEvent {
+func NewRenamedEvent(directory *Directory, oldPath Path, newName string, opts ...event.Option) RenamedEvent {
 	return RenamedEvent{
 		event.NewBaseEvent(RenamedEventType, opts...),
 		withDirectory{directory},
 		withOldPath{oldPath},
+		withNewName{newName},
 	}
 }
 
@@ -183,13 +193,15 @@ type RenamedSuccessEvent struct {
 	event.BaseEvent
 	withDirectory
 	withOldPath
+	withNewName
 }
 
-func NewRenamedSuccessEvent(directory *Directory, oldPath Path, opts ...event.Option) RenamedSuccessEvent {
+func NewRenamedSuccessEvent(directory *Directory, oldPath Path, newName string, opts ...event.Option) RenamedSuccessEvent {
 	return RenamedSuccessEvent{
 		event.NewBaseEvent(RenamedEventType.AsSuccess(), opts...),
 		withDirectory{directory},
 		withOldPath{oldPath},
+		withNewName{newName},
 	}
 }
 

@@ -653,7 +653,7 @@ func TestDirectory_Rename(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		successEvt := directory.NewRenamedSuccessEvent(dir, oldPath)
+		successEvt := directory.NewRenamedSuccessEvent(dir, oldPath, "newname")
 		err = dir.Notify(successEvt)
 
 		// Then
