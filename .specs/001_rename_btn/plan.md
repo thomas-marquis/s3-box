@@ -58,7 +58,7 @@ Requirements Analysis
 6. Testing - Unit Tests
     • Files: Domain, infrastructure, viewmodel test files
     • Add unit tests for rename methods
-    • Add integration tests for S3 operations
+    • Add integration tests for S3 operations (withe test containers)
     • Follow existing test patterns
     • Requirements: Add tests
 7. Testing - UI Tests
