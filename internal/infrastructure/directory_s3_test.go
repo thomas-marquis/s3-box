@@ -692,3 +692,135 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 		assert.Equal(t, "original content", string(downloaded))
 	})
 }
+
+// TestNewS3DirectoryRepository_renameDirectory tests the complete directory rename functionality
+// including S3 object copying, deletion, and directory marker creation.
+// This test was added as part of Phase 6 integration testing to ensure proper event propagation
+// and infrastructure layer functionality for directory rename operations.
+func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
+	ctx := context.Background()
+	endpoint, terminate := setupS3testContainer(ctx, t)
+	defer terminate()
+	client := setupS3Client(t, endpoint)
+
+	bucketName := "test-bucket"
+	setupS3Bucket(ctx, t, client, bucketName, []fakeS3Object{
+		{Key: "originaldir/", Body: strings.NewReader("")},
+		{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
+		{Key: "originaldir/subdir/", Body: strings.NewReader("")},
+		{Key: "originaldir/subdir/nested.txt", Body: strings.NewReader("nested content")},
+	})
+
+	fakeConnID := connection_deck.NewConnectionID()
+	fakeDeck := connection_deck.New()
+	fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, bucketName,
+		connection_deck.AsS3Like(endpoint, false),
+		connection_deck.WithID(fakeConnID))
+
+	t.Run("should rename a directory successfully", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+
+		// Don't expect any error notifications for the test
+		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(0).MaxTimes(0)
+
+		rootDir, err := directory.New(fakeConnID, directory.RootDirName, directory.NilParentPath)
+		require.NoError(t, err)
+
+		originalDir, err := directory.New(fakeConnID, "originaldir", directory.RootPath)
+		require.NoError(t, err)
+
+		fakeEventChan := make(chan event.Event, 1)
+		defer close(fakeEventChan)
+
+		mockBus.EXPECT().
+			Subscribe().
+			Return(event.NewSubscriber(fakeEventChan))
+
+		mockConnRepo.EXPECT().
+			Get(gomock.AssignableToTypeOf(ctxType)).
+			Return(fakeDeck, nil).
+			Times(2) // Once for directory creation, once for rename
+
+		done := make(chan struct{})
+		// Expect directory creation success
+		mockBus.EXPECT().
+			Publish(gomock.Any()).
+			Do(func(evt event.Event) {
+				_, ok := evt.(directory.CreatedSuccessEvent)
+				assert.True(t, ok)
+			}).
+			Times(1)
+
+		// Expect directory rename success
+		mockBus.EXPECT().
+			Publish(gomock.Any()).
+			Do(func(evt event.Event) {
+				e, ok := evt.(directory.RenamedSuccessEvent)
+				assert.True(t, ok)
+				assert.Equal(t, "renameddir", e.Directory().Name())
+				close(done)
+			}).
+			Times(1)
+
+		// Expect load event for the renamed directory (triggered by the infrastructure layer)
+		mockBus.EXPECT().
+			Publish(gomock.Any()).
+			Do(func(evt event.Event) {
+				_, ok := evt.(directory.LoadEvent)
+				assert.True(t, ok)
+			}).
+			Times(1)
+
+		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		require.NoError(t, err)
+
+		// First, create the original directory to ensure it exists
+		fakeEventChan <- directory.NewCreatedEvent(rootDir, originalDir)
+		// Wait a bit for the directory to be created
+		time.Sleep(500 * time.Millisecond)
+
+		// When
+		oldPath := originalDir.Path()
+		fakeEventChan <- directory.NewRenamedEvent(originalDir, oldPath, "renameddir")
+		assert.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+				return false
+			}
+		}, 5*time.Second, 100*time.Millisecond)
+
+		// Verify new directory exists (this implies the old one is gone)
+		_, err = client.GetObject(ctx, &s3.GetObjectInput{
+			Bucket: aws.String(bucketName),
+			Key:    aws.String("renameddir/"),
+		})
+		require.NoError(t, err)
+
+		// Verify file was moved to new directory
+		remoteObj := getObject(t, client, bucketName, "renameddir/file.txt")
+		defer remoteObj.Close() // nolint:errcheck
+		downloaded, err := io.ReadAll(remoteObj)
+		require.NoError(t, err)
+		assert.Equal(t, "file content", string(downloaded))
+
+		// Verify nested directory was also moved
+		_, err = client.GetObject(ctx, &s3.GetObjectInput{
+			Bucket: aws.String(bucketName),
+			Key:    aws.String("renameddir/subdir/"),
+		})
+		require.NoError(t, err)
+
+		// Verify nested file was moved with correct content
+		remoteObj2 := getObject(t, client, bucketName, "renameddir/subdir/nested.txt")
+		defer remoteObj2.Close() // nolint:errcheck
+		downloaded2, err := io.ReadAll(remoteObj2)
+		require.NoError(t, err)
+		assert.Equal(t, "nested content", string(downloaded2))
+	})
+}

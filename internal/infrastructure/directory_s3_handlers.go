@@ -401,6 +401,51 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 		return
 	}
 
+	// Step 2.5: Create directory markers for subdirectories
+	// We need to recreate directory markers for any subdirectories that were in the original directory
+	// Since we skipped them during copying (they have trailing slashes), we need to create them explicitly
+	// List the original directory structure to find subdirectories
+	subDirListInput := &s3.ListObjectsV2Input{
+		Bucket:    aws.String(sess.connection.Bucket()),
+		Prefix:    aws.String(oldKeyPrefix),
+		Delimiter: aws.String("/"),
+	}
+
+	subDirPaginator := s3.NewListObjectsV2Paginator(sess.client, subDirListInput)
+	for subDirPaginator.HasMorePages() {
+		page, err := subDirPaginator.NextPage(ctx)
+		if err != nil {
+			// Log warning but don't fail the operation
+			r.logger.Printf("Warning: failed to list subdirectories during rename: %v", err)
+			break
+		}
+
+		// Create directory markers for each subdirectory
+		for _, prefix := range page.CommonPrefixes {
+			subDirPath := *prefix.Prefix
+			// Skip the root directory itself
+			if subDirPath == oldKeyPrefix {
+				continue
+			}
+			// Construct new subdirectory path
+			newSubDirPath := strings.Replace(subDirPath, oldKeyPrefix, newKeyPrefix, 1)
+			// Ensure it ends with a slash
+			if !strings.HasSuffix(newSubDirPath, "/") {
+				newSubDirPath += "/"
+			}
+			// Create the subdirectory marker
+			_, err := sess.client.PutObject(ctx, &s3.PutObjectInput{
+				Bucket: aws.String(sess.connection.Bucket()),
+				Key:    aws.String(newSubDirPath),
+				Body:   strings.NewReader(""),
+			})
+			if err != nil {
+				// Log warning but don't fail the operation
+				r.logger.Printf("Warning: failed to create subdirectory marker %s: %v", newSubDirPath, err)
+			}
+		}
+	}
+
 	// Step 3: Delete old objects in batches with error recovery
 	var deleteErrors []error
 	var totalObjectsDeleted int
@@ -448,7 +493,27 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 		return
 	}
 
-	// Step 4: Clean up marker file (success case)
+	// Step 4: Create new directory marker
+	// In S3, directories are represented as objects with trailing slashes.
+	// When renaming a directory, we must create a new directory marker with the new name
+	// to ensure the directory is properly represented in the S3 bucket structure.
+	// This step was added to fix an issue where renamed directories would not appear
+	// in the S3 bucket after rename operations.
+	newDirMarkerKey := newKeyPrefix
+	if !strings.HasSuffix(newDirMarkerKey, "/") {
+		newDirMarkerKey += "/"
+	}
+	_, err = sess.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(sess.connection.Bucket()),
+		Key:    aws.String(newDirMarkerKey),
+		Body:   strings.NewReader(""),
+	})
+	if err != nil {
+		handleError(r.manageAwsSdkError(err, newDirMarkerKey, sess))
+		return
+	}
+
+	// Step 5: Clean up marker file (success case)
 	cleanupMarker = false // Don't cleanup in defer
 	_, err = sess.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(sess.connection.Bucket()),
@@ -459,8 +524,18 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 		r.logger.Printf("Warning: failed to clean up marker file %s: %v", markerKey, err)
 	}
 
+	// Create a new directory object with the updated name and path
+	// This ensures the success event contains the correct directory information
+	// with the new name, which is used by the domain layer to update the directory state.
+	updatedDir, err := directory.New(dir.ConnectionID(), evt.NewName(), dir.ParentPath())
+	if err != nil {
+		r.logger.Printf("Warning: failed to create updated directory object for success event: %v", err)
+		// Fall back to original directory object
+		updatedDir = dir
+	}
+
 	r.logger.Printf("Successfully renamed directory: %d objects copied, %d objects deleted", totalObjectsCopied, totalObjectsDeleted)
-	r.bus.Publish(directory.NewRenamedSuccessEvent(dir, evt.OldPath(), evt.NewName()))
+	r.bus.Publish(directory.NewRenamedSuccessEvent(updatedDir, evt.OldPath(), evt.NewName()))
 
 	// Trigger reload of the renamed directory to repopulate its contents
 	loadEvt, err := dir.Load()
