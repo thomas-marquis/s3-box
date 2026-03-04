@@ -28,6 +28,7 @@ type DirectoryDetails struct {
 	newDirectoryAction *ToolbarButton
 	uploadAction       *ToolbarButton
 	createFileAction   *ToolbarButton
+	renameAction       *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
 }
 
@@ -38,10 +39,12 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	createDirAction := NewToolbarButton("New empty directory", theme.FolderNewIcon(), func() {})
 	createFileAction := NewToolbarButton("New empty file", theme.ContentAddIcon(), func() {})
 	uploadAction := NewToolbarButton("Upload file", theme.UploadIcon(), func() {})
+	renameAction := NewToolbarButton("Rename", theme.FileTextIcon(), func() {})
 	toolbar := widget.NewToolbar(
 		createDirAction,
 		createFileAction,
 		uploadAction,
+		renameAction,
 	)
 	loadingBar := widget.NewProgressBarInfinite()
 	loadingBar.Hide()
@@ -53,6 +56,7 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 		newDirectoryAction: createDirAction,
 		uploadAction:       uploadAction,
 		createFileAction:   createFileAction,
+		renameAction:       renameAction,
 		loadingBar:         loadingBar,
 	}
 	w.ExtendBaseWidget(w)
@@ -129,11 +133,18 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	w.uploadAction.SetOnTapped(w.makeOnUpload(vm, dir))
 	w.newDirectoryAction.SetOnTapped(w.makeOnCreateDirectory(vm, dir))
 	w.createFileAction.SetOnTapped(w.makeOnCreateFile(vm, dir))
+	w.renameAction.SetOnTapped(w.makeOnRename(vm, dir))
+
+	// Disable rename for root directory
+	if dir.IsRoot() {
+		w.renameAction.Disable()
+	}
 
 	if w.appCtx.ConnectionViewModel().IsReadOnly() {
 		w.newDirectoryAction.Disable()
 		w.uploadAction.Disable()
 		w.createFileAction.Disable()
+		w.renameAction.Disable()
 	}
 }
 
@@ -216,6 +227,32 @@ func (w *DirectoryDetails) makeOnCreateFile(vm viewmodel.ExplorerViewModel, dir 
 				}
 				name := nameEntry.Text
 				vm.CreateEmptyFile(dir, name)
+			},
+			w.appCtx.Window(),
+		)
+		d.Resize(fyne.NewSize(400, 150))
+		d.Show()
+	}
+}
+
+func (w *DirectoryDetails) makeOnRename(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
+	return func() {
+		var d *dialog.FormDialog
+		nameEntry := entryWithShortcuts(func() { d.Submit() }, func() { d.Dismiss() })
+		nameEntry.SetText(dir.Name())
+		d = dialog.NewForm(
+			"Rename directory",
+			"Rename",
+			"Cancel",
+			[]*widget.FormItem{
+				widget.NewFormItem("New name", nameEntry),
+			},
+			func(ok bool) {
+				if !ok {
+					return
+				}
+				newName := nameEntry.Text
+				vm.RenameDirectory(dir, newName)
 			},
 			w.appCtx.Window(),
 		)

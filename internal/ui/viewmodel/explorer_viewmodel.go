@@ -77,6 +77,12 @@ type ExplorerViewModel interface {
 
 	// CreateEmptyFile creates an empty file in the given parent directory
 	CreateEmptyFile(parent *directory.Directory, name string)
+
+	// RenameDirectory renames a directory
+	RenameDirectory(dir *directory.Directory, newName string)
+
+	// RenameFile renames a file
+	RenameFile(file *directory.File, newName string)
 }
 
 type explorerViewModelImpl struct {
@@ -147,6 +153,10 @@ func NewExplorerViewModel(
 		On(event.Is(directory.ContentDownloadEventType.AsFailure()), v.handleDownloadFileFailure).
 		On(event.Is(directory.LoadEventType.AsSuccess()), v.handleLoadDirSuccess).
 		On(event.Is(directory.LoadEventType.AsFailure()), v.handleLoadDirFailure).
+		On(event.Is(directory.RenamedEventType.AsSuccess()), v.handleRenameDirectorySuccess).
+		On(event.Is(directory.RenamedEventType.AsFailure()), v.handleRenameDirectoryFailure).
+		On(event.Is(directory.FileRenamedEventType.AsSuccess()), v.handleRenameFileSuccess).
+		On(event.Is(directory.FileRenamedEventType.AsFailure()), v.handleRenameFileFailure).
 		ListenWithWorkers(1)
 
 	return v
@@ -463,6 +473,59 @@ func (v *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, nam
 	v.bus.Publish(evt)
 }
 
+func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newName string) {
+	if v.selectedConnectionVal == nil {
+		err := ErrNoConnectionSelected
+		v.notifier.NotifyError(err)
+		v.bus.Publish(directory.NewRenamedFailureEvent(err, dir, dir.Path()))
+		return
+	}
+
+	evt, err := dir.Rename(newName)
+	if err != nil {
+		wErr := fmt.Errorf("error renaming directory: %w", err)
+		v.notifier.NotifyError(wErr)
+		v.bus.Publish(directory.NewRenamedFailureEvent(wErr, dir, dir.Path()))
+		return
+	}
+
+	v.bus.Publish(evt)
+}
+
+func (v *explorerViewModelImpl) RenameFile(file *directory.File, newName string) {
+	if v.selectedConnectionVal == nil {
+		err := ErrNoConnectionSelected
+		v.notifier.NotifyError(err)
+		v.bus.Publish(directory.NewFileRenamedFailureEvent(err, nil, file, file.Name()))
+		return
+	}
+
+	// Get the parent directory to publish the event
+	parentDirNodeItem, err := v.tree.GetValue(file.DirectoryPath().String())
+	if err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error getting parent directory: %w", err))
+		v.bus.Publish(directory.NewFileRenamedFailureEvent(err, nil, file, file.Name()))
+		return
+	}
+
+	parentDirNode, ok := parentDirNodeItem.(node.DirectoryNode)
+	if !ok {
+		err := fmt.Errorf("error casting parent to directory node")
+		v.notifier.NotifyError(err)
+		v.bus.Publish(directory.NewFileRenamedFailureEvent(err, nil, file, file.Name()))
+		return
+	}
+
+	parentDir := parentDirNode.Directory()
+
+	// Create the rename event with the parent directory
+	oldName := file.Name()
+	file.Rename(newName) // Update the file name
+	evt := directory.NewFileRenamedEvent(parentDir, file, oldName)
+
+	v.bus.Publish(evt)
+}
+
 func (v *explorerViewModelImpl) handleCreateFileSuccess(evt event.Event) {
 	e := evt.(directory.FileCreatedSuccessEvent)
 	if err := v.addNewFileToTree(e.File()); err != nil {
@@ -480,6 +543,95 @@ func (v *explorerViewModelImpl) handleCreateFileFailure(evt event.Event) {
 	err := fmt.Errorf("error creating file: %w", e.Error())
 	if notifErr := e.Directory().Notify(e); notifErr != nil {
 		err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
+	}
+	v.notifier.NotifyError(err)
+	v.errorMessage.Set(err.Error()) //nolint:errcheck
+}
+
+func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
+	e := evt.(directory.RenamedSuccessEvent)
+	dir := e.Directory()
+
+	// Update the directory's state
+	if err := dir.Notify(e); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+
+	// Update the tree structure - remove old node and add new node
+	oldPath := e.OldPath().String()
+
+	// Remove the old node from the tree
+	if err := v.tree.Remove(oldPath); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error removing old directory node: %w", err))
+		return
+	}
+
+	// Add the new node to the tree
+	parentNodeItem, err := v.tree.GetValue(dir.ParentPath().String())
+	if err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error getting parent directory: %w", err))
+		return
+	}
+
+	newDirNode := node.NewDirectoryNode(dir)
+	if err := v.tree.Append(parentNodeItem.(node.DirectoryNode).ID(), newDirNode.ID(), newDirNode); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error adding new directory node: %w", err))
+		return
+	}
+
+	fyne.CurrentApp().SendNotification(fyne.NewNotification("Directory renamed",
+		fmt.Sprintf("Directory renamed to %s", dir.Name())))
+}
+
+func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
+	e := evt.(directory.RenamedFailureEvent)
+	err := fmt.Errorf("error renaming directory: %w", e.Error())
+	if err := e.Directory().Notify(e); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+	v.notifier.NotifyError(err)
+	v.errorMessage.Set(err.Error()) //nolint:errcheck
+}
+
+func (v *explorerViewModelImpl) handleRenameFileSuccess(evt event.Event) {
+	e := evt.(directory.FileRenamedSuccessEvent)
+	file := e.File()
+	parentDir := e.Parent()
+
+	// Update the parent directory's state
+	if err := parentDir.Notify(e); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+
+	// Update the tree structure - remove old file and add new file
+	oldFullPath := file.DirectoryPath().String() + e.OldName().String()
+
+	// Remove the old file node from the tree
+	if err := v.tree.Remove(oldFullPath); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error removing old file node: %w", err))
+		return
+	}
+
+	// Add the new file node to the tree
+	newFileNode := node.NewFileNode(file)
+	if err := v.tree.Prepend(file.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error adding new file node: %w", err))
+		return
+	}
+
+	fyne.CurrentApp().SendNotification(fyne.NewNotification("File renamed",
+		fmt.Sprintf("File renamed to %s", file.Name())))
+}
+
+func (v *explorerViewModelImpl) handleRenameFileFailure(evt event.Event) {
+	e := evt.(directory.FileRenamedFailureEvent)
+	err := fmt.Errorf("error renaming file: %w", e.Error())
+	if err := e.Parent().Notify(e); err != nil {
+		v.notifier.NotifyError(err)
+		return
 	}
 	v.notifier.NotifyError(err)
 	v.errorMessage.Set(err.Error()) //nolint:errcheck

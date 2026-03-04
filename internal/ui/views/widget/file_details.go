@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
@@ -35,6 +36,7 @@ type FileDetails struct {
 	previewAction  *ToolbarButton
 	deleteAction   *ToolbarButton
 	editAction     *ToolbarButton
+	renameAction   *ToolbarButton
 
 	actionToolbar *widget.Toolbar
 
@@ -61,6 +63,7 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		previewAction:  NewToolbarButton("Preview", theme.VisibilityIcon(), func() {}),
 		deleteAction:   NewToolbarButton("Delete", theme.DeleteIcon(), func() {}),
 		editAction:     NewToolbarButton("Edit", theme.DocumentCreateIcon(), func() {}),
+		renameAction:   NewToolbarButton("Rename", theme.FileTextIcon(), func() {}),
 
 		currentSelectedFile: nil,
 	}
@@ -69,6 +72,7 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		w.downloadAction,
 		w.previewAction,
 		w.editAction,
+		w.renameAction,
 		w.deleteAction,
 	)
 
@@ -216,6 +220,43 @@ func (w *FileDetails) Select(file *directory.File) {
 		saveDialog.Show()
 	})
 
+	w.renameAction.SetOnTapped(func() {
+		var d *dialog.FormDialog
+		nameEntry := NewEntryWithShortcuts([]ActionShortcuts{
+			{
+				Shortcuts: []desktop.CustomShortcut{
+					{KeyName: fyne.KeyReturn, Modifier: fyne.KeyModifierControl},
+				},
+				Callback: func() { d.Submit() },
+			},
+			{
+				Shortcuts: []desktop.CustomShortcut{
+					{KeyName: fyne.KeyQ, Modifier: fyne.KeyModifierControl},
+				},
+				Callback: func() { d.Dismiss() },
+			},
+		})
+		nameEntry.SetText(file.Name().String())
+		d = dialog.NewForm(
+			"Rename file",
+			"Rename",
+			"Cancel",
+			[]*widget.FormItem{
+				widget.NewFormItem("New name", nameEntry),
+			},
+			func(ok bool) {
+				if !ok {
+					return
+				}
+				newName := nameEntry.Text
+				exVm.RenameFile(file, newName)
+			},
+			w.appCtx.Window(),
+		)
+		d.Resize(fyne.NewSize(400, 150))
+		d.Show()
+	})
+
 	w.deleteAction.SetOnTapped(func() {
 		dialog.ShowConfirm("Delete file",
 			fmt.Sprintf("Are you sure you want to delete '%s'?", file.Name()),
@@ -228,5 +269,6 @@ func (w *FileDetails) Select(file *directory.File) {
 	if w.appCtx.ConnectionViewModel().IsReadOnly() {
 		w.deleteAction.Disable()
 		w.editAction.Disable()
+		w.renameAction.Disable()
 	}
 }
