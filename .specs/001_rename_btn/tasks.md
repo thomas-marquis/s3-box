@@ -1,5 +1,10 @@
 # Technical Task List: Add Rename Button for Files and Directories
 
+## Useful documents:
+
+* [Core project's guidelines](.junie/guidelines.md)
+* Current specification documents are all located into the folder `.specs/001_rename_btn/`
+
 ## Development Phases
 
 ### Phase 1: Setup and Preparation
