@@ -589,3 +589,106 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		assert.Equal(t, "", string(downloaded))
 	})
 }
+
+func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
+	ctx := context.Background()
+	endpoint, terminate := setupS3testContainer(ctx, t)
+	defer terminate()
+	client := setupS3Client(t, endpoint)
+
+	bucketName := "test-bucket"
+	setupS3Bucket(ctx, t, client, bucketName, []fakeS3Object{
+		{Key: "mydir/original.txt", Body: strings.NewReader("original content")},
+	})
+
+	fakeConnID := connection_deck.NewConnectionID()
+	fakeDeck := connection_deck.New()
+	fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, bucketName,
+		connection_deck.AsS3Like(endpoint, false),
+		connection_deck.WithID(fakeConnID))
+
+	t.Run("should rename a file successfully", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+
+		// Don't expect any error notifications for the test
+		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(0).MaxTimes(0)
+
+		parentDir, err := directory.New(fakeConnID, "mydir", directory.RootPath)
+		require.NoError(t, err)
+
+		renamedFile, err := directory.NewFile("renamed.txt", parentDir.Path())
+		require.NoError(t, err)
+
+		fakeEventChan := make(chan event.Event, 1)
+		defer close(fakeEventChan)
+
+		mockBus.EXPECT().
+			Subscribe().
+			Return(event.NewSubscriber(fakeEventChan))
+
+		mockConnRepo.EXPECT().
+			Get(gomock.AssignableToTypeOf(ctxType)).
+			Return(fakeDeck, nil).
+			Times(2) // Once for file creation, once for rename
+
+		done := make(chan struct{})
+		// Expect file creation success
+		mockBus.EXPECT().
+			Publish(gomock.Cond(func(evt event.Event) bool {
+				_, ok := evt.(directory.FileCreatedSuccessEvent)
+				return assert.True(t, ok)
+			})).
+			Times(1)
+
+		// Expect file rename success
+		mockBus.EXPECT().
+			Publish(gomock.Cond(func(evt event.Event) bool {
+				e, ok := evt.(directory.FileRenamedSuccessEvent)
+				res := assert.True(t, ok) &&
+					assert.Equal(t, "renamed.txt", e.File().Name().String())
+				close(done)
+				return res
+			})).
+			Times(1)
+
+		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		require.NoError(t, err)
+
+		// First, create the original file to ensure it exists
+		originalFile, err := directory.NewFile("original.txt", parentDir.Path())
+		require.NoError(t, err)
+		fakeEventChan <- directory.NewFileCreatedEvent(fakeConnID, parentDir, originalFile)
+		// Wait a bit for the file to be created
+		time.Sleep(500 * time.Millisecond)
+
+		// When
+		oldName := directory.FileName("original.txt")
+		fakeEventChan <- directory.NewFileRenamedEvent(parentDir, renamedFile, oldName)
+		assert.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+				return false
+			}
+		}, 5*time.Second, 100*time.Millisecond)
+
+		// Verify old file is gone
+		_, err = client.GetObject(ctx, &s3.GetObjectInput{
+			Bucket: aws.String(bucketName),
+			Key:    aws.String("mydir/original.txt"),
+		})
+		assert.Error(t, err)
+
+		// Verify new file exists with correct content
+		remoteObj := getObject(t, client, bucketName, "mydir/renamed.txt")
+		defer remoteObj.Close() // nolint:errcheck
+		downloaded, err := io.ReadAll(remoteObj)
+		require.NoError(t, err)
+		assert.Equal(t, "original content", string(downloaded))
+	})
+}
