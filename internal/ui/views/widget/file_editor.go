@@ -24,13 +24,17 @@ type textEditorEntry struct {
 	onValidate func(string)
 }
 
-func (m *textEditorEntry) TypedShortcut(s fyne.Shortcut) {
+var (
+	_ fyne.Shortcutable = (*textEditorEntry)(nil)
+)
+
+func (e *textEditorEntry) TypedShortcut(s fyne.Shortcut) {
 	if val, ok := s.(*desktop.CustomShortcut); ok {
 		if val.KeyName == fyne.KeyS && val.Modifier == fyne.KeyModifierControl {
-			m.onValidate(m.Text)
+			e.onValidate(e.Text)
 		}
 	} else {
-		m.Entry.TypedShortcut(s)
+		e.Entry.TypedShortcut(s)
 	}
 }
 
