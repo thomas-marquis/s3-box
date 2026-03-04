@@ -580,6 +580,13 @@ func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 		return
 	}
 
+	// Fill the subtree with the directory's contents if it's loaded
+	if dir.IsLoaded() {
+		if err := v.fillSubTree(dir); err != nil {
+			v.notifier.NotifyError(fmt.Errorf("error filling sub tree for renamed directory: %w", err))
+		}
+	}
+
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("Directory renamed",
 		fmt.Sprintf("Directory renamed to %s", dir.Name())))
 }

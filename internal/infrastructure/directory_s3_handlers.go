@@ -412,14 +412,13 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 			break
 		}
 
-		// Collect objects to delete (skip directory markers)
+		// Collect objects to delete (including directory marker objects)
 		var deleteObjects []s3types.ObjectIdentifier
 		for _, obj := range page.Contents {
-			if !strings.HasSuffix(*obj.Key, "/") {
-				deleteObjects = append(deleteObjects, s3types.ObjectIdentifier{
-					Key: obj.Key,
-				})
-			}
+			// Include all objects, including directory markers
+			deleteObjects = append(deleteObjects, s3types.ObjectIdentifier{
+				Key: obj.Key,
+			})
 		}
 
 		if len(deleteObjects) > 0 {
@@ -462,6 +461,14 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 
 	r.logger.Printf("Successfully renamed directory: %d objects copied, %d objects deleted", totalObjectsCopied, totalObjectsDeleted)
 	r.bus.Publish(directory.NewRenamedSuccessEvent(dir, evt.OldPath(), evt.NewName()))
+
+	// Trigger reload of the renamed directory to repopulate its contents
+	loadEvt, err := dir.Load()
+	if err != nil {
+		r.logger.Printf("Warning: failed to trigger reload of renamed directory %s: %v", dir.Path(), err)
+	} else {
+		r.bus.Publish(loadEvt)
+	}
 }
 
 func (r *S3DirectoryRepository) handleRenameFile(e event.Event) {
