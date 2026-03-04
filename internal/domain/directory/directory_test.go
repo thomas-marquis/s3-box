@@ -536,3 +536,129 @@ func TestDirectory_UploadFile(t *testing.T) {
 		assert.ErrorIs(t, err, directory.ErrNotLoaded)
 	})
 }
+
+func TestDirectory_Rename(t *testing.T) {
+	t.Run("should emit event and not yet rename the directory", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		parentDir, err := directory.New(connID, "parent", directory.RootPath)
+		require.NoError(t, err)
+
+		dir, err := directory.New(connID, "oldname", parentDir.Path())
+		require.NoError(t, err)
+
+		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
+		_, err = dir.Load()
+		require.NoError(t, err)
+		require.NoError(t, dir.Notify(loadEvt))
+
+		// When
+		evt, err := dir.Rename("newname")
+
+		// Then
+		require.NoError(t, err)
+		assert.Equal(t, directory.RenamedEventType, evt.Type())
+		assert.Equal(t, "oldname", dir.Name())
+		assert.Equal(t, directory.Path("/parent/oldname/"), dir.Path())
+		assert.Equal(t, directory.Path("/parent/oldname/"), evt.OldPath())
+	})
+
+	t.Run("should return error when directory is not loaded", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		parentDir, err := directory.New(connID, "parent", directory.RootPath)
+		require.NoError(t, err)
+
+		dir, err := directory.New(connID, "oldname", parentDir.Path())
+		require.NoError(t, err)
+
+		// When
+		_, err = dir.Rename("newname")
+
+		// Then
+		assert.ErrorIs(t, err, directory.ErrNotLoaded)
+	})
+
+	t.Run("should return error when new name is invalid", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		parentDir, err := directory.New(connID, "parent", directory.RootPath)
+		require.NoError(t, err)
+
+		dir, err := directory.New(connID, "oldname", parentDir.Path())
+		require.NoError(t, err)
+
+		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
+		_, err = dir.Load()
+		require.NoError(t, err)
+		require.NoError(t, dir.Notify(loadEvt))
+
+		// When & Then - empty name
+		_, err = dir.Rename("")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "directory name is empty")
+
+		// When & Then - name with slash
+		_, err = dir.Rename("new/name")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "directory name should not contain '/'s")
+
+		// When & Then - name is just slash
+		_, err = dir.Rename("/")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "directory name should not be '/'")
+	})
+
+	t.Run("should return error when directory with new name already exists", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		parentDir, err := directory.New(connID, "parent", directory.RootPath)
+		require.NoError(t, err)
+
+		dir, err := directory.New(connID, "oldname", parentDir.Path())
+		require.NoError(t, err)
+
+		existingDir, err := directory.New(connID, "existing", parentDir.Path())
+		require.NoError(t, err)
+
+		loadEvt := directory.NewLoadSuccessEvent(dir, []*directory.Directory{existingDir}, nil)
+		_, err = dir.Load()
+		require.NoError(t, err)
+		require.NoError(t, dir.Notify(loadEvt))
+
+		// When
+		_, err = dir.Rename("existing")
+
+		// Then
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "subdirectory ", "already exists")
+	})
+
+	t.Run("should update directory state on rename success event", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		parentDir, err := directory.New(connID, "parent", directory.RootPath)
+		require.NoError(t, err)
+
+		dir, err := directory.New(connID, "oldname", parentDir.Path())
+		require.NoError(t, err)
+
+		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
+		_, err = dir.Load()
+		require.NoError(t, err)
+		require.NoError(t, dir.Notify(loadEvt))
+
+		oldPath := dir.Path()
+		_, err = dir.Rename("newname")
+		require.NoError(t, err)
+
+		// When
+		successEvt := directory.NewRenamedSuccessEvent(dir, oldPath)
+		err = dir.Notify(successEvt)
+
+		// Then
+		require.NoError(t, err)
+		assert.Equal(t, "newname", dir.Name())
+		assert.Equal(t, parentDir.Path().NewSubPath("newname"), dir.Path())
+	})
+}

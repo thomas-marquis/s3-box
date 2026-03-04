@@ -177,6 +177,46 @@ func (d *Directory) RemoveSubDirectory(name string) (DeletedEvent, error) {
 	return DeletedEvent{}, ErrNotFound
 }
 
+// Rename changes the name of the directory.
+// Returns a RenamedEvent and the old path for reference.
+// Returns an error if the new name is invalid or if the directory is not loaded.
+func (d *Directory) Rename(newName string) (RenamedEvent, error) {
+	if !d.IsLoaded() {
+		return RenamedEvent{}, ErrNotLoaded
+	}
+
+	if newName == "" {
+		return RenamedEvent{}, fmt.Errorf("directory name is empty")
+	}
+	if newName == "/" {
+		return RenamedEvent{}, fmt.Errorf("directory name should not be '/'")
+	}
+	if strings.Contains(newName, "/") {
+		return RenamedEvent{}, fmt.Errorf("directory name should not contain '/'s")
+	}
+
+	// Check if a directory with the new name already exists in the parent
+	subDirectories, err := d.currentState.SubDirectories()
+	if err != nil {
+		return RenamedEvent{}, fmt.Errorf("failed to get subdirectories: %w", err)
+	}
+	newPath := d.parentPath.NewSubPath(newName)
+	for _, sd := range subDirectories {
+		if sd.Path() == newPath {
+			return RenamedEvent{}, fmt.Errorf("subdirectory %s already exists", newPath)
+		}
+	}
+
+	// Store old path before changing the name
+	//oldPath := d.path
+
+	//// Update the directory's name and path
+	//d.name = newName
+	//d.path = newPath
+
+	return NewRenamedEvent(d, d.path), nil
+}
+
 func (d *Directory) UploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error) {
 	return d.currentState.UploadFile(localPath, overwrite)
 }
@@ -225,6 +265,23 @@ func (d *Directory) Notify(evt event.Event) error {
 			return fmt.Errorf("failed to add file: %w", err)
 		}
 
+	case FileRenamedEventType.AsSuccess():
+		e := evt.(FileRenamedSuccessEvent)
+		files, err := d.currentState.Files()
+		if err != nil {
+			return fmt.Errorf("failed to get files: %w", err)
+		}
+		// Find the file with the old name and update it
+		for i, file := range files {
+			if file.Name() == e.OldName() {
+				files[i] = e.File()
+				if err := d.currentState.SetFiles(files); err != nil {
+					return fmt.Errorf("failed to update file after rename: %w", err)
+				}
+				return nil
+			}
+		}
+
 	case CreatedEventType.AsSuccess():
 		e := evt.(CreatedSuccessEvent)
 		subDirectories, err := d.currentState.SubDirectories()
@@ -267,6 +324,12 @@ func (d *Directory) Notify(evt event.Event) error {
 			d.SetLoaded(false)
 			return fmt.Errorf("failed to set files: %w", err)
 		}
+
+	case RenamedEventType.AsSuccess():
+		e := evt.(RenamedSuccessEvent)
+		// Update the directory's name and path to reflect the rename
+		d.name = e.Directory().Name()
+		d.path = e.Directory().Path()
 	}
 
 	return nil

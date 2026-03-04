@@ -8,6 +8,7 @@ const (
 	CreatedEventType event.Type = "event.directory.created"
 	DeletedEventType event.Type = "event.directory.deleted"
 	LoadEventType    event.Type = "event.directory.load"
+	RenamedEventType event.Type = "event.directory.renamed"
 )
 
 type withDirectory struct {
@@ -153,5 +154,55 @@ func NewLoadFailureEvent(err error, dir *Directory) LoadFailureEvent {
 	return LoadFailureEvent{
 		event.NewBaseErrorEvent(LoadEventType.AsFailure(), err),
 		withDirectory{dir},
+	}
+}
+
+type withOldPath struct {
+	oldPath Path
+}
+
+func (e withOldPath) OldPath() Path {
+	return e.oldPath
+}
+
+type RenamedEvent struct {
+	event.BaseEvent
+	withDirectory
+	withOldPath
+}
+
+func NewRenamedEvent(directory *Directory, oldPath Path, opts ...event.Option) RenamedEvent {
+	return RenamedEvent{
+		event.NewBaseEvent(RenamedEventType, opts...),
+		withDirectory{directory},
+		withOldPath{oldPath},
+	}
+}
+
+type RenamedSuccessEvent struct {
+	event.BaseEvent
+	withDirectory
+	withOldPath
+}
+
+func NewRenamedSuccessEvent(directory *Directory, oldPath Path, opts ...event.Option) RenamedSuccessEvent {
+	return RenamedSuccessEvent{
+		event.NewBaseEvent(RenamedEventType.AsSuccess(), opts...),
+		withDirectory{directory},
+		withOldPath{oldPath},
+	}
+}
+
+type RenamedFailureEvent struct {
+	event.BaseErrorEvent
+	withDirectory
+	withOldPath
+}
+
+func NewRenamedFailureEvent(err error, directory *Directory, oldPath Path) RenamedFailureEvent {
+	return RenamedFailureEvent{
+		event.NewBaseErrorEvent(RenamedEventType.AsFailure(), err),
+		withDirectory{directory},
+		withOldPath{oldPath},
 	}
 }

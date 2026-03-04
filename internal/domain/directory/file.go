@@ -96,3 +96,18 @@ func (f *File) Download(connID connection_deck.ConnectionID, toPath string) Cont
 func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) FileLoadEvent {
 	return NewFileLoadEvent(connId, f, opts...)
 }
+
+// Rename changes the name of the file.
+// Returns a FileRenamedEvent and the old name for reference.
+// Returns an error if the new name is invalid.
+func (f *File) Rename(newName string) (FileRenamedEvent, error) {
+	n, err := NewFileName(newName)
+	if err != nil {
+		return FileRenamedEvent{}, err
+	}
+
+	oldName := f.name
+	f.name = n
+
+	return NewFileRenamedEvent(nil, f, oldName), nil
+}
