@@ -282,12 +282,12 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 		return
 	}
 
-	// For rename, we need to copy all objects from old directory to new directory
-	// and then delete the old directory
+	oldKeyPrefix := mapPathToSearchKey(dir.Path())
 	newDirPath := dir.ParentPath().NewSubPath(evt.NewName())
 	newKeyPrefix := mapPathToSearchKey(newDirPath)
 
-	// First, check if target directory already exists
+	// Step 1: Check if target directory already exists and create marker
+	markerKey := newKeyPrefix + ".renaming-marker"
 	listInput := &s3.ListObjectsV2Input{
 		Bucket:    aws.String(sess.connection.Bucket()),
 		Prefix:    aws.String(newKeyPrefix),
@@ -301,23 +301,55 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 		return
 	}
 
-	// Copy all objects from old directory to new directory
-	oldKeyPrefix := mapPathToSearchKey(dir.Path())
+	// Create marker file to reserve the directory name
+	// This prevents other operations from using this directory name during the rename
+	_, err = sess.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(sess.connection.Bucket()),
+		Key:    aws.String(markerKey),
+		Body:   strings.NewReader("renaming in progress"),
+	})
+	if err != nil {
+		handleError(r.manageAwsSdkError(err, markerKey, sess))
+		return
+	}
+
+	// Ensure marker is cleaned up on failure
+	cleanupMarker := true
+	defer func() {
+		if cleanupMarker {
+			_, _ = sess.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+				Bucket: aws.String(sess.connection.Bucket()),
+				Key:    aws.String(markerKey),
+			})
+		}
+	}()
+
+	// Step 2: Copy objects in batches with progress tracking and error recovery
 	copyInput := &s3.ListObjectsV2Input{
 		Bucket: aws.String(sess.connection.Bucket()),
 		Prefix: aws.String(oldKeyPrefix),
 	}
 
+	var copiedObjects []s3types.ObjectIdentifier
+	var copyErrors []error
+	var totalObjectsCopied int
+
 	copyPaginator := s3.NewListObjectsV2Paginator(sess.client, copyInput)
 	for copyPaginator.HasMorePages() {
 		page, err := copyPaginator.NextPage(ctx)
 		if err != nil {
-			handleError(r.manageAwsSdkError(err, oldKeyPrefix, sess))
-			return
+			copyErrors = append(copyErrors, r.manageAwsSdkError(err, oldKeyPrefix, sess))
+			break
 		}
 
+		// Process objects in this page
 		for _, obj := range page.Contents {
 			oldObjKey := *obj.Key
+			// Skip the directory marker itself if it exists
+			if strings.HasSuffix(oldObjKey, "/") {
+				continue
+			}
+
 			// Construct new key by replacing old directory prefix with new directory prefix
 			newObjKey := strings.Replace(oldObjKey, oldKeyPrefix, newKeyPrefix, 1)
 
@@ -328,27 +360,59 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 				CopySource: aws.String(copySource),
 			})
 			if err != nil {
-				handleError(r.manageAwsSdkError(err, oldObjKey, sess))
-				return
+				copyErrors = append(copyErrors, r.manageAwsSdkError(err, oldObjKey, sess))
+				break
 			}
+
+			totalObjectsCopied++
+			// Track copied objects for potential cleanup
+			copiedObjects = append(copiedObjects, s3types.ObjectIdentifier{
+				Key: aws.String(newObjKey),
+			})
+
+			// Log progress for large directories
+			if totalObjectsCopied%100 == 0 {
+				r.logger.Printf("Renamed %d objects from %s to %s", totalObjectsCopied, oldKeyPrefix, newKeyPrefix)
+			}
+		}
+
+		if len(copyErrors) > 0 {
+			break
 		}
 	}
 
-	// Delete old directory objects
+	// If there were copy errors, clean up what we copied and fail
+	if len(copyErrors) > 0 {
+		if len(copiedObjects) > 0 {
+			r.logger.Printf("Cleaning up %d copied objects due to copy errors", len(copiedObjects))
+			_, _ = sess.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+				Bucket: aws.String(sess.connection.Bucket()),
+				Delete: &s3types.Delete{Objects: copiedObjects},
+			})
+		}
+		handleError(fmt.Errorf("failed to copy all objects after %d successful copies: %v", totalObjectsCopied, copyErrors))
+		return
+	}
+
+	// Step 3: Delete old objects in batches with error recovery
+	var deleteErrors []error
+	var totalObjectsDeleted int
 	delPaginator := s3.NewListObjectsV2Paginator(sess.client, copyInput)
 	for delPaginator.HasMorePages() {
 		page, err := delPaginator.NextPage(ctx)
 		if err != nil {
-			handleError(r.manageAwsSdkError(err, oldKeyPrefix, sess))
-			return
+			deleteErrors = append(deleteErrors, r.manageAwsSdkError(err, oldKeyPrefix, sess))
+			break
 		}
 
-		// Collect objects to delete
-		deleteObjects := make([]s3types.ObjectIdentifier, 0, len(page.Contents))
+		// Collect objects to delete (skip directory markers)
+		var deleteObjects []s3types.ObjectIdentifier
 		for _, obj := range page.Contents {
-			deleteObjects = append(deleteObjects, s3types.ObjectIdentifier{
-				Key: obj.Key,
-			})
+			if !strings.HasSuffix(*obj.Key, "/") {
+				deleteObjects = append(deleteObjects, s3types.ObjectIdentifier{
+					Key: obj.Key,
+				})
+			}
 		}
 
 		if len(deleteObjects) > 0 {
@@ -357,12 +421,39 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 				Delete: &s3types.Delete{Objects: deleteObjects},
 			})
 			if err != nil {
-				handleError(r.manageAwsSdkError(err, oldKeyPrefix, sess))
-				return
+				deleteErrors = append(deleteErrors, r.manageAwsSdkError(err, oldKeyPrefix, sess))
+				break
+			}
+			totalObjectsDeleted += len(deleteObjects)
+
+			// Log progress for large directories
+			if totalObjectsDeleted%100 == 0 {
+				r.logger.Printf("Deleted %d objects from %s", totalObjectsDeleted, oldKeyPrefix)
 			}
 		}
 	}
 
+	// If there were delete errors, we have an inconsistent state
+	// The marker file will remain to indicate the operation failed
+	// This allows for manual recovery or retry
+	if len(deleteErrors) > 0 {
+		cleanupMarker = false // Leave marker to indicate failure
+		handleError(fmt.Errorf("failed to delete all old objects after %d successful deletions: %v", totalObjectsDeleted, deleteErrors))
+		return
+	}
+
+	// Step 4: Clean up marker file (success case)
+	cleanupMarker = false // Don't cleanup in defer
+	_, err = sess.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(sess.connection.Bucket()),
+		Key:    aws.String(markerKey),
+	})
+	if err != nil {
+		// Log warning but don't fail the operation
+		r.logger.Printf("Warning: failed to clean up marker file %s: %v", markerKey, err)
+	}
+
+	r.logger.Printf("Successfully renamed directory: %d objects copied, %d objects deleted", totalObjectsCopied, totalObjectsDeleted)
 	r.bus.Publish(directory.NewRenamedSuccessEvent(dir, evt.OldPath(), evt.NewName()))
 }
 
