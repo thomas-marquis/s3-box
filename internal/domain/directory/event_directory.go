@@ -9,6 +9,7 @@ const (
 	DeletedEventType event.Type = "event.directory.deleted"
 	LoadEventType    event.Type = "event.directory.load"
 	RenamedEventType event.Type = "event.directory.renamed"
+	UserValidation   event.Type = "event.directory.user.validation"
 )
 
 type withDirectory struct {
@@ -176,7 +177,7 @@ func (e withNewName) NewName() string {
 type RenamedEvent struct {
 	event.BaseEvent
 	withDirectory
-	withOldPath
+	withOldPath // TODO: is it necessary??
 	withNewName
 }
 
@@ -184,7 +185,7 @@ func NewRenamedEvent(directory *Directory, oldPath Path, newName string, opts ..
 	return RenamedEvent{
 		event.NewBaseEvent(RenamedEventType, opts...),
 		withDirectory{directory},
-		withOldPath{oldPath},
+		withOldPath{oldPath}, // TODO: is it necessary??
 		withNewName{newName},
 	}
 }
@@ -216,5 +217,53 @@ func NewRenamedFailureEvent(err error, directory *Directory, oldPath Path) Renam
 		event.NewBaseErrorEvent(RenamedEventType.AsFailure(), err),
 		withDirectory{directory},
 		withOldPath{oldPath},
+	}
+}
+
+type UserValidationEvent struct {
+	event.BaseEvent
+	withDirectory
+	message string
+}
+
+func NewUserValidationEvent(directory *Directory, msg string, opts ...event.Option) UserValidationEvent {
+	return UserValidationEvent{
+		event.NewBaseEvent(UserValidation, opts...),
+		withDirectory{directory},
+		msg,
+	}
+}
+
+func (e UserValidationEvent) Message() string {
+	return e.message
+}
+
+type UserValidationSuccessEvent struct {
+	event.BaseEvent
+	withDirectory
+	validated bool
+}
+
+func NewUserValidationSuccessEvent(directory *Directory, validated bool, opts ...event.Option) UserValidationSuccessEvent {
+	return UserValidationSuccessEvent{
+		event.NewBaseEvent(UserValidation.AsSuccess(), opts...),
+		withDirectory{directory},
+		validated,
+	}
+}
+
+func (e UserValidationSuccessEvent) Validated() bool {
+	return e.validated
+}
+
+type UserValidationFailureEvent struct {
+	event.BaseErrorEvent
+	withDirectory
+}
+
+func NewUserValidationFailureEvent(err error, directory *Directory) UserValidationFailureEvent {
+	return UserValidationFailureEvent{
+		event.NewBaseErrorEvent(UserValidation.AsFailure(), err),
+		withDirectory{directory},
 	}
 }

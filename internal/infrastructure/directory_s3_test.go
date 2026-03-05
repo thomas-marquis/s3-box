@@ -693,10 +693,6 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 	})
 }
 
-// TestNewS3DirectoryRepository_renameDirectory tests the complete directory rename functionality
-// including S3 object copying, deletion, and directory marker creation.
-// This test was added as part of Phase 6 integration testing to ensure proper event propagation
-// and infrastructure layer functionality for directory rename operations.
 func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 	ctx := context.Background()
 	endpoint, terminate := setupS3testContainer(ctx, t)
@@ -708,7 +704,9 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		{Key: "originaldir/", Body: strings.NewReader("")},
 		{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 		{Key: "originaldir/subdir/", Body: strings.NewReader("")},
+		{Key: "originaldir/empty/", Body: strings.NewReader("")},
 		{Key: "originaldir/subdir/nested.txt", Body: strings.NewReader("nested content")},
+		{Key: "originaldir/subdir/originaldir/more-nested.txt", Body: strings.NewReader("more nested content")},
 	})
 
 	fakeConnID := connection_deck.NewConnectionID()
@@ -717,18 +715,23 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		connection_deck.AsS3Like(endpoint, false),
 		connection_deck.WithID(fakeConnID))
 
-	t.Run("should rename a directory successfully", func(t *testing.T) {
+	rootDir, err := directory.New(fakeConnID, directory.RootDirName, directory.NilParentPath)
+	require.NoError(t, err)
+
+	// TODO: test cases to implement:
+	//  * nominal: rename non-empty dir with nested content => first emit a RenameRequestEvent, then a RenameSuccessEvent
+	//  * error: rename non-empty dir with nested content => first emit a RenameFailedEvent (impossible to list objects)
+	//  * recovery: the target directory already exists but contains a marker file with the name of the source directory in it => continue moving items
+	//  * nominal empty dir => if a directory is empty, dont emit the RenameRequestEvent, but perform the renaming and then emit a RenameSuccessEvent
+
+	t.Run("should emit a RenameRequestEvent when the directory is not empty", func(t *testing.T) {
 		// Given
 		ctrl := gomock.NewController(t)
 		mockBus := mocks_event.NewMockBus(ctrl)
 		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
 		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
 
-		// Don't expect any error notifications for the test
 		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(0).MaxTimes(0)
-
-		rootDir, err := directory.New(fakeConnID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
 
 		originalDir, err := directory.New(fakeConnID, "originaldir", directory.RootPath)
 		require.NoError(t, err)
