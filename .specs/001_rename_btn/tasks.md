@@ -2,7 +2,7 @@
 
 ## Useful documents:
 
-* [Core project's guidelines](.junie/guidelines.md)
+* [Core project's guidelines](.specs/constitution.md)
 * Current specification documents are all located into the folder `.specs/001_rename_btn/`
 
 ## Development Phases
@@ -16,6 +16,7 @@
 #### Task 2.1: Add Rename Event Types
 - [ ] Add rename event types to `internal/domain/directory/event_directory.go` and `event_file.go`
 - [ ] Define event structures for rename success and failure events
+- [ ] Add UserValidation event and its success/failure variants. The base event must carries out information about the reason and a message to display to the user. That reason must be propagated to the resulting events (success/error)
 - [ ] Link: Plan Item 1, Requirements 1-2, Guidelines: Project Architecture
 
 #### Task 2.2: Add Rename Methods to Domain Entities
@@ -46,6 +47,7 @@
 #### Task 3.2: Add Error Handling and Event Publishing
 - [ ] Implement proper error handling for rename operations
 - [ ] Publish appropriate events for success and failure cases
+- [ ] Trigger validation event when needed
 - [ ] Link: Plan Item 2, Requirements 1-2, Guidelines: Project Architecture
 
 #### Task 3.3: Add Infrastructure Layer Unit Tests
@@ -75,7 +77,11 @@
 - [ ] Check `appCtx.ConnectionViewModel().IsReadOnly()` and disable rename functionality
 - [ ] Link: Plan Item 3, Requirements 3, Guidelines: Project Architecture
 
-#### Task 4.5: Add ViewModel Layer Unit Tests
+#### Task 4.5: Add Validation Message Handling
+- [ ] Add validation message in state and display validation dialog when non-empty
+- [ ] Link: Plan Item 3, Requirements 6, Guidelines: Project Architecture
+
+#### Task 4.6: Add ViewModel Layer Unit Tests
 - [ ] Add unit tests for rename methods in viewmodel
 - [ ] Test event handling and UI state updates
 - [ ] Follow existing test patterns and conventions
@@ -153,3 +159,5 @@
 - [ ] Failed rename shows appropriate error messages
 - [ ] All code follows existing architecture and style conventions
 - [ ] Comprehensive test coverage added
+- [ ] User validation dialog (with yes/no buttons)
+- [ ] Failed rename are properly handled avoiding to leave the bucket in a inconsistent state
