@@ -220,16 +220,26 @@ func NewRenamedFailureEvent(err error, directory *Directory, oldPath Path) Renam
 	}
 }
 
+type withValidationReason struct {
+	reason string
+}
+
+func (e withValidationReason) Reason() string {
+	return e.reason
+}
+
 type UserValidationEvent struct {
 	event.BaseEvent
 	withDirectory
+	withValidationReason
 	message string
 }
 
-func NewUserValidationEvent(directory *Directory, msg string, opts ...event.Option) UserValidationEvent {
+func NewUserValidationEvent(directory *Directory, reason string, msg string, opts ...event.Option) UserValidationEvent {
 	return UserValidationEvent{
 		event.NewBaseEvent(UserValidation, opts...),
 		withDirectory{directory},
+		withValidationReason{reason},
 		msg,
 	}
 }
@@ -241,13 +251,15 @@ func (e UserValidationEvent) Message() string {
 type UserValidationSuccessEvent struct {
 	event.BaseEvent
 	withDirectory
+	withValidationReason
 	validated bool
 }
 
-func NewUserValidationSuccessEvent(directory *Directory, validated bool, opts ...event.Option) UserValidationSuccessEvent {
+func NewUserValidationSuccessEvent(directory *Directory, reason string, validated bool, opts ...event.Option) UserValidationSuccessEvent {
 	return UserValidationSuccessEvent{
 		event.NewBaseEvent(UserValidation.AsSuccess(), opts...),
 		withDirectory{directory},
+		withValidationReason{reason},
 		validated,
 	}
 }
@@ -259,11 +271,13 @@ func (e UserValidationSuccessEvent) Validated() bool {
 type UserValidationFailureEvent struct {
 	event.BaseErrorEvent
 	withDirectory
+	withValidationReason
 }
 
-func NewUserValidationFailureEvent(err error, directory *Directory) UserValidationFailureEvent {
+func NewUserValidationFailureEvent(err error, directory *Directory, reason string) UserValidationFailureEvent {
 	return UserValidationFailureEvent{
 		event.NewBaseErrorEvent(UserValidation.AsFailure(), err),
 		withDirectory{directory},
+		withValidationReason{reason},
 	}
 }

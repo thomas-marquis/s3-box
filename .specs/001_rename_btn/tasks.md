@@ -4,37 +4,39 @@
 
 * [Core project's guidelines](.specs/constitution.md)
 * Current specification documents are all located into the folder `.specs/001_rename_btn/`
+    - refer to requirements.md for high level functional requirements
+    - refer to plan.md for an overview of the implementation strategy
 
 ## Development Phases
 
 ### Phase 1: Setup and Preparation
-- [ ] Review existing codebase architecture and understand event flow patterns
-- [ ] Review and understand existing test patterns and conventions
+- [x] Review existing codebase architecture and understand event flow patterns
+- [x] Review and understand existing test patterns and conventions
 
 ### Phase 2: Domain Layer Implementation
 
 #### Task 2.1: Add Rename Event Types
-- [ ] Add rename event types to `internal/domain/directory/event_directory.go` and `event_file.go`
-- [ ] Define event structures for rename success and failure events
-- [ ] Add UserValidation event and its success/failure variants. The base event must carries out information about the reason and a message to display to the user. That reason must be propagated to the resulting events (success/error)
-- [ ] Link: Plan Item 1, Requirements 1-2, Guidelines: Project Architecture
+- [x] Add rename event types to `internal/domain/directory/event_directory.go` and `event_file.go`
+- [x] Define event structures for rename success and failure events
+- [x] Add UserValidation event and its success/failure variants. The base event must carries out information about the reason and a message to display to the user. That reason must be propagated to the resulting events (success/error)
+- [x] Link: Plan Item 1, Requirements 1-2, Guidelines: Project Architecture
 
 #### Task 2.2: Add Rename Methods to Domain Entities
-- [ ] Add `Rename(newName string)` method to `Directory` in `internal/domain/directory/directory.go`
-- [ ] Add `Rename(newName string)` method to `File` in `internal/domain/directory/file.go`
-- [ ] Implement proper validation and error handling
-- [ ] Link: Plan Item 1, Requirements 1-2, Guidelines: Project Architecture
+- [x] Add `Rename(newName string)` method to `Directory` in `internal/domain/directory/directory.go`
+- [x] Add `Rename(newName string)` method to `File` in `internal/domain/directory/file.go`
+- [x] Implement proper validation and error handling
+- [x] Link: Plan Item 1, Requirements 1-2, Guidelines: Project Architecture
 
 #### Task 2.3: Add Notify Handling for Rename Events
-- [ ] Add event handling for rename success events in domain entities
-- [ ] Ensure proper state updates after rename operations
-- [ ] Link: Plan Item 1, Requirements 1-2, Guidelines: Project Architecture
+- [x] Add event handling for rename success events in domain entities
+- [x] Ensure proper state updates after rename operations
+- [x] Link: Plan Item 1, Requirements 1-2, Guidelines: Project Architecture
 
 #### Task 2.4: Add Domain Layer Unit Tests
-- [ ] Add unit tests for rename methods in domain entities
-- [ ] Test event publishing and state updates
-- [ ] Follow existing test patterns and conventions
-- [ ] Link: Plan Item 6, Requirements 4, Guidelines: Testing Guidelines
+- [x] Add unit tests for rename methods in domain entities
+- [x] Test event publishing and state updates
+- [x] Follow existing test patterns and conventions
+- [x] Link: Plan Item 6, Requirements 4, Guidelines: Testing Guidelines
 
 ### Phase 3: Infrastructure Layer Implementation
 

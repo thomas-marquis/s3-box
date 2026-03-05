@@ -2,6 +2,7 @@ package directory_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -657,5 +658,65 @@ func TestDirectory_Rename(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "newname", dir.Name())
 		assert.Equal(t, parentDir.Path().NewSubPath("newname"), dir.Path())
+	})
+}
+
+func TestDirectory_UserValidation(t *testing.T) {
+	t.Run("should create user validation event with reason and message", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		dir, err := directory.New(connID, "testdir", directory.RootPath)
+		require.NoError(t, err)
+
+		reason := "rename_validation"
+		message := "Are you sure you want to rename this directory?"
+
+		// When
+		evt := directory.NewUserValidationEvent(dir, reason, message)
+
+		// Then
+		assert.Equal(t, directory.UserValidation, evt.Type())
+		assert.Equal(t, dir, evt.Directory())
+		assert.Equal(t, reason, evt.Reason())
+		assert.Equal(t, message, evt.Message())
+	})
+
+	t.Run("should create user validation success event with reason", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		dir, err := directory.New(connID, "testdir", directory.RootPath)
+		require.NoError(t, err)
+
+		reason := "rename_validation"
+		validated := true
+
+		// When
+		evt := directory.NewUserValidationSuccessEvent(dir, reason, validated)
+
+		// Then
+		assert.Equal(t, directory.UserValidation.AsSuccess(), evt.Type())
+		assert.Equal(t, dir, evt.Directory())
+		assert.Equal(t, reason, evt.Reason())
+		assert.Equal(t, validated, evt.Validated())
+	})
+
+	t.Run("should create user validation failure event with reason", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		dir, err := directory.New(connID, "testdir", directory.RootPath)
+		require.NoError(t, err)
+
+		reason := "rename_validation"
+		testErr := fmt.Errorf("user cancelled the operation")
+
+		// When
+		evt := directory.NewUserValidationFailureEvent(testErr, dir, reason)
+
+		// Then
+		assert.Equal(t, directory.UserValidation.AsFailure(), evt.Type())
+		assert.Equal(t, dir, evt.Directory())
+		assert.Equal(t, reason, evt.Reason())
+		assert.Error(t, evt.Error())
+		assert.Equal(t, testErr, evt.Error())
 	})
 }
