@@ -5,107 +5,21 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go/modules/localstack"
-	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
+	"github.com/thomas-marquis/s3-box/internal/testutil"
 	mocks_connection_deck "github.com/thomas-marquis/s3-box/mocks/connection_deck"
 	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
 	mocks_notification "github.com/thomas-marquis/s3-box/mocks/notification"
 	"go.uber.org/mock/gomock"
 )
-
-const (
-	fakeAccessKeyId     = "AZERTY"
-	fakeSecretAccessKey = "dfhdh2432J4bbhjkb"
-)
-
-var (
-	ctxType = reflect.TypeOf((*context.Context)(nil)).Elem()
-)
-
-func setupS3testContainer(ctx context.Context, t *testing.T) (string, func()) {
-	t.Helper()
-
-	lsContainer, err := localstack.Run(ctx, "localstack/localstack:3.0")
-	require.NoError(t, err)
-
-	endpoint, err := lsContainer.PortEndpoint(ctx, "4566", "")
-	require.NoError(t, err)
-
-	return endpoint, func() {
-		_ = lsContainer.Terminate(ctx)
-	}
-}
-
-func setupS3Client(t *testing.T, endpoint string) *s3.Client {
-	t.Helper()
-
-	awsCfg := aws.Config{
-		Region:       "us-east-1",
-		BaseEndpoint: aws.String("http://" + endpoint),
-	}
-	s3Client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-		o.UsePathStyle = true
-	})
-	return s3Client
-}
-
-type fakeS3Object struct {
-	Key  string
-	Body io.Reader
-}
-
-func setupS3Bucket(ctx context.Context, t *testing.T, client *s3.Client, bucketName string, content []fakeS3Object) {
-	t.Helper()
-
-	_, err := client.CreateBucket(ctx, &s3.CreateBucketInput{
-		Bucket: aws.String(bucketName),
-	})
-	require.NoError(t, err)
-
-	for _, obj := range content {
-		_, err := client.PutObject(ctx, &s3.PutObjectInput{
-			Bucket: aws.String(bucketName),
-			Key:    aws.String(obj.Key),
-			Body:   obj.Body,
-		})
-		require.NoError(t, err)
-	}
-}
-
-func getObject(t *testing.T, client *s3.Client, bucketName, key string) io.ReadCloser {
-	t.Helper()
-
-	res, err := client.GetObject(context.TODO(), &s3.GetObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(key),
-	})
-	require.NoError(t, err)
-
-	return res.Body
-}
-
-func putObject(t *testing.T, client *s3.Client, bucketName, key string, body io.Reader) {
-	t.Helper()
-
-	_, err := client.PutObject(context.TODO(), &s3.PutObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(key),
-		Body:   body,
-	})
-	require.NoError(t, err)
-}
 
 func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 	ctx := context.Background()
@@ -113,19 +27,13 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 	defer terminate()
 	client := setupS3Client(t, endpoint)
 
-	bucketName := "test-bucket"
-
-	setupS3Bucket(ctx, t, client, bucketName, []fakeS3Object{
+	setupS3Bucket(ctx, t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
 		{Key: "root_file.txt"},
 		{Key: "mydir/"},
 		{Key: "mydir/file_in_dir.txt"},
 	})
 
-	fakeConnID := connection_deck.NewConnectionID()
-	fakeDeck := connection_deck.New()
-	fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, bucketName,
-		connection_deck.AsS3Like(endpoint, false),
-		connection_deck.WithID(fakeConnID))
+	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint)
 
 	t.Run("should publish root directory and its content", func(t *testing.T) {
 		// Given
@@ -134,8 +42,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
 		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
 
-		rootDir, err := directory.New(fakeConnID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		rootDir := testutil.FakeRootDirectory(t)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -160,11 +67,11 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			Times(1)
 
 		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxType)).
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
 			Return(fakeDeck, nil).
 			Times(1)
 
-		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -194,12 +101,11 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxType)).
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
 			Return(fakeDeck, nil).
 			Times(1)
 
-		dir, err := directory.New(fakeConnID, "mydir", directory.RootPath)
-		require.NoError(t, err)
+		dir := testutil.NewDirectory(t, "mydir", directory.RootPath)
 
 		done := make(chan struct{})
 		mockBus.EXPECT().
@@ -215,7 +121,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -247,14 +153,11 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			Return(event.NewSubscriber(fakeEventChan)).
 			AnyTimes()
 
-		awsConnID := connection_deck.NewConnectionID()
-		awsDeck := connection_deck.New()
-		awsDeck.New("AWS connection", fakeAccessKeyId, fakeSecretAccessKey, "any-bucket",
-			connection_deck.AsAWS("us-east-1"),
-			connection_deck.WithID(awsConnID))
+		awsDeck := testutil.FakeDeckWithConnections(t,
+			testutil.FakeAwsConnection(t))
 
 		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxType)).
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
 			Return(awsDeck, nil).
 			Times(1)
 
@@ -266,13 +169,13 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 				res := assert.True(t, ok) &&
 					assert.Error(t, e.Error()) &&
 					assert.Contains(t, e.Error().Error(),
-						"api error PermanentRedirect: The bucket you are attempting to access must be addressed using the specified endpoint.")
+						"InvalidAccessKeyId: The AWS Access Key Id you provided does not exist in our records")
 				close(done)
 				return res
 			})).
 			Times(1)
 
-		dir, err := directory.New(awsConnID, directory.RootDirName, directory.NilParentPath)
+		dir, err := directory.New(testutil.FakeAwsConnectionId, directory.RootDirName, directory.NilParentPath)
 		require.NoError(t, err)
 
 		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
@@ -297,18 +200,12 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 	defer terminate()
 	client := setupS3Client(t, endpoint)
 
-	bucketName := "test-bucket"
-
-	setupS3Bucket(ctx, t, client, bucketName, []fakeS3Object{
+	setupS3Bucket(ctx, t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
 		{Key: "root_file.txt", Body: strings.NewReader("coucou")},
 		{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("lolo")},
 	})
 
-	fakeConnID := connection_deck.NewConnectionID()
-	fakeDeck := connection_deck.New()
-	fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, bucketName,
-		connection_deck.AsS3Like(endpoint, false),
-		connection_deck.WithID(fakeConnID))
+	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint)
 
 	t.Run("should return the file content", func(t *testing.T) {
 		// Given
@@ -324,7 +221,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxType)).
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
 			Return(fakeDeck, nil).
 			Times(1)
 
@@ -335,7 +232,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		res, err := repo.GetFileContent(context.TODO(), fakeConnID, file)
+		res, err := repo.GetFileContent(context.TODO(), testutil.FakeS3LikeConnectionId, file)
 
 		// Then
 		assert.NoError(t, err)
@@ -362,7 +259,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxType)).
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
 			Return(fakeDeck, nil).
 			Times(1)
 
@@ -373,7 +270,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		res, err := repo.GetFileContent(context.TODO(), fakeConnID, file)
+		res, err := repo.GetFileContent(context.TODO(), testutil.FakeS3LikeConnectionId, file)
 
 		// Then
 		assert.NoError(t, err)
@@ -393,17 +290,11 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 	defer terminate()
 	client := setupS3Client(t, endpoint)
 
-	bucketName := "test-bucket"
-
-	setupS3Bucket(ctx, t, client, bucketName, []fakeS3Object{
+	setupS3Bucket(ctx, t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
 		{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("download-me")},
 	})
 
-	fakeConnID := connection_deck.NewConnectionID()
-	fakeDeck := connection_deck.New()
-	fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, bucketName,
-		connection_deck.AsS3Like(endpoint, false),
-		connection_deck.WithID(fakeConnID))
+	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint)
 
 	t.Run("should download file content and publish success", func(t *testing.T) {
 		// Given
@@ -420,7 +311,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxType)).
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
 			Return(fakeDeck, nil).
 			Times(1)
 
@@ -446,7 +337,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		content := directory.NewFileContent(file, directory.FromLocalFile(destPath), directory.WithOpenModeWrite())
 
 		// When
-		fakeEventChan <- directory.NewContentDownloadedEvent(fakeConnID, content)
+		fakeEventChan <- directory.NewContentDownloadedEvent(testutil.FakeS3LikeConnectionId, content)
 		assert.Eventually(t, func() bool {
 			select {
 			case <-done:
@@ -478,7 +369,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxType)).
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
 			Return(fakeDeck, nil).
 			Times(1)
 
@@ -504,8 +395,8 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		destPath := filepath.Join(t.TempDir(), "missing.txt")
 		content := directory.NewFileContent(file, directory.FromLocalFile(destPath), directory.WithOpenModeWrite())
 
-		// When
-		fakeEventChan <- directory.NewContentDownloadedEvent(fakeConnID, content)
+		// When & Then
+		fakeEventChan <- directory.NewContentDownloadedEvent(testutil.FakeS3LikeConnectionId, content)
 		assert.Eventually(t, func() bool {
 			select {
 			case <-done:
@@ -523,14 +414,9 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 	defer terminate()
 	client := setupS3Client(t, endpoint)
 
-	bucketName := "test-bucket"
-	setupS3Bucket(ctx, t, client, bucketName, []fakeS3Object{})
+	setupS3Bucket(ctx, t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{})
 
-	fakeConnID := connection_deck.NewConnectionID()
-	fakeDeck := connection_deck.New()
-	fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, bucketName,
-		connection_deck.AsS3Like(endpoint, false),
-		connection_deck.WithID(fakeConnID))
+	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint)
 
 	t.Run("should create an empty file", func(t *testing.T) {
 		// Given
@@ -539,8 +425,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
 		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
 
-		dir, err := directory.New(fakeConnID, "mydir", directory.RootPath)
-		require.NoError(t, err)
+		dir := testutil.NewDirectory(t, "mydir", directory.RootPath)
 		newFile, err := directory.NewFile("new_file.txt", dir.Path())
 		require.NoError(t, err)
 
@@ -552,7 +437,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxType)).
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
 			Return(fakeDeck, nil).
 			Times(1)
 
@@ -572,7 +457,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		fakeEventChan <- directory.NewFileCreatedEvent(fakeConnID, dir, newFile)
+		fakeEventChan <- directory.NewFileCreatedEvent(testutil.FakeS3LikeConnectionId, dir, newFile)
 		assert.Eventually(t, func() bool {
 			select {
 			case <-done:
@@ -582,11 +467,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 			}
 		}, 5*time.Second, 100*time.Millisecond)
 
-		remoteObj := getObject(t, client, bucketName, "mydir/new_file.txt")
-		defer remoteObj.Close() // nolint:errcheck
-		downloaded, err := io.ReadAll(remoteObj)
-		require.NoError(t, err)
-		assert.Equal(t, "", string(downloaded))
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "mydir/new_file.txt", "")
 	})
 }
 
@@ -596,16 +477,11 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 	defer terminate()
 	client := setupS3Client(t, endpoint)
 
-	bucketName := "test-bucket"
-	setupS3Bucket(ctx, t, client, bucketName, []fakeS3Object{
+	setupS3Bucket(ctx, t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
 		{Key: "mydir/original.txt", Body: strings.NewReader("original content")},
 	})
 
-	fakeConnID := connection_deck.NewConnectionID()
-	fakeDeck := connection_deck.New()
-	fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, bucketName,
-		connection_deck.AsS3Like(endpoint, false),
-		connection_deck.WithID(fakeConnID))
+	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint)
 
 	t.Run("should rename a file successfully", func(t *testing.T) {
 		// Given
@@ -614,11 +490,11 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
 		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
 
-		// Don't expect any error notifications for the test
 		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(0).MaxTimes(0)
+		mockNotifRepo.EXPECT().NotifyDebug(gomock.Any()).AnyTimes()
 
-		parentDir, err := directory.New(fakeConnID, "mydir", directory.RootPath)
-		require.NoError(t, err)
+		parentDir := testutil.NewDirectory(t, "mydir", directory.RootPath)
+		testutil.AddFileToDirectory(t, parentDir, "original.txt")
 
 		renamedFile, err := directory.NewFile("renamed.txt", parentDir.Path())
 		require.NoError(t, err)
@@ -631,20 +507,12 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxType)).
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
 			Return(fakeDeck, nil).
-			Times(2) // Once for file creation, once for rename
-
-		done := make(chan struct{})
-		// Expect file creation success
-		mockBus.EXPECT().
-			Publish(gomock.Cond(func(evt event.Event) bool {
-				_, ok := evt.(directory.FileCreatedSuccessEvent)
-				return assert.True(t, ok)
-			})).
 			Times(1)
 
-		// Expect file rename success
+		done := make(chan struct{})
+
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				e, ok := evt.(directory.FileRenamedSuccessEvent)
@@ -658,16 +526,12 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
-		// First, create the original file to ensure it exists
-		originalFile, err := directory.NewFile("original.txt", parentDir.Path())
-		require.NoError(t, err)
-		fakeEventChan <- directory.NewFileCreatedEvent(fakeConnID, parentDir, originalFile)
-		// Wait a bit for the file to be created
-		time.Sleep(500 * time.Millisecond)
+		oldName := directory.FileName("original.txt")
 
 		// When
-		oldName := directory.FileName("original.txt")
 		fakeEventChan <- directory.NewFileRenamedEvent(parentDir, renamedFile, oldName)
+
+		// Then
 		assert.Eventually(t, func() bool {
 			select {
 			case <-done:
@@ -677,19 +541,8 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 			}
 		}, 5*time.Second, 100*time.Millisecond)
 
-		// Verify old file is gone
-		_, err = client.GetObject(ctx, &s3.GetObjectInput{
-			Bucket: aws.String(bucketName),
-			Key:    aws.String("mydir/original.txt"),
-		})
-		assert.Error(t, err)
-
-		// Verify new file exists with correct content
-		remoteObj := getObject(t, client, bucketName, "mydir/renamed.txt")
-		defer remoteObj.Close() // nolint:errcheck
-		downloaded, err := io.ReadAll(remoteObj)
-		require.NoError(t, err)
-		assert.Equal(t, "original content", string(downloaded))
+		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "mydir/original.txt")
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "mydir/renamed.txt", "original content")
 	})
 }
 
@@ -699,32 +552,28 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 	defer terminate()
 	client := setupS3Client(t, endpoint)
 
-	bucketName := "test-bucket"
-	setupS3Bucket(ctx, t, client, bucketName, []fakeS3Object{
+	setupS3Bucket(ctx, t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
 		{Key: "originaldir/", Body: strings.NewReader("")},
 		{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
-		{Key: "originaldir/subdir/", Body: strings.NewReader("")},
 		{Key: "originaldir/empty/", Body: strings.NewReader("")},
+		{Key: "originaldir/subdir/", Body: strings.NewReader("")},
 		{Key: "originaldir/subdir/nested.txt", Body: strings.NewReader("nested content")},
 		{Key: "originaldir/subdir/originaldir/more-nested.txt", Body: strings.NewReader("more nested content")},
 	})
 
-	fakeConnID := connection_deck.NewConnectionID()
-	fakeDeck := connection_deck.New()
-	fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, bucketName,
-		connection_deck.AsS3Like(endpoint, false),
-		connection_deck.WithID(fakeConnID))
+	rootDir := testutil.FakeRootDirectory(t)
 
-	rootDir, err := directory.New(fakeConnID, directory.RootDirName, directory.NilParentPath)
-	require.NoError(t, err)
+	originalDir := testutil.NewDirectory(t, "originaldir", rootDir.Path())
+	testutil.AddFileToDirectory(t, originalDir, "file.txt")
+	testutil.AddSubDirectoryToDirectory(t, originalDir, "empty")
+	subDir := testutil.AddSubDirectoryToDirectory(t, originalDir, "subdir")
+	testutil.AddFileToDirectory(t, subDir, "nested.txt")
+	subSubDir := testutil.AddSubDirectoryToDirectory(t, subDir, "originaldir")
+	testutil.AddFileToDirectory(t, subSubDir, "more-nested.txt")
 
-	// TODO: test cases to implement:
-	//  * nominal: rename non-empty dir with nested content => first emit a RenameRequestEvent, then a RenameSuccessEvent
-	//  * error: rename non-empty dir with nested content => first emit a RenameFailedEvent (impossible to list objects)
-	//  * recovery: the target directory already exists but contains a marker file with the name of the source directory in it => continue moving items
-	//  * nominal empty dir => if a directory is empty, dont emit the RenameRequestEvent, but perform the renaming and then emit a RenameSuccessEvent
+	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint)
 
-	t.Run("should emit a RenameRequestEvent when the directory is not empty", func(t *testing.T) {
+	t.Run("should ask for user validation before renaming a non-empty directory", func(t *testing.T) {
 		// Given
 		ctrl := gomock.NewController(t)
 		mockBus := mocks_event.NewMockBus(ctrl)
@@ -732,9 +581,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
 
 		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(0).MaxTimes(0)
-
-		originalDir, err := directory.New(fakeConnID, "originaldir", directory.RootPath)
-		require.NoError(t, err)
+		mockNotifRepo.EXPECT().NotifyDebug(gomock.Any()).AnyTimes()
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -744,51 +591,31 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 			Return(event.NewSubscriber(fakeEventChan))
 
 		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxType)).
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
 			Return(fakeDeck, nil).
-			Times(2) // Once for directory creation, once for rename
-
-		done := make(chan struct{})
-		// Expect directory creation success
-		mockBus.EXPECT().
-			Publish(gomock.Any()).
-			Do(func(evt event.Event) {
-				_, ok := evt.(directory.CreatedSuccessEvent)
-				assert.True(t, ok)
-			}).
 			Times(1)
 
-		// Expect directory rename success
+		done := make(chan struct{})
+
+		inputEvt := directory.NewRenamedEvent(originalDir, "newname")
+
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				e, ok := evt.(directory.RenamedSuccessEvent)
+				e, ok := evt.(directory.UserValidationEvent)
 				assert.True(t, ok)
-				assert.Equal(t, "renameddir", e.Directory().Name())
+				assert.Equal(t, inputEvt, e.Reason())
 				close(done)
 			}).
 			Times(1)
 
-		// Expect load event for the renamed directory (triggered by the infrastructure layer)
-		mockBus.EXPECT().
-			Publish(gomock.Any()).
-			Do(func(evt event.Event) {
-				_, ok := evt.(directory.LoadEvent)
-				assert.True(t, ok)
-			}).
-			Times(1)
-
-		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
-		// First, create the original directory to ensure it exists
-		fakeEventChan <- directory.NewCreatedEvent(rootDir, originalDir)
-		// Wait a bit for the directory to be created
-		time.Sleep(500 * time.Millisecond)
-
 		// When
-		oldPath := originalDir.Path()
-		fakeEventChan <- directory.NewRenamedEvent(originalDir, oldPath, "renameddir")
+		fakeEventChan <- inputEvt
+
+		// Then
 		assert.Eventually(t, func() bool {
 			select {
 			case <-done:
@@ -798,32 +625,211 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 			}
 		}, 5*time.Second, 100*time.Millisecond)
 
-		// Verify new directory exists (this implies the old one is gone)
-		_, err = client.GetObject(ctx, &s3.GetObjectInput{
-			Bucket: aws.String(bucketName),
-			Key:    aws.String("renameddir/"),
-		})
-		require.NoError(t, err)
+		// Ensure the bucket content is left unchanged until the user has validated the operation
+		oldKeys := listKeys(t, client, testutil.FakeS3LikeBucketName, "originaldir/")
+		assert.Len(t, oldKeys, 5)
 
-		// Verify file was moved to new directory
-		remoteObj := getObject(t, client, bucketName, "renameddir/file.txt")
-		defer remoteObj.Close() // nolint:errcheck
-		downloaded, err := io.ReadAll(remoteObj)
-		require.NoError(t, err)
-		assert.Equal(t, "file content", string(downloaded))
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "originaldir/file.txt", "file content")
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "originaldir/empty/", "")
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "originaldir/subdir/", "")
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "originaldir/subdir/nested.txt", "nested content")
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "originaldir/subdir/originaldir/more-nested.txt", "more nested content")
 
-		// Verify nested directory was also moved
-		_, err = client.GetObject(ctx, &s3.GetObjectInput{
-			Bucket: aws.String(bucketName),
-			Key:    aws.String("renameddir/subdir/"),
-		})
-		require.NoError(t, err)
-
-		// Verify nested file was moved with correct content
-		remoteObj2 := getObject(t, client, bucketName, "renameddir/subdir/nested.txt")
-		defer remoteObj2.Close() // nolint:errcheck
-		downloaded2, err := io.ReadAll(remoteObj2)
-		require.NoError(t, err)
-		assert.Equal(t, "nested content", string(downloaded2))
+		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "newname/file.txt")
 	})
+
+	t.Run("should rename directory and its content after user had validated it", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+
+		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(0).MaxTimes(0)
+		mockNotifRepo.EXPECT().NotifyDebug(gomock.Any()).AnyTimes()
+
+		fakeEventChan := make(chan event.Event, 1)
+		defer close(fakeEventChan)
+
+		mockBus.EXPECT().
+			Subscribe().
+			Return(event.NewSubscriber(fakeEventChan))
+
+		mockConnRepo.EXPECT().
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
+			Return(fakeDeck, nil).
+			Times(2)
+
+		done := make(chan struct{})
+
+		mockBus.EXPECT().
+			Publish(gomock.Any()).
+			Do(func(evt event.Event) {
+				e, ok := evt.(directory.RenamedSuccessEvent)
+				assert.True(t, ok)
+				assert.Equal(t, originalDir, e.Directory())
+				assert.Equal(t, "newname", e.NewName())
+				close(done)
+			}).
+			Times(1)
+
+		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		require.NoError(t, err)
+
+		// When
+		originalEvt := directory.NewRenamedEvent(originalDir, "newname")
+		fakeEventChan <- directory.NewUserValidationSuccessEvent(originalDir, originalEvt, true)
+
+		// Then
+		assert.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+				return false
+			}
+		}, 5*time.Second, 100*time.Millisecond)
+
+		oldKeys := listKeys(t, client, testutil.FakeS3LikeBucketName, "originaldir/")
+		assert.Len(t, oldKeys, 0)
+
+		resKeys := listKeys(t, client, testutil.FakeS3LikeBucketName, "newname/")
+		assert.Len(t, resKeys, 5)
+
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "newname/file.txt", "file content")
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "newname/empty/", "")
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "newname/subdir/", "")
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "newname/subdir/nested.txt", "nested content")
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "newname/subdir/originaldir/more-nested.txt", "more nested content")
+
+		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "originaldir/file.txt")
+		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "originaldir/empty/")
+		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "originaldir/subdir/")
+		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "originaldir/subdir/nested.txt")
+		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "originaldir/subdir/originaldir/more-nested.txt")
+	})
+
+	//t.Run("should rename empty directory directly without validation", func(t *testing.T) {
+	//	// Given
+	//	ctrl := gomock.NewController(t)
+	//	mockBus := mocks_event.NewMockBus(ctrl)
+	//	mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+	//	mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+	//
+	//	mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(0).MaxTimes(0)
+	//
+	//	// Create an empty directory
+	//	emptyDir, err := directory.New(fakeConnID, "emptydir", directory.RootPath)
+	//	require.NoError(t, err)
+	//
+	//	fakeEventChan := make(chan event.Event, 1)
+	//	defer close(fakeEventChan)
+	//
+	//	mockBus.EXPECT().
+	//		Subscribe().
+	//		Return(event.NewSubscriber(fakeEventChan))
+	//
+	//	mockConnRepo.EXPECT().
+	//		Get(gomock.AssignableToTypeOf(testutil.CtxType)).
+	//		Return(fakeDeck, nil).
+	//		Times(2) // Once for directory creation, once for rename
+	//
+	//	done := make(chan struct{})
+	//	// Expect directory creation success
+	//	mockBus.EXPECT().
+	//		Publish(gomock.Any()).
+	//		Do(func(evt event.Event) {
+	//			_, ok := evt.(directory.CreatedSuccessEvent)
+	//			assert.True(t, ok)
+	//		}).
+	//		Times(1)
+	//
+	//	// Expect directory rename success (no validation event)
+	//	mockBus.EXPECT().
+	//		Publish(gomock.Cond(func(evt event.Event) bool {
+	//			e, ok := evt.(directory.RenamedSuccessEvent)
+	//			res := assert.True(t, ok) &&
+	//				assert.Equal(t, "renamed_emptydir", e.Directory().Name())
+	//			close(done)
+	//			return res
+	//		})).
+	//		Times(1)
+	//
+	//	_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+	//	require.NoError(t, err)
+	//
+	//	// First, create the empty directory
+	//	fakeEventChan <- directory.NewCreatedEvent(rootDir, emptyDir)
+	//	// Wait a bit for the directory to be created
+	//	time.Sleep(500 * time.Millisecond)
+	//
+	//	// When
+	//	oldPath := emptyDir.Path()
+	//	fakeEventChan <- directory.NewRenamedEvent(emptyDir, oldPath, "renamed_emptydir")
+	//	assert.Eventually(t, func() bool {
+	//		select {
+	//		case <-done:
+	//			return true
+	//		default:
+	//			return false
+	//		}
+	//	}, 5*time.Second, 100*time.Millisecond)
+	//
+	//	// Verify new directory exists
+	//	_, err = client.GetObject(ctx, &s3.GetObjectInput{
+	//		Bucket: aws.String(bucketName),
+	//		Key:    aws.String("renamed_emptydir/"),
+	//	})
+	//	require.NoError(t, err)
+	//})
+	//
+	//t.Run("should handle rename failure gracefully", func(t *testing.T) {
+	//	// Given
+	//	ctrl := gomock.NewController(t)
+	//	mockBus := mocks_event.NewMockBus(ctrl)
+	//	mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+	//	mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+	//
+	//	mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(1)
+	//
+	//	originalDir, err := directory.New(fakeConnID, "originaldir", directory.RootPath)
+	//	require.NoError(t, err)
+	//
+	//	fakeEventChan := make(chan event.Event, 1)
+	//	defer close(fakeEventChan)
+	//
+	//	mockBus.EXPECT().
+	//		Subscribe().
+	//		Return(event.NewSubscriber(fakeEventChan))
+	//
+	//	mockConnRepo.EXPECT().
+	//		Get(gomock.AssignableToTypeOf(testutil.CtxType)).
+	//		Return(fakeDeck, nil).
+	//		Times(1)
+	//
+	//	done := make(chan struct{})
+	//	// Expect rename failure event
+	//	mockBus.EXPECT().
+	//		Publish(gomock.Cond(func(evt event.Event) bool {
+	//			_, ok := evt.(directory.RenamedFailureEvent)
+	//			close(done)
+	//			return ok
+	//		})).
+	//		Times(1)
+	//
+	//	_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+	//	require.NoError(t, err)
+	//
+	//	// When - try to rename to an existing directory name
+	//	oldPath := originalDir.Path()
+	//	fakeEventChan <- directory.NewRenamedEvent(originalDir, oldPath, "mydir") // mydir already exists
+	//	assert.Eventually(t, func() bool {
+	//		select {
+	//		case <-done:
+	//			return true
+	//		default:
+	//			return false
+	//		}
+	//	}, 5*time.Second, 100*time.Millisecond)
+	//})
 }

@@ -675,7 +675,7 @@ func TestDirectory_UserValidation(t *testing.T) {
 		evt := directory.NewUserValidationEvent(dir, reason, message)
 
 		// Then
-		assert.Equal(t, directory.UserValidation, evt.Type())
+		assert.Equal(t, directory.UserValidationEventType, evt.Type())
 		assert.Equal(t, dir, evt.Directory())
 		assert.Equal(t, reason, evt.Reason())
 		assert.Equal(t, message, evt.Message())
@@ -694,7 +694,7 @@ func TestDirectory_UserValidation(t *testing.T) {
 		evt := directory.NewUserValidationSuccessEvent(dir, reason, validated)
 
 		// Then
-		assert.Equal(t, directory.UserValidation.AsSuccess(), evt.Type())
+		assert.Equal(t, directory.UserValidationEventType.AsSuccess(), evt.Type())
 		assert.Equal(t, dir, evt.Directory())
 		assert.Equal(t, reason, evt.Reason())
 		assert.Equal(t, validated, evt.Validated())
@@ -713,7 +713,7 @@ func TestDirectory_UserValidation(t *testing.T) {
 		evt := directory.NewUserValidationFailureEvent(testErr, dir, reason)
 
 		// Then
-		assert.Equal(t, directory.UserValidation.AsFailure(), evt.Type())
+		assert.Equal(t, directory.UserValidationEventType.AsFailure(), evt.Type())
 		assert.Equal(t, dir, evt.Directory())
 		assert.Equal(t, reason, evt.Reason())
 		assert.Error(t, evt.Error())

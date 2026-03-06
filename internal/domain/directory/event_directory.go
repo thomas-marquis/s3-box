@@ -5,11 +5,11 @@ import (
 )
 
 const (
-	CreatedEventType event.Type = "event.directory.created"
-	DeletedEventType event.Type = "event.directory.deleted"
-	LoadEventType    event.Type = "event.directory.load"
-	RenamedEventType event.Type = "event.directory.renamed"
-	UserValidation   event.Type = "event.directory.user.validation"
+	CreatedEventType        event.Type = "event.directory.created"
+	DeletedEventType        event.Type = "event.directory.deleted"
+	LoadEventType           event.Type = "event.directory.load"
+	RenamedEventType        event.Type = "event.directory.renamed"
+	UserValidationEventType event.Type = "event.directory.user.validation"
 )
 
 type withDirectory struct {
@@ -158,14 +158,6 @@ func NewLoadFailureEvent(err error, dir *Directory) LoadFailureEvent {
 	}
 }
 
-type withOldPath struct {
-	oldPath Path
-}
-
-func (e withOldPath) OldPath() Path {
-	return e.oldPath
-}
-
 type withNewName struct {
 	newName string
 }
@@ -177,15 +169,13 @@ func (e withNewName) NewName() string {
 type RenamedEvent struct {
 	event.BaseEvent
 	withDirectory
-	withOldPath // TODO: is it necessary??
 	withNewName
 }
 
-func NewRenamedEvent(directory *Directory, oldPath Path, newName string, opts ...event.Option) RenamedEvent {
+func NewRenamedEvent(directory *Directory, newName string, opts ...event.Option) RenamedEvent {
 	return RenamedEvent{
 		event.NewBaseEvent(RenamedEventType, opts...),
 		withDirectory{directory},
-		withOldPath{oldPath}, // TODO: is it necessary??
 		withNewName{newName},
 	}
 }
@@ -193,15 +183,13 @@ func NewRenamedEvent(directory *Directory, oldPath Path, newName string, opts ..
 type RenamedSuccessEvent struct {
 	event.BaseEvent
 	withDirectory
-	withOldPath
 	withNewName
 }
 
-func NewRenamedSuccessEvent(directory *Directory, oldPath Path, newName string, opts ...event.Option) RenamedSuccessEvent {
+func NewRenamedSuccessEvent(directory *Directory, newName string, opts ...event.Option) RenamedSuccessEvent {
 	return RenamedSuccessEvent{
 		event.NewBaseEvent(RenamedEventType.AsSuccess(), opts...),
 		withDirectory{directory},
-		withOldPath{oldPath},
 		withNewName{newName},
 	}
 }
@@ -209,23 +197,21 @@ func NewRenamedSuccessEvent(directory *Directory, oldPath Path, newName string, 
 type RenamedFailureEvent struct {
 	event.BaseErrorEvent
 	withDirectory
-	withOldPath
 }
 
-func NewRenamedFailureEvent(err error, directory *Directory, oldPath Path) RenamedFailureEvent {
+func NewRenamedFailureEvent(err error, directory *Directory) RenamedFailureEvent {
 	return RenamedFailureEvent{
 		event.NewBaseErrorEvent(RenamedEventType.AsFailure(), err),
 		withDirectory{directory},
-		withOldPath{oldPath},
 	}
 }
 
 type withValidationReason struct {
-	reason string
+	evt event.Event
 }
 
-func (e withValidationReason) Reason() string {
-	return e.reason
+func (e withValidationReason) Reason() event.Event {
+	return e.evt
 }
 
 type UserValidationEvent struct {
@@ -235,9 +221,9 @@ type UserValidationEvent struct {
 	message string
 }
 
-func NewUserValidationEvent(directory *Directory, reason string, msg string, opts ...event.Option) UserValidationEvent {
+func NewUserValidationEvent(directory *Directory, reason event.Event, msg string, opts ...event.Option) UserValidationEvent {
 	return UserValidationEvent{
-		event.NewBaseEvent(UserValidation, opts...),
+		event.NewBaseEvent(UserValidationEventType, opts...),
 		withDirectory{directory},
 		withValidationReason{reason},
 		msg,
@@ -255,9 +241,9 @@ type UserValidationSuccessEvent struct {
 	validated bool
 }
 
-func NewUserValidationSuccessEvent(directory *Directory, reason string, validated bool, opts ...event.Option) UserValidationSuccessEvent {
+func NewUserValidationSuccessEvent(directory *Directory, reason event.Event, validated bool, opts ...event.Option) UserValidationSuccessEvent {
 	return UserValidationSuccessEvent{
-		event.NewBaseEvent(UserValidation.AsSuccess(), opts...),
+		event.NewBaseEvent(UserValidationEventType.AsSuccess(), opts...),
 		withDirectory{directory},
 		withValidationReason{reason},
 		validated,
@@ -274,9 +260,9 @@ type UserValidationFailureEvent struct {
 	withValidationReason
 }
 
-func NewUserValidationFailureEvent(err error, directory *Directory, reason string) UserValidationFailureEvent {
+func NewUserValidationFailureEvent(err error, directory *Directory, reason event.Event) UserValidationFailureEvent {
 	return UserValidationFailureEvent{
-		event.NewBaseErrorEvent(UserValidation.AsFailure(), err),
+		event.NewBaseErrorEvent(UserValidationEventType.AsFailure(), err),
 		withDirectory{directory},
 		withValidationReason{reason},
 	}

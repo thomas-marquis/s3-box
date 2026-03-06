@@ -206,7 +206,7 @@ func (d *Directory) Rename(newName string) (RenamedEvent, error) {
 	// and has access to the full directory structure from S3.
 
 	// Note: We don't update d.name or d.path here - that happens in Notify() on success
-	return NewRenamedEvent(d, d.path, newName), nil
+	return NewRenamedEvent(d, newName), nil
 }
 
 func (d *Directory) UploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error) {

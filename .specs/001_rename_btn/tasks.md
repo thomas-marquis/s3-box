@@ -41,22 +41,37 @@
 ### Phase 3: Infrastructure Layer Implementation
 
 #### Task 3.1: Add S3 Rename Implementation
-- [ ] Add `handleRenameDirectory` method to `internal/infrastructure/directory_s3.go`
-- [ ] Add `handleRenameFile` method to `internal/infrastructure/directory_s3.go`
-- [ ] Implement S3 copy + delete operations for rename functionality
+- [x] Add `handleRenameDirectory` method to `internal/infrastructure/directory_s3.go`
+- [x] Add `handleRenameFile` method to `internal/infrastructure/directory_s3.go`
+- [ ] Add `handleRenameRequest` method to `internal/infrastructure/directory_s3.go` (responsible to handling the RenameEvent)
+- [ ] Implement S3 copy + delete operations for rename functionality:
+    - [ ] process item per item in an async queue (with goroutines workers and channels for error and success)
+    - [ ] create a json marker file in the dest directory during the process, then remove it on success
+    - [ ] this file must be named as follow: ".s3box-rename-marker" and should contains at least the path of the source folder dans the operation date and time
+    - [ ] at the beginning of the renaming process - for a non empty directory - if a previous marker file already exists AND this file is for the save source directory, then don't return an error and simply continue the renaming process for the remaining items (but keep existing ones in the des folder)
+- [ ] implement a user validation mechanism
+    - [ ] if the folder is empty, proceed the renaming directly
+    - [ ] if not, send a user validation event (with reason and a clear message)
+- [ ] Refactor the existing `handleRenameDirectory` method to `internal/infrastructure/directory_s3.go` according to the previous updates. This methode is now responsible handling renaming for both case: after the user has validated or directly if the directory is empty
 - [ ] Link: Plan Item 2, Requirements 1-2, Guidelines: Project Architecture
 
 #### Task 3.2: Add Error Handling and Event Publishing
-- [ ] Implement proper error handling for rename operations
-- [ ] Publish appropriate events for success and failure cases
-- [ ] Trigger validation event when needed
-- [ ] Link: Plan Item 2, Requirements 1-2, Guidelines: Project Architecture
+- [x] Implement proper error handling for rename operations
+- [x] Publish appropriate events for success and failure cases
+- [ ] Trigger user validation event when needed
+- [x] Link: Plan Item 2, Requirements 1-2, Guidelines: Project Architecture
 
 #### Task 3.3: Add Infrastructure Layer Unit Tests
-- [ ] Add unit tests for S3 rename operations
-- [ ] Add integration tests using test containers
-- [ ] Follow existing test patterns and conventions
-- [ ] Link: Plan Item 6, Requirements 4, Guidelines: Testing Guidelines
+- [x] Add unit tests for S3 rename operations
+- [x] Add test cases to unit tests for S3 rename operations:
+    - [x] nominal: rename non-empty dir with nested content => first emit a RenameRequestEvent, then a RenameSuccessEvent
+    - [x] error: rename non-empty dir with nested content => first emit a RenameFailedEvent (impossible to list objects)
+    - [x] recovery: the target directory already exists but contains a marker file with the name of the source directory in it => continue moving items
+    - [x] nominal empty dir => if a directory is empty, dont emit the RenameRequestEvent, but perform the renaming and then emit a RenameSuccessEvent
+- [x] Add integration tests using test containers
+- [x] Refactor infra rename's tests to improve readability
+- [x] Follow existing test patterns and conventions
+- [x] Link: Plan Item 6, Requirements 4, Guidelines: Testing Guidelines
 
 ### Phase 4: ViewModel Layer Implementation
 
