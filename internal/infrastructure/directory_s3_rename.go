@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -38,7 +39,7 @@ type listDirResult struct {
 }
 
 func (lsr *listDirResult) IsEmpty() bool {
-	return len(lsr.Keys) == 0
+	return len(lsr.Keys) == 0 || (len(lsr.Keys) == 1 && strings.HasSuffix(lsr.Keys[0], "/"))
 }
 
 func (r *S3DirectoryRepository) handleRenameRequest(e event.Event) {
@@ -57,7 +58,7 @@ func (r *S3DirectoryRepository) handleRenameRequest(e event.Event) {
 		return
 	}
 
-	lsRes, err := r.listDir(ctx, sess, dir)
+	lsRes, err := r.listDir(ctx, sess, dir, true)
 	if err != nil {
 		handleError(err)
 		return
@@ -67,6 +68,7 @@ func (r *S3DirectoryRepository) handleRenameRequest(e event.Event) {
 		if err := r.renameObjects(ctx, sess, dir, evt.NewName(), lsRes.Keys); err != nil {
 			handleError(err)
 		}
+		r.bus.Publish(directory.NewRenamedSuccessEvent(dir, evt.NewName()))
 	} else {
 		msg := strings.Builder{}
 		msg.WriteString("This directory is not empty.\n")
@@ -78,21 +80,15 @@ func (r *S3DirectoryRepository) handleRenameRequest(e event.Event) {
 
 func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 	ctx := e.Context()
-	var evt directory.RenamedEvent
+	uve := e.(directory.UserValidationSuccessEvent)
 
-	if tmp, ok := e.(directory.RenamedEvent); ok {
-		evt = tmp
-	} else if tmp, ok := e.(directory.UserValidationSuccessEvent); ok {
-		if tmp2, ok2 := tmp.Reason().(directory.RenamedEvent); ok2 {
-			evt = tmp2
-		}
-	} else {
-		r.notifier.NotifyError(fmt.Errorf("invalid event type: %T", e))
+	re, ok := uve.Reason().(directory.RenamedEvent)
+	if !ok {
 		return
 	}
 
-	dir := evt.Directory()
-	newName := evt.NewName()
+	dir := re.Directory()
+	newName := re.NewName()
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
@@ -105,7 +101,7 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 		return
 	}
 
-	lsRes, err := r.listDir(ctx, sess, dir)
+	lsRes, err := r.listDir(ctx, sess, dir, true)
 	if err != nil {
 		handleError(err)
 		return
@@ -114,29 +110,23 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 	if err := r.renameObjects(ctx, sess, dir, newName, lsRes.Keys); err != nil {
 		handleError(err)
 	}
+
+	r.bus.Publish(directory.NewRenamedSuccessEvent(dir, newName))
 }
 
 func (r *S3DirectoryRepository) renameObjects(ctx context.Context, sess *s3Session, dir *directory.Directory, newName string, keys []string) error {
-	sess, err := r.getSession(ctx, dir.ConnectionID())
-	if err != nil {
-		return err
-	}
-
-	aclRes, err := sess.client.GetBucketAcl(ctx, &s3.GetBucketAclInput{
-		Bucket: aws.String(sess.connection.Bucket()),
-	})
-	if err != nil {
-		return err
-	}
-
-	bucketCannedACL := inferCannedACL(aclRes.Grants)
+	//aclRes, err := sess.client.GetBucketAcl(ctx, &s3.GetBucketAclInput{
+	//	Bucket: aws.String(sess.connection.Bucket()),
+	//})
+	//if err != nil {
+	//	return err
+	//}
 
 	var errs []error
 	for _, key := range keys {
 		if err := r.renameObject(
 			ctx, sess, key,
-			updateObjectKey(mapDirToObjectKey(dir), key, newName),
-			bucketCannedACL,
+			updateObjectKey(dir, key, newName),
 		); err != nil {
 			errs = append(errs, err)
 		}
@@ -149,7 +139,7 @@ func (r *S3DirectoryRepository) renameObjects(ctx context.Context, sess *s3Sessi
 	return nil
 }
 
-func (r *S3DirectoryRepository) renameObject(ctx context.Context, sess *s3Session, oldKey, newKey, bucketCannedACL string) error {
+func (r *S3DirectoryRepository) renameObject(ctx context.Context, sess *s3Session, oldKey, newKey string) error {
 	bucket := sess.connection.Bucket()
 	headRes, err := sess.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
@@ -202,7 +192,6 @@ func (r *S3DirectoryRepository) renameObject(ctx context.Context, sess *s3Sessio
 		Bucket:                         aws.String(bucket),
 		CopySource:                     aws.String(bucket + "/" + oldKey),
 		Key:                            aws.String(newKey),
-		ACL:                            types.ObjectCannedACL(bucketCannedACL),
 		CacheControl:                   headRes.CacheControl,
 		ContentDisposition:             headRes.ContentDisposition,
 		ContentEncoding:                headRes.ContentEncoding,
@@ -239,41 +228,16 @@ func (r *S3DirectoryRepository) renameObject(ctx context.Context, sess *s3Sessio
 	return err
 }
 
-func updateObjectKey(dirPrefix, oldKey, newDirName string) string {
-	return strings.Replace(oldKey, dirPrefix, newDirName, 1) // TODO: fix that with TDD
-}
+func updateObjectKey(dir *directory.Directory, oldKey, newDirName string) string {
+	oldDirPrefix := mapDirToObjectKey(dir)
+	oldDirName := dir.Name()
 
-func inferCannedACL(grants []types.Grant) string {
-	hasAllUsersRead := false
-	hasAllUsersWrite := false
-	hasAuthenticatedRead := false
+	re := fmt.Sprintf(`^(.*)\/?(%s)\/$`, oldDirName)
+	replaceRe := regexp.MustCompile(re)
+	newPrefix := replaceRe.ReplaceAllString(oldDirPrefix, fmt.Sprintf("${1}%s/", newDirName))
 
-	for _, grant := range grants {
-		if grant.Grantee.URI != nil {
-			switch *grant.Grantee.URI {
-			case "http://acs.amazonaws.com/groups/global/AllUsers":
-				if grant.Permission == types.PermissionRead {
-					hasAllUsersRead = true
-				}
-				if grant.Permission == types.PermissionWrite {
-					hasAllUsersWrite = true
-				}
-			case "http://acs.amazonaws.com/groups/global/AuthenticatedUsers":
-				if grant.Permission == types.PermissionRead {
-					hasAuthenticatedRead = true
-				}
-			}
-		}
-	}
-
-	if hasAllUsersRead && hasAllUsersWrite {
-		return "public-read-write"
-	} else if hasAllUsersRead {
-		return "public-read"
-	} else if hasAuthenticatedRead {
-		return "authenticated-read"
-	}
-	return "private"
+	res := strings.Replace(oldKey, oldDirPrefix, newPrefix, 1)
+	return res
 }
 
 func generatePermissionGrant(grantee *types.Grantee) string {
@@ -296,15 +260,20 @@ func joinGrants(grants []string) *string {
 	return aws.String(strings.Join(grants, ", "))
 }
 
-func (r *S3DirectoryRepository) listDir(ctx context.Context, sess *s3Session, dir *directory.Directory) (listDirResult, error) {
+func (r *S3DirectoryRepository) listDir(ctx context.Context, sess *s3Session, dir *directory.Directory, recursive bool) (listDirResult, error) {
 	var keys []string
 	var sizeBytesTot int64
 
 	searchKey := mapPathToSearchKey(dir.Path())
+	var delimiter *string
+	if !recursive {
+		delimiter = aws.String("/")
+	}
+
 	inputs := &s3.ListObjectsV2Input{
 		Bucket:    aws.String(sess.connection.Bucket()),
 		Prefix:    aws.String(searchKey),
-		Delimiter: aws.String("/"),
+		Delimiter: delimiter,
 		MaxKeys:   aws.Int32(1000),
 	}
 	paginator := s3.NewListObjectsV2Paginator(sess.client, inputs)
@@ -315,9 +284,6 @@ func (r *S3DirectoryRepository) listDir(ctx context.Context, sess *s3Session, di
 		}
 
 		for _, obj := range page.Contents {
-			if strings.HasSuffix(*obj.Key, "/") {
-				continue
-			}
 			keys = append(keys, *obj.Key)
 			sizeBytesTot += *obj.Size
 		}
