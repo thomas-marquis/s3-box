@@ -15,10 +15,10 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
-// S3Object implements directory.FileObject for S3 objects using a state pattern.
+// Object implements directory.FileObject for S3 objects using a state pattern.
 // It manages the lifecycle of an S3 object, transitioning between states based on
 // whether the object exists in S3 or not.
-type S3Object struct {
+type Object struct {
 	ctx        context.Context
 	conn       *connection_deck.Connection
 	downloader *manager.Downloader
@@ -29,14 +29,14 @@ type S3Object struct {
 }
 
 var (
-	_ directory.FileObject = (*S3Object)(nil)
+	_ directory.FileObject = (*Object)(nil)
 )
 
-// NewS3Object creates a new S3Object and initializes its state based on
+// NewObject creates a new Object and initializes its state based on
 // whether the object exists in S3. If the object exists, it downloads the content
 // and initializes the state with it. If not, it starts in a non-existent state.
-func NewS3Object(ctx context.Context, downloader *manager.Downloader, uploader *manager.Uploader, conn *connection_deck.Connection, file *directory.File) (*S3Object, error) {
-	obj := &S3Object{
+func NewObject(ctx context.Context, downloader *manager.Downloader, uploader *manager.Uploader, conn *connection_deck.Connection, file *directory.File) (*Object, error) {
+	obj := &Object{
 		ctx:        ctx,
 		conn:       conn,
 		file:       file,
@@ -66,25 +66,25 @@ func NewS3Object(ctx context.Context, downloader *manager.Downloader, uploader *
 }
 
 // Read delegates to the current state's Read implementation
-func (o *S3Object) Read(p []byte) (n int, err error) {
+func (o *Object) Read(p []byte) (n int, err error) {
 	return o.currentState.Read(p)
 }
 
 // Write delegates to the current state's Write implementation
-func (o *S3Object) Write(p []byte) (n int, err error) {
+func (o *Object) Write(p []byte) (n int, err error) {
 	return o.currentState.Write(p)
 }
 
 // Close delegates to the current state's Close implementation
-func (o *S3Object) Close() error {
+func (o *Object) Close() error {
 	return o.currentState.Close()
 }
 
-func (o *S3Object) Seek(offset int64, whence int) (int64, error) {
+func (o *Object) Seek(offset int64, whence int) (int64, error) {
 	return o.currentState.Seek(offset, whence)
 }
 
-func (o *S3Object) setState(state s3ObjectState) {
+func (o *Object) setState(state s3ObjectState) {
 	o.currentState = state
 }
 
@@ -97,7 +97,7 @@ func buildS3Key(file *directory.File) string {
 	return path.String()[1:] + string(file.Name())
 }
 
-// s3ObjectState represents the state interface for S3Object.
+// s3ObjectState represents the state interface for Object.
 // Each state implements different behavior for Read, Write, and Close operations.
 type s3ObjectState directory.FileObject
 
@@ -109,7 +109,7 @@ var (
 // s3ObjectNotExists represents the state when the S3 object does not exist.
 // In this state, reads will fail and writes will create the object and transition to exists state.
 type s3ObjectNotExists struct {
-	obj    *S3Object
+	obj    *Object
 	buffer *bytes.Buffer
 }
 
@@ -162,7 +162,7 @@ func (s *s3ObjectNotExists) Seek(offset int64, whence int) (int64, error) {
 // s3ObjectExists represents the state when the S3 object exists.
 // In this state, reads stream from the downloaded content and writes append and re-upload.
 type s3ObjectExists struct {
-	obj      *S3Object
+	obj      *Object
 	content  []byte
 	position int64
 }

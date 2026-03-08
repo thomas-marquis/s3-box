@@ -25,7 +25,7 @@ type s3Session struct {
 	uploader   *manager.Uploader
 }
 
-type S3DirectoryRepository struct {
+type RepositoryImpl struct {
 	sync.Mutex
 	connectionRepository connection_deck.Repository
 	logger               *log.Logger
@@ -34,14 +34,14 @@ type S3DirectoryRepository struct {
 	notifier             notification.Repository
 }
 
-var _ directory.Repository = (*S3DirectoryRepository)(nil)
+var _ directory.Repository = (*RepositoryImpl)(nil)
 
 func NewS3DirectoryRepository(
 	connectionsRepository connection_deck.Repository,
 	bus event.Bus,
 	notifier notification.Repository,
-) (*S3DirectoryRepository, error) {
-	r := &S3DirectoryRepository{
+) (*RepositoryImpl, error) {
+	r := &RepositoryImpl{
 		connectionRepository: connectionsRepository,
 		logger:               log.New(os.Stdout, "S3Repository: ", log.LstdFlags),
 		cache:                make(map[connection_deck.ConnectionID]*s3Session),
@@ -56,7 +56,7 @@ func NewS3DirectoryRepository(
 		On(event.Is(directory.FileDeletedEventType), r.handleDeleteFile).
 		On(event.Is(directory.ContentUploadedEventType), r.handleUploadFile).
 		On(event.Is(directory.ContentDownloadEventType), r.handleDownloadFile).
-		On(event.Is(directory.LoadEventType), r.handleLoading).
+		On(event.Is(directory.LoadEventType), r.handleLoadDirectory).
 		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
 		On(event.Is(directory.UserValidationEventType.AsSuccess()), r.handleRenameDirectory).
 		On(event.Is(directory.FileRenamedEventType), r.handleRenameFile).
@@ -66,7 +66,7 @@ func NewS3DirectoryRepository(
 	return r, nil
 }
 
-func (r *S3DirectoryRepository) GetFileContent(
+func (r *RepositoryImpl) GetFileContent(
 	ctx context.Context,
 	connId connection_deck.ConnectionID,
 	file *directory.File,

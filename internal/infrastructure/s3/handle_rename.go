@@ -47,7 +47,64 @@ func (lsr *listDirResult) IsEmpty() bool {
 	return len(lsr.Keys) == 0 || (len(lsr.Keys) == 1 && strings.HasSuffix(lsr.Keys[0], "/"))
 }
 
-func (r *S3DirectoryRepository) handleRenameRequest(e event.Event) {
+func (r *RepositoryImpl) handleRenameFile(e event.Event) {
+	ctx := e.Context()
+	evt := e.(directory.FileRenamedEvent)
+
+	handleError := func(err error) {
+		r.notifier.NotifyError(fmt.Errorf("failed renaming file: %w", err))
+		r.bus.Publish(directory.NewFileRenamedFailureEvent(err, evt.Parent(), evt.File(), evt.OldName()))
+	}
+
+	sess, err := r.getSession(ctx, evt.Parent().ConnectionID())
+	if err != nil {
+		handleError(err)
+		return
+	}
+
+	file := evt.File()
+	if file == nil {
+		handleError(fmt.Errorf("file is nil for rename event"))
+		return
+	}
+
+	// Construct old key using the old file name
+	oldFile, err := directory.NewFile(string(evt.OldName()), evt.Parent().Path())
+	if err != nil {
+		handleError(err)
+		return
+	}
+	oldKey := mapFileToKey(oldFile)
+
+	// Construct new key with new filename
+	newKey := mapFileToKey(evt.File())
+
+	// Copy the file to new location
+	copySource := sess.connection.Bucket() + "/" + oldKey
+	_, err = sess.client.CopyObject(ctx, &s3.CopyObjectInput{
+		Bucket:     aws.String(sess.connection.Bucket()),
+		Key:        aws.String(newKey),
+		CopySource: aws.String(copySource),
+	})
+	if err != nil {
+		handleError(r.manageAwsSdkError(err, oldKey, sess))
+		return
+	}
+
+	// Delete the old file
+	_, err = sess.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(sess.connection.Bucket()),
+		Key:    aws.String(oldKey),
+	})
+	if err != nil {
+		handleError(r.manageAwsSdkError(err, oldKey, sess))
+		return
+	}
+
+	r.bus.Publish(directory.NewFileRenamedSuccessEvent(evt.Parent(), evt.File(), evt.OldName()))
+}
+
+func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.RenamedEvent)
 	dir := evt.Directory()
@@ -83,7 +140,7 @@ func (r *S3DirectoryRepository) handleRenameRequest(e event.Event) {
 	}
 }
 
-func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
+func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 	ctx := e.Context()
 	uve := e.(directory.UserValidationSuccessEvent)
 
@@ -119,7 +176,7 @@ func (r *S3DirectoryRepository) handleRenameDirectory(e event.Event) {
 	r.bus.Publish(directory.NewRenamedSuccessEvent(dir, newName))
 }
 
-func (r *S3DirectoryRepository) renameObjects(ctx context.Context, sess *s3Session, dir *directory.Directory, newName string, keys []string) error {
+func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir *directory.Directory, newName string, keys []string) error {
 	//aclRes, err := sess.client.GetBucketAcl(ctx, &s3.GetBucketAclInput{
 	//	Bucket: aws.String(sess.connection.Bucket()),
 	//})
@@ -169,7 +226,7 @@ func (r *S3DirectoryRepository) renameObjects(ctx context.Context, sess *s3Sessi
 	return nil
 }
 
-func (r *S3DirectoryRepository) renameObject(ctx context.Context, sess *s3Session, oldKey, newKey string) error {
+func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldKey, newKey string) error {
 	bucket := sess.connection.Bucket()
 	headRes, err := sess.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
@@ -290,7 +347,7 @@ func joinGrants(grants []string) *string {
 	return aws.String(strings.Join(grants, ", "))
 }
 
-func (r *S3DirectoryRepository) listDir(ctx context.Context, sess *s3Session, dir *directory.Directory, recursive bool) (listDirResult, error) {
+func (r *RepositoryImpl) listDir(ctx context.Context, sess *s3Session, dir *directory.Directory, recursive bool) (listDirResult, error) {
 	var keys []string
 	var sizeBytesTot int64
 

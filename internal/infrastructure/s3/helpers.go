@@ -15,7 +15,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
-func (r *S3DirectoryRepository) manageAwsSdkError(err error, objName string, sess *s3Session) error {
+func (r *RepositoryImpl) manageAwsSdkError(err error, objName string, sess *s3Session) error {
 	if err == nil {
 		return nil
 	}
@@ -49,7 +49,7 @@ func (r *S3DirectoryRepository) manageAwsSdkError(err error, objName string, ses
 	return fmt.Errorf("another kind of s3 error occurred: %w", err)
 }
 
-func (r *S3DirectoryRepository) getSession(ctx context.Context, id connection_deck.ConnectionID) (*s3Session, error) {
+func (r *RepositoryImpl) getSession(ctx context.Context, id connection_deck.ConnectionID) (*s3Session, error) {
 	deck, err := r.connectionRepository.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func (r *S3DirectoryRepository) getSession(ctx context.Context, id connection_de
 	return s, nil
 }
 
-func (r *S3DirectoryRepository) getFromCache(c *connection_deck.Connection) *s3Session {
+func (r *RepositoryImpl) getFromCache(c *connection_deck.Connection) *s3Session {
 	r.Lock()
 	defer r.Unlock()
 

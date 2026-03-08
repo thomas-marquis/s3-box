@@ -35,7 +35,7 @@ func TestS3Object_Read(t *testing.T) {
 		file, err := directory.NewFile("existing-file.txt", directory.RootPath)
 		require.NoError(t, err)
 
-		obj, err := s3.NewS3Object(ctx, downloader, uploader, conn, file)
+		obj, err := s3.NewObject(ctx, downloader, uploader, conn, file)
 		require.NoError(t, err)
 
 		// When
@@ -55,7 +55,7 @@ func TestS3Object_Read(t *testing.T) {
 		file, err := directory.NewFile("existing-file.txt", directory.RootPath)
 		require.NoError(t, err)
 
-		obj, err := s3.NewS3Object(ctx, downloader, uploader, conn, file)
+		obj, err := s3.NewObject(ctx, downloader, uploader, conn, file)
 		require.NoError(t, err)
 
 		// When
@@ -75,7 +75,7 @@ func TestS3Object_Read(t *testing.T) {
 		file, err := directory.NewFile("non-existing-file.txt", directory.RootPath)
 		require.NoError(t, err)
 
-		obj, err := s3.NewS3Object(ctx, downloader, uploader, conn, file)
+		obj, err := s3.NewObject(ctx, downloader, uploader, conn, file)
 		require.NoError(t, err)
 
 		// When
@@ -108,7 +108,7 @@ func TestS3Object_Write(t *testing.T) {
 		file, err := directory.NewFile(fileKey, directory.RootPath)
 		require.NoError(t, err)
 
-		obj, err := s3.NewS3Object(ctx, downloader, uploader, conn, file)
+		obj, err := s3.NewObject(ctx, downloader, uploader, conn, file)
 		require.NoError(t, err)
 
 		// When
@@ -134,7 +134,7 @@ func TestS3Object_Write(t *testing.T) {
 		file, err := directory.NewFile(fileKey, directory.RootPath)
 		require.NoError(t, err)
 
-		obj, err := s3.NewS3Object(ctx, downloader, uploader, conn, file)
+		obj, err := s3.NewObject(ctx, downloader, uploader, conn, file)
 		require.NoError(t, err)
 
 		// When
@@ -161,7 +161,7 @@ func TestS3Object_Write(t *testing.T) {
 		file, err := directory.NewFile(fileKey, directory.RootPath)
 		require.NoError(t, err)
 
-		obj, err := s3.NewS3Object(ctx, downloader, uploader, conn, file)
+		obj, err := s3.NewObject(ctx, downloader, uploader, conn, file)
 		require.NoError(t, err)
 
 		// When
@@ -191,7 +191,7 @@ func TestS3Object_Write(t *testing.T) {
 		require.NoError(t, err)
 
 		newCtx, cancel := context.WithCancel(ctx)
-		obj, err := s3.NewS3Object(newCtx, downloader, uploader, conn, file)
+		obj, err := s3.NewObject(newCtx, downloader, uploader, conn, file)
 		require.NoError(t, err)
 
 		// When
@@ -222,7 +222,7 @@ func TestS3Object_Write(t *testing.T) {
 		require.NoError(t, err)
 
 		newCtx, cancel := context.WithCancel(ctx)
-		obj, err := s3.NewS3Object(newCtx, downloader, uploader, conn, file)
+		obj, err := s3.NewObject(newCtx, downloader, uploader, conn, file)
 		require.NoError(t, err)
 
 		// When
