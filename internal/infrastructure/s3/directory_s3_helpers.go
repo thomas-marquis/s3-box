@@ -1,4 +1,4 @@
-package infrastructure
+package s3
 
 import (
 	"context"
@@ -85,7 +85,7 @@ func (r *S3DirectoryRepository) getSession(ctx context.Context, id connection_de
 		Credentials:  credentials.NewStaticCredentialsProvider(conn.AccessKey(), conn.SecretKey(), ""),
 		Region:       region,
 		BaseEndpoint: baseEp,
-		Logger:       logging.NewStandardLogger(logger.Writer()),
+		Logger:       logging.NewStandardLogger(r.logger.Writer()),
 		UsePathStyle: true,
 	})
 

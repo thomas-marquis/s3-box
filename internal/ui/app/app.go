@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
+	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	apptheme "github.com/thomas-marquis/s3-box/internal/ui/theme"
@@ -77,7 +78,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 
 	settingsRepository := infrastructure.NewSettingsRepository(a.Preferences())
 
-	directoryRepository, err := infrastructure.NewS3DirectoryRepository(
+	directoryRepository, err := s3.NewS3DirectoryRepository(
 		connectionsRepository,
 		eventBus,
 		notifier,

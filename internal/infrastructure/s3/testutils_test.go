@@ -1,4 +1,4 @@
-package infrastructure_test
+package s3_test
 
 import (
 	"context"

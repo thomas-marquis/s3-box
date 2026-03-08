@@ -1,4 +1,4 @@
-package infrastructure
+package s3
 
 import (
 	"context"

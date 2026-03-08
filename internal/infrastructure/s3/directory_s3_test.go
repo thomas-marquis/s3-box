@@ -1,4 +1,4 @@
-package infrastructure_test
+package s3_test
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
-	"github.com/thomas-marquis/s3-box/internal/infrastructure"
+	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
 	mocks_connection_deck "github.com/thomas-marquis/s3-box/mocks/connection_deck"
 	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
@@ -72,7 +72,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			Return(fakeDeck, nil).
 			Times(1)
 
-		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -122,7 +122,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -179,7 +179,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		dir, err := directory.New(testutil.FakeAwsConnectionId, directory.RootDirName, directory.NilParentPath)
 		require.NoError(t, err)
 
-		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err = s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -226,7 +226,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 			Return(fakeDeck, nil).
 			Times(1)
 
-		repo, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		repo, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		file, err := directory.NewFile("root_file.txt", directory.RootPath)
@@ -264,7 +264,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 			Return(fakeDeck, nil).
 			Times(1)
 
-		repo, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		repo, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		file, err := directory.NewFile("file_in_dir.txt", directory.NewPath("/mydir/"))
@@ -328,7 +328,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		file, err := directory.NewFile("file_in_dir.txt", directory.NewPath("/mydir/"))
@@ -387,7 +387,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		file, err := directory.NewFile("missing.txt", directory.NewPath("/mydir/"))
@@ -454,7 +454,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err = s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -524,7 +524,7 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err = infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err = s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		oldName := directory.FileName("original.txt")
@@ -616,7 +616,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -682,7 +682,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -755,7 +755,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -830,7 +830,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := infrastructure.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
