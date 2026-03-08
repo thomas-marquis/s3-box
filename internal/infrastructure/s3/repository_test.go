@@ -49,7 +49,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 			Return(fakeDeck, nil).
 			Times(1)
 
-		repo, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		repo, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		file, err := directory.NewFile("root_file.txt", directory.RootPath)
@@ -87,7 +87,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 			Return(fakeDeck, nil).
 			Times(1)
 
-		repo, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		repo, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		file, err := directory.NewFile("file_in_dir.txt", directory.NewPath("/mydir/"))

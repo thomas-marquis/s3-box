@@ -32,14 +32,16 @@ type RepositoryImpl struct {
 	cache                map[connection_deck.ConnectionID]*s3Session
 	bus                  event.Bus
 	notifier             notification.Repository
+	s3ClientOptions      []func(*s3.Options)
 }
 
 var _ directory.Repository = (*RepositoryImpl)(nil)
 
-func NewS3DirectoryRepository(
+func NewRepositoryImpl(
 	connectionsRepository connection_deck.Repository,
 	bus event.Bus,
 	notifier notification.Repository,
+	s3ClientOptions ...func(*s3.Options),
 ) (*RepositoryImpl, error) {
 	r := &RepositoryImpl{
 		connectionRepository: connectionsRepository,
@@ -47,6 +49,7 @@ func NewS3DirectoryRepository(
 		cache:                make(map[connection_deck.ConnectionID]*s3Session),
 		bus:                  bus,
 		notifier:             notifier,
+		s3ClientOptions:      s3ClientOptions,
 	}
 
 	bus.Subscribe().

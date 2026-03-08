@@ -87,7 +87,7 @@ func (r *RepositoryImpl) getSession(ctx context.Context, id connection_deck.Conn
 		BaseEndpoint: baseEp,
 		Logger:       logging.NewStandardLogger(r.logger.Writer()),
 		UsePathStyle: true,
-	})
+	}, r.s3ClientOptions...)
 
 	s := &s3Session{
 		client:     s3Client,

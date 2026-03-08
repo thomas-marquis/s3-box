@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -171,6 +172,7 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 
 	if err := r.renameObjects(ctx, sess, dir, newName, lsRes.Keys); err != nil {
 		handleError(err)
+		return
 	}
 
 	r.bus.Publish(directory.NewRenamedSuccessEvent(dir, newName))
@@ -197,6 +199,7 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 	workload := make(chan string)
 	terminate := make(chan struct{})
 	var errCnt int64
+	var wg sync.WaitGroup
 
 	for range nbWorkers {
 		go func() {
@@ -207,9 +210,11 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 				case <-terminate:
 					return
 				case key := <-workload:
+					wg.Add(1)
 					if err := r.renameObject(ctx, sess, key, updateObjectKey(dir, key, newName)); err != nil {
 						atomic.AddInt64(&errCnt, 1)
 					}
+					wg.Done()
 				}
 			}
 		}()
@@ -219,8 +224,10 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 		workload <- key
 	}
 
+	wg.Wait()
+
 	if errCnt > 0 {
-		return fmt.Errorf("%d error(s) occured while copying objects", errCnt)
+		return fmt.Errorf("%d error(s) occurred while renaming objects", errCnt)
 	}
 
 	return nil

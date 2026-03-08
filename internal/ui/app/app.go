@@ -78,7 +78,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 
 	settingsRepository := infrastructure.NewSettingsRepository(a.Preferences())
 
-	directoryRepository, err := s3.NewS3DirectoryRepository(
+	directoryRepository, err := s3.NewRepositoryImpl(
 		connectionsRepository,
 		eventBus,
 		notifier,

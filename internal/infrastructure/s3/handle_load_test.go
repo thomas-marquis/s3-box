@@ -67,7 +67,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			Return(fakeDeck, nil).
 			Times(1)
 
-		_, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -117,7 +117,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -174,7 +174,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		dir, err := directory.New(testutil.FakeAwsConnectionId, directory.RootDirName, directory.NilParentPath)
 		require.NoError(t, err)
 
-		_, err = s3.NewS3DirectoryRepository(mockConnRepo, mockBus, mockNotifRepo)
+		_, err = s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
