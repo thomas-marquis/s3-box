@@ -399,7 +399,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "base10/empty/")
 	})
 
-	t.Run("should handle rename failure gracefully", func(t *testing.T) {
+	t.Run("should handle rename failure gracefully and write maker files", func(t *testing.T) {
 		// Given
 		originalDir, _ := setup("originaldir4")
 
@@ -485,7 +485,17 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		}`)
 	})
 
-	// TODO: rename is forbidden for a directory with existing marker files
+	t.Run("should fails when the destination directory already exists", func(t *testing.T) {
+
+	})
+
+	t.Run("should fails when the src directory contains marker file with a different destination", func(t *testing.T) {
+
+	})
+
+	t.Run("should resume renaming when dst is not empty and contains a marker file for the same source", func(t *testing.T) {
+
+	})
 }
 
 type fakeErrorInterceptor struct {
