@@ -4,44 +4,75 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
 )
 
-func TestUpdateObjectKey(t *testing.T) {
+func TestGetObjectDstKey(t *testing.T) {
 	tcs := []struct {
-		dir                             *directory.Directory
-		oldKey, newDirName, expectedKey string
+		srcDirKey, dstDirKey, oldKey, expected string
 	}{
 		{
-			dir:         testutil.NewDirectory(t, "mydir", directory.RootPath),
-			oldKey:      "mydir/file.txt",
-			newDirName:  "newdir",
-			expectedKey: "newdir/file.txt",
+			srcDirKey: "mydir/",
+			dstDirKey: "newdir/",
+			oldKey:    "mydir/file.txt",
+			expected:  "newdir/file.txt",
 		},
 		{
-			dir:         testutil.NewDirectory(t, "mydir", directory.RootPath),
-			oldKey:      "mydir/subdir/nested/file.txt",
-			newDirName:  "newdir",
-			expectedKey: "newdir/subdir/nested/file.txt",
+			srcDirKey: "mydir/",
+			dstDirKey: "newdir/",
+			oldKey:    "mydir/subdir/nested/file.txt",
+			expected:  "newdir/subdir/nested/file.txt",
 		},
 		{
-			dir:         testutil.NewDirectory(t, "mydir", directory.NewPath("base")),
-			oldKey:      "base/mydir/file.txt",
-			newDirName:  "newdir",
-			expectedKey: "base/newdir/file.txt",
+			srcDirKey: "base/mydir/",
+			dstDirKey: "base/newdir/",
+			oldKey:    "base/mydir/file.txt",
+			expected:  "base/newdir/file.txt",
 		},
 		{
-			dir:         testutil.NewDirectory(t, "mydir", directory.NewPath("base")),
-			oldKey:      "base/mydir/mydir/mydir/file.txt",
-			newDirName:  "newdir",
-			expectedKey: "base/newdir/mydir/mydir/file.txt",
+			srcDirKey: "base/mydir/",
+			dstDirKey: "base/newdir/",
+			oldKey:    "base/mydir/mydir/mydir/file.txt",
+			expected:  "base/newdir/mydir/mydir/file.txt",
+		},
+		{
+			srcDirKey: "base/mydir/",
+			dstDirKey: "base/newdir/",
+			oldKey:    "base/mydir/base/mydir/file.txt",
+			expected:  "base/newdir/base/mydir/file.txt",
 		},
 	}
 
 	for _, tc := range tcs {
-		t.Run(tc.expectedKey, func(t *testing.T) {
-			assert.Equal(t, tc.expectedKey, updateObjectKey(tc.dir, tc.oldKey, tc.newDirName))
+		t.Run(tc.expected, func(t *testing.T) {
+			assert.Equal(t, tc.expected, getObjectDstKey(tc.srcDirKey, tc.dstDirKey, tc.oldKey))
+		})
+	}
+}
+
+func TestGetDstKey(t *testing.T) {
+	tcs := []struct {
+		srcDrKey, newName, expected string
+	}{
+		{
+			srcDrKey: "mydir/",
+			newName:  "newdir",
+			expected: "newdir/",
+		},
+		{
+			srcDrKey: "base/mydir/",
+			newName:  "newdir",
+			expected: "base/newdir/",
+		},
+		{
+			srcDrKey: "mydir/base/mydir/",
+			newName:  "newdir",
+			expected: "mydir/base/newdir/",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.expected, func(t *testing.T) {
+			assert.Equal(t, tc.expected, getDstDirKey(tc.srcDrKey, tc.newName))
 		})
 	}
 }

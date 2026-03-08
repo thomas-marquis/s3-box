@@ -121,6 +121,18 @@ func assertObjectContent(t *testing.T, client *s3.Client, bucketName, key, expec
 		assert.Equal(t, expectedContent, string(content))
 }
 
+func assertJSONObjectContent(t *testing.T, client *s3.Client, bucketName, key, expectedJSONContent string) bool {
+	t.Helper()
+
+	body := getObject(t, client, bucketName, key)
+	defer body.Close() //nolint:errcheck
+
+	content, err := io.ReadAll(body)
+
+	return assert.NoError(t, err) &&
+		assert.JSONEq(t, expectedJSONContent, string(content))
+}
+
 func assertObjectNotExists(t *testing.T, client *s3.Client, bucketName, key string) bool {
 	t.Helper()
 

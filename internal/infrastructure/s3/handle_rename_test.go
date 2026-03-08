@@ -475,12 +475,14 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "originaldir4/empty/")
 
 		// check marker files are still there
-		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "originaldir4/.s3box-rename-src", `{
-	"dst": "newname4/",
-}`)
-		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "newname4/.s3box-rename-dst", `{
-	"src": "originaldir4/",
-}`)
+		assertJSONObjectContent(t, client, testutil.FakeS3LikeBucketName, "originaldir4/.s3box-rename-src", `
+		{
+			"dst": "newname4/"
+		}`)
+		assertJSONObjectContent(t, client, testutil.FakeS3LikeBucketName, "newname4/.s3box-rename-dst", `
+		{
+			"src": "originaldir4/"
+		}`)
 	})
 
 	// TODO: rename is forbidden for a directory with existing marker files

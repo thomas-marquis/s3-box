@@ -1,9 +1,11 @@
 package s3
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -190,9 +192,19 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 		return nil
 	}
 
+	srcDirKey := mapDirToObjectKey(dir)
+	dstDirKey := getDstDirKey(srcDirKey, newName)
+
+	if err := createRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey); err != nil {
+		return err
+	}
+
 	if len(keys) == 1 {
 		key := keys[0]
-		return r.renameObject(ctx, sess, key, updateObjectKey(dir, key, newName))
+		if err := r.renameObject(ctx, sess, key, getObjectDstKey(srcDirKey, dstDirKey, key)); err != nil {
+			return err
+		}
+		return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey)
 	}
 
 	nbWorkers := min(len(keys), maxRenamingWorkers)
@@ -211,7 +223,7 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 					return
 				case key := <-workload:
 					wg.Add(1)
-					if err := r.renameObject(ctx, sess, key, updateObjectKey(dir, key, newName)); err != nil {
+					if err := r.renameObject(ctx, sess, key, getObjectDstKey(srcDirKey, dstDirKey, key)); err != nil {
 						atomic.AddInt64(&errCnt, 1)
 					}
 					wg.Done()
@@ -230,7 +242,114 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 		return fmt.Errorf("%d error(s) occurred while renaming objects", errCnt)
 	}
 
-	return nil
+	return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey)
+}
+
+type renameMarker struct {
+	SrcDirPrefix string `json:"src,omitempty"`
+	DstDirPrefix string `json:"dst,omitempty"`
+}
+
+func createRenameMarkers(ctx context.Context, client *s3.Client, bucket, srcDirPrefix, dstDirPrefix string) error {
+	mSrc := renameMarker{
+		DstDirPrefix: dstDirPrefix,
+	}
+	mDsk := renameMarker{
+		SrcDirPrefix: srcDirPrefix,
+	}
+
+	mSrcContent, err := json.Marshal(mSrc)
+	if err != nil {
+		return err
+	}
+	mDskContent, err := json.Marshal(mDsk)
+	if err != nil {
+		return err
+	}
+
+	errChan := make(chan error)
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	putObject := func(key string, content []byte) {
+		defer wg.Done()
+		_, err := client.PutObject(ctx, &s3.PutObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+			Body:   bytes.NewReader(content),
+		})
+		if err != nil {
+			select {
+			case errChan <- err:
+			default:
+			}
+		}
+	}
+
+	var (
+		srcKey = fmt.Sprintf("%s.s3box-rename-src", srcDirPrefix)
+		dstKey = fmt.Sprintf("%s.s3box-rename-dst", dstDirPrefix)
+	)
+
+	go putObject(srcKey, mSrcContent)
+	go putObject(dstKey, mDskContent)
+
+	wg.Wait()
+
+	select {
+	case err := <-errChan:
+		close(errChan)
+		if err := deleteRenameMarkers(ctx, client, bucket, srcKey, dstKey); err != nil {
+			return err
+		}
+		return err
+	default:
+		return nil
+	}
+
+}
+
+func deleteRenameMarkers(ctx context.Context, client *s3.Client, bucket, srcDirPrefix, dstDirPrefix string) error {
+	var (
+		srcKey = fmt.Sprintf("%s.s3box-rename-src", srcDirPrefix)
+		dstKey = fmt.Sprintf("%s.s3box-rename-dst", dstDirPrefix)
+
+		wg      sync.WaitGroup
+		errChan = make(chan error)
+	)
+
+	wg.Add(2)
+
+	deleteObject := func(key string) {
+		defer wg.Done()
+		_, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+		})
+		if err != nil {
+			var nskErr *types.NoSuchKey
+			if errors.As(err, &nskErr) {
+				return
+			}
+			select {
+			case errChan <- err:
+			default:
+			}
+		}
+	}
+
+	go deleteObject(srcKey)
+	go deleteObject(dstKey)
+
+	wg.Wait()
+
+	select {
+	case err := <-errChan:
+		close(errChan)
+		return err
+	default:
+		return nil
+	}
 }
 
 func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldKey, newKey string) error {
@@ -322,16 +441,14 @@ func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldK
 	return err
 }
 
-func updateObjectKey(dir *directory.Directory, oldKey, newDirName string) string {
-	oldDirPrefix := mapDirToObjectKey(dir)
-	oldDirName := dir.Name()
+func getObjectDstKey(srcDirPrefix, dstDirPrefix, oldKey string) string {
+	return strings.Replace(oldKey, srcDirPrefix, dstDirPrefix, 1)
+}
 
-	re := fmt.Sprintf(`^(.*)\/?(%s)\/$`, oldDirName)
-	replaceRe := regexp.MustCompile(re)
-	newPrefix := replaceRe.ReplaceAllString(oldDirPrefix, fmt.Sprintf("${1}%s/", newDirName))
-
-	res := strings.Replace(oldKey, oldDirPrefix, newPrefix, 1)
-	return res
+func getDstDirKey(srcDirKey, newName string) string {
+	parts := strings.Split(strings.TrimSuffix(srcDirKey, "/"), "/")
+	parts[len(parts)-1] = newName
+	return strings.Join(parts, "/") + "/"
 }
 
 func generatePermissionGrant(grantee *types.Grantee) string {
