@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,6 +13,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+)
+
+const (
+	maxRenamingWorkers = 10
 )
 
 // RenameMarker represents the marker file used during directory rename operations
@@ -122,18 +127,43 @@ func (r *S3DirectoryRepository) renameObjects(ctx context.Context, sess *s3Sessi
 	//	return err
 	//}
 
-	var errs []error
-	for _, key := range keys {
-		if err := r.renameObject(
-			ctx, sess, key,
-			updateObjectKey(dir, key, newName),
-		); err != nil {
-			errs = append(errs, err)
-		}
+	if len(keys) == 0 {
+		return nil
 	}
 
-	if len(errs) > 0 {
-		return fmt.Errorf("failed to rename objects: %v", errs)
+	if len(keys) == 1 {
+		key := keys[0]
+		return r.renameObject(ctx, sess, key, updateObjectKey(dir, key, newName))
+	}
+
+	nbWorkers := min(len(keys), maxRenamingWorkers)
+	workload := make(chan string)
+	terminate := make(chan struct{})
+	var errCnt int64
+
+	for range nbWorkers {
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-terminate:
+					return
+				case key := <-workload:
+					if err := r.renameObject(ctx, sess, key, updateObjectKey(dir, key, newName)); err != nil {
+						atomic.AddInt64(&errCnt, 1)
+					}
+				}
+			}
+		}()
+	}
+
+	for _, key := range keys {
+		workload <- key
+	}
+
+	if errCnt > 0 {
+		return fmt.Errorf("%d error(s) occured while copying objects", errCnt)
 	}
 
 	return nil
