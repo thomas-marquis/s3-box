@@ -19,10 +19,6 @@ func (s *NotLoadedState) Load() (LoadEvent, error) {
 
 func (s *NotLoadedState) SetLoaded(bool) {}
 
-func (s *NotLoadedState) Open() {}
-
-func (s *NotLoadedState) Close() {}
-
 func (s *NotLoadedState) SubDirectories() ([]*Directory, error) {
 	return nil, ErrNotLoaded
 }

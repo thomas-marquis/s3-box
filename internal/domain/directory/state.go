@@ -7,14 +7,13 @@ const (
 	stateTypeLoading
 	stateTypeLoaded
 	stateTypeOpened
+	stateResumable
 )
 
 type State interface {
 	Type() StateType
 	Load() (LoadEvent, error)
 	SetLoaded(bool)
-	Open()
-	Close()
 
 	Files() ([]*File, error)
 	SubDirectories() ([]*Directory, error)

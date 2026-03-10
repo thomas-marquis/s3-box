@@ -20,12 +20,6 @@ func (s *LoadedState) Load() (LoadEvent, error) {
 
 func (s *LoadedState) SetLoaded(bool) {}
 
-func (s *LoadedState) Open() {
-	s.d.setState(newOpenedState(s.baseState))
-}
-
-func (s *LoadedState) Close() {}
-
 func (s *LoadedState) SubDirectories() ([]*Directory, error) {
 	return s.subDirs, nil
 }

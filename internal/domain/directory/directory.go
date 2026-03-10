@@ -20,9 +20,9 @@ const (
 type Directory struct {
 	connectionID connection_deck.ConnectionID
 	path         Path
-
-	name       string
-	parentPath Path
+	name         string
+	parentPath   Path
+	isOpen       bool
 
 	currentState State
 }
@@ -391,10 +391,6 @@ func (d *Directory) IsLoaded() bool {
 	return d.currentState.Type() == stateTypeLoaded || d.currentState.Type() == stateTypeOpened
 }
 
-func (d *Directory) IsOpened() bool {
-	return d.currentState.Type() == stateTypeOpened
-}
-
 func (d *Directory) Load() (LoadEvent, error) {
 	return d.currentState.Load()
 }
@@ -403,12 +399,16 @@ func (d *Directory) SetLoaded(loaded bool) {
 	d.currentState.SetLoaded(loaded)
 }
 
+func (d *Directory) IsOpened() bool {
+	return d.isOpen
+}
+
 func (d *Directory) Open() {
-	d.currentState.Open()
+	d.isOpen = true
 }
 
 func (d *Directory) Close() {
-	d.currentState.Close()
+	d.isOpen = false
 }
 
 func (d *Directory) setState(state State) {

@@ -561,7 +561,7 @@ func TestDirectory_Rename(t *testing.T) {
 		assert.Equal(t, directory.RenamedEventType, evt.Type())
 		assert.Equal(t, "oldname", dir.Name())
 		assert.Equal(t, directory.Path("/parent/oldname/"), dir.Path())
-		assert.Equal(t, directory.Path("/parent/oldname/"), evt.OldPath())
+		assert.Equal(t, "newname", evt.NewName())
 	})
 
 	t.Run("should return error when directory is not loaded", func(t *testing.T) {
@@ -646,18 +646,17 @@ func TestDirectory_Rename(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
-		oldPath := dir.Path()
 		_, err = dir.Rename("newname")
 		require.NoError(t, err)
 
 		// When
-		successEvt := directory.NewRenamedSuccessEvent(dir, oldPath, "newname")
+		successEvt := directory.NewRenamedSuccessEvent(dir, "newname")
 		err = dir.Notify(successEvt)
 
 		// Then
 		require.NoError(t, err)
 		assert.Equal(t, "newname", dir.Name())
-		assert.Equal(t, parentDir.Path().NewSubPath("newname"), dir.Path())
+		assert.Equal(t, directory.Path("/parent/newname/"), dir.Path())
 	})
 }
 
@@ -668,7 +667,7 @@ func TestDirectory_UserValidation(t *testing.T) {
 		dir, err := directory.New(connID, "testdir", directory.RootPath)
 		require.NoError(t, err)
 
-		reason := "rename_validation"
+		reason := directory.NewRenamedEvent(dir, "newname")
 		message := "Are you sure you want to rename this directory?"
 
 		// When
@@ -687,17 +686,16 @@ func TestDirectory_UserValidation(t *testing.T) {
 		dir, err := directory.New(connID, "testdir", directory.RootPath)
 		require.NoError(t, err)
 
-		reason := "rename_validation"
-		validated := true
+		reason := directory.NewRenamedEvent(dir, "newname")
 
 		// When
-		evt := directory.NewUserValidationSuccessEvent(dir, reason, validated)
+		evt := directory.NewUserValidationSuccessEvent(dir, reason, true)
 
 		// Then
 		assert.Equal(t, directory.UserValidationEventType.AsSuccess(), evt.Type())
 		assert.Equal(t, dir, evt.Directory())
 		assert.Equal(t, reason, evt.Reason())
-		assert.Equal(t, validated, evt.Validated())
+		assert.Equal(t, true, evt.Validated())
 	})
 
 	t.Run("should create user validation failure event with reason", func(t *testing.T) {
@@ -706,7 +704,7 @@ func TestDirectory_UserValidation(t *testing.T) {
 		dir, err := directory.New(connID, "testdir", directory.RootPath)
 		require.NoError(t, err)
 
-		reason := "rename_validation"
+		reason := directory.NewRenamedEvent(dir, "newname")
 		testErr := fmt.Errorf("user cancelled the operation")
 
 		// When
