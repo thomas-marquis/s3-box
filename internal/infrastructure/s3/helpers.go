@@ -4,16 +4,27 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/logging"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
+
+type listDirResult struct {
+	Keys         []string
+	SizeBytesTot int64
+}
+
+func (lsr *listDirResult) IsEmpty() bool {
+	return len(lsr.Keys) == 0 || (len(lsr.Keys) == 1 && strings.HasSuffix(lsr.Keys[0], "/"))
+}
 
 func (r *RepositoryImpl) manageAwsSdkError(err error, objName string, sess *s3Session) error {
 	if err == nil {
@@ -110,4 +121,49 @@ func (r *RepositoryImpl) getFromCache(c *connection_deck.Connection) *s3Session 
 		return found
 	}
 	return nil
+}
+
+func (r *RepositoryImpl) listObjects(ctx context.Context, sess *s3Session, prefix string, recursive bool) (listDirResult, error) {
+	var keys []string
+	var sizeBytesTot int64
+
+	var delimiter *string
+	if !recursive {
+		delimiter = aws.String("/")
+	}
+
+	inputs := &s3.ListObjectsV2Input{
+		Bucket:    aws.String(sess.connection.Bucket()),
+		Prefix:    aws.String(prefix),
+		Delimiter: delimiter,
+		MaxKeys:   aws.Int32(1000),
+	}
+	paginator := s3.NewListObjectsV2Paginator(sess.client, inputs)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return listDirResult{}, err
+		}
+
+		for _, obj := range page.Contents {
+			keys = append(keys, *obj.Key)
+			sizeBytesTot += *obj.Size
+		}
+	}
+
+	return listDirResult{Keys: keys, SizeBytesTot: sizeBytesTot}, nil
+}
+
+// isNotFoundError checks if the error is a "not found" error from AWS
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.ErrorCode() == "NoSuchKey" || apiErr.ErrorCode() == "NotFound"
+	}
+
+	return false
 }

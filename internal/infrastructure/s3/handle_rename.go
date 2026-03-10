@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -20,34 +19,57 @@ import (
 
 const (
 	maxRenamingWorkers = 10
+
+	markerSrcFileName = ".s3box-rename-src"
+	markerDstFileName = ".s3box-rename-dst"
 )
 
-// RenameMarker represents the marker file used during directory rename operations
-type RenameMarker struct {
-	SourcePath    string    `json:"source_path"`
-	OperationTime time.Time `json:"operation_time"`
+func (r *RepositoryImpl) checkSrcRenameMakrer(ctx context.Context, sess *s3Session, srcDirKey, dstDirKey string) error {
+	markerKey := srcDirKey + markerSrcFileName
+	marker, err := readRenameMarker(ctx, sess, markerKey)
+	if err != nil {
+		if isNotFoundError(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to read rename marker for source directory %s: %w", srcDirKey, err)
+	}
+	if marker.DstDirPrefix != dstDirKey {
+		return fmt.Errorf("an existing renaming process is still in progress for directory %s to %s", srcDirKey, marker.DstDirPrefix)
+	}
+	return nil
 }
 
-// renameTask represents a single file/directory rename task
-type renameTask struct {
-	oldKey string
-	newKey string
-	sess   *s3Session
-}
+func (r *RepositoryImpl) checkRenamingState(ctx context.Context, sess *s3Session, srcDirKey, dstDirKey string) (bool, error) {
+	srcMarkerKey := srcDirKey + markerSrcFileName
+	dstMarkerKey := dstDirKey + markerDstFileName
 
-// renameResult represents the result of a rename task
-type renameResult struct {
-	success bool
-	error   error
-}
+	srcMarker, err := readRenameMarker(ctx, sess, srcMarkerKey)
+	if err == nil {
+		if srcMarker.DstDirPrefix == dstDirKey {
+			return true, nil // Resume
+		}
+		return false, fmt.Errorf("an existing renaming process is still in progress for directory %s to %s", srcDirKey, srcMarker.DstDirPrefix)
+	}
+	if !isNotFoundError(err) {
+		return false, err
+	}
 
-type listDirResult struct {
-	Keys         []string
-	SizeBytesTot int64
-}
+	lsDst, err := r.listObjects(ctx, sess, dstDirKey, true)
+	if err != nil {
+		return false, err
+	}
 
-func (lsr *listDirResult) IsEmpty() bool {
-	return len(lsr.Keys) == 0 || (len(lsr.Keys) == 1 && strings.HasSuffix(lsr.Keys[0], "/"))
+	if !lsDst.IsEmpty() {
+		dstMarker, err := readRenameMarker(ctx, sess, dstMarkerKey)
+		if err == nil {
+			if dstMarker.SrcDirPrefix == srcDirKey {
+				return true, nil // Resume
+			}
+		}
+		return false, fmt.Errorf("destination directory already exists")
+	}
+
+	return false, nil
 }
 
 func (r *RepositoryImpl) handleRenameFile(e event.Event) {
@@ -123,15 +145,25 @@ func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 		return
 	}
 
-	lsRes, err := r.listDir(ctx, sess, dir, true)
+	srcDirKey := mapDirToObjectKey(dir)
+	dstDirKey := getDstDirKey(srcDirKey, evt.NewName())
+
+	resume, err := r.checkRenamingState(ctx, sess, srcDirKey, dstDirKey)
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	if lsRes.IsEmpty() {
+	lsRes, err := r.listObjects(ctx, sess, mapPathToSearchKey(dir.Path()), true)
+	if err != nil {
+		handleError(err)
+		return
+	}
+
+	if resume || lsRes.IsEmpty() {
 		if err := r.renameObjects(ctx, sess, dir, evt.NewName(), lsRes.Keys); err != nil {
 			handleError(err)
+			return
 		}
 		r.bus.Publish(directory.NewRenamedSuccessEvent(dir, evt.NewName()))
 	} else {
@@ -166,7 +198,15 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 		return
 	}
 
-	lsRes, err := r.listDir(ctx, sess, dir, true)
+	srcDirKey := mapDirToObjectKey(dir)
+	dstDirKey := getDstDirKey(srcDirKey, newName)
+
+	if _, err := r.checkRenamingState(ctx, sess, srcDirKey, dstDirKey); err != nil {
+		handleError(err)
+		return
+	}
+
+	lsRes, err := r.listObjects(ctx, sess, mapPathToSearchKey(dir.Path()), true)
 	if err != nil {
 		handleError(err)
 		return
@@ -188,12 +228,12 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 	//	return err
 	//}
 
-	if len(keys) == 0 {
-		return nil
-	}
-
 	srcDirKey := mapDirToObjectKey(dir)
 	dstDirKey := getDstDirKey(srcDirKey, newName)
+
+	if len(keys) == 0 {
+		return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey)
+	}
 
 	if err := createRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey); err != nil {
 		return err
@@ -207,11 +247,13 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 		return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey)
 	}
 
-	nbWorkers := min(len(keys), maxRenamingWorkers)
-	workload := make(chan string)
-	terminate := make(chan struct{})
-	var errCnt int64
-	var wg sync.WaitGroup
+	var (
+		nbWorkers = min(len(keys), maxRenamingWorkers)
+		workload  = make(chan string)
+
+		errCnt int64
+		wg     sync.WaitGroup
+	)
 
 	for range nbWorkers {
 		go func() {
@@ -219,10 +261,7 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 				select {
 				case <-ctx.Done():
 					return
-				case <-terminate:
-					return
 				case key := <-workload:
-					wg.Add(1)
 					if err := r.renameObject(ctx, sess, key, getObjectDstKey(srcDirKey, dstDirKey, key)); err != nil {
 						atomic.AddInt64(&errCnt, 1)
 					}
@@ -233,123 +272,17 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 	}
 
 	for _, key := range keys {
+		wg.Add(1)
 		workload <- key
 	}
 
-	wg.Wait()
+	wg.Wait() // TODO: !!WARNING!! this WG will block if the context is canceled before all workers are done
 
 	if errCnt > 0 {
 		return fmt.Errorf("%d error(s) occurred while renaming objects", errCnt)
 	}
 
 	return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey)
-}
-
-type renameMarker struct {
-	SrcDirPrefix string `json:"src,omitempty"`
-	DstDirPrefix string `json:"dst,omitempty"`
-}
-
-func createRenameMarkers(ctx context.Context, client *s3.Client, bucket, srcDirPrefix, dstDirPrefix string) error {
-	mSrc := renameMarker{
-		DstDirPrefix: dstDirPrefix,
-	}
-	mDsk := renameMarker{
-		SrcDirPrefix: srcDirPrefix,
-	}
-
-	mSrcContent, err := json.Marshal(mSrc)
-	if err != nil {
-		return err
-	}
-	mDskContent, err := json.Marshal(mDsk)
-	if err != nil {
-		return err
-	}
-
-	errChan := make(chan error)
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	putObject := func(key string, content []byte) {
-		defer wg.Done()
-		_, err := client.PutObject(ctx, &s3.PutObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(key),
-			Body:   bytes.NewReader(content),
-		})
-		if err != nil {
-			select {
-			case errChan <- err:
-			default:
-			}
-		}
-	}
-
-	var (
-		srcKey = fmt.Sprintf("%s.s3box-rename-src", srcDirPrefix)
-		dstKey = fmt.Sprintf("%s.s3box-rename-dst", dstDirPrefix)
-	)
-
-	go putObject(srcKey, mSrcContent)
-	go putObject(dstKey, mDskContent)
-
-	wg.Wait()
-
-	select {
-	case err := <-errChan:
-		close(errChan)
-		if err := deleteRenameMarkers(ctx, client, bucket, srcKey, dstKey); err != nil {
-			return err
-		}
-		return err
-	default:
-		return nil
-	}
-
-}
-
-func deleteRenameMarkers(ctx context.Context, client *s3.Client, bucket, srcDirPrefix, dstDirPrefix string) error {
-	var (
-		srcKey = fmt.Sprintf("%s.s3box-rename-src", srcDirPrefix)
-		dstKey = fmt.Sprintf("%s.s3box-rename-dst", dstDirPrefix)
-
-		wg      sync.WaitGroup
-		errChan = make(chan error)
-	)
-
-	wg.Add(2)
-
-	deleteObject := func(key string) {
-		defer wg.Done()
-		_, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(key),
-		})
-		if err != nil {
-			var nskErr *types.NoSuchKey
-			if errors.As(err, &nskErr) {
-				return
-			}
-			select {
-			case errChan <- err:
-			default:
-			}
-		}
-	}
-
-	go deleteObject(srcKey)
-	go deleteObject(dstKey)
-
-	wg.Wait()
-
-	select {
-	case err := <-errChan:
-		close(errChan)
-		return err
-	default:
-		return nil
-	}
 }
 
 func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldKey, newKey string) error {
@@ -394,13 +327,6 @@ func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldK
 		}
 	}
 
-	var exp *time.Time
-	if headRes.ExpiresString != nil {
-		if ex, err := time.Parse(time.RFC3339, *headRes.ExpiresString); err != nil {
-			exp = &ex
-		}
-	}
-
 	cpyInput := &s3.CopyObjectInput{
 		Bucket:                         aws.String(bucket),
 		CopySource:                     aws.String(bucket + "/" + oldKey),
@@ -412,7 +338,6 @@ func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldK
 		ContentType:                    headRes.ContentType,
 		CopySourceSSECustomerAlgorithm: headRes.SSECustomerAlgorithm,
 		CopySourceSSECustomerKeyMD5:    headRes.SSECustomerKeyMD5,
-		Expires:                        exp, // TODO: is this useful?
 		GrantFullControl:               joinGrants(grantFullControl),
 		GrantRead:                      joinGrants(grantRead),
 		GrantReadACP:                   joinGrants(grantReadAcp),
@@ -426,7 +351,7 @@ func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldK
 		SSECustomerKeyMD5:              headRes.SSECustomerKeyMD5,
 		SSEKMSKeyId:                    headRes.SSEKMSKeyId,
 		ServerSideEncryption:           headRes.ServerSideEncryption,
-		StorageClass:                   headRes.StorageClass, // TODO: is this correct?
+		StorageClass:                   headRes.StorageClass,
 		TaggingDirective:               "COPY",
 		WebsiteRedirectLocation:        headRes.WebsiteRedirectLocation,
 	}
@@ -439,6 +364,125 @@ func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldK
 		Key:    aws.String(oldKey),
 	})
 	return err
+}
+
+type renameMarker struct {
+	SrcDirPrefix string `json:"src,omitempty"`
+	DstDirPrefix string `json:"dst,omitempty"`
+}
+
+func createRenameMarkers(ctx context.Context, client *s3.Client, bucket, srcDirPrefix, dstDirPrefix string) error {
+	mSrcContent, err := json.Marshal(renameMarker{
+		DstDirPrefix: dstDirPrefix,
+	})
+	if err != nil {
+		return err
+	}
+	mDskContent, err := json.Marshal(renameMarker{
+		SrcDirPrefix: srcDirPrefix,
+	})
+	if err != nil {
+		return err
+	}
+
+	errChan := make(chan error, 2)
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	putObject := func(key string, content []byte) {
+		defer wg.Done()
+		if _, err := client.PutObject(ctx, &s3.PutObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+			Body:   bytes.NewReader(content),
+		}); err != nil {
+			select {
+			case errChan <- err:
+			default:
+			}
+		}
+	}
+
+	var (
+		srcKey = srcDirPrefix + markerSrcFileName
+		dstKey = dstDirPrefix + markerDstFileName
+	)
+
+	go putObject(srcKey, mSrcContent)
+	go putObject(dstKey, mDskContent)
+
+	wg.Wait()
+
+	select {
+	case err := <-errChan:
+		close(errChan)
+		if err := deleteRenameMarkers(ctx, client, bucket, srcKey, dstKey); err != nil {
+			return err
+		}
+		return err
+	default:
+		return nil
+	}
+}
+
+func readRenameMarker(ctx context.Context, sess *s3Session, key string) (*renameMarker, error) {
+	res, err := sess.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(sess.connection.Bucket()),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close() //nolint:errcheck
+
+	var m renameMarker
+	if err := json.NewDecoder(res.Body).Decode(&m); err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+func deleteRenameMarkers(ctx context.Context, client *s3.Client, bucket, srcDirPrefix, dstDirPrefix string) error {
+	var (
+		srcKey = srcDirPrefix + markerSrcFileName
+		dstKey = dstDirPrefix + markerDstFileName
+
+		wg      sync.WaitGroup
+		errChan = make(chan error)
+	)
+
+	wg.Add(2)
+
+	deleteObject := func(key string) {
+		defer wg.Done()
+		_, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+		})
+		if err != nil {
+			var nskErr *types.NoSuchKey
+			if errors.As(err, &nskErr) {
+				return
+			}
+			select {
+			case errChan <- err:
+			default:
+			}
+		}
+	}
+
+	go deleteObject(srcKey)
+	go deleteObject(dstKey)
+
+	wg.Wait()
+
+	select {
+	case err := <-errChan:
+		close(errChan)
+		return err
+	default:
+		return nil
+	}
 }
 
 func getObjectDstKey(srcDirPrefix, dstDirPrefix, oldKey string) string {
@@ -469,36 +513,4 @@ func joinGrants(grants []string) *string {
 		return nil
 	}
 	return aws.String(strings.Join(grants, ", "))
-}
-
-func (r *RepositoryImpl) listDir(ctx context.Context, sess *s3Session, dir *directory.Directory, recursive bool) (listDirResult, error) {
-	var keys []string
-	var sizeBytesTot int64
-
-	searchKey := mapPathToSearchKey(dir.Path())
-	var delimiter *string
-	if !recursive {
-		delimiter = aws.String("/")
-	}
-
-	inputs := &s3.ListObjectsV2Input{
-		Bucket:    aws.String(sess.connection.Bucket()),
-		Prefix:    aws.String(searchKey),
-		Delimiter: delimiter,
-		MaxKeys:   aws.Int32(1000),
-	}
-	paginator := s3.NewListObjectsV2Paginator(sess.client, inputs)
-	for paginator.HasMorePages() {
-		page, err := paginator.NextPage(ctx)
-		if err != nil {
-			return listDirResult{}, err
-		}
-
-		for _, obj := range page.Contents {
-			keys = append(keys, *obj.Key)
-			sizeBytesTot += *obj.Size
-		}
-	}
-
-	return listDirResult{Keys: keys, SizeBytesTot: sizeBytesTot}, nil
 }

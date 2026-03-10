@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/smithy-go"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
@@ -247,18 +246,4 @@ func (s *s3ObjectExists) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	return s.position, nil
-}
-
-// isNotFoundError checks if the error is a "not found" error from AWS
-func isNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	var apiErr smithy.APIError
-	if errors.As(err, &apiErr) {
-		return apiErr.ErrorCode() == "NoSuchKey" || apiErr.ErrorCode() == "NotFound"
-	}
-
-	return false
 }
