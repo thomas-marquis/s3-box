@@ -54,8 +54,8 @@ func (r *RepositoryImpl) handleLoadDirectory(e event.Event) {
 		for _, obj := range page.Contents {
 			key := *obj.Key
 
-			if strings.HasSuffix(key, markerSrcFileName) || strings.HasSuffix(key, markerDstFileName) {
-				r.checkForPendingRename(ctx, s, dir, key)
+			if isRenameMarkerFile(key) {
+				handleError(r.getPendingRenameErr(ctx, s, dir, key))
 				return
 			}
 
@@ -109,30 +109,4 @@ func (r *RepositoryImpl) loadFile(ctx context.Context, file *directory.File, con
 		return nil, err
 	}
 	return NewObject(ctx, sess.downloader, sess.uploader, sess.connection, file)
-}
-
-func (r *RepositoryImpl) checkForPendingRename(ctx context.Context, s *s3Session, dir *directory.Directory, key string) {
-	m, err := readRenameMarker(ctx, s, key)
-	if err != nil {
-		wErr := fmt.Errorf("error while reading rename marker: %w", err)
-		r.notifier.NotifyError(wErr)
-		r.bus.Publish(directory.NewLoadFailureEvent(wErr, dir))
-		return
-	}
-
-	var srcDirPath, dstDirPath directory.Path
-	if strings.HasSuffix(key, markerSrcFileName) {
-		srcDirPath = dir.Path()
-		dstDirPath = directory.Path(m.DstDirPrefix)
-	} else {
-		srcDirPath = directory.Path(m.SrcDirPrefix)
-		dstDirPath = dir.Path()
-	}
-
-	r.notifier.NotifyError(fmt.Errorf("rename operation has not been completed: %s -> %s",
-		srcDirPath, dstDirPath))
-	r.bus.Publish(directory.NewLoadFailureEvent(directory.UncompletedRename{
-		SourceDirPath:      srcDirPath,
-		DestinationDirPath: dstDirPath,
-	}, dir))
 }

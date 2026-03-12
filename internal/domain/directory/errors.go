@@ -30,8 +30,13 @@ func (e *Error) Error() string {
 type UncompletedRename struct {
 	SourceDirPath      Path
 	DestinationDirPath Path
+	Wrapped            error
 }
 
 func (e UncompletedRename) Error() string {
-	return fmt.Sprintf("uncompleted rename from %s to %s", e.SourceDirPath, e.DestinationDirPath)
+	msg := fmt.Sprintf("uncompleted rename from %s to %s", e.SourceDirPath, e.DestinationDirPath)
+	if e.Wrapped != nil {
+		msg += fmt.Sprintf(": %s", e.Wrapped.Error())
+	}
+	return msg
 }

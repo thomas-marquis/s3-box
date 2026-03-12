@@ -28,9 +28,9 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		{Key: "root_file.txt"},
 		{Key: "mydir/"},
 		{Key: "mydir/file_in_dir.txt"},
-		{Key: "mydir/oldname/.s3box-rename-src", Body: strings.NewReader(`{"dst": "/mydir/newname/"}`)},
+		{Key: "mydir/oldname/.s3box-rename-src", Body: strings.NewReader(`{"dstPath": "/mydir/newname/"}`)},
 		{Key: "mydir/oldname/remaining.txt", Body: strings.NewReader("toto")},
-		{Key: "mydir/newname/.s3box-rename-dst", Body: strings.NewReader(`{"src": "/mydir/oldname/"}`)},
+		{Key: "mydir/newname/.s3box-rename-dst", Body: strings.NewReader(`{"srcPath": "/mydir/oldname/"}`)},
 		{Key: "mydir/newname/copied.md", Body: strings.NewReader("lolo")},
 	})
 
@@ -136,6 +136,55 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			}
 		}, 5*time.Second, 100*time.Millisecond)
 	})
+
+	//t.Run("should ignore marker files", func(t *testing.T) {
+	//	// Given
+	//	ctrl := gomock.NewController(t)
+	//	mockBus := mocks_event.NewMockBus(ctrl)
+	//	mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+	//	mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+	//
+	//	fakeEventChan := make(chan event.Event, 1)
+	//	defer close(fakeEventChan)
+	//
+	//	mockBus.EXPECT().
+	//		Subscribe().
+	//		Return(event.NewSubscriber(fakeEventChan))
+	//
+	//	mockConnRepo.EXPECT().
+	//		Get(gomock.AssignableToTypeOf(testutil.CtxType)).
+	//		Return(fakeDeck, nil).
+	//		Times(1)
+	//
+	//	dir := testutil.NewDirectory(t, "newname", "/mydir/")
+	//
+	//	done := make(chan struct{})
+	//	mockBus.EXPECT().
+	//		Publish(gomock.Cond(func(evt event.Event) bool {
+	//			// Then
+	//			e, ok := evt.(directory.LoadSuccessEvent)
+	//			res := assert.True(t, ok) &&
+	//				assert.Len(t, e.SubDirectories(), 0) &&
+	//				assert.Len(t, e.Files(), 0)
+	//			close(done)
+	//			return res
+	//		})).
+	//		Times(1)
+	//
+	//	_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+	//	require.NoError(t, err)
+	//
+	//	// When
+	//	fakeEventChan <- directory.NewLoadEvent(dir)
+	//	assert.Eventually(t, func() bool {
+	//		select {
+	//		case <-done:
+	//			return true
+	//		default:
+	//			return false
+	//		}
+	//	}, 5*time.Second, 100*time.Millisecond)
+	//})
 
 	t.Run("should handle AWS connection without custom endpoint", func(t *testing.T) {
 		// Given

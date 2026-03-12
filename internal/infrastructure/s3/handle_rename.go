@@ -24,7 +24,11 @@ const (
 	markerDstFileName = ".s3box-rename-dst"
 )
 
-func (r *RepositoryImpl) checkSrcRenameMakrer(ctx context.Context, sess *s3Session, srcDirKey, dstDirKey string) error {
+func isRenameMarkerFile(key string) bool {
+	return strings.HasSuffix(key, markerSrcFileName) || strings.HasSuffix(key, markerDstFileName)
+}
+
+func (r *RepositoryImpl) checkSrcRenameMarker(ctx context.Context, sess *s3Session, srcDirKey, dstDirKey string) error {
 	markerKey := srcDirKey + markerSrcFileName
 	marker, err := readRenameMarker(ctx, sess, markerKey)
 	if err != nil {
@@ -33,8 +37,8 @@ func (r *RepositoryImpl) checkSrcRenameMakrer(ctx context.Context, sess *s3Sessi
 		}
 		return fmt.Errorf("failed to read rename marker for source directory %s: %w", srcDirKey, err)
 	}
-	if marker.DstDirPrefix != dstDirKey {
-		return fmt.Errorf("an existing renaming process is still in progress for directory %s to %s", srcDirKey, marker.DstDirPrefix)
+	if marker.DstDirPath != directory.NewPath(dstDirKey) {
+		return fmt.Errorf("an existing renaming process is still in progress for directory %s to %s", srcDirKey, marker.DstDirPath)
 	}
 	return nil
 }
@@ -45,10 +49,10 @@ func (r *RepositoryImpl) checkRenamingState(ctx context.Context, sess *s3Session
 
 	srcMarker, err := readRenameMarker(ctx, sess, srcMarkerKey)
 	if err == nil {
-		if srcMarker.DstDirPrefix == dstDirKey {
+		if srcMarker.DstDirPath == directory.NewPath(dstDirKey) {
 			return true, nil // Resume
 		}
-		return false, fmt.Errorf("an existing renaming process is still in progress for directory %s to %s", srcDirKey, srcMarker.DstDirPrefix)
+		return false, fmt.Errorf("an existing renaming process is still in progress for directory %s to %s", srcDirKey, srcMarker.DstDirPath)
 	}
 	if !isNotFoundError(err) {
 		return false, err
@@ -62,7 +66,7 @@ func (r *RepositoryImpl) checkRenamingState(ctx context.Context, sess *s3Session
 	if !lsDst.IsEmpty() {
 		dstMarker, err := readRenameMarker(ctx, sess, dstMarkerKey)
 		if err == nil {
-			if dstMarker.SrcDirPrefix == srcDirKey {
+			if dstMarker.SrcDirPath == directory.NewPath(srcDirKey) {
 				return true, nil // Resume
 			}
 		}
@@ -148,28 +152,39 @@ func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 	srcDirKey := mapDirToObjectKey(dir)
 	dstDirKey := getDstDirKey(srcDirKey, evt.NewName())
 
-	resume, err := r.checkRenamingState(ctx, sess, srcDirKey, dstDirKey)
+	lsDst, err := r.listObjects(ctx, sess, dstDirKey, true)
+	if err != nil {
+		handleError(err)
+		return
+	}
+	if !lsDst.IsEmpty() {
+		handleError(fmt.Errorf("destination directory already exists"))
+		return
+	}
+
+	lsSrc, err := r.listObjects(ctx, sess, mapPathToSearchKey(dir.Path()), true)
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	lsRes, err := r.listObjects(ctx, sess, mapPathToSearchKey(dir.Path()), true)
-	if err != nil {
-		handleError(err)
-		return
-	}
-
-	if resume || lsRes.IsEmpty() {
-		if err := r.renameObjects(ctx, sess, dir, evt.NewName(), lsRes.Keys); err != nil {
+	if lsSrc.IsEmpty() {
+		if err := r.renameObjects(ctx, sess, dir, evt.NewName(), lsSrc.Keys); err != nil {
 			handleError(err)
 			return
 		}
 		r.bus.Publish(directory.NewRenamedSuccessEvent(dir, evt.NewName()))
 	} else {
+		for _, key := range lsSrc.Keys {
+			if isRenameMarkerFile(key) {
+				handleError(r.getPendingRenameErr(ctx, sess, dir, key))
+				return
+			}
+		}
+
 		msg := strings.Builder{}
 		msg.WriteString("This directory is not empty.\n")
-		msg.WriteString(fmt.Sprintf("It contains %d objects (%d kB).\n", len(lsRes.Keys), lsRes.SizeBytesTot/1024))
+		msg.WriteString(fmt.Sprintf("It contains %d objects (%d kB).\n", len(lsSrc.Keys), lsSrc.SizeBytesTot/1024))
 		msg.WriteString("This operation will modify all of them. Are you sure you want to proceed?")
 		r.bus.Publish(directory.NewUserValidationEvent(dir, evt, msg.String()))
 	}
@@ -279,7 +294,11 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 	wg.Wait() // TODO: !!WARNING!! this WG will block if the context is canceled before all workers are done
 
 	if errCnt > 0 {
-		return fmt.Errorf("%d error(s) occurred while renaming objects", errCnt)
+		return directory.UncompletedRename{
+			SourceDirPath:      dir.Path(),
+			DestinationDirPath: directory.NewPath(dstDirKey),
+			Wrapped:            fmt.Errorf("%d error(s) occurred while renaming objects", errCnt),
+		}
 	}
 
 	return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey)
@@ -366,20 +385,43 @@ func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldK
 	return err
 }
 
+func (r *RepositoryImpl) getPendingRenameErr(ctx context.Context, s *s3Session, dir *directory.Directory, markerKey string) error {
+	m, err := readRenameMarker(ctx, s, markerKey)
+	if err != nil {
+		wErr := fmt.Errorf("error while reading rename marker: %w", err)
+		return wErr
+	}
+
+	var srcDirPath, dstDirPath directory.Path
+	if strings.HasSuffix(markerKey, markerSrcFileName) {
+		srcDirPath = dir.Path()
+		dstDirPath = m.DstDirPath
+	} else {
+		srcDirPath = m.SrcDirPath
+		dstDirPath = dir.Path()
+	}
+
+	return directory.UncompletedRename{
+		SourceDirPath:      srcDirPath,
+		DestinationDirPath: dstDirPath,
+		Wrapped:            fmt.Errorf("rename operation has not been completed: %s -> %s", srcDirPath, dstDirPath),
+	}
+}
+
 type renameMarker struct {
-	SrcDirPrefix string `json:"src,omitempty"`
-	DstDirPrefix string `json:"dst,omitempty"`
+	SrcDirPath directory.Path `json:"srcPath,omitempty"`
+	DstDirPath directory.Path `json:"dstPath,omitempty"`
 }
 
 func createRenameMarkers(ctx context.Context, client *s3.Client, bucket, srcDirPrefix, dstDirPrefix string) error {
 	mSrcContent, err := json.Marshal(renameMarker{
-		DstDirPrefix: dstDirPrefix,
+		DstDirPath: directory.NewPath(dstDirPrefix),
 	})
 	if err != nil {
 		return err
 	}
 	mDskContent, err := json.Marshal(renameMarker{
-		SrcDirPrefix: srcDirPrefix,
+		SrcDirPath: directory.NewPath(srcDirPrefix),
 	})
 	if err != nil {
 		return err
