@@ -166,14 +166,14 @@ func (e withNewName) NewName() string {
 	return e.newName
 }
 
-type RenamedEvent struct {
+type RenameEvent struct {
 	event.BaseEvent
 	withDirectory
 	withNewName
 }
 
-func NewRenamedEvent(directory *Directory, newName string, opts ...event.Option) RenamedEvent {
-	return RenamedEvent{
+func NewRenameEvent(directory *Directory, newName string, opts ...event.Option) RenameEvent {
+	return RenameEvent{
 		event.NewBaseEvent(RenameEventType, opts...),
 		withDirectory{directory},
 		withNewName{newName},

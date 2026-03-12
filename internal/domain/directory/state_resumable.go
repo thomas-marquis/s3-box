@@ -39,7 +39,7 @@ func (s *resumableState) Status() Status {
 
 func (s *resumableState) Resume() (event.Event, error) {
 	switch status := s.currentStatus.(type) {
-	case *RenamePendingStatus:
+	case RenamePendingStatus:
 		return NewRenameResumeEvent(s.d, status.IsSourceDir, status.OtherDirPath), nil
 	}
 	return nil, nil

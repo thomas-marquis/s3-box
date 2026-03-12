@@ -1,6 +1,9 @@
 package directory
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
@@ -35,6 +38,23 @@ func (s *loadedState) Files() ([]*File, error) {
 
 func (s *loadedState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {
 	return s.d.uploadFile(localPtah, overwrite)
+}
+
+func (s *loadedState) Rename(newName string) (RenameEvent, error) {
+	if s.d.name == RootDirName {
+		return RenameEvent{}, errors.New("cannot rename root directory")
+	}
+
+	if err := validateName(newName, s.d.parentPath); err != nil {
+		return RenameEvent{}, err
+	}
+
+	if newName == s.d.name {
+		return RenameEvent{}, fmt.Errorf("new name must be different from current name %s", s.d.name)
+	}
+
+	// TODO: change state to loading??
+	return NewRenameEvent(s.d, newName), nil
 }
 
 func (s *loadedState) Notify(evt event.Event) error {
@@ -74,6 +94,17 @@ func (s *loadedState) Notify(evt event.Event) error {
 	case RenamedSuccessEvent:
 		s.d.name = e.NewName()
 		s.d.path = s.d.parentPath.NewSubPath(e.NewName())
+
+	case RenameFailureEvent:
+		var urErr UncompletedRename
+		if errors.As(e.Error(), &urErr) {
+			status := RenamePendingStatus{
+				CurrentDirectory: s.d,
+				IsSourceDir:      true,
+				OtherDirPath:     s.d.ParentPath().NewSubPath(e.NewName()),
+			}
+			s.d.setState(newResumableState(s.baseState.Clone(), status))
+		}
 
 	}
 	return nil

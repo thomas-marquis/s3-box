@@ -135,7 +135,7 @@ func (r *RepositoryImpl) handleRenameFile(e event.Event) {
 
 func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 	ctx := e.Context()
-	evt := e.(directory.RenamedEvent)
+	evt := e.(directory.RenameEvent)
 	dir := evt.Directory()
 
 	handleError := func(err error) {
@@ -194,7 +194,7 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 	ctx := e.Context()
 	uve := e.(directory.UserValidationSuccessEvent)
 
-	re, ok := uve.Reason().(directory.RenamedEvent)
+	re, ok := uve.Reason().(directory.RenameEvent)
 	if !ok {
 		return
 	}

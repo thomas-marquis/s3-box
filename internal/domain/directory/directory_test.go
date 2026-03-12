@@ -2,7 +2,6 @@ package directory_test
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -654,61 +653,65 @@ func TestDirectory_Rename(t *testing.T) {
 	})
 }
 
-func TestDirectory_UserValidation(t *testing.T) {
-	t.Run("should create user validation event with reason and message", func(t *testing.T) {
+func TestDirectory_Resume(t *testing.T) {
+	t.Run("should returns a rename resume event when directory is in a resumable state with a rename pending status after a failing rename", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, "testdir", directory.RootPath)
-		require.NoError(t, err)
+		dir := testutil.NewDirectory(t, "oldname", directory.RootPath)
 
-		reason := directory.NewRenamedEvent(dir, "newname")
-		message := "Are you sure you want to rename this directory?"
+		urErr := directory.UncompletedRename{
+			SourceDirPath:      dir.Path(),
+			DestinationDirPath: directory.Path("/newname/"),
+		}
+		renameFailedEvt := directory.NewRenameFailureEvent(urErr, dir, "newname")
+		require.NoError(t, dir.Notify(renameFailedEvt))
 
 		// When
-		evt := directory.NewUserValidationEvent(dir, reason, message)
+		evt, err := dir.Resume()
 
 		// Then
-		assert.Equal(t, directory.UserValidationEventType, evt.Type())
-		assert.Equal(t, dir, evt.Directory())
-		assert.Equal(t, reason, evt.Reason())
-		assert.Equal(t, message, evt.Message())
+		assert.NoError(t, err)
+		assert.Equal(t, directory.RenamePendingStatus{
+			CurrentDirectory: dir,
+			IsSourceDir:      true,
+			OtherDirPath:     "/newname/",
+		}, dir.Status())
+		assert.Equal(t, directory.RenameEventType.AsResume(), evt.Type())
+
+		res := evt.(directory.RenameResumeEvent)
+		assert.True(t, res.IsSourceDir())
+		assert.Equal(t, directory.Path("/newname/"), res.OtherDirPath())
+		assert.Equal(t, dir, res.Directory())
 	})
 
-	t.Run("should create user validation success event with reason", func(t *testing.T) {
+	t.Run("should returns a rename resume event when directory is in a resumable state with a rename pending status after a failing loading", func(t *testing.T) {
 		// Given
 		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, "testdir", directory.RootPath)
+		dir, err := directory.New(connID, "mydir", directory.RootPath)
 		require.NoError(t, err)
 
-		reason := directory.NewRenamedEvent(dir, "newname")
-
-		// When
-		evt := directory.NewUserValidationSuccessEvent(dir, reason, true)
-
-		// Then
-		assert.Equal(t, directory.UserValidationEventType.AsSuccess(), evt.Type())
-		assert.Equal(t, dir, evt.Directory())
-		assert.Equal(t, reason, evt.Reason())
-		assert.Equal(t, true, evt.Validated())
-	})
-
-	t.Run("should create user validation failure event with reason", func(t *testing.T) {
-		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, "testdir", directory.RootPath)
+		urErr := directory.UncompletedRename{
+			SourceDirPath:      "/newname/",
+			DestinationDirPath: "/mydir/",
+		}
+		_, err = dir.Load()
 		require.NoError(t, err)
-
-		reason := directory.NewRenamedEvent(dir, "newname")
-		testErr := fmt.Errorf("user cancelled the operation")
+		require.NoError(t, dir.Notify(directory.NewLoadFailureEvent(urErr, dir)))
 
 		// When
-		evt := directory.NewUserValidationFailureEvent(testErr, dir, reason)
+		evt, err := dir.Resume()
 
 		// Then
-		assert.Equal(t, directory.UserValidationEventType.AsFailure(), evt.Type())
-		assert.Equal(t, dir, evt.Directory())
-		assert.Equal(t, reason, evt.Reason())
-		assert.Error(t, evt.Error())
-		assert.Equal(t, testErr, evt.Error())
+		assert.NoError(t, err)
+		assert.Equal(t, directory.RenamePendingStatus{
+			CurrentDirectory: dir,
+			IsSourceDir:      false,
+			OtherDirPath:     "/newname/",
+		}, dir.Status())
+		assert.Equal(t, directory.RenameEventType.AsResume(), evt.Type())
+
+		res := evt.(directory.RenameResumeEvent)
+		assert.False(t, res.IsSourceDir())
+		assert.Equal(t, directory.Path("/newname/"), res.OtherDirPath())
+		assert.Equal(t, dir, res.Directory())
 	})
 }

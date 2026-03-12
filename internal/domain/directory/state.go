@@ -19,6 +19,7 @@ type state interface {
 	Files() ([]*File, error)
 	SubDirectories() ([]*Directory, error)
 	UploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error)
+	Rename(newName string) (RenameEvent, error)
 	Notify(event.Event) error
 }
 
@@ -42,6 +43,10 @@ func (s *baseState) Files() ([]*File, error) {
 
 func (s *baseState) UploadFile(string, bool) (ContentUploadedEvent, error) {
 	return ContentUploadedEvent{}, ErrNotLoaded
+}
+
+func (s *baseState) Rename(string) (RenameEvent, error) {
+	return RenameEvent{}, ErrNotLoaded
 }
 
 func (s *baseState) Status() Status {

@@ -153,7 +153,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 
 		done := make(chan struct{})
 
-		inputEvt := directory.NewRenamedEvent(originalDir, "newname1")
+		inputEvt := directory.NewRenameEvent(originalDir, "newname1")
 
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
@@ -238,7 +238,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		originalEvt := directory.NewRenamedEvent(originalDir, "newname")
+		originalEvt := directory.NewRenameEvent(originalDir, "newname")
 		fakeEventChan <- directory.NewUserValidationSuccessEvent(originalDir, originalEvt, true)
 
 		// Then
@@ -314,7 +314,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		originalEvt := directory.NewRenamedEvent(subdir, "newname")
+		originalEvt := directory.NewRenameEvent(subdir, "newname")
 		fakeEventChan <- directory.NewUserValidationSuccessEvent(subdir, originalEvt, true)
 
 		// Then
@@ -392,7 +392,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		fakeEventChan <- directory.NewRenamedEvent(dir, "newname")
+		fakeEventChan <- directory.NewRenameEvent(dir, "newname")
 
 		// Then
 		assert.Eventually(t, func() bool {
@@ -464,7 +464,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		require.NoError(t, err)
 
 		fakeEventChan <- directory.NewUserValidationSuccessEvent(originalDir,
-			directory.NewRenamedEvent(originalDir, "newname4"), true)
+			directory.NewRenameEvent(originalDir, "newname4"), true)
 		assert.Eventually(t, func() bool {
 			select {
 			case <-done:
@@ -547,7 +547,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		fakeEventChan <- directory.NewRenamedEvent(originalDir, "destination_exists")
+		fakeEventChan <- directory.NewRenameEvent(originalDir, "destination_exists")
 
 		// Then
 		assert.Eventually(t, func() bool {
@@ -610,7 +610,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		fakeEventChan <- directory.NewRenamedEvent(originalDir, "newname_marker_mismatch")
+		fakeEventChan <- directory.NewRenameEvent(originalDir, "newname_marker_mismatch")
 
 		// Then
 		assert.Eventually(t, func() bool {
@@ -671,7 +671,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 	//
 	//	// When
 	//	// For resume, we don't need UserValidation because it's a resume of a previously validated operation (or small rename)
-	//	fakeEventChan <- directory.NewRenamedEvent(originalDir, "newname_resume")
+	//	fakeEventChan <- directory.NewRenameEvent(originalDir, "newname_resume")
 	//
 	//	// Then
 	//	assert.Eventually(t, func() bool {

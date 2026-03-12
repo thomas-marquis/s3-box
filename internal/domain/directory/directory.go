@@ -34,14 +34,8 @@ func New(
 	name string,
 	parentPath Path,
 ) (*Directory, error) {
-	if name == RootDirName && parentPath != NilParentPath {
-		return nil, fmt.Errorf("directory name is empty")
-	}
-	if name == "/" {
-		return nil, fmt.Errorf("directory name should not be '/'")
-	}
-	if strings.Contains(name, "/") {
-		return nil, fmt.Errorf("directory name should not contain '/'s")
+	if err := validateName(name, parentPath); err != nil {
+		return nil, err
 	}
 
 	d := &Directory{
@@ -177,36 +171,9 @@ func (d *Directory) RemoveSubDirectory(name string) (DeletedEvent, error) {
 	return DeletedEvent{}, ErrNotFound
 }
 
-// Rename changes the name of the directory.
-// Returns a RenamedEvent and the old path for reference.
-// Returns an error if the new name is invalid or if the directory is not loaded.
-// Note: The directory entity's name and path are NOT updated until a success event is received.
-func (d *Directory) Rename(newName string) (RenamedEvent, error) {
-	if !d.IsLoaded() {
-		return RenamedEvent{}, ErrNotLoaded
-	}
-
-	if newName == "" {
-		return RenamedEvent{}, fmt.Errorf("directory name is empty")
-	}
-	if newName == "/" {
-		return RenamedEvent{}, fmt.Errorf("directory name should not be '/'")
-	}
-	if strings.Contains(newName, "/") {
-		return RenamedEvent{}, fmt.Errorf("directory name should not contain '/'s")
-	}
-
-	// Basic validation: check if the new name is different from current name
-	if newName == d.name {
-		return RenamedEvent{}, fmt.Errorf("new name must be different from current name %s", d.name)
-	}
-
-	// Note: More thorough validation (checking if target directory exists in parent)
-	// is handled by the infrastructure layer when it processes the rename event
-	// and has access to the full directory structure from S3.
-
-	// Note: We don't update d.name or d.path here - that happens in Notify() on success
-	return NewRenamedEvent(d, newName), nil
+// Rename triggers an event to change the name of the directory.
+func (d *Directory) Rename(newName string) (RenameEvent, error) {
+	return d.currentState.Rename(newName)
 }
 
 func (d *Directory) UploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error) {
@@ -321,4 +288,17 @@ func (d *Directory) uploadFile(localPath string, overwrite bool) (ContentUploade
 	uploadedEvt := NewContentUploadedEvent(d, NewFileContent(newFile, FromLocalFile(localPath)))
 
 	return uploadedEvt, nil
+}
+
+func validateName(name string, parentPath Path) error {
+	if name == RootDirName && parentPath != NilParentPath {
+		return fmt.Errorf("directory name is empty")
+	}
+	if name == "/" {
+		return fmt.Errorf("directory name should not be '/'")
+	}
+	if strings.Contains(name, "/") {
+		return fmt.Errorf("directory name should not contain '/'s")
+	}
+	return nil
 }
