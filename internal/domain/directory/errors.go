@@ -6,10 +6,12 @@ import (
 )
 
 var (
-	ErrNotFound      = errors.New("object not found in directory")
-	ErrTechnical     = errors.New("technical error occurred")
-	ErrNotLoaded     = errors.New("directory must be loaded first")
-	ErrAlreadyExists = errors.New("file or directory already exists")
+	ErrNotFound          = errors.New("object not found in directory")
+	ErrTechnical         = errors.New("technical error occurred")
+	ErrNotLoaded         = errors.New("directory must be loaded first")
+	ErrAlreadyExists     = errors.New("file or directory already exists")
+	ErrNotResumable      = errors.New("no action to resume for this directory")
+	ErrRenameInterrupted = errors.New("rename interrupted")
 )
 
 type Error struct {
@@ -23,4 +25,13 @@ func NewError(dir *Directory, message string) error {
 
 func (e *Error) Error() string {
 	return fmt.Sprintf("directory (%s) error: %s", e.dir.Path(), e.message)
+}
+
+type UncompletedRename struct {
+	SourceDirPath      Path
+	DestinationDirPath Path
+}
+
+func (e UncompletedRename) Error() string {
+	return fmt.Sprintf("uncompleted rename from %s to %s", e.SourceDirPath, e.DestinationDirPath)
 }

@@ -1,45 +1,46 @@
 package directory
 
-import "errors"
+import (
+	"errors"
 
-type ResumableState struct {
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+)
+
+type resumableState struct {
 	baseState
+	currentStatus Status
 }
 
-var _ State = (*ResumableState)(nil)
+var _ state = (*resumableState)(nil)
 
-func newResumableState(previous baseState) *ResumableState {
-	return &ResumableState{previous.Clone()}
+func newResumableState(previous baseState, status Status) *resumableState {
+	return &resumableState{previous.Clone(), status}
 }
 
-func (s *ResumableState) Type() StateType {
-	return stateResumable
+func (s *resumableState) Type() StateType {
+	return stateTypeResumable
 }
 
-func (s *ResumableState) Load() (LoadEvent, error) {
+func (s *resumableState) Load() (LoadEvent, error) {
 	return LoadEvent{}, NewError(s.d, "this directory is already loaded")
 }
 
-func (s *ResumableState) SetLoaded(bool) {}
-
-func (s *ResumableState) SubDirectories() ([]*Directory, error) {
-	return s.subDirs, nil
-}
-
-func (s *ResumableState) Files() ([]*File, error) {
-	return s.files, nil
-}
-
-func (s *ResumableState) SetFiles(files []*File) error {
-	s.files = files
-	return nil
-}
-
-func (s *ResumableState) SetSubDirectories(subDirs []*Directory) error {
-	s.subDirs = subDirs
-	return nil
-}
-
-func (s *ResumableState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {
+func (s *resumableState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {
 	return ContentUploadedEvent{}, errors.New("you can't upload files to a resumable directory")
+}
+
+func (s *resumableState) Notify(evt event.Event) error {
+	return nil
+}
+
+func (s *resumableState) Status() Status {
+	return s.currentStatus
+}
+
+func (s *resumableState) Resume() (event.Event, error) {
+	switch status := s.currentStatus.(type) {
+	case *RenamePendingStatus:
+		return NewRenameResumeEvent(s.d, status.IsSourceDir, status.OtherDirPath), nil
+	}
+	return nil, nil
 }

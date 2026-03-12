@@ -63,7 +63,7 @@ func NewRepositoryImpl(
 		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
 		On(event.Is(directory.UserValidationEventType.AsSuccess()), r.handleRenameDirectory).
 		On(event.Is(directory.FileRenamedEventType), r.handleRenameFile).
-		On(event.Is(directory.RenamedEventType), r.handleRenameRequest).
+		On(event.Is(directory.RenameEventType), r.handleRenameRequest).
 		ListenNonBlocking() // TODO: set a limit of simultaneous tasks
 
 	return r, nil

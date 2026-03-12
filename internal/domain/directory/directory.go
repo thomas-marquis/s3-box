@@ -24,7 +24,7 @@ type Directory struct {
 	parentPath   Path
 	isOpen       bool
 
-	currentState State
+	currentState state
 }
 
 // New creates a new S3 directory entity.
@@ -51,7 +51,7 @@ func New(
 		path:         parentPath.NewSubPath(name),
 	}
 
-	d.currentState = newNotLoadedState(d)
+	d.currentState = newNotLoadedState(d, nil)
 
 	return d, nil
 }
@@ -215,116 +215,7 @@ func (d *Directory) UploadFile(localPath string, overwrite bool) (ContentUploade
 
 // Notify processes of various event types and updates the state of the directory accordingly.
 func (d *Directory) Notify(evt event.Event) error {
-	switch evt.Type() {
-	case DeletedEventType.AsSuccess():
-		e := evt.(DeletedSuccessEvent)
-		subDirectories, err := d.currentState.SubDirectories()
-		if err != nil {
-			return fmt.Errorf("failed to get subdirectories: %w", err)
-		}
-		for i, subDirPath := range subDirectories {
-			if subDirPath.Is(e.Directory()) {
-				if err := d.currentState.SetSubDirectories(append(subDirectories[:i], subDirectories[i+1:]...)); err != nil {
-					return fmt.Errorf("failed to remove subdirectory: %w", err)
-				}
-				return nil
-			}
-		}
-
-	case FileDeletedEventType.AsSuccess():
-		e := evt.(FileDeletedSuccessEvent)
-		files, err := d.currentState.Files()
-		if err != nil {
-			return fmt.Errorf("failed to get files: %w", err)
-		}
-		for i, file := range files {
-			if file.Is(e.File()) {
-				newFiles := append(files[:i], files[i+1:]...)
-				if err := d.currentState.SetFiles(newFiles); err != nil {
-					return fmt.Errorf("failed to remove file: %w", err)
-				}
-				return nil
-			}
-		}
-
-	case FileCreatedEventType.AsSuccess():
-		e := evt.(FileCreatedSuccessEvent)
-		files, err := d.currentState.Files()
-		if err != nil {
-			return fmt.Errorf("failed to get files: %w", err)
-		}
-		if err := d.currentState.SetFiles(append(files, e.File())); err != nil {
-			return fmt.Errorf("failed to add file: %w", err)
-		}
-
-	case FileRenamedEventType.AsSuccess():
-		e := evt.(FileRenamedSuccessEvent)
-		files, err := d.currentState.Files()
-		if err != nil {
-			return fmt.Errorf("failed to get files: %w", err)
-		}
-		// Find the file with the old name and update it
-		for i, file := range files {
-			if file.Name() == e.OldName() {
-				files[i] = e.File()
-				if err := d.currentState.SetFiles(files); err != nil {
-					return fmt.Errorf("failed to update file after rename: %w", err)
-				}
-				return nil
-			}
-		}
-
-	case CreatedEventType.AsSuccess():
-		e := evt.(CreatedSuccessEvent)
-		subDirectories, err := d.currentState.SubDirectories()
-		if err != nil {
-			return fmt.Errorf("failed to get subdirectories: %w", err)
-		}
-		if err := d.currentState.SetSubDirectories(append(subDirectories, e.Directory())); err != nil {
-			return fmt.Errorf("failed to add subdirectory: %w", err)
-		}
-
-	case ContentUploadedEventType.AsSuccess():
-		e := evt.(ContentUploadedSuccessEvent)
-		newFile := e.File()
-		files, err := d.currentState.Files()
-		if err != nil {
-			return fmt.Errorf("failed to get files: %w", err)
-		}
-		for i, file := range files {
-			if file.Is(newFile) {
-				// If a file with the same name has been created in the meantime, we overwrite it
-				files[i] = newFile
-				if err := d.currentState.SetFiles(files); err != nil {
-					return fmt.Errorf("failed to update file: %w", err)
-				}
-				return nil
-			}
-		}
-		if err := d.currentState.SetFiles(append(files, newFile)); err != nil {
-			return fmt.Errorf("failed to add file: %w", err)
-		}
-
-	case LoadEventType.AsSuccess():
-		e := evt.(LoadSuccessEvent)
-		d.SetLoaded(true)
-		if err := d.currentState.SetSubDirectories(e.SubDirectories()); err != nil {
-			d.SetLoaded(false)
-			return fmt.Errorf("failed to set subdirectories: %w", err)
-		}
-		if err := d.currentState.SetFiles(e.Files()); err != nil {
-			d.SetLoaded(false)
-			return fmt.Errorf("failed to set files: %w", err)
-		}
-
-	case RenamedEventType.AsSuccess():
-		e := evt.(RenamedSuccessEvent)
-		// Update the directory's name and path to reflect the rename
-		d.name = e.NewName()
-		d.path = d.parentPath.NewSubPath(e.NewName())
-	}
-
-	return nil
+	return d.currentState.Notify(evt)
 }
 
 // Is checks if the current directory is equivalent to another in their identity.
@@ -388,15 +279,11 @@ func (d *Directory) IsLoading() bool {
 }
 
 func (d *Directory) IsLoaded() bool {
-	return d.currentState.Type() == stateTypeLoaded || d.currentState.Type() == stateTypeOpened
+	return d.currentState.Type() == stateTypeLoaded || d.currentState.Type() == stateTypeResumable
 }
 
 func (d *Directory) Load() (LoadEvent, error) {
 	return d.currentState.Load()
-}
-
-func (d *Directory) SetLoaded(loaded bool) {
-	d.currentState.SetLoaded(loaded)
 }
 
 func (d *Directory) IsOpened() bool {
@@ -411,7 +298,15 @@ func (d *Directory) Close() {
 	d.isOpen = false
 }
 
-func (d *Directory) setState(state State) {
+func (d *Directory) Resume() (event.Event, error) {
+	return d.currentState.Resume()
+}
+
+func (d *Directory) Status() Status {
+	return d.currentState.Status()
+}
+
+func (d *Directory) setState(state state) {
 	d.currentState = state
 }
 

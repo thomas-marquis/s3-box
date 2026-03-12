@@ -153,8 +153,8 @@ func NewExplorerViewModel(
 		On(event.Is(directory.ContentDownloadEventType.AsFailure()), v.handleDownloadFileFailure).
 		On(event.Is(directory.LoadEventType.AsSuccess()), v.handleLoadDirSuccess).
 		On(event.Is(directory.LoadEventType.AsFailure()), v.handleLoadDirFailure).
-		On(event.Is(directory.RenamedEventType.AsSuccess()), v.handleRenameDirectorySuccess).
-		On(event.Is(directory.RenamedEventType.AsFailure()), v.handleRenameDirectoryFailure).
+		On(event.Is(directory.RenameEventType.AsSuccess()), v.handleRenameDirectorySuccess).
+		On(event.Is(directory.RenameEventType.AsFailure()), v.handleRenameDirectoryFailure).
 		On(event.Is(directory.FileRenamedEventType.AsSuccess()), v.handleRenameFileSuccess).
 		On(event.Is(directory.FileRenamedEventType.AsFailure()), v.handleRenameFileFailure).
 		ListenWithWorkers(1)
@@ -217,7 +217,6 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 		return
 	}
 	if err := v.fillSubTree(dir); err != nil {
-		dir.SetLoaded(false)
 		v.notifier.NotifyError(fmt.Errorf("error filling sub tree: %w", err))
 	}
 
@@ -233,7 +232,6 @@ func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
 		v.notifier.NotifyError(err)
 		return
 	}
-	dir.SetLoaded(false)
 	v.infoMessage.Set(e.Error().Error()) //nolint:errcheck
 
 	if v.selectedDirectory != nil && v.selectedDirectory.Is(dir) {
@@ -477,7 +475,7 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 	if v.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
-		v.bus.Publish(directory.NewRenamedFailureEvent(err, dir, dir.Path()))
+		v.bus.Publish(directory.NewRenameFailureEvent(err, dir, newName))
 		return
 	}
 
@@ -485,7 +483,7 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 	if err != nil {
 		wErr := fmt.Errorf("error renaming directory: %w", err)
 		v.notifier.NotifyError(wErr)
-		v.bus.Publish(directory.NewRenamedFailureEvent(wErr, dir, dir.Path()))
+		v.bus.Publish(directory.NewRenameFailureEvent(wErr, dir, newName))
 		return
 	}
 
@@ -551,15 +549,13 @@ func (v *explorerViewModelImpl) handleCreateFileFailure(evt event.Event) {
 func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 	e := evt.(directory.RenamedSuccessEvent)
 	dir := e.Directory()
+	oldPath := dir.Path().String()
 
 	// Update the directory's state
 	if err := dir.Notify(e); err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}
-
-	// Update the tree structure - remove old node and add new node
-	oldPath := e.OldPath().String()
 
 	// Remove the old node from the tree
 	if err := v.tree.Remove(oldPath); err != nil {
@@ -588,11 +584,11 @@ func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 	}
 
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("Directory renamed",
-		fmt.Sprintf("Directory renamed to %s", dir.Name())))
+		fmt.Sprintf("Directory %s renamed to %s", oldPath, dir.Name())))
 }
 
 func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
-	e := evt.(directory.RenamedFailureEvent)
+	e := evt.(directory.RenameFailureEvent)
 	err := fmt.Errorf("error renaming directory: %w", e.Error())
 	if err := e.Directory().Notify(e); err != nil {
 		v.notifier.NotifyError(err)

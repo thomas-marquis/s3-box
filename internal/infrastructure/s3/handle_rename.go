@@ -136,7 +136,7 @@ func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed handling rename request: %w", err))
-		r.bus.Publish(directory.NewRenamedFailureEvent(err, dir))
+		r.bus.Publish(directory.NewRenameFailureEvent(err, dir, evt.NewName()))
 	}
 
 	sess, err := r.getSession(ctx, dir.ConnectionID())
@@ -189,7 +189,7 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
-		r.bus.Publish(directory.NewRenamedFailureEvent(err, dir)) // TODO: rename and not renameD
+		r.bus.Publish(directory.NewRenameFailureEvent(err, dir, re.NewName()))
 	}
 
 	sess, err := r.getSession(ctx, dir.ConnectionID())

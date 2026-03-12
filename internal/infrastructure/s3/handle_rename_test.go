@@ -438,7 +438,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		done := make(chan struct{})
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
-				errEvt, ok := evt.(directory.RenamedFailureEvent)
+				errEvt, ok := evt.(directory.RenameFailureEvent)
 				assert.Equal(t, "3 error(s) occurred while renaming objects", errEvt.Error().Error())
 				close(done)
 				return ok
@@ -528,7 +528,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		done := make(chan struct{})
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
-				errEvt, ok := evt.(directory.RenamedFailureEvent)
+				errEvt, ok := evt.(directory.RenameFailureEvent)
 				if ok {
 					assert.Contains(t, errEvt.Error().Error(), "destination directory already exists")
 					close(done)
@@ -587,7 +587,7 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		done := make(chan struct{})
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
-				errEvt, ok := evt.(directory.RenamedFailureEvent)
+				errEvt, ok := evt.(directory.RenameFailureEvent)
 				if ok {
 					assert.Contains(t, errEvt.Error().Error(), "an existing renaming marker is already present")
 					close(done)

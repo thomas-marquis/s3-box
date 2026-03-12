@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/testutil"
 )
 
 func TestDirectory(t *testing.T) {
@@ -33,7 +34,7 @@ func TestDirectory(t *testing.T) {
 		assert.False(t, dir.IsOpened())
 
 		// loading ended sucssesffuly
-		dir.SetLoaded(true)
+		require.NoError(t, dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil)))
 		assert.True(t, dir.IsLoaded())
 		assert.False(t, dir.IsLoading())
 		assert.False(t, dir.IsOpened())
@@ -53,7 +54,7 @@ func TestDirectory(t *testing.T) {
 
 		// When
 		dir.Load() //nolint:errcheck
-		dir.SetLoaded(false)
+		require.NoError(t, dir.Notify(directory.NewLoadFailureEvent(errors.New("ckc"), dir)))
 
 		// Then
 		assert.False(t, dir.IsLoaded())
@@ -126,7 +127,7 @@ func TestDirectory_Load(t *testing.T) {
 
 		_, err = dir.Load()
 		require.NoError(t, err)
-		dir.SetLoaded(true)
+		require.NoError(t, dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil)))
 		require.True(t, dir.IsLoaded())
 
 		// When
@@ -147,7 +148,7 @@ func TestDirectory_Load(t *testing.T) {
 
 		_, err = dir.Load()
 		require.NoError(t, err)
-		dir.SetLoaded(true)
+		require.NoError(t, dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil)))
 		dir.Open()
 		require.True(t, dir.IsOpened())
 
@@ -165,14 +166,7 @@ func TestDirectory_Load(t *testing.T) {
 func TestDirectory_NewFile(t *testing.T) {
 	t.Run("should create a file and add it to the directory on success", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
-
-		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
-		_, err = dir.Load()
-		require.NoError(t, err)
-		require.NoError(t, dir.Notify(loadEvt))
+		dir := testutil.NewDirectory(t, directory.RootDirName, directory.NilParentPath)
 
 		// When
 		evt, err := dir.NewFile("report.csv", false)
@@ -186,7 +180,7 @@ func TestDirectory_NewFile(t *testing.T) {
 		require.Len(t, files, 0)
 
 		// Then, when notified of the success
-		successEvt := directory.NewContentUploadedSuccessEvent(dir, evt.File())
+		successEvt := directory.NewFileCreatedSuccessEvent(dir, evt.File())
 		assert.NoError(t, dir.Notify(successEvt))
 
 		files, _ = dir.Files()
@@ -237,7 +231,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		assert.Equal(t, "main.go", resFiles[1].Name().String())
 	})
 
-	t.Run("should create file deleted event when file exists, then re-uploaded", func(t *testing.T) {
+	t.Run("should emit file deleted event when file exists, then re-uploaded", func(t *testing.T) {
 		// Given
 		connID := connection_deck.NewConnectionID()
 		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
@@ -558,7 +552,7 @@ func TestDirectory_Rename(t *testing.T) {
 
 		// Then
 		require.NoError(t, err)
-		assert.Equal(t, directory.RenamedEventType, evt.Type())
+		assert.Equal(t, directory.RenameEventType, evt.Type())
 		assert.Equal(t, "oldname", dir.Name())
 		assert.Equal(t, directory.Path("/parent/oldname/"), dir.Path())
 		assert.Equal(t, "newname", evt.NewName())

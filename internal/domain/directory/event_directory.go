@@ -8,7 +8,7 @@ const (
 	CreatedEventType        event.Type = "event.directory.created"
 	DeletedEventType        event.Type = "event.directory.deleted"
 	LoadEventType           event.Type = "event.directory.load"
-	RenamedEventType        event.Type = "event.directory.renamed"
+	RenameEventType         event.Type = "event.directory.rename"
 	UserValidationEventType event.Type = "event.directory.user.validation"
 )
 
@@ -174,7 +174,7 @@ type RenamedEvent struct {
 
 func NewRenamedEvent(directory *Directory, newName string, opts ...event.Option) RenamedEvent {
 	return RenamedEvent{
-		event.NewBaseEvent(RenamedEventType, opts...),
+		event.NewBaseEvent(RenameEventType, opts...),
 		withDirectory{directory},
 		withNewName{newName},
 	}
@@ -188,21 +188,23 @@ type RenamedSuccessEvent struct {
 
 func NewRenamedSuccessEvent(directory *Directory, newName string, opts ...event.Option) RenamedSuccessEvent {
 	return RenamedSuccessEvent{
-		event.NewBaseEvent(RenamedEventType.AsSuccess(), opts...),
+		event.NewBaseEvent(RenameEventType.AsSuccess(), opts...),
 		withDirectory{directory},
 		withNewName{newName},
 	}
 }
 
-type RenamedFailureEvent struct {
+type RenameFailureEvent struct {
 	event.BaseErrorEvent
 	withDirectory
+	withNewName
 }
 
-func NewRenamedFailureEvent(err error, directory *Directory) RenamedFailureEvent {
-	return RenamedFailureEvent{
-		event.NewBaseErrorEvent(RenamedEventType.AsFailure(), err),
+func NewRenameFailureEvent(err error, directory *Directory, newName string) RenameFailureEvent {
+	return RenameFailureEvent{
+		event.NewBaseErrorEvent(RenameEventType.AsFailure(), err),
 		withDirectory{directory},
+		withNewName{newName},
 	}
 }
 
@@ -212,6 +214,30 @@ type withValidationReason struct {
 
 func (e withValidationReason) Reason() event.Event {
 	return e.evt
+}
+
+type RenameResumeEvent struct {
+	event.BaseEvent
+	withDirectory
+	isSourceDir  bool
+	otherDirPath Path
+}
+
+func NewRenameResumeEvent(directory *Directory, isSourceDir bool, otherDirPath Path, opts ...event.Option) RenameResumeEvent {
+	return RenameResumeEvent{
+		event.NewBaseEvent(RenameEventType.AsResume(), opts...),
+		withDirectory{directory},
+		isSourceDir,
+		otherDirPath,
+	}
+}
+
+func (e RenameResumeEvent) IsSourceDir() bool {
+	return e.isSourceDir
+}
+
+func (e RenameResumeEvent) OtherDirPath() Path {
+	return e.otherDirPath
 }
 
 type UserValidationEvent struct {
