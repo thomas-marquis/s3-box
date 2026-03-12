@@ -651,6 +651,33 @@ func TestDirectory_Rename(t *testing.T) {
 		assert.Equal(t, "newname", dir.Name())
 		assert.Equal(t, directory.Path("/parent/newname/"), dir.Path())
 	})
+
+	t.Run("should update sub directories' parent path recursively", func(t *testing.T) {
+		// Given
+		dir := testutil.NewDirectory(t, "oldname", directory.RootPath)
+		subdir1 := testutil.AddSubDirectoryToDirectory(t, dir, "sub1")
+		subdir2 := testutil.AddSubDirectoryToDirectory(t, dir, "sub2")
+
+		subSubDir1 := testutil.AddSubDirectoryToDirectory(t, subdir1, "subsub1")
+		subSubDir2NoLoaded := testutil.AddSubNotLoadedDirectoryToDirectory(t, subdir2, "subsub2")
+
+		require.Equal(t, directory.Path("/oldname/"), dir.Path())
+		require.Equal(t, directory.Path("/oldname/sub1/"), subdir1.Path())
+		require.Equal(t, directory.Path("/oldname/sub2/"), subdir2.Path())
+		require.Equal(t, directory.Path("/oldname/sub1/subsub1/"), subSubDir1.Path())
+		require.Equal(t, directory.Path("/oldname/sub2/subsub2/"), subSubDir2NoLoaded.Path())
+
+		// When
+		successEvt := directory.NewRenamedSuccessEvent(dir, "newname")
+		require.NoError(t, dir.Notify(successEvt))
+
+		// Then
+		assert.Equal(t, directory.Path("/newname/"), dir.Path())
+		assert.Equal(t, directory.Path("/newname/sub1/"), subdir1.Path())
+		assert.Equal(t, directory.Path("/newname/sub2/"), subdir2.Path())
+		assert.Equal(t, directory.Path("/newname/sub1/subsub1/"), subSubDir1.Path())
+		assert.Equal(t, directory.Path("/newname/sub2/subsub2/"), subSubDir2NoLoaded.Path())
+	})
 }
 
 func TestDirectory_Resume(t *testing.T) {

@@ -65,3 +65,17 @@ func AddSubDirectoryToDirectory(t *testing.T, dir *directory.Directory, name str
 
 	return nd
 }
+
+func AddSubNotLoadedDirectoryToDirectory(t *testing.T, dir *directory.Directory, name string) *directory.Directory {
+	t.Helper()
+
+	newEvt, err := dir.NewSubDirectory(name)
+	require.NoError(t, err)
+
+	nd := newEvt.Directory()
+
+	err = dir.Notify(directory.NewCreatedSuccessEvent(dir, nd))
+	require.NoError(t, err)
+
+	return nd
+}

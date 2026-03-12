@@ -94,6 +94,9 @@ func (s *loadedState) Notify(evt event.Event) error {
 	case RenamedSuccessEvent:
 		s.d.name = e.NewName()
 		s.d.path = s.d.parentPath.NewSubPath(e.NewName())
+		for _, subDir := range s.subDirs {
+			subDir.updateParentPath(s.d.path)
+		}
 
 	case RenameFailureEvent:
 		var urErr UncompletedRename

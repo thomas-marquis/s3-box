@@ -490,6 +490,19 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 	v.bus.Publish(evt)
 }
 
+//func moveSubTree(tree binding.Tree[node.Node], oldPath, newPath directory.Path) error {
+//	childIds := tree.ChildIDs(oldPath.String())
+//	for _, cid := range childIds {
+//
+//	}
+//
+//	if err := tree.Remove(oldPath.String()); err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
+
 func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 	e := evt.(directory.RenamedSuccessEvent)
 	dir := e.Directory()
@@ -499,6 +512,45 @@ func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 		v.notifier.NotifyError(err)
 		return
 	}
+
+	// Remove the old node from the tree
+	if err := v.tree.Remove(oldPath); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error removing old directory node: %w", err))
+		return
+	}
+
+	// Add the new node to the tree
+	parentNodeItem, err := v.tree.GetValue(dir.ParentPath().String())
+	if err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error getting parent directory: %w", err))
+		return
+	}
+	newDirNode := node.NewDirectoryNode(dir)
+	if err := v.tree.Append(parentNodeItem.(node.DirectoryNode).ID(), newDirNode.ID(), newDirNode); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error adding new directory node: %w", err))
+		return
+	}
+	/**
+
+	// recursively move the content
+	movSubtree := func(oldPath, newPath string) error {
+		for child := range v.tree.ChildIDs(oldPath)
+	}
+
+
+	// Fill the subtree with the directory's contents if it's loaded
+	if dir.IsLoaded() {
+		if err := v.fillSubTree(dir); err != nil {
+			v.notifier.NotifyError(fmt.Errorf("error filling sub tree for renamed directory: %w", err))
+		}
+	}
+
+	oldNode, err := v.tree.GetValue(oldPath)
+	if err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error getting old directory node: %w", err))
+		return
+	}
+	**/
 
 	if err := v.tree.SetValue(oldPath, node.NewDirectoryNode(dir)); err != nil {
 		v.notifier.NotifyError(fmt.Errorf("error updating directory node in tree: %w", err))

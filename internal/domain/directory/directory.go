@@ -290,6 +290,18 @@ func (d *Directory) uploadFile(localPath string, overwrite bool) (ContentUploade
 	return uploadedEvt, nil
 }
 
+func (d *Directory) updateParentPath(newParentPath Path) {
+	d.parentPath = newParentPath
+	d.path = newParentPath.NewSubPath(d.name)
+	subDirs, err := d.currentState.SubDirectories()
+	if err != nil {
+		return
+	}
+	for _, subDir := range subDirs {
+		subDir.updateParentPath(d.path)
+	}
+}
+
 func validateName(name string, parentPath Path) error {
 	if name == RootDirName && parentPath != NilParentPath {
 		return fmt.Errorf("directory name is empty")
