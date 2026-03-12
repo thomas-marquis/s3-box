@@ -490,6 +490,36 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 	v.bus.Publish(evt)
 }
 
+func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
+	e := evt.(directory.RenamedSuccessEvent)
+	dir := e.Directory()
+	oldPath := dir.Path().String()
+
+	if err := dir.Notify(e); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+
+	if err := v.tree.SetValue(oldPath, node.NewDirectoryNode(dir)); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error updating directory node in tree: %w", err))
+		return
+	}
+
+	fyne.CurrentApp().SendNotification(fyne.NewNotification("Directory renamed",
+		fmt.Sprintf("Directory %s renamed to %s", oldPath, dir.Name())))
+}
+
+func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
+	e := evt.(directory.RenameFailureEvent)
+	err := fmt.Errorf("error renaming directory: %w", e.Error())
+	if err := e.Directory().Notify(e); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+	v.notifier.NotifyError(err)
+	v.errorMessage.Set(err.Error()) //nolint:errcheck
+}
+
 func (v *explorerViewModelImpl) RenameFile(file *directory.File, newName string) {
 	if v.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
@@ -541,58 +571,6 @@ func (v *explorerViewModelImpl) handleCreateFileFailure(evt event.Event) {
 	err := fmt.Errorf("error creating file: %w", e.Error())
 	if notifErr := e.Directory().Notify(e); notifErr != nil {
 		err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
-	}
-	v.notifier.NotifyError(err)
-	v.errorMessage.Set(err.Error()) //nolint:errcheck
-}
-
-func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
-	e := evt.(directory.RenamedSuccessEvent)
-	dir := e.Directory()
-	oldPath := dir.Path().String()
-
-	// Update the directory's state
-	if err := dir.Notify(e); err != nil {
-		v.notifier.NotifyError(err)
-		return
-	}
-
-	// Remove the old node from the tree
-	if err := v.tree.Remove(oldPath); err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error removing old directory node: %w", err))
-		return
-	}
-
-	// Add the new node to the tree
-	parentNodeItem, err := v.tree.GetValue(dir.ParentPath().String())
-	if err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error getting parent directory: %w", err))
-		return
-	}
-
-	newDirNode := node.NewDirectoryNode(dir)
-	if err := v.tree.Append(parentNodeItem.(node.DirectoryNode).ID(), newDirNode.ID(), newDirNode); err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error adding new directory node: %w", err))
-		return
-	}
-
-	// Fill the subtree with the directory's contents if it's loaded
-	if dir.IsLoaded() {
-		if err := v.fillSubTree(dir); err != nil {
-			v.notifier.NotifyError(fmt.Errorf("error filling sub tree for renamed directory: %w", err))
-		}
-	}
-
-	fyne.CurrentApp().SendNotification(fyne.NewNotification("Directory renamed",
-		fmt.Sprintf("Directory %s renamed to %s", oldPath, dir.Name())))
-}
-
-func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
-	e := evt.(directory.RenameFailureEvent)
-	err := fmt.Errorf("error renaming directory: %w", e.Error())
-	if err := e.Directory().Notify(e); err != nil {
-		v.notifier.NotifyError(err)
-		return
 	}
 	v.notifier.NotifyError(err)
 	v.errorMessage.Set(err.Error()) //nolint:errcheck

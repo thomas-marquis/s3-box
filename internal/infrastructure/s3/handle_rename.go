@@ -13,6 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
+	"github.com/aws/smithy-go/transport/http"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
@@ -314,12 +316,21 @@ func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldK
 		return err
 	}
 
+	var useDefaultAcl bool
 	aclRes, err := sess.client.GetObjectAcl(ctx, &s3.GetObjectAclInput{ // TODO: AWS only?
 		Bucket: aws.String(bucket),
 		Key:    aws.String(oldKey),
 	})
 	if err != nil {
-		return err
+		var (
+			opErr   *smithy.OperationError
+			respErr *http.ResponseError
+		)
+		if errors.As(err, &opErr) && errors.As(opErr.Err, &respErr) && respErr.Response.Response.StatusCode == 403 {
+			useDefaultAcl = true
+		} else {
+			return err
+		}
 	}
 
 	var (
@@ -329,20 +340,22 @@ func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldK
 		grantFullControl []string
 	)
 
-	for _, grant := range aclRes.Grants {
-		switch grant.Permission {
-		case types.PermissionRead:
-			grantRead = append(grantRead, generatePermissionGrant(grant.Grantee))
-		case types.PermissionReadAcp:
-			grantReadAcp = append(grantReadAcp, generatePermissionGrant(grant.Grantee))
-		case types.PermissionWriteAcp:
-			grantWriteAcp = append(grantWriteAcp, generatePermissionGrant(grant.Grantee))
-		case types.PermissionFullControl:
-			grantFullControl = append(grantFullControl, generatePermissionGrant(grant.Grantee))
-		case types.PermissionWrite:
-			r.notifier.NotifyDebug(fmt.Sprintf("ignoring write permission for copy on key: %s", oldKey))
-		default:
-			r.notifier.NotifyDebug(fmt.Sprintf("unknown permission for grant: %s", grant.Permission))
+	if !useDefaultAcl {
+		for _, grant := range aclRes.Grants {
+			switch grant.Permission {
+			case types.PermissionRead:
+				grantRead = append(grantRead, generatePermissionGrant(grant.Grantee))
+			case types.PermissionReadAcp:
+				grantReadAcp = append(grantReadAcp, generatePermissionGrant(grant.Grantee))
+			case types.PermissionWriteAcp:
+				grantWriteAcp = append(grantWriteAcp, generatePermissionGrant(grant.Grantee))
+			case types.PermissionFullControl:
+				grantFullControl = append(grantFullControl, generatePermissionGrant(grant.Grantee))
+			case types.PermissionWrite:
+				r.notifier.NotifyDebug(fmt.Sprintf("ignoring write permission for copy on key: %s", oldKey))
+			default:
+				r.notifier.NotifyDebug(fmt.Sprintf("unknown permission for grant: %s", grant.Permission))
+			}
 		}
 	}
 

@@ -3,11 +3,13 @@ package s3_test
 import (
 	"context"
 	"fmt"
+	http2 "net/http"
 	"strings"
 	"testing"
 	"time"
 
 	awsS3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -623,6 +625,72 @@ func TestNewS3DirectoryRepository_renameDirectory(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 	})
 
+	t.Run("should rename with default grants when user doesn't have GetObjectACL permission", func(t *testing.T) {
+		// Given
+		dir := testutil.NewDirectory(t, "empty", directory.NewPath("base11"))
+
+		setupS3Bucket(context.TODO(), t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
+			{Key: "base11/empty/", Body: strings.NewReader("")},
+		})
+
+		ctrl := gomock.NewController(t)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
+		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+
+		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(0).MaxTimes(0)
+		mockNotifRepo.EXPECT().NotifyDebug(gomock.Any()).AnyTimes()
+
+		fakeEventChan := make(chan event.Event, 1)
+		defer close(fakeEventChan)
+
+		mockBus.EXPECT().
+			Subscribe().
+			Return(event.NewSubscriber(fakeEventChan))
+
+		mockConnRepo.EXPECT().
+			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
+			Return(fakeDeck, nil).
+			Times(1)
+
+		done := make(chan struct{})
+
+		mockBus.EXPECT().
+			Publish(gomock.Any()).
+			Do(func(evt event.Event) {
+				e, ok := evt.(directory.RenamedSuccessEvent)
+				assert.True(t, ok)
+				assert.Equal(t, dir, e.Directory())
+				assert.Equal(t, "newname", e.NewName())
+				close(done)
+			}).
+			Times(1)
+
+		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo, func(opt *awsS3.Options) {
+			opt.Interceptors.AddAfterExecution(&fakeGetObjectAclErrorInterceptor{})
+		})
+		require.NoError(t, err)
+
+		// When
+		fakeEventChan <- directory.NewRenameEvent(dir, "newname")
+
+		// Then
+		assert.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+				return false
+			}
+		}, 5*time.Second, 100*time.Millisecond)
+
+		assertObjectContent(t, client, testutil.FakeS3LikeBucketName, "base11/newname/", "")
+		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "base11/empty/")
+
+		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "base11/empty/.s3box-rename-src")
+		assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "base11/newname/.s3box-rename-dst")
+	})
+
 	//t.Run("should resume renaming when dst is not empty and contains a marker file for the same source", func(t *testing.T) {
 	//	// Given
 	//	originalDir, _ := setup("originaldir_resume")
@@ -715,5 +783,29 @@ func (i *fakeErrorInterceptor) BeforeTransmit(ctx context.Context, in *http.Inte
 		}
 	}
 
+	return nil
+}
+
+type fakeGetObjectAclErrorInterceptor struct{}
+
+func (i *fakeGetObjectAclErrorInterceptor) AfterExecution(ctx context.Context, in *http.InterceptorContext) error {
+	if _, ok := in.Input.(*awsS3.GetObjectAclInput); ok {
+		return &smithy.OperationError{
+			ServiceID:     "S3",
+			OperationName: "GetObjectAcl",
+			Err: &http.ResponseError{
+				Response: &http.Response{
+					Response: &http2.Response{
+						Status:     "403 Forbidden",
+						StatusCode: 403,
+					},
+				},
+				Err: &smithy.GenericAPIError{
+					Code:    "AccessDenied",
+					Message: "api error AccessDenied: User: arn:aws:iam::12345:user/toto is not authorized to perform: s3:GetObjectAcl on resource: \"arn:aws:s3:::mybucket/test/\" because no identity-based policy allows the s3:GetObjectAcl action",
+				},
+			},
+		}
+	}
 	return nil
 }

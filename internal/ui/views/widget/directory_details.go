@@ -135,7 +135,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	w.createFileAction.SetOnTapped(w.makeOnCreateFile(vm, dir))
 	w.renameAction.SetOnTapped(w.makeOnRename(vm, dir))
 
-	// Disable rename for root directory
 	if dir.IsRoot() {
 		w.renameAction.Disable()
 	}
