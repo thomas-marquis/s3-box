@@ -91,12 +91,8 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 				status.Hide()
 			}
 
-			if dirNode, ok := nodeItem.(node.DirectoryNode); ok {
-				if dirNode.Directory().IsLoading() {
-					loading.Show()
-				} else {
-					loading.Hide()
-				}
+			if dirNode, ok := nodeItem.(node.DirectoryNode); ok && dirNode.Directory().IsLoading() {
+				loading.Show()
 			} else {
 				loading.Hide()
 			}

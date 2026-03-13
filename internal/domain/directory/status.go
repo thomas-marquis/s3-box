@@ -28,7 +28,7 @@ func (s RenamePendingStatus) Message() string {
 	if !s.IsSourceDir {
 		srcPath, dstPath = dstPath, srcPath
 	}
-	msg.WriteString(fmt.Sprintf("from '%s' to '%s'", srcPath, dstPath))
+	msg.WriteString(fmt.Sprintf("from '%s' to '%s'", srcPath.DirectoryName(), dstPath.DirectoryName()))
 	return msg.String()
 }
 

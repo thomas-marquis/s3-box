@@ -38,9 +38,11 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	pathLabel.Selectable = true
 
 	statusLabel := NewOpenableLabel("", appCtx.Window())
-	statusLabel.Selectable = true
+	statusLabel.Selectable = false
 	statusLabel.Alignment = fyne.TextAlignLeading
 	statusLabel.Truncation = fyne.TextTruncateEllipsis
+	statusLabel.TextStyle = fyne.TextStyle{Bold: true}
+	statusLabel.Hide()
 
 	createDirAction := NewToolbarButton("New empty directory", theme.FolderNewIcon(), func() {})
 	createFileAction := NewToolbarButton("New empty file", theme.ContentAddIcon(), func() {})
@@ -103,13 +105,17 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 			copyPath),
 		container.New(
 			layout.NewCustomPaddedLayout(10, 20, 0, 0),
-			w.statusLabel,
 			widget.NewSeparator(),
 		),
 		container.New(
 			layout.NewCustomPaddedLayout(0, 0, 5, 5),
 			w.toolbar,
 		),
+		container.New(
+			layout.NewCustomPaddedLayout(10, 20, 0, 0),
+			widget.NewSeparator(),
+		),
+		w.statusLabel,
 	))
 }
 
@@ -138,7 +144,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	w.pathLabel.SetText(path)
 
 	if dir.Status() != nil {
-		w.statusLabel.SetText(dir.Status().Message())
+		w.statusLabel.SetText(dir.Status().Title() + ": " + dir.Status().Message())
 		w.statusLabel.Show()
 	} else {
 		w.statusLabel.SetText("")
