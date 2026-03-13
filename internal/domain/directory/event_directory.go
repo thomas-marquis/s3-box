@@ -9,6 +9,7 @@ const (
 	DeletedEventType        event.Type = "event.directory.deleted"
 	LoadEventType           event.Type = "event.directory.load"
 	RenameEventType         event.Type = "event.directory.rename"
+	RenameResumeEventType   event.Type = "event.directory.rename.resume"
 	UserValidationEventType event.Type = "event.directory.user.validation"
 )
 
@@ -225,7 +226,7 @@ type RenameResumeEvent struct {
 
 func NewRenameResumeEvent(directory *Directory, isSourceDir bool, otherDirPath Path, opts ...event.Option) RenameResumeEvent {
 	return RenameResumeEvent{
-		event.NewBaseEvent(RenameEventType.AsResume(), opts...),
+		event.NewBaseEvent(RenameResumeEventType, opts...),
 		withDirectory{directory},
 		isSourceDir,
 		otherDirPath,

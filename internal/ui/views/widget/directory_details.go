@@ -22,8 +22,9 @@ type DirectoryDetails struct {
 
 	appCtx appcontext.AppContext
 
-	pathLabel   *widget.Label
-	statusLabel *OpenableLabel
+	pathLabel         *widget.Label
+	statusLabel       *OpenableLabel
+	actionRequiredBtn *widget.Button
 
 	toolbar            *widget.Toolbar
 	newDirectoryAction *ToolbarButton
@@ -44,6 +45,9 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	statusLabel.TextStyle = fyne.TextStyle{Bold: true}
 	statusLabel.Hide()
 
+	actionRequiredBtn := widget.NewButton("Action required", func() {})
+	actionRequiredBtn.Hide()
+
 	createDirAction := NewToolbarButton("New empty directory", theme.FolderNewIcon(), func() {})
 	createFileAction := NewToolbarButton("New empty file", theme.ContentAddIcon(), func() {})
 	uploadAction := NewToolbarButton("Upload file", theme.UploadIcon(), func() {})
@@ -61,6 +65,7 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 		appCtx:             appCtx,
 		pathLabel:          pathLabel,
 		statusLabel:        statusLabel,
+		actionRequiredBtn:  actionRequiredBtn,
 		toolbar:            toolbar,
 		newDirectoryAction: createDirAction,
 		uploadAction:       uploadAction,
@@ -95,6 +100,15 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 		fyne.CurrentApp().Clipboard().SetContent(sd.Path().String())
 	})
 
+	arContainer := container.NewCenter(
+		w.actionRequiredBtn,
+	)
+
+	content := container.NewStack(
+		w.statusLabel,
+		arContainer,
+	)
+
 	return widget.NewSimpleRenderer(container.NewVBox(
 		w.loadingBar,
 		container.NewBorder(nil, nil,
@@ -115,7 +129,7 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 			layout.NewCustomPaddedLayout(10, 20, 0, 0),
 			widget.NewSeparator(),
 		),
-		w.statusLabel,
+		content,
 	))
 }
 
@@ -162,6 +176,14 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.renameAction.Enable()
 	}
 
+	if dir.IsResumable() {
+		w.actionRequiredBtn.Show()
+		w.actionRequiredBtn.OnTapped = w.makeOnResumeRename(vm, dir)
+	} else {
+		w.actionRequiredBtn.Hide()
+		w.actionRequiredBtn.OnTapped = func() {}
+	}
+
 	if w.appCtx.ConnectionViewModel().IsReadOnly() || !dir.IsLoaded() || dir.IsResumable() {
 		w.newDirectoryAction.Disable()
 		w.uploadAction.Disable()
@@ -171,6 +193,12 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.newDirectoryAction.Enable()
 		w.uploadAction.Enable()
 		w.createFileAction.Enable()
+	}
+}
+
+func (w *DirectoryDetails) makeOnResumeRename(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
+	return func() {
+		vm.ResumeRename(dir)
 	}
 }
 

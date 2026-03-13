@@ -171,7 +171,7 @@ func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 	}
 
 	if lsSrc.IsEmpty() {
-		if err := r.renameObjects(ctx, sess, dir, evt.NewName(), lsSrc.Keys); err != nil {
+		if err := r.renameObjects(ctx, sess, dir.Path(), evt.NewName(), lsSrc.Keys, true); err != nil {
 			handleError(err)
 			return
 		}
@@ -232,7 +232,7 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 		return
 	}
 
-	if err := r.renameObjects(ctx, sess, dir, newName, lsRes.Keys); err != nil {
+	if err := r.renameObjects(ctx, sess, dir.Path(), newName, lsRes.Keys, true); err != nil {
 		handleError(err)
 		return
 	}
@@ -240,7 +240,74 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 	r.bus.Publish(directory.NewRenamedSuccessEvent(dir, newName))
 }
 
-func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir *directory.Directory, newName string, keys []string) error {
+func (r *RepositoryImpl) handleRenameResume(evt event.Event) {
+	e := evt.(directory.RenameResumeEvent)
+
+	dir := e.Directory()
+
+	var srcPath, dstPath directory.Path
+	if e.IsSourceDir() {
+		srcPath = dir.Path()
+		dstPath = e.OtherDirPath()
+	} else {
+		srcPath = e.OtherDirPath()
+		dstPath = dir.Path()
+	}
+	ctx := e.Context()
+	newName := dstPath.DirectoryName()
+
+	handleError := func(err error) {
+		r.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
+		r.bus.Publish(directory.NewRenameFailureEvent(err, dir, newName))
+	}
+
+	sess, err := r.getSession(ctx, dir.ConnectionID())
+	if err != nil {
+		handleError(err)
+		return
+	}
+
+	srcDirKey := mapPathToSearchKey(srcPath)
+	dstDirKey := mapPathToSearchKey(dstPath)
+
+	srcMrk, err := readRenameMarker(ctx, sess, srcDirKey+markerSrcFileName)
+	if err != nil {
+		handleError(fmt.Errorf("failed reading rename marker at %s: %w", srcDirKey+markerSrcFileName, err))
+		return
+	}
+	dstMrk, err := readRenameMarker(ctx, sess, dstDirKey+markerDstFileName)
+	if err != nil {
+		handleError(fmt.Errorf("failed reading rename marker at %s: %w", dstDirKey+markerDstFileName, err))
+		return
+	}
+
+	if dstMrk.SrcDirPath != srcPath || srcMrk.DstDirPath != dstPath {
+		handleError(errors.New("invalid rename marker(s) content"))
+		return
+	}
+
+	lsRes, err := r.listObjects(ctx, sess, mapPathToSearchKey(srcPath), true)
+	if err != nil {
+		handleError(err)
+		return
+	}
+
+	if err := r.renameObjects(ctx, sess, srcPath, newName, lsRes.Keys, false); err != nil {
+		handleError(err)
+		return
+	}
+
+	r.bus.Publish(directory.NewRenamedSuccessEvent(dir, newName))
+}
+
+func (r *RepositoryImpl) renameObjects(
+	ctx context.Context,
+	sess *s3Session,
+	srcPath directory.Path,
+	newName string,
+	keys []string,
+	createMarkers bool,
+) error {
 	//aclRes, err := sess.client.GetBucketAcl(ctx, &s3.GetBucketAclInput{
 	//	Bucket: aws.String(sess.connection.Bucket()),
 	//})
@@ -248,15 +315,17 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 	//	return err
 	//}
 
-	srcDirKey := mapDirToObjectKey(dir)
+	srcDirKey := mapPathToSearchKey(srcPath)
 	dstDirKey := getDstDirKey(srcDirKey, newName)
 
 	if len(keys) == 0 {
 		return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey)
 	}
 
-	if err := createRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey); err != nil {
-		return err
+	if createMarkers {
+		if err := createRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey); err != nil {
+			return err
+		}
 	}
 
 	if len(keys) == 1 {
@@ -300,7 +369,7 @@ func (r *RepositoryImpl) renameObjects(ctx context.Context, sess *s3Session, dir
 
 	if errCnt > 0 {
 		return directory.UncompletedRename{
-			SourceDirPath:      dir.Path(),
+			SourceDirPath:      srcPath,
 			DestinationDirPath: directory.NewPath(dstDirKey),
 			Wrapped:            fmt.Errorf("%d error(s) occurred while renaming objects", errCnt),
 		}

@@ -18,10 +18,6 @@ func (t Type) AsSuccess() Type {
 	return Type(t.String() + ".success")
 }
 
-func (t Type) AsResume() Type {
-	return Type(t.String() + ".resume")
-}
-
 type Event interface {
 	Type() Type
 	Context() context.Context

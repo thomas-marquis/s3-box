@@ -94,6 +94,8 @@ type ExplorerViewModel interface {
 	RenameFile(file *directory.File, newName string)
 
 	Validate(dir *directory.Directory, reason event.Event, validated bool)
+
+	ResumeRename(dir *directory.Directory)
 }
 
 type explorerViewModelImpl struct {
@@ -606,14 +608,28 @@ func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 
 func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
 	e := evt.(directory.RenameFailureEvent)
+	dir := e.Directory()
+
 	err := fmt.Errorf("error renaming directory: %w", e.Error())
-	if err := e.Directory().Notify(e); err != nil {
+	if err := dir.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}
 	v.notifier.NotifyError(err)
 	v.errorMessage.Set(err.Error()) //nolint:errcheck
 	v.triggerStateListeners()
+}
+
+func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) {
+	if dir.Status() == nil {
+		return
+	}
+	status, ok := dir.Status().(directory.RenamePendingStatus)
+	if !ok {
+		return
+	}
+
+	v.bus.Publish(directory.NewRenameResumeEvent(dir, status.IsSourceDir, status.OtherDirPath))
 }
 
 func (v *explorerViewModelImpl) RenameFile(file *directory.File, newName string) {
@@ -776,7 +792,7 @@ func (v *explorerViewModelImpl) addNewFileToTree(fileToAdd *directory.File) erro
 	}
 
 	newFileNode := node.NewFileNode(fileToAdd)
-	if err := v.tree.Prepend(fileToAdd.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
+	if err := v.tree.Append(fileToAdd.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
 		return fmt.Errorf("error appending file to the tree: %w", err)
 	}
 	return nil
