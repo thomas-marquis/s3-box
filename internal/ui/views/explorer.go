@@ -75,6 +75,14 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 		vm.InfoMessage().Set("") //nolint:errcheck
 	}))
 
+	go func() {
+		for evt := range vm.PendingUserValidations() {
+			dialog.ShowConfirm("It's up to you!", evt.Message(), func(validated bool) {
+				vm.Validate(evt.Directory(), evt.Reason(), validated)
+			}, appCtx.Window())
+		}
+	}()
+
 	detailsContainer := container.NewVBox()
 	fileDetails := widget.NewFileDetails(appCtx)
 	dirDetails := widget.NewDirectoryDetails(appCtx)

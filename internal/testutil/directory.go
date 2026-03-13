@@ -38,11 +38,10 @@ func NewDirectory(t *testing.T, name string, parent directory.Path) *directory.D
 func AddFileToDirectory(t *testing.T, dir *directory.Directory, name string) *directory.File {
 	t.Helper()
 
-	_, err := dir.NewFile(name, false)
+	fEvt, err := dir.NewFile(name, false)
 	require.NoError(t, err)
 
-	f, err := directory.NewFile(name, dir.Path())
-	require.NoError(t, err)
+	f := fEvt.File()
 
 	err = dir.Notify(directory.NewFileCreatedSuccessEvent(dir, f))
 	require.NoError(t, err)

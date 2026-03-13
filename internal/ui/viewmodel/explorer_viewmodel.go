@@ -19,6 +19,10 @@ import (
 	"fyne.io/fyne/v2/storage"
 )
 
+const (
+	maxPendingUserValidations = 30
+)
+
 // ExplorerViewModel represents the view model for the file explorer interface.
 // It handles the tree structure display, file operations, and directory management
 // while maintaining the connection with the underlying storage system.
@@ -45,6 +49,8 @@ type ExplorerViewModel interface {
 	SelectedDirectory() *directory.Directory
 	SetSelectedDirectory(dir *directory.Directory)
 	IsSelectedDirectoryLoading() binding.Bool
+
+	PendingUserValidations() <-chan directory.UserValidationEvent
 
 	////////////////////////
 	// Action methods
@@ -83,6 +89,8 @@ type ExplorerViewModel interface {
 
 	// RenameFile renames a file
 	RenameFile(file *directory.File, newName string)
+
+	Validate(dir *directory.Directory, reason event.Event, validated bool)
 }
 
 type explorerViewModelImpl struct {
@@ -101,6 +109,8 @@ type explorerViewModelImpl struct {
 	selectedDirectory    *directory.Directory
 	isSelectedDirLoading binding.Bool
 
+	pendingUserValidations chan directory.UserValidationEvent
+
 	notifier notification.Repository
 	bus      event.Bus
 }
@@ -117,14 +127,15 @@ func NewExplorerViewModel(
 			errorMessage: binding.NewString(),
 			infoMessage:  binding.NewString(),
 		},
-		settingsVm:            settingsVm,
-		directoryRepository:   directoryRepository,
-		notifier:              notifier,
-		selectedConnectionVal: initialConnection,
-		selectedConnection:    binding.NewUntyped(),
-		bus:                   bus,
-		selectedDirectory:     nil,
-		isSelectedDirLoading:  binding.NewBool(),
+		settingsVm:             settingsVm,
+		directoryRepository:    directoryRepository,
+		notifier:               notifier,
+		selectedConnectionVal:  initialConnection,
+		selectedConnection:     binding.NewUntyped(),
+		bus:                    bus,
+		selectedDirectory:      nil,
+		isSelectedDirLoading:   binding.NewBool(),
+		pendingUserValidations: make(chan directory.UserValidationEvent, maxPendingUserValidations),
 	}
 
 	if err := v.initializeTreeData(initialConnection); err != nil {
@@ -157,9 +168,27 @@ func NewExplorerViewModel(
 		On(event.Is(directory.RenameEventType.AsFailure()), v.handleRenameDirectoryFailure).
 		On(event.Is(directory.FileRenamedEventType.AsSuccess()), v.handleRenameFileSuccess).
 		On(event.Is(directory.FileRenamedEventType.AsFailure()), v.handleRenameFileFailure).
+		On(event.Is(directory.UserValidationEventType), v.handleUserValidationRequest).
 		ListenWithWorkers(1)
 
 	return v
+}
+
+func (v *explorerViewModelImpl) Validate(dir *directory.Directory, reason event.Event, validated bool) {
+	v.bus.Publish(directory.NewUserValidationSuccessEvent(dir, reason, validated))
+}
+
+func (v *explorerViewModelImpl) PendingUserValidations() <-chan directory.UserValidationEvent {
+	return v.pendingUserValidations
+}
+
+func (v *explorerViewModelImpl) handleUserValidationRequest(evt event.Event) {
+	e := evt.(directory.UserValidationEvent)
+	//dir := e.Directory()
+	//reason := e.Reason()
+	//msg := e.Message()
+
+	v.pendingUserValidations <- e
 }
 
 func (v *explorerViewModelImpl) Tree() binding.Tree[node.Node] {

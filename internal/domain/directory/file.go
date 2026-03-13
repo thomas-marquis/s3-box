@@ -111,3 +111,7 @@ func (f *File) Rename(newName string) (FileRenamedEvent, error) {
 
 	return NewFileRenamedEvent(nil, f, oldName), nil
 }
+
+func (f *File) updateDirectoryPath(newPath Path) {
+	f.directoryPath = newPath
+}

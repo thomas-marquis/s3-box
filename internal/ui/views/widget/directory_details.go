@@ -137,6 +137,8 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 
 	if dir.IsRoot() {
 		w.renameAction.Disable()
+	} else {
+		w.renameAction.Enable()
 	}
 
 	if w.appCtx.ConnectionViewModel().IsReadOnly() {

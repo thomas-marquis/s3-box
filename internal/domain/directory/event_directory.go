@@ -209,11 +209,11 @@ func NewRenameFailureEvent(err error, directory *Directory, newName string) Rena
 }
 
 type withValidationReason struct {
-	evt event.Event
+	reason event.Event
 }
 
 func (e withValidationReason) Reason() event.Event {
-	return e.evt
+	return e.reason
 }
 
 type RenameResumeEvent struct {

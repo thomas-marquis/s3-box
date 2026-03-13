@@ -78,7 +78,7 @@ func TestFile_Rename(t *testing.T) {
 
 		// Then
 		require.NoError(t, err)
-		files, _ := parentDir.Files()
+		files := parentDir.Files()
 		require.Len(t, files, 1)
 		assert.Equal(t, directory.FileName("newname.txt"), files[0].Name())
 	})

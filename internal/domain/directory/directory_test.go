@@ -93,9 +93,9 @@ func TestDirectory_Load(t *testing.T) {
 		err = dir.Notify(successEvt)
 		assert.NoError(t, err)
 
-		resSubDirs, _ := dir.SubDirectories()
+		resSubDirs := dir.SubDirectories()
 		assert.Len(t, resSubDirs, 2)
-		resFiles, _ := dir.Files()
+		resFiles := dir.Files()
 		assert.Len(t, resFiles, 2)
 		assert.True(t, dir.IsLoaded())
 		assert.False(t, dir.IsLoading())
@@ -175,14 +175,14 @@ func TestDirectory_NewFile(t *testing.T) {
 		assert.Equal(t, directory.FileCreatedEventType, evt.Type())
 		assert.Equal(t, dir, evt.Directory())
 		assert.Equal(t, "report.csv", evt.File().Name().String())
-		files, _ := dir.Files()
+		files := dir.Files()
 		require.Len(t, files, 0)
 
 		// Then, when notified of the success
 		successEvt := directory.NewFileCreatedSuccessEvent(dir, evt.File())
 		assert.NoError(t, dir.Notify(successEvt))
 
-		files, _ = dir.Files()
+		files = dir.Files()
 		require.Len(t, files, 1)
 		assert.Equal(t, "report.csv", files[0].Name().String())
 	})
@@ -215,7 +215,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		assert.Equal(t, f1, evt.File())
 
 		assert.NoError(t, dir.Notify(successEvt))
-		resFiles, _ := dir.Files()
+		resFiles := dir.Files()
 		assert.Len(t, resFiles, 1)
 
 		// Then, we recreate the deleted file
@@ -225,7 +225,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		newFileSuccessEvt := directory.NewFileCreatedSuccessEvent(dir, newFileEvt.File())
 		assert.NoError(t, dir.Notify(newFileSuccessEvt))
 
-		resFiles, _ = dir.Files()
+		resFiles = dir.Files()
 		assert.Len(t, resFiles, 2)
 		assert.Equal(t, "main.go", resFiles[1].Name().String())
 	})
@@ -255,7 +255,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		assert.Equal(t, f1, evt.File())
 
 		assert.NoError(t, dir.Notify(successEvt))
-		resFiles, _ := dir.Files()
+		resFiles := dir.Files()
 		assert.Len(t, resFiles, 0)
 
 		// Then, we upload again the deleted file
@@ -265,8 +265,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		uploadedSuccessFileEvt := directory.NewContentUploadedSuccessEvent(dir, uploadFileEvt.Content().File())
 		assert.NoError(t, dir.Notify(uploadedSuccessFileEvt))
 
-		resFiles, _ = dir.Files()
-		assert.Len(t, resFiles, 1)
+		assert.Len(t, dir.Files(), 1)
 		assert.Equal(t, "main.go", resFiles[0].Name().String())
 	})
 
@@ -315,7 +314,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		assert.Equal(t, dir, evt.Parent())
 
 		assert.NoError(t, dir.Notify(failureEvt))
-		resFiles, _ := dir.Files()
+		resFiles := dir.Files()
 		assert.Len(t, resFiles, 2)
 	})
 }
@@ -347,7 +346,7 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 		assert.Equal(t, subDir1.Path(), evt.DeletedDirPath())
 
 		assert.NoError(t, dir.Notify(successEvt))
-		resSubDirs, _ := dir.SubDirectories()
+		resSubDirs := dir.SubDirectories()
 		assert.Len(t, resSubDirs, 1)
 	})
 
@@ -394,7 +393,7 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 		assert.Equal(t, dir, evt.Directory())
 
 		assert.NoError(t, dir.Notify(failureEvt))
-		resSubDirs, _ := dir.SubDirectories()
+		resSubDirs := dir.SubDirectories()
 		assert.Len(t, resSubDirs, 2)
 	})
 }
@@ -424,7 +423,7 @@ func TestDirectory_UploadFile(t *testing.T) {
 		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
-		files, _ := dir.Files()
+		files := dir.Files()
 		require.Len(t, files, 1)
 		assert.Equal(t, "report.csv", files[0].Name().String())
 	})
@@ -458,7 +457,7 @@ func TestDirectory_UploadFile(t *testing.T) {
 		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
-		resFiles, _ := dir.Files()
+		resFiles := dir.Files()
 		require.Len(t, resFiles, 3)
 		assert.Equal(t, "main.go", resFiles[0].Name().String())
 		assert.Equal(t, "readme.md", resFiles[1].Name().String())
@@ -489,7 +488,7 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 		assert.Equal(t, "report.csv", evt.Content().File().Name().String())
 
-		files, _ := dir.Files()
+		files := dir.Files()
 		require.Len(t, files, 1)
 		assert.True(t, files[0].Equal(file))
 		assert.Equal(t, 1337, files[0].SizeBytes())
@@ -655,10 +654,16 @@ func TestDirectory_Rename(t *testing.T) {
 	t.Run("should update sub directories' parent path recursively", func(t *testing.T) {
 		// Given
 		dir := testutil.NewDirectory(t, "oldname", directory.RootPath)
+		f1 := testutil.AddFileToDirectory(t, dir, "f1.txt")
+
 		subdir1 := testutil.AddSubDirectoryToDirectory(t, dir, "sub1")
+		f11 := testutil.AddFileToDirectory(t, subdir1, "f11.txt")
+
 		subdir2 := testutil.AddSubDirectoryToDirectory(t, dir, "sub2")
 
 		subSubDir1 := testutil.AddSubDirectoryToDirectory(t, subdir1, "subsub1")
+		f111 := testutil.AddFileToDirectory(t, subSubDir1, "f111.txt")
+
 		subSubDir2NoLoaded := testutil.AddSubNotLoadedDirectoryToDirectory(t, subdir2, "subsub2")
 
 		require.Equal(t, directory.Path("/oldname/"), dir.Path())
@@ -666,6 +671,10 @@ func TestDirectory_Rename(t *testing.T) {
 		require.Equal(t, directory.Path("/oldname/sub2/"), subdir2.Path())
 		require.Equal(t, directory.Path("/oldname/sub1/subsub1/"), subSubDir1.Path())
 		require.Equal(t, directory.Path("/oldname/sub2/subsub2/"), subSubDir2NoLoaded.Path())
+
+		require.Equal(t, "/oldname/f1.txt", f1.FullPath())
+		require.Equal(t, "/oldname/sub1/f11.txt", f11.FullPath())
+		require.Equal(t, "/oldname/sub1/subsub1/f111.txt", f111.FullPath())
 
 		// When
 		successEvt := directory.NewRenamedSuccessEvent(dir, "newname")
@@ -677,6 +686,10 @@ func TestDirectory_Rename(t *testing.T) {
 		assert.Equal(t, directory.Path("/newname/sub2/"), subdir2.Path())
 		assert.Equal(t, directory.Path("/newname/sub1/subsub1/"), subSubDir1.Path())
 		assert.Equal(t, directory.Path("/newname/sub2/subsub2/"), subSubDir2NoLoaded.Path())
+
+		assert.Equal(t, "/newname/f1.txt", f1.FullPath())
+		assert.Equal(t, "/newname/sub1/f11.txt", f11.FullPath())
+		assert.Equal(t, "/newname/sub1/subsub1/f111.txt", f111.FullPath())
 	})
 }
 

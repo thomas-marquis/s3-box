@@ -277,6 +277,10 @@ func (d *Directory) uploadFile(localPath string, overwrite bool) (ContentUploade
 func (d *Directory) updateParentPath(newParentPath Path) {
 	d.parentPath = newParentPath
 	d.path = newParentPath.NewSubPath(d.name)
+	for _, file := range d.currentState.Files() {
+		file.updateDirectoryPath(d.path)
+	}
+
 	subDirs := d.currentState.SubDirectories()
 	for _, subDir := range subDirs {
 		subDir.updateParentPath(d.path)

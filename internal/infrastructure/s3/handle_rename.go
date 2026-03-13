@@ -200,6 +200,9 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 	if !ok {
 		return
 	}
+	if !uve.Validated() {
+		return
+	}
 
 	dir := re.Directory()
 	newName := re.NewName()
