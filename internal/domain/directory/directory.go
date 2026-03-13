@@ -230,7 +230,11 @@ func (d *Directory) IsLoading() bool {
 }
 
 func (d *Directory) IsLoaded() bool {
-	return d.currentState.Type() == stateTypeLoaded || d.currentState.Type() == stateTypeResumable
+	return d.currentState.Type() == stateTypeLoaded
+}
+
+func (d *Directory) IsResumable() bool {
+	return d.currentState.Type() == stateTypeResumable
 }
 
 func (d *Directory) Load() (LoadEvent, error) {

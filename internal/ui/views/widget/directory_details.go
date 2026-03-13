@@ -156,7 +156,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.renameAction.Enable()
 	}
 
-	if w.appCtx.ConnectionViewModel().IsReadOnly() || !dir.IsLoaded() {
+	if w.appCtx.ConnectionViewModel().IsReadOnly() || !dir.IsLoaded() || dir.IsResumable() {
 		w.newDirectoryAction.Disable()
 		w.uploadAction.Disable()
 		w.createFileAction.Disable()
@@ -165,7 +165,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.newDirectoryAction.Enable()
 		w.uploadAction.Enable()
 		w.createFileAction.Enable()
-		w.renameAction.Enable()
 	}
 }
 
