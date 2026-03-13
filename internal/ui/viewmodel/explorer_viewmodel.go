@@ -490,19 +490,6 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 	v.bus.Publish(evt)
 }
 
-//func moveSubTree(tree binding.Tree[node.Node], oldPath, newPath directory.Path) error {
-//	childIds := tree.ChildIDs(oldPath.String())
-//	for _, cid := range childIds {
-//
-//	}
-//
-//	if err := tree.Remove(oldPath.String()); err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
-
 func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 	e := evt.(directory.RenamedSuccessEvent)
 	dir := e.Directory()
@@ -513,47 +500,24 @@ func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 		return
 	}
 
-	// Remove the old node from the tree
 	if err := v.tree.Remove(oldPath); err != nil {
 		v.notifier.NotifyError(fmt.Errorf("error removing old directory node: %w", err))
 		return
 	}
 
-	// Add the new node to the tree
 	parentNodeItem, err := v.tree.GetValue(dir.ParentPath().String())
 	if err != nil {
 		v.notifier.NotifyError(fmt.Errorf("error getting parent directory: %w", err))
 		return
 	}
 	newDirNode := node.NewDirectoryNode(dir)
-	if err := v.tree.Append(parentNodeItem.(node.DirectoryNode).ID(), newDirNode.ID(), newDirNode); err != nil {
+	if err := v.tree.Prepend(parentNodeItem.(node.DirectoryNode).ID(), newDirNode.ID(), newDirNode); err != nil {
 		v.notifier.NotifyError(fmt.Errorf("error adding new directory node: %w", err))
 		return
 	}
-	/**
 
-	// recursively move the content
-	movSubtree := func(oldPath, newPath string) error {
-		for child := range v.tree.ChildIDs(oldPath)
-	}
-
-
-	// Fill the subtree with the directory's contents if it's loaded
-	if dir.IsLoaded() {
-		if err := v.fillSubTree(dir); err != nil {
-			v.notifier.NotifyError(fmt.Errorf("error filling sub tree for renamed directory: %w", err))
-		}
-	}
-
-	oldNode, err := v.tree.GetValue(oldPath)
-	if err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error getting old directory node: %w", err))
-		return
-	}
-	**/
-
-	if err := v.tree.SetValue(oldPath, node.NewDirectoryNode(dir)); err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error updating directory node in tree: %w", err))
+	if err := v.fillSubTree(dir); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error filling sub tree for renamed directory: %w", err))
 		return
 	}
 
@@ -706,30 +670,24 @@ func (v *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection
 }
 
 func (v *explorerViewModelImpl) fillSubTree(dir *directory.Directory) error {
-	files, err := dir.Files()
-	if err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error getting files: %w", err))
-		return err
-	}
+	files := dir.Files()
+	subDirs := dir.SubDirectories()
 
-	subDirs, err := dir.SubDirectories()
-	if err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error getting subdirectories: %w", err))
-		return err
+	for _, subDir := range subDirs {
+		subDirNode := node.NewDirectoryNode(subDir)
+		if err := v.tree.Append(dir.Path().String(), subDirNode.ID(), subDirNode); err != nil {
+			v.notifier.NotifyError(fmt.Errorf("error appending subdirectory to tree: %w", err))
+			continue
+		}
+		if err := v.fillSubTree(subDir); err != nil {
+			return err
+		}
 	}
 
 	for _, file := range files {
 		fileNode := node.NewFileNode(file)
 		if err := v.tree.Append(dir.Path().String(), fileNode.ID(), fileNode); err != nil {
 			v.notifier.NotifyError(fmt.Errorf("error appending file to tree: %w", err))
-			continue
-		}
-	}
-
-	for _, subDirPath := range subDirs {
-		subDirNode := node.NewDirectoryNode(subDirPath)
-		if err := v.tree.Append(dir.Path().String(), subDirNode.ID(), subDirNode); err != nil {
-			v.notifier.NotifyError(fmt.Errorf("error appending subdirectory to tree: %w", err))
 			continue
 		}
 	}
@@ -744,7 +702,7 @@ func (v *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Direct
 		return fmt.Errorf("impossible to retrieve the parent directory from path: %s", parentPath)
 	}
 	childNode := node.NewDirectoryNode(dirToAdd)
-	if err := v.tree.Append(parentNodeItem.(node.DirectoryNode).ID(), childNode.ID(), childNode); err != nil {
+	if err := v.tree.Prepend(parentNodeItem.(node.DirectoryNode).ID(), childNode.ID(), childNode); err != nil {
 		return fmt.Errorf("error appending directory to tree: %w", err)
 	}
 	return nil

@@ -24,16 +24,16 @@ func (s *loadedState) Type() StateType {
 	return stateTypeLoaded
 }
 
+func (s *loadedState) SubDirectories() []*Directory {
+	return s.subDirs
+}
+
+func (s *loadedState) Files() []*File {
+	return s.files
+}
+
 func (s *loadedState) Load() (LoadEvent, error) {
 	return LoadEvent{}, NewError(s.d, "already loaded")
-}
-
-func (s *loadedState) SubDirectories() ([]*Directory, error) {
-	return s.subDirs, nil
-}
-
-func (s *loadedState) Files() ([]*File, error) {
-	return s.files, nil
 }
 
 func (s *loadedState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {

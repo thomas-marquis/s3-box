@@ -16,8 +16,8 @@ type state interface {
 	Load() (LoadEvent, error)
 	Status() Status
 	Resume() (event.Event, error)
-	Files() ([]*File, error)
-	SubDirectories() ([]*Directory, error)
+	Files() []*File
+	SubDirectories() []*Directory
 	UploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error)
 	Rename(newName string) (RenameEvent, error)
 	Notify(event.Event) error
@@ -33,12 +33,12 @@ func (s *baseState) Clone() baseState {
 	return baseState{d: s.d, files: s.files, subDirs: s.subDirs}
 }
 
-func (s *baseState) SubDirectories() ([]*Directory, error) {
-	return s.subDirs, nil
+func (s *baseState) SubDirectories() []*Directory {
+	return make([]*Directory, 0)
 }
 
-func (s *baseState) Files() ([]*File, error) {
-	return s.files, nil
+func (s *baseState) Files() []*File {
+	return make([]*File, 0)
 }
 
 func (s *baseState) UploadFile(string, bool) (ContentUploadedEvent, error) {

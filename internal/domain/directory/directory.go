@@ -51,10 +51,7 @@ func New(
 }
 
 func (d *Directory) IsFileExists(name FileName) bool {
-	files, err := d.currentState.Files()
-	if err != nil {
-		return false
-	}
+	files := d.currentState.Files()
 	for _, file := range files {
 		if file.Name() == name {
 			return true
@@ -68,10 +65,7 @@ func (d *Directory) IsRoot() bool {
 }
 
 func (d *Directory) GetFileByName(name FileName) (*File, error) {
-	files, err := d.currentState.Files()
-	if err != nil {
-		return nil, err
-	}
+	files := d.currentState.Files()
 	for _, file := range files {
 		if file.Name() == name {
 			return file, nil
@@ -94,11 +88,11 @@ func (d *Directory) ParentPath() Path {
 	return d.parentPath
 }
 
-func (d *Directory) SubDirectories() ([]*Directory, error) { // TODO: to remove
+func (d *Directory) SubDirectories() []*Directory {
 	return d.currentState.SubDirectories()
 }
 
-func (d *Directory) Files() ([]*File, error) {
+func (d *Directory) Files() []*File {
 	return d.currentState.Files()
 }
 
@@ -110,11 +104,7 @@ func (d *Directory) ConnectionID() connection_deck.ConnectionID {
 // returns an error when the subdirectory already exists
 func (d *Directory) NewSubDirectory(name string) (CreatedEvent, error) {
 	path := d.path.NewSubPath(name)
-	subDirs, err := d.currentState.SubDirectories()
-	if err != nil {
-		return CreatedEvent{}, fmt.Errorf("failed to get subdirectories: %w", err)
-	}
-	for _, subDir := range subDirs {
+	for _, subDir := range d.currentState.SubDirectories() {
 		if subDir.Path() == path {
 			return CreatedEvent{}, fmt.Errorf("subdirectory %s already exists", path)
 		}
@@ -145,10 +135,7 @@ func (d *Directory) NewFile(name string, overwrite bool, opts ...FileOption) (Fi
 }
 
 func (d *Directory) RemoveFile(name FileName) (FileDeletedEvent, error) {
-	files, err := d.currentState.Files()
-	if err != nil {
-		return FileDeletedEvent{}, fmt.Errorf("failed to get files: %w", err)
-	}
+	files := d.currentState.Files()
 	for _, file := range files {
 		if file.Name() == name {
 			return NewFileDeletedEvent(d.connectionID, d, file), nil
@@ -159,10 +146,7 @@ func (d *Directory) RemoveFile(name FileName) (FileDeletedEvent, error) {
 
 func (d *Directory) RemoveSubDirectory(name string) (DeletedEvent, error) {
 	path := d.parentPath.NewSubPath(name)
-	subDirectories, err := d.currentState.SubDirectories()
-	if err != nil {
-		return DeletedEvent{}, fmt.Errorf("failed to get subdirectories: %w", err)
-	}
+	subDirectories := d.currentState.SubDirectories()
 	for _, sd := range subDirectories {
 		if sd.Path() == path {
 			return NewDeletedEvent(d, path), nil
@@ -199,11 +183,11 @@ func (d *Directory) Equal(other *Directory) bool {
 		return false
 	}
 
-	subDirectories, _ := d.currentState.SubDirectories() //nolint:errcheck
-	files, _ := d.currentState.Files()                   //nolint:errcheck
+	subDirectories := d.currentState.SubDirectories()
+	files := d.currentState.Files()
 
-	otherSubDirectories, _ := other.currentState.SubDirectories()
-	otherFiles, _ := other.currentState.Files()
+	otherSubDirectories := other.currentState.SubDirectories()
+	otherFiles := other.currentState.Files()
 
 	if len(subDirectories) != len(otherSubDirectories) {
 		return false
@@ -293,10 +277,7 @@ func (d *Directory) uploadFile(localPath string, overwrite bool) (ContentUploade
 func (d *Directory) updateParentPath(newParentPath Path) {
 	d.parentPath = newParentPath
 	d.path = newParentPath.NewSubPath(d.name)
-	subDirs, err := d.currentState.SubDirectories()
-	if err != nil {
-		return
-	}
+	subDirs := d.currentState.SubDirectories()
 	for _, subDir := range subDirs {
 		subDir.updateParentPath(d.path)
 	}

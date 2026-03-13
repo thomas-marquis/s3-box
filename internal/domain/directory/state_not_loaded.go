@@ -24,14 +24,6 @@ func (s *notLoadedState) Notify(event.Event) error {
 	return nil
 }
 
-func (s *notLoadedState) SubDirectories() ([]*Directory, error) {
-	return nil, ErrNotLoaded
-}
-
-func (s *notLoadedState) Files() ([]*File, error) {
-	return nil, ErrNotLoaded
-}
-
 func (s *notLoadedState) Status() Status {
 	return s.status
 }

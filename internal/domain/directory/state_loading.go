@@ -58,11 +58,3 @@ func (s *loadingState) Notify(evt event.Event) error {
 func (s *loadingState) Open() {}
 
 func (s *loadingState) Close() {}
-
-func (s *loadingState) SubDirectories() ([]*Directory, error) {
-	return nil, ErrNotLoaded
-}
-
-func (s *loadingState) Files() ([]*File, error) {
-	return nil, ErrNotLoaded
-}
