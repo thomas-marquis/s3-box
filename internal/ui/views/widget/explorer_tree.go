@@ -16,9 +16,12 @@ import (
 
 type ExplorerTree struct {
 	widget.BaseWidget
+
 	appCtx      appcontext.AppContext
 	onFileClick func(file *directory.File)
 	onDirClick  func(directory *directory.Directory)
+
+	tree *widget.Tree
 }
 
 func NewExplorerTree(
@@ -47,11 +50,17 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 		treeData,
 		func(branch bool) fyne.CanvasObject {
 			displayLabel := widget.NewLabel("")
+
 			icon := widget.NewIcon(theme.FolderIcon())
 			icon.Hide()
+
 			loading := widget.NewIcon(theme.ViewRefreshIcon())
 			loading.Hide()
-			return container.NewHBox(icon, displayLabel, loading)
+
+			status := widget.NewLabel("")
+			status.Hide()
+
+			return container.NewHBox(icon, displayLabel, loading, status)
 		},
 		func(i binding.DataItem, branch bool, o fyne.CanvasObject) {
 			nodeItem, err := i.(binding.Item[node.Node]).Get()
@@ -63,6 +72,7 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 			icon := c.Objects[0].(*widget.Icon)
 			displayLabel := c.Objects[1].(*widget.Label)
 			loading := c.Objects[2].(*widget.Icon)
+			status := c.Objects[3].(*widget.Label)
 
 			displayLabel.SetText(nodeItem.DisplayName())
 
@@ -71,6 +81,14 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 				icon.Show()
 			} else {
 				icon.Hide()
+			}
+
+			if s := nodeItem.StatusTitle(); s != "" {
+				status.SetText("(" + s + ")")
+				status.Show()
+			} else {
+				status.SetText("")
+				status.Hide()
 			}
 
 			if dirNode, ok := nodeItem.(node.DirectoryNode); ok {
@@ -95,26 +113,32 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 			return
 		}
 
-		switch nodeItem.NodeType() {
-		case node.FolderNodeType:
-			dirNode := nodeItem.(node.DirectoryNode)
-			if !dirNode.Directory().IsLoaded() && !dirNode.Directory().IsLoading() {
-				if err := vm.LoadDirectory(dirNode); err != nil {
+		switch n := nodeItem.(type) {
+		case node.DirectoryNode:
+			if !n.Directory().IsLoaded() && !n.Directory().IsLoading() {
+				if err := vm.LoadDirectory(n); err != nil {
 					dialog.ShowError(err, w.appCtx.Window())
 					return
 				}
 				tree.OpenBranch(uid)
 			}
-			dir := dirNode.Directory()
+			dir := n.Directory()
 			w.onDirClick(dir)
 
-		case node.FileNodeType:
-			file := (nodeItem.(node.FileNode)).File()
-			w.onFileClick(file)
+		case node.FileNode:
+			w.onFileClick(n.File())
 		}
 	}
 
+	w.tree = tree
+
 	return widget.NewSimpleRenderer(tree)
+}
+
+func (w *ExplorerTree) Refresh() {
+	if w.tree != nil {
+		w.tree.Refresh()
+	}
 }
 
 func (w *ExplorerTree) reopenOpenedDirectories(tree *widget.Tree) {
@@ -126,8 +150,7 @@ func (w *ExplorerTree) reopenOpenedDirectories(tree *widget.Tree) {
 	}
 
 	for key, n := range treeContent {
-		if n.NodeType() == node.FolderNodeType {
-			dirNode := n.(node.DirectoryNode)
+		if dirNode, ok := n.(node.DirectoryNode); ok {
 			if dirNode.Directory().IsOpened() {
 				tree.OpenBranch(key)
 			}
@@ -143,10 +166,10 @@ func (w *ExplorerTree) makeOnBranchCallback(shouldOpen bool, data binding.Tree[n
 			return
 		}
 
-		if nodeItem.NodeType() != node.FolderNodeType {
+		dirNode, ok := nodeItem.(node.DirectoryNode)
+		if !ok {
 			return
 		}
-		dirNode := nodeItem.(node.DirectoryNode)
 		if shouldOpen {
 			dirNode.Directory().Open()
 		} else {

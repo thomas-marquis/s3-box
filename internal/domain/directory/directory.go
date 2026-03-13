@@ -253,6 +253,8 @@ func (d *Directory) Resume() (event.Event, error) {
 	return d.currentState.Resume()
 }
 
+// Status returns the current status of the directory.
+// Could be nil if the directory hasn't any status.
 func (d *Directory) Status() Status {
 	return d.currentState.Status()
 }

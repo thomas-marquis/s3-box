@@ -30,7 +30,6 @@ func NewDirectoryNode(dir *directory.Directory, opts ...Option) DirectoryNode {
 	b := baseNode{
 		id:          path.String(),
 		displayName: path.DirectoryName(),
-		nodeType:    FolderNodeType,
 		icon:        icon,
 	}
 
@@ -46,4 +45,20 @@ func NewDirectoryNode(dir *directory.Directory, opts ...Option) DirectoryNode {
 
 func (n *directoryNodeImpl) Directory() *directory.Directory {
 	return n.dir
+}
+
+func (n *directoryNodeImpl) StatusMessage() string {
+	status := n.dir.Status()
+	if status == nil {
+		return ""
+	}
+	return status.Message()
+}
+
+func (n *directoryNodeImpl) StatusTitle() string {
+	status := n.dir.Status()
+	if status == nil {
+		return ""
+	}
+	return status.Title()
 }

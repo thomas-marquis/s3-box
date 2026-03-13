@@ -22,7 +22,8 @@ type DirectoryDetails struct {
 
 	appCtx appcontext.AppContext
 
-	pathLabel *widget.Label
+	pathLabel   *widget.Label
+	statusLabel *OpenableLabel
 
 	toolbar            *widget.Toolbar
 	newDirectoryAction *ToolbarButton
@@ -35,6 +36,11 @@ type DirectoryDetails struct {
 func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	pathLabel := widget.NewLabel("")
 	pathLabel.Selectable = true
+
+	statusLabel := NewOpenableLabel("", appCtx.Window())
+	statusLabel.Selectable = true
+	statusLabel.Alignment = fyne.TextAlignLeading
+	statusLabel.Truncation = fyne.TextTruncateEllipsis
 
 	createDirAction := NewToolbarButton("New empty directory", theme.FolderNewIcon(), func() {})
 	createFileAction := NewToolbarButton("New empty file", theme.ContentAddIcon(), func() {})
@@ -52,6 +58,7 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	w := &DirectoryDetails{
 		appCtx:             appCtx,
 		pathLabel:          pathLabel,
+		statusLabel:        statusLabel,
 		toolbar:            toolbar,
 		newDirectoryAction: createDirAction,
 		uploadAction:       uploadAction,
@@ -96,6 +103,7 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 			copyPath),
 		container.New(
 			layout.NewCustomPaddedLayout(10, 20, 0, 0),
+			w.statusLabel,
 			widget.NewSeparator(),
 		),
 		container.New(
@@ -107,7 +115,6 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 
 func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	vm := w.appCtx.ExplorerViewModel()
-	vm.SetSelectedDirectory(dir)
 
 	if dir.IsLoading() {
 		w.loadingBar.Show()
@@ -130,6 +137,14 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	}
 	w.pathLabel.SetText(path)
 
+	if dir.Status() != nil {
+		w.statusLabel.SetText(dir.Status().Message())
+		w.statusLabel.Show()
+	} else {
+		w.statusLabel.SetText("")
+		w.statusLabel.Hide()
+	}
+
 	w.uploadAction.SetOnTapped(w.makeOnUpload(vm, dir))
 	w.newDirectoryAction.SetOnTapped(w.makeOnCreateDirectory(vm, dir))
 	w.createFileAction.SetOnTapped(w.makeOnCreateFile(vm, dir))
@@ -141,11 +156,16 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.renameAction.Enable()
 	}
 
-	if w.appCtx.ConnectionViewModel().IsReadOnly() {
+	if w.appCtx.ConnectionViewModel().IsReadOnly() || !dir.IsLoaded() {
 		w.newDirectoryAction.Disable()
 		w.uploadAction.Disable()
 		w.createFileAction.Disable()
 		w.renameAction.Disable()
+	} else {
+		w.newDirectoryAction.Enable()
+		w.uploadAction.Enable()
+		w.createFileAction.Enable()
+		w.renameAction.Enable()
 	}
 }
 
