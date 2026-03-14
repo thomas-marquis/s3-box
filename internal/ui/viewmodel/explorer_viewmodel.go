@@ -597,11 +597,6 @@ func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 	}
 	newDirNode := n.(node.DirectoryNode)
 
-	if err := v.fillSubTree(dir); err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error filling sub tree for renamed directory: %w", err))
-		return
-	}
-
 	if err := v.LoadDirectory(newDirNode); err != nil {
 		v.notifier.NotifyError(fmt.Errorf("error loading the renamed directory: %w", err))
 	}
