@@ -243,25 +243,21 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 func (r *RepositoryImpl) handleRenameResume(evt event.Event) {
 	e := evt.(directory.RenameResumeEvent)
 
-	dir := e.Directory()
+	srcDir := e.Directory()
+	dstDir := e.DstDir()
 
-	var srcPath, dstPath directory.Path
-	if e.IsSourceDir() {
-		srcPath = dir.Path()
-		dstPath = e.OtherDirPath()
-	} else {
-		srcPath = e.OtherDirPath()
-		dstPath = dir.Path()
-	}
+	srcPath := srcDir.Path()
+	dstPath := dstDir.Path()
+
 	ctx := e.Context()
 	newName := dstPath.DirectoryName()
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
-		r.bus.Publish(directory.NewRenameFailureEvent(err, dir, newName))
+		r.bus.Publish(directory.NewRenameFailureEvent(err, srcDir, newName))
 	}
 
-	sess, err := r.getSession(ctx, dir.ConnectionID())
+	sess, err := r.getSession(ctx, srcDir.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
@@ -297,7 +293,7 @@ func (r *RepositoryImpl) handleRenameResume(evt event.Event) {
 		return
 	}
 
-	r.bus.Publish(directory.NewRenamedSuccessEvent(dir, newName))
+	r.bus.Publish(directory.NewRenamedSuccessEvent(srcDir, newName))
 }
 
 func (r *RepositoryImpl) renameObjects(

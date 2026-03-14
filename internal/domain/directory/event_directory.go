@@ -220,25 +220,19 @@ func (e withValidationReason) Reason() event.Event {
 type RenameResumeEvent struct {
 	event.BaseEvent
 	withDirectory
-	isSourceDir  bool
-	otherDirPath Path
+	dstDir *Directory
 }
 
-func NewRenameResumeEvent(directory *Directory, isSourceDir bool, otherDirPath Path, opts ...event.Option) RenameResumeEvent {
+func NewRenameResumeEvent(srcDir *Directory, dstDir *Directory, opts ...event.Option) RenameResumeEvent {
 	return RenameResumeEvent{
 		event.NewBaseEvent(RenameResumeEventType, opts...),
-		withDirectory{directory},
-		isSourceDir,
-		otherDirPath,
+		withDirectory{srcDir},
+		dstDir,
 	}
 }
 
-func (e RenameResumeEvent) IsSourceDir() bool {
-	return e.isSourceDir
-}
-
-func (e RenameResumeEvent) OtherDirPath() Path {
-	return e.otherDirPath
+func (e RenameResumeEvent) DstDir() *Directory {
+	return e.dstDir
 }
 
 type UserValidationEvent struct {

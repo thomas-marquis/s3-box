@@ -74,6 +74,15 @@ func (d *Directory) GetFileByName(name FileName) (*File, error) {
 	return nil, ErrNotFound
 }
 
+func (d *Directory) GetSubDirectoryByName(name string) (*Directory, error) {
+	for _, subDir := range d.currentState.SubDirectories() {
+		if subDir.Name() == name {
+			return subDir, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
 // Path acts as the primary and unique entity's ID.
 // A directory path is unique within a given bucket.
 func (d *Directory) Path() Path {

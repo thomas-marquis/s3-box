@@ -95,7 +95,7 @@ type ExplorerViewModel interface {
 
 	Validate(dir *directory.Directory, reason event.Event, validated bool)
 
-	ResumeRename(dir *directory.Directory)
+	ResumeRename(dir *directory.Directory) error
 }
 
 type explorerViewModelImpl struct {
@@ -620,16 +620,37 @@ func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
 	v.triggerStateListeners()
 }
 
-func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) {
+func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) error {
 	if dir.Status() == nil {
-		return
+		return errors.New("nothing to get resumed from")
 	}
 	status, ok := dir.Status().(directory.RenamePendingStatus)
 	if !ok {
-		return
+		return errors.New("this directory is not in a rename pending state")
 	}
 
-	v.bus.Publish(directory.NewRenameResumeEvent(dir, status.IsSourceDir, status.OtherDirPath))
+	var srcDir, dstDir *directory.Directory
+	otherDirPath := status.OtherDirPath
+
+	odNode, err := v.tree.GetValue(otherDirPath.String())
+	if err != nil {
+		return fmt.Errorf("impossible to find the other directory: %w", err) // TODO: give the user an option to deal with it
+	}
+	othDirNode, ok := odNode.(node.DirectoryNode)
+	if !ok {
+		return errors.New("not a directory")
+	}
+
+	if status.IsSourceDir {
+		srcDir = dir
+		dstDir = othDirNode.Directory()
+	} else {
+		srcDir = othDirNode.Directory()
+		dstDir = dir
+	}
+
+	v.bus.Publish(directory.NewRenameResumeEvent(srcDir, dstDir))
+	return nil
 }
 
 func (v *explorerViewModelImpl) RenameFile(file *directory.File, newName string) {

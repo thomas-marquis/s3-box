@@ -40,7 +40,17 @@ func (s *resumableState) Status() Status {
 func (s *resumableState) Resume() (event.Event, error) {
 	switch status := s.currentStatus.(type) {
 	case RenamePendingStatus:
-		return NewRenameResumeEvent(s.d, status.IsSourceDir, status.OtherDirPath), nil
+		var srcDir, dstDir *Directory
+
+		//otherDir, err := s.d.Pa
+
+		if status.IsSourceDir {
+			srcDir = s.d
+		} else {
+			dstDir = s.d
+		}
+
+		return NewRenameResumeEvent(srcDir, dstDir), nil
 	}
 	return nil, nil
 }

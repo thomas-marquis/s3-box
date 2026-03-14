@@ -703,8 +703,8 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint)
 
 	for _, evt := range []directory.RenameResumeEvent{
-		directory.NewRenameResumeEvent(oldDir, true, "/newname/"),
-		directory.NewRenameResumeEvent(newDir, false, "/oldname/"),
+		directory.NewRenameResumeEvent(oldDir, newDir),
+		directory.NewRenameResumeEvent(newDir, oldDir),
 	} {
 		t.Run(fmt.Sprintf("should successfully resume renaming from %s directory when marker files are present", evt.Directory().Name()), func(t *testing.T) {
 			// Given
@@ -760,7 +760,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			require.NoError(t, err)
 
 			// When
-			fakeEventChan <- directory.NewRenameResumeEvent(oldDir, true, "/newname/")
+			fakeEventChan <- evt
 
 			// Then
 			assert.Eventually(t, func() bool {

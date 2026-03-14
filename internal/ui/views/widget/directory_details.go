@@ -198,7 +198,9 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 
 func (w *DirectoryDetails) makeOnResumeRename(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
 	return func() {
-		vm.ResumeRename(dir)
+		if err := vm.ResumeRename(dir); err != nil {
+			dialog.ShowError(err, w.appCtx.Window())
+		}
 	}
 }
 
