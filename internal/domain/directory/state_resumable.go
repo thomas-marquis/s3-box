@@ -30,6 +30,30 @@ func (s *resumableState) UploadFile(localPtah string, overwrite bool) (ContentUp
 }
 
 func (s *resumableState) Notify(evt event.Event) error {
+	switch e := evt.(type) {
+
+	case RenameSuccessEvent:
+		s.d.name = e.NewName()
+		s.d.path = s.d.parent.Path().NewSubPath(e.NewName())
+		for _, file := range s.files {
+			file.updateDirectoryPath(s.d.path)
+		}
+		for _, subDir := range s.subDirs {
+			subDir.updatePath(s.d.path)
+		}
+		s.d.setState(newLoadedState(s.baseState.Clone(), s.subDirs, s.files))
+
+	case RenameFailureEvent:
+		var urErr UncompletedRename
+		if errors.As(e.Error(), &urErr) {
+			status := RenamePendingStatus{
+				CurrentDirectory: s.d,
+				IsSourceDir:      true,
+				OtherDirPath:     s.d.ParentPath().NewSubPath(e.NewName()),
+			}
+			s.d.setState(newResumableState(s.baseState.Clone(), status))
+		}
+	}
 	return nil
 }
 

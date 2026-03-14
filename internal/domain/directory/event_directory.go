@@ -123,28 +123,34 @@ func NewLoadEvent(directory *Directory, opts ...event.Option) LoadEvent {
 	}
 }
 
+type withDirContent struct {
+	files   []*File
+	subDirs []*Directory
+}
+
+func (e withDirContent) Files() []*File {
+	return e.files
+}
+
+func (e withDirContent) SubDirectories() []*Directory {
+	return e.subDirs
+}
+
 type LoadSuccessEvent struct {
 	event.BaseEvent
 	withDirectory
-	files   []*File
-	subDirs []*Directory
+	withDirContent
 }
 
 func NewLoadSuccessEvent(directory *Directory, subDirs []*Directory, files []*File) LoadSuccessEvent {
 	return LoadSuccessEvent{
 		event.NewBaseEvent(LoadEventType.AsSuccess()),
 		withDirectory{directory},
-		files,
-		subDirs,
+		withDirContent{
+			files,
+			subDirs,
+		},
 	}
-}
-
-func (e *LoadSuccessEvent) Files() []*File {
-	return e.files
-}
-
-func (e *LoadSuccessEvent) SubDirectories() []*Directory {
-	return e.subDirs
 }
 
 type LoadFailureEvent struct {
@@ -181,14 +187,14 @@ func NewRenameEvent(directory *Directory, newName string, opts ...event.Option) 
 	}
 }
 
-type RenamedSuccessEvent struct {
+type RenameSuccessEvent struct {
 	event.BaseEvent
 	withDirectory
 	withNewName
 }
 
-func NewRenamedSuccessEvent(directory *Directory, newName string, opts ...event.Option) RenamedSuccessEvent {
-	return RenamedSuccessEvent{
+func NewRenameSuccessEvent(directory *Directory, newName string, opts ...event.Option) RenameSuccessEvent {
+	return RenameSuccessEvent{
 		event.NewBaseEvent(RenameEventType.AsSuccess(), opts...),
 		withDirectory{directory},
 		withNewName{newName},
@@ -209,11 +215,11 @@ func NewRenameFailureEvent(err error, directory *Directory, newName string) Rena
 	}
 }
 
-type withValidationReason struct {
+type withReason struct {
 	reason event.Event
 }
 
-func (e withValidationReason) Reason() event.Event {
+func (e withReason) Reason() event.Event {
 	return e.reason
 }
 
@@ -238,7 +244,7 @@ func (e RenameResumeEvent) DstDir() *Directory {
 type UserValidationEvent struct {
 	event.BaseEvent
 	withDirectory
-	withValidationReason
+	withReason
 	message string
 }
 
@@ -246,7 +252,7 @@ func NewUserValidationEvent(directory *Directory, reason event.Event, msg string
 	return UserValidationEvent{
 		event.NewBaseEvent(UserValidationEventType, opts...),
 		withDirectory{directory},
-		withValidationReason{reason},
+		withReason{reason},
 		msg,
 	}
 }
@@ -258,7 +264,7 @@ func (e UserValidationEvent) Message() string {
 type UserValidationSuccessEvent struct {
 	event.BaseEvent
 	withDirectory
-	withValidationReason
+	withReason
 	validated bool
 }
 
@@ -266,25 +272,11 @@ func NewUserValidationSuccessEvent(directory *Directory, reason event.Event, val
 	return UserValidationSuccessEvent{
 		event.NewBaseEvent(UserValidationEventType.AsSuccess(), opts...),
 		withDirectory{directory},
-		withValidationReason{reason},
+		withReason{reason},
 		validated,
 	}
 }
 
 func (e UserValidationSuccessEvent) Validated() bool {
 	return e.validated
-}
-
-type UserValidationFailureEvent struct {
-	event.BaseErrorEvent
-	withDirectory
-	withValidationReason
-}
-
-func NewUserValidationFailureEvent(err error, directory *Directory, reason event.Event) UserValidationFailureEvent {
-	return UserValidationFailureEvent{
-		event.NewBaseErrorEvent(UserValidationEventType.AsFailure(), err),
-		withDirectory{directory},
-		withValidationReason{reason},
-	}
 }

@@ -33,7 +33,9 @@ func (s *loadedState) Files() []*File {
 }
 
 func (s *loadedState) Load() (LoadEvent, error) {
-	return LoadEvent{}, NewError(s.d, "already loaded")
+	// reload
+	s.d.setState(newLoadingState(s.baseState))
+	return NewLoadEvent(s.d), nil
 }
 
 func (s *loadedState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {
@@ -53,7 +55,7 @@ func (s *loadedState) Rename(newName string) (RenameEvent, error) {
 		return RenameEvent{}, fmt.Errorf("new name must be different from current name %s", s.d.name)
 	}
 
-	// TODO: change state to loading??
+	s.d.setState(newLoadingState(s.baseState))
 	return NewRenameEvent(s.d, newName), nil
 }
 
@@ -90,28 +92,6 @@ func (s *loadedState) Notify(evt event.Event) error {
 		if !s.updateFile(f) {
 			s.files = append(s.files, f)
 		}
-
-	case RenamedSuccessEvent:
-		s.d.name = e.NewName()
-		s.d.path = s.d.parent.Path().NewSubPath(e.NewName())
-		for _, file := range s.files {
-			file.updateDirectoryPath(s.d.path)
-		}
-		for _, subDir := range s.subDirs {
-			subDir.updatePath(s.d.path)
-		}
-
-	case RenameFailureEvent:
-		var urErr UncompletedRename
-		if errors.As(e.Error(), &urErr) {
-			status := RenamePendingStatus{
-				CurrentDirectory: s.d,
-				IsSourceDir:      true,
-				OtherDirPath:     s.d.ParentPath().NewSubPath(e.NewName()),
-			}
-			s.d.setState(newResumableState(s.baseState.Clone(), status))
-		}
-
 	}
 	return nil
 }

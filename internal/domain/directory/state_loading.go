@@ -27,29 +27,68 @@ func (s *loadingState) Load() (LoadEvent, error) {
 func (s *loadingState) Notify(evt event.Event) error {
 	switch e := evt.(type) {
 	case LoadSuccessEvent:
-		s.d.setState(newLoadedState(s.Clone(), e.SubDirectories(), e.Files()))
+		s.d.setState(newLoadedState(s.baseState, e.SubDirectories(), e.Files()))
 
 	case LoadFailureEvent:
 		var urErr UncompletedRename
 		if errors.As(e.Error(), &urErr) {
 			isSrc := s.d.Path() == urErr.SourceDirPath
-			var other Path
+			var otherPath Path
 			if isSrc {
-				other = urErr.DestinationDirPath
+				otherPath = urErr.DestinationDirPath
 			} else {
-				other = urErr.SourceDirPath
-			}
-			status := RenamePendingStatus{
-				CurrentDirectory: s.d,
-				IsSourceDir:      isSrc,
-				OtherDirPath:     other,
+				otherPath = urErr.SourceDirPath
 			}
 
-			s.d.setState(newResumableState(s.baseState.Clone(), status))
+			otherDir, err := s.d.parent.GetSubDirectoryByName(otherPath.DirectoryName())
+			if err == nil && !otherDir.IsResumable() {
+				otherDir.setState(newResumableState(baseState{d: otherDir},
+					RenamePendingStatus{
+						CurrentDirectory: otherDir,
+						IsSourceDir:      !isSrc,
+						OtherDirPath:     s.d.Path(),
+					}))
+			} else if err != nil {
+				if errors.Is(err, ErrNotFound) {
+					// Could append if the other directory has been removed in the meantime.
+					// In such a case, we simply load the directory normally.
+					s.d.setState(newLoadedState(s.baseState, s.subDirs, s.files))
+					return nil
+				}
+				return err
+			}
+
+			s.d.setState(newResumableState(s.baseState, RenamePendingStatus{
+				CurrentDirectory: s.d,
+				IsSourceDir:      isSrc,
+				OtherDirPath:     otherPath,
+			}))
 			return nil
 		}
 
 		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: e.Error()}))
+
+	case RenameSuccessEvent:
+		s.d.name = e.NewName()
+		s.d.path = s.d.parent.Path().NewSubPath(e.NewName())
+		for _, file := range s.files {
+			file.updateDirectoryPath(s.d.path)
+		}
+		for _, subDir := range s.subDirs {
+			subDir.updatePath(s.d.path)
+		}
+		s.d.setState(newLoadedState(s.Clone(), s.subDirs, s.files))
+
+	case RenameFailureEvent:
+		var urErr UncompletedRename
+		if errors.As(e.Error(), &urErr) {
+			status := RenamePendingStatus{
+				CurrentDirectory: s.d,
+				IsSourceDir:      true,
+				OtherDirPath:     s.d.ParentPath().NewSubPath(e.NewName()),
+			}
+			s.d.setState(newResumableState(s.baseState, status))
+		}
 	}
 
 	return nil

@@ -592,7 +592,7 @@ func TestDirectory_Rename(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		successEvt := directory.NewRenamedSuccessEvent(dir, "newname")
+		successEvt := directory.NewRenameSuccessEvent(dir, "newname")
 		err = dir.Notify(successEvt)
 
 		// Then
@@ -627,7 +627,7 @@ func TestDirectory_Rename(t *testing.T) {
 		require.Equal(t, "/oldname/sub1/subsub1/f111.txt", f111.FullPath())
 
 		// When
-		successEvt := directory.NewRenamedSuccessEvent(dir, "newname")
+		successEvt := directory.NewRenameSuccessEvent(dir, "newname")
 		require.NoError(t, dir.Notify(successEvt))
 
 		// Then

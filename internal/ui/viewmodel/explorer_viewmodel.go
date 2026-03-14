@@ -61,7 +61,7 @@ type ExplorerViewModel interface {
 
 	// LoadDirectory sync a directory with the actual s3 one and load its files and children.
 	// If the directory is already open, it will do nothing.
-	LoadDirectory(dirNode node.DirectoryNode) error // TODO: use this method for refreshing the content too
+	LoadDirectory(dirNode node.DirectoryNode) error
 
 	// GetFileContent retrieves the content of the specified file, returning a Content object or an error if the operation fails.
 	GetFileContent(f *directory.File) (*directory.Content, error)
@@ -238,13 +238,9 @@ func (v *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error 
 		return err
 	}
 
-	if dirNode.Directory().IsLoaded() {
-		return nil
-	}
-
 	evt, err := dirNode.Directory().Load()
 	if err != nil {
-		wErr := fmt.Errorf("error loading directory: %w", err)
+		wErr := fmt.Errorf("impossible to (re)load the directory: %w", err)
 		v.notifier.NotifyError(wErr)
 		return wErr
 	}
@@ -571,7 +567,7 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 }
 
 func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
-	e := evt.(directory.RenamedSuccessEvent)
+	e := evt.(directory.RenameSuccessEvent)
 	dir := e.Directory()
 	oldPath := dir.Path().String()
 
@@ -585,20 +581,27 @@ func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 		return
 	}
 
-	parentNodeItem, err := v.tree.GetValue(dir.ParentPath().String())
+	var (
+		n   node.Node
+		err error
+	)
+	n, err = v.tree.GetValue(dir.Path().String())
 	if err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error getting parent directory: %w", err))
-		return
+		n = node.NewDirectoryNode(dir)
+		if err := v.tree.Prepend(dir.ParentPath().String(), n.ID(), n); err != nil {
+			v.notifier.NotifyError(fmt.Errorf("error adding new directory node: %w", err))
+			return
+		}
 	}
-	newDirNode := node.NewDirectoryNode(dir)
-	if err := v.tree.Prepend(parentNodeItem.(node.DirectoryNode).ID(), newDirNode.ID(), newDirNode); err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error adding new directory node: %w", err))
-		return
-	}
+	newDirNode := n.(node.DirectoryNode)
 
 	if err := v.fillSubTree(dir); err != nil {
 		v.notifier.NotifyError(fmt.Errorf("error filling sub tree for renamed directory: %w", err))
 		return
+	}
+
+	if err := v.LoadDirectory(newDirNode); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error loading the renamed directory: %w", err))
 	}
 
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("Directory renamed",

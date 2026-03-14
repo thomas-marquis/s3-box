@@ -228,7 +228,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				e, ok := evt.(directory.RenamedSuccessEvent)
+				e, ok := evt.(directory.RenameSuccessEvent)
 				assert.True(t, ok)
 				assert.Equal(t, originalDir, e.Directory())
 				assert.Equal(t, "newname", e.NewName())
@@ -304,7 +304,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				e, ok := evt.(directory.RenamedSuccessEvent)
+				e, ok := evt.(directory.RenameSuccessEvent)
 				assert.True(t, ok)
 				assert.Equal(t, subdir, e.Directory())
 				assert.Equal(t, "newname", e.NewName())
@@ -382,7 +382,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				e, ok := evt.(directory.RenamedSuccessEvent)
+				e, ok := evt.(directory.RenameSuccessEvent)
 				assert.True(t, ok)
 				assert.Equal(t, dir, e.Directory())
 				assert.Equal(t, "newname", e.NewName())
@@ -658,7 +658,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				e, ok := evt.(directory.RenamedSuccessEvent)
+				e, ok := evt.(directory.RenameSuccessEvent)
 				assert.True(t, ok)
 				assert.Equal(t, dir, e.Directory())
 				assert.Equal(t, "newname", e.NewName())
@@ -747,7 +747,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			done := make(chan struct{})
 			mockBus.EXPECT().
 				Publish(gomock.Cond(func(evt event.Event) bool {
-					e, ok := evt.(directory.RenamedSuccessEvent)
+					e, ok := evt.(directory.RenameSuccessEvent)
 					if ok {
 						assert.Equal(t, "newname", e.NewName())
 						close(done)

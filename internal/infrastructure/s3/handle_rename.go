@@ -175,7 +175,7 @@ func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 			handleError(err)
 			return
 		}
-		r.bus.Publish(directory.NewRenamedSuccessEvent(dir, evt.NewName()))
+		r.bus.Publish(directory.NewRenameSuccessEvent(dir, evt.NewName()))
 	} else {
 		for _, key := range lsSrc.Keys {
 			if isRenameMarkerFile(key) {
@@ -237,7 +237,7 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 		return
 	}
 
-	r.bus.Publish(directory.NewRenamedSuccessEvent(dir, newName))
+	r.bus.Publish(directory.NewRenameSuccessEvent(dir, newName))
 }
 
 func (r *RepositoryImpl) handleRenameResume(evt event.Event) {
@@ -293,7 +293,7 @@ func (r *RepositoryImpl) handleRenameResume(evt event.Event) {
 		return
 	}
 
-	r.bus.Publish(directory.NewRenamedSuccessEvent(srcDir, newName))
+	r.bus.Publish(directory.NewRenameSuccessEvent(srcDir, newName))
 }
 
 func (r *RepositoryImpl) renameObjects(
