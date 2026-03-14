@@ -34,7 +34,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
 		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
 
-		dir := testutil.NewDirectory(t, "mydir", directory.RootPath)
+		dir := testutil.NewLoadedDirectory(t, "mydir", directory.RootPath)
 		newFile, err := directory.NewFile("new_file.txt", dir.Path())
 		require.NoError(t, err)
 

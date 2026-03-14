@@ -45,7 +45,7 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(0).MaxTimes(0)
 		mockNotifRepo.EXPECT().NotifyDebug(gomock.Any()).AnyTimes()
 
-		parentDir := testutil.NewDirectory(t, "mydir", directory.RootPath)
+		parentDir := testutil.NewLoadedDirectory(t, "mydir", directory.RootPath)
 		testutil.AddFileToDirectory(t, parentDir, "original.txt")
 
 		renamedFile, err := directory.NewFile("renamed.txt", parentDir.Path())
@@ -104,7 +104,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 	defer terminate()
 	client := setupS3Client(t, endpoint)
 
-	rootDir := testutil.FakeRootDirectory(t)
+	rootDir := testutil.FakeNotLoadedRootDirectory(t)
 
 	setup := func(baseDirName string) (*directory.Directory, *directory.Directory) {
 		setupS3Bucket(ctx, t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
@@ -116,7 +116,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			{Key: fmt.Sprintf("%s/subdir/originaldir/more-nested.txt", baseDirName), Body: strings.NewReader("more nested content")},
 		})
 
-		baseDir := testutil.NewDirectory(t, baseDirName, rootDir.Path())
+		baseDir := testutil.NewLoadedDirectory(t, baseDirName, rootDir.Path())
 		testutil.AddFileToDirectory(t, baseDir, "file.txt")
 		testutil.AddSubDirectoryToDirectory(t, baseDir, "empty")
 		subDir := testutil.AddSubDirectoryToDirectory(t, baseDir, "subdir")
@@ -351,7 +351,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 
 	t.Run("should rename empty directory directly without validation", func(t *testing.T) {
 		// Given
-		dir := testutil.NewDirectory(t, "empty", directory.NewPath("base10"))
+		dir := testutil.NewLoadedDirectory(t, "empty", directory.NewPath("base10"))
 
 		setupS3Bucket(context.TODO(), t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
 			{Key: "base10/empty/", Body: strings.NewReader("")},
@@ -627,7 +627,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 
 	t.Run("should rename with default grants when user doesn't have GetObjectACL permission", func(t *testing.T) {
 		// Given
-		dir := testutil.NewDirectory(t, "empty", directory.NewPath("base11"))
+		dir := testutil.NewLoadedDirectory(t, "empty", directory.NewPath("base11"))
 
 		setupS3Bucket(context.TODO(), t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
 			{Key: "base11/empty/", Body: strings.NewReader("")},
@@ -698,8 +698,8 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 	defer terminate()
 	client := setupS3Client(t, endpoint)
 
-	oldDir := testutil.NewDirectory(t, "oldname", directory.RootPath)
-	newDir := testutil.NewDirectory(t, "newname", directory.RootPath)
+	oldDir := testutil.NewLoadedDirectory(t, "oldname", directory.RootPath)
+	newDir := testutil.NewLoadedDirectory(t, "newname", directory.RootPath)
 	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint)
 
 	for _, evt := range []directory.RenameResumeEvent{

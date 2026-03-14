@@ -5,16 +5,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/testutil"
 )
 
 func TestFile_Rename(t *testing.T) {
 	t.Run("should rename file and emit event", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		parentDir, err := directory.New(connID, "parent", directory.RootPath)
-		require.NoError(t, err)
+		parentDir := testutil.NewNotLoadedDirectory(t, "parent", directory.RootPath)
 
 		file, err := directory.NewFile("oldname.txt", parentDir.Path())
 		require.NoError(t, err)
@@ -31,9 +29,7 @@ func TestFile_Rename(t *testing.T) {
 
 	t.Run("should return error when new name is invalid", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		parentDir, err := directory.New(connID, "parent", directory.RootPath)
-		require.NoError(t, err)
+		parentDir := testutil.NewNotLoadedDirectory(t, "parent", directory.RootPath)
 
 		file, err := directory.NewFile("oldname.txt", parentDir.Path())
 		require.NoError(t, err)
@@ -56,9 +52,7 @@ func TestFile_Rename(t *testing.T) {
 
 	t.Run("should update file in directory on rename success event", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		parentDir, err := directory.New(connID, "parent", directory.RootPath)
-		require.NoError(t, err)
+		parentDir := testutil.NewNotLoadedDirectory(t, "parent", directory.RootPath)
 
 		file, err := directory.NewFile("oldname.txt", parentDir.Path())
 		require.NoError(t, err)

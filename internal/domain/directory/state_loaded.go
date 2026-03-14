@@ -45,7 +45,7 @@ func (s *loadedState) Rename(newName string) (RenameEvent, error) {
 		return RenameEvent{}, errors.New("cannot rename root directory")
 	}
 
-	if err := validateName(newName, s.d.parentPath); err != nil {
+	if err := validateName(newName, s.d.parent.Path()); err != nil {
 		return RenameEvent{}, err
 	}
 
@@ -93,12 +93,12 @@ func (s *loadedState) Notify(evt event.Event) error {
 
 	case RenamedSuccessEvent:
 		s.d.name = e.NewName()
-		s.d.path = s.d.parentPath.NewSubPath(e.NewName())
+		s.d.path = s.d.parent.Path().NewSubPath(e.NewName())
 		for _, file := range s.files {
 			file.updateDirectoryPath(s.d.path)
 		}
 		for _, subDir := range s.subDirs {
-			subDir.updateParentPath(s.d.path)
+			subDir.updatePath(s.d.path)
 		}
 
 	case RenameFailureEvent:

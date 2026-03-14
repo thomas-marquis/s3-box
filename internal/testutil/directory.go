@@ -7,20 +7,33 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
-// FakeRootDirectory creates a new root directory with FakeS3LikeConnectionId
-func FakeRootDirectory(t *testing.T) *directory.Directory {
+// FakeNotLoadedRootDirectory creates a new root directory (not loaded) with FakeS3LikeConnectionId
+func FakeNotLoadedRootDirectory(t *testing.T) *directory.Directory {
 	t.Helper()
 
-	dir, err := directory.New(FakeS3LikeConnectionId, directory.RootDirName, directory.NilParentPath)
+	dir, err := directory.NewRoot(FakeS3LikeConnectionId)
 	require.NoError(t, err)
 
 	return dir
 }
 
-// NewDirectory creates a new directory with FakeS3LikeConnectionId
-func NewDirectory(t *testing.T, name string, parent directory.Path) *directory.Directory {
+// FakeLoadedRootDirectory creates a new root directory (loaded) with FakeS3LikeConnectionId
+func FakeLoadedRootDirectory(t *testing.T) *directory.Directory {
 	t.Helper()
 
+	dir, err := directory.NewRoot(FakeS3LikeConnectionId)
+	require.NoError(t, err)
+
+	_, err = dir.Load()
+	require.NoError(t, err)
+
+	err = dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil))
+	require.NoError(t, err)
+
+	return dir
+}
+
+func newLoadedDirectory(t *testing.T, name string, parent *directory.Directory) *directory.Directory {
 	dir, err := directory.New(FakeS3LikeConnectionId, name, parent)
 	require.NoError(t, err)
 
@@ -31,6 +44,41 @@ func NewDirectory(t *testing.T, name string, parent directory.Path) *directory.D
 	require.NoError(t, err)
 
 	return dir
+}
+
+func newNotLoadedDirectory(t *testing.T, name string, parent *directory.Directory) *directory.Directory {
+	dir, err := directory.New(FakeS3LikeConnectionId, name, parent)
+	require.NoError(t, err)
+
+	return dir
+}
+
+// NewLoadedDirectory creates a new loaded directory with FakeS3LikeConnectionId
+func NewLoadedDirectory(t *testing.T, name string, parentPath directory.Path) *directory.Directory {
+	t.Helper()
+
+	parent := FakeNotLoadedRootDirectory(t)
+	if parentPath != directory.RootPath {
+		for _, name := range parentPath.Split() {
+			parent = newLoadedDirectory(t, name, parent)
+		}
+	}
+
+	return newLoadedDirectory(t, name, parent)
+}
+
+// NewNotLoadedDirectory creates a new unloaded directory with FakeS3LikeConnectionId, but with loaded parents chain
+func NewNotLoadedDirectory(t *testing.T, name string, parentPath directory.Path) *directory.Directory {
+	t.Helper()
+
+	parent := FakeNotLoadedRootDirectory(t)
+	if parentPath != directory.RootPath {
+		for _, name := range parentPath.Split() {
+			parent = newLoadedDirectory(t, name, parent) // a not loaded dir with an unloaded parent doesn't make any sense
+		}
+	}
+
+	return newNotLoadedDirectory(t, name, parent)
 }
 
 // AddFileToDirectory creates a new file in the provided directory, then returns the new file.
@@ -57,7 +105,7 @@ func AddSubDirectoryToDirectory(t *testing.T, dir *directory.Directory, name str
 	_, err := dir.NewSubDirectory(name)
 	require.NoError(t, err)
 
-	nd := NewDirectory(t, name, dir.Path())
+	nd := NewLoadedDirectory(t, name, dir.Path())
 
 	err = dir.Notify(directory.NewCreatedSuccessEvent(dir, nd))
 	require.NoError(t, err)

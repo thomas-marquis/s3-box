@@ -28,11 +28,11 @@ func TestExplorerTree(t *testing.T) {
 	})
 
 	connID := connection_deck.NewConnectionID()
-	root, _ := directory.New(connID, directory.RootDirName, directory.NilParentPath)
+	root, _ := directory.NewRoot(connID)
 	rootNode := node.NewDirectoryNode(root)
 	_ = treeData.Append("", rootNode.ID(), rootNode)
 
-	child, _ := directory.New(connID, "child", root.Path())
+	child, _ := directory.New(connID, "child", root)
 	childDir := node.NewDirectoryNode(child)
 	_ = treeData.Append(rootNode.ID(), childDir.ID(), childDir)
 

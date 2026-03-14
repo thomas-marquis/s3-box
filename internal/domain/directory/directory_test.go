@@ -14,8 +14,7 @@ import (
 func TestDirectory(t *testing.T) {
 	t.Run("should change directory states", func(t *testing.T) {
 		// Given
-		dir, err := directory.New(connection_deck.NewConnectionID(), "data", directory.RootPath)
-		require.NoError(t, err)
+		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
 		// When & Then
 		// not loaded directory
@@ -48,8 +47,7 @@ func TestDirectory(t *testing.T) {
 
 	t.Run("should change directory states with error", func(t *testing.T) {
 		// Given
-		dir, err := directory.New(connection_deck.NewConnectionID(), "data", directory.RootPath)
-		require.NoError(t, err)
+		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
 		// When
 		dir.Load() //nolint:errcheck
@@ -65,12 +63,11 @@ func TestDirectory(t *testing.T) {
 func TestDirectory_Load(t *testing.T) {
 	t.Run("should load then update directory content on success", func(t *testing.T) {
 		// Given
-		dir, err := directory.New(connection_deck.NewConnectionID(), "data", directory.RootPath)
-		require.NoError(t, err)
+		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
 		require.False(t, dir.IsLoaded())
 
-		d1, _ := directory.New(connection_deck.NewConnectionID(), "data/d1", dir.Path())
-		d2, _ := directory.New(connection_deck.NewConnectionID(), "data/d2", dir.Path())
+		d1, _ := directory.New(connection_deck.NewConnectionID(), "data/d1", dir)
+		d2, _ := directory.New(connection_deck.NewConnectionID(), "data/d2", dir)
 		subDirs := []*directory.Directory{
 			d1, d2,
 		}
@@ -103,10 +100,9 @@ func TestDirectory_Load(t *testing.T) {
 
 	t.Run("should return error when loading is already in progress", func(t *testing.T) {
 		// Given
-		dir, err := directory.New(connection_deck.NewConnectionID(), "data", directory.RootPath)
-		require.NoError(t, err)
+		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 
 		// When
@@ -121,10 +117,9 @@ func TestDirectory_Load(t *testing.T) {
 
 	t.Run("should return error when directory is already loaded", func(t *testing.T) {
 		// Given
-		dir, err := directory.New(connection_deck.NewConnectionID(), "data", directory.RootPath)
-		require.NoError(t, err)
+		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil)))
 		require.True(t, dir.IsLoaded())
@@ -142,10 +137,9 @@ func TestDirectory_Load(t *testing.T) {
 
 	t.Run("should return error when directory is already opened", func(t *testing.T) {
 		// Given
-		dir, err := directory.New(connection_deck.NewConnectionID(), "data", directory.RootPath)
-		require.NoError(t, err)
+		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil)))
 		dir.Open()
@@ -165,7 +159,7 @@ func TestDirectory_Load(t *testing.T) {
 func TestDirectory_NewFile(t *testing.T) {
 	t.Run("should create a file and add it to the directory on success", func(t *testing.T) {
 		// Given
-		dir := testutil.NewDirectory(t, directory.RootDirName, directory.NilParentPath)
+		dir := testutil.FakeLoadedRootDirectory(t)
 
 		// When
 		evt, err := dir.NewFile("report.csv", false)
@@ -191,15 +185,13 @@ func TestDirectory_NewFile(t *testing.T) {
 func TestDirectory_RemoveFile(t *testing.T) {
 	t.Run("should create file deleted event when file exists, then recreated", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		dir := testutil.FakeNotLoadedRootDirectory(t)
 
 		f1, _ := directory.NewFile("main.go", dir.Path())
 		f2, _ := directory.NewFile("readme.md", dir.Path())
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, []*directory.File{f1, f2})
 
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -232,14 +224,12 @@ func TestDirectory_RemoveFile(t *testing.T) {
 
 	t.Run("should emit file deleted event when file exists, then re-uploaded", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		dir := testutil.FakeNotLoadedRootDirectory(t)
 
 		f1, _ := directory.NewFile("main.go", dir.Path())
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, []*directory.File{f1})
 
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -271,12 +261,10 @@ func TestDirectory_RemoveFile(t *testing.T) {
 
 	t.Run("should return error when file does not exist", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		dir := testutil.FakeNotLoadedRootDirectory(t)
 
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -290,15 +278,13 @@ func TestDirectory_RemoveFile(t *testing.T) {
 
 	t.Run("shouldn't remove the file when a failure event is emitted", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		dir := testutil.FakeNotLoadedRootDirectory(t)
 
 		f1, _ := directory.NewFile("main.go", dir.Path())
 		f2, _ := directory.NewFile("readme.md", dir.Path())
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, []*directory.File{f1, f2})
 
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -322,15 +308,14 @@ func TestDirectory_RemoveFile(t *testing.T) {
 func TestDirectory_RemoveSubDirectory(t *testing.T) {
 	t.Run("should create directory deleted event when subdirectory exists", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		connID := testutil.FakeS3LikeConnectionId
+		dir := testutil.FakeNotLoadedRootDirectory(t)
 
-		subDir1, _ := directory.New(connID, "sub1", dir.Path())
-		subDir2, _ := directory.New(connID, "sub2", dir.Path())
+		subDir1, _ := directory.New(connID, "sub1", dir)
+		subDir2, _ := directory.New(connID, "sub2", dir)
 		loadEvt := directory.NewLoadSuccessEvent(dir, []*directory.Directory{subDir1, subDir2}, nil)
 
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -352,12 +337,10 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 
 	t.Run("should return error when subdirectory does not exist", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		dir := testutil.FakeNotLoadedRootDirectory(t)
 
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -370,15 +353,14 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 
 	t.Run("shouldn't remove the subdirectory when a failure event is emitted", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		connID := testutil.FakeS3LikeConnectionId
+		dir := testutil.FakeNotLoadedRootDirectory(t)
 
-		subDir1, _ := directory.New(connID, "sub1", dir.Path())
-		subDir2, _ := directory.New(connID, "sub2", dir.Path())
+		subDir1, _ := directory.New(connID, "sub1", dir)
+		subDir2, _ := directory.New(connID, "sub2", dir)
 		loadEvt := directory.NewLoadSuccessEvent(dir, []*directory.Directory{subDir1, subDir2}, nil)
 
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -401,12 +383,10 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 func TestDirectory_UploadFile(t *testing.T) {
 	t.Run("should emit upload event and add file on success", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		dir := testutil.FakeNotLoadedRootDirectory(t)
 
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -430,10 +410,11 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 	t.Run("should emit upload event and add file on success on a non empty directory", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, _ := directory.New(connID, "data", directory.RootPath)
-		d1, _ := directory.New(connID, "d1", dir.Path())
-		d2, _ := directory.New(connID, "d2", dir.Path())
+		connID := testutil.FakeS3LikeConnectionId
+		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
+
+		d1, _ := directory.New(connID, "d1", dir)
+		d2, _ := directory.New(connID, "d2", dir)
 		subDirs := []*directory.Directory{d1, d2}
 		f1, _ := directory.NewFile("main.go", dir.Path())
 		f2, _ := directory.NewFile("readme.md", dir.Path())
@@ -466,13 +447,11 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 	t.Run("should overwrite existing file when upload succeeds", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		dir := testutil.FakeNotLoadedRootDirectory(t)
 
 		existing, _ := directory.NewFile("report.csv", dir.Path(), directory.WithFileSize(42))
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, []*directory.File{existing})
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -497,13 +476,11 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 	t.Run("should return an error when the file already exists remotely in the directory", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		dir := testutil.FakeNotLoadedRootDirectory(t)
 
 		existing, _ := directory.NewFile("report.csv", dir.Path(), directory.WithFileSize(42))
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, []*directory.File{existing})
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -518,12 +495,10 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 	t.Run("should return error when directory is not loaded", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, directory.RootDirName, directory.NilParentPath)
-		require.NoError(t, err)
+		dir := testutil.FakeNotLoadedRootDirectory(t)
 
 		// When
-		_, err = dir.UploadFile("local/report.csv", false)
+		_, err := dir.UploadFile("local/report.csv", false)
 
 		// Then
 		assert.ErrorIs(t, err, directory.ErrNotLoaded)
@@ -533,15 +508,10 @@ func TestDirectory_UploadFile(t *testing.T) {
 func TestDirectory_Rename(t *testing.T) {
 	t.Run("should emit event and not yet rename the directory", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		parentDir, err := directory.New(connID, "parent", directory.RootPath)
-		require.NoError(t, err)
-
-		dir, err := directory.New(connID, "oldname", parentDir.Path())
-		require.NoError(t, err)
-
+		dir := testutil.NewNotLoadedDirectory(t, "oldname", "/parent/")
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
-		_, err = dir.Load()
+
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -558,15 +528,10 @@ func TestDirectory_Rename(t *testing.T) {
 
 	t.Run("should return error when directory is not loaded", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		parentDir, err := directory.New(connID, "parent", directory.RootPath)
-		require.NoError(t, err)
-
-		dir, err := directory.New(connID, "oldname", parentDir.Path())
-		require.NoError(t, err)
+		dir := testutil.NewNotLoadedDirectory(t, "oldname", "/parent/")
 
 		// When
-		_, err = dir.Rename("newname")
+		_, err := dir.Rename("newname")
 
 		// Then
 		assert.ErrorIs(t, err, directory.ErrNotLoaded)
@@ -574,15 +539,10 @@ func TestDirectory_Rename(t *testing.T) {
 
 	t.Run("should return error when new name is invalid", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		parentDir, err := directory.New(connID, "parent", directory.RootPath)
-		require.NoError(t, err)
-
-		dir, err := directory.New(connID, "oldname", parentDir.Path())
-		require.NoError(t, err)
+		dir := testutil.NewNotLoadedDirectory(t, "oldname", "/parent/")
 
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -604,15 +564,10 @@ func TestDirectory_Rename(t *testing.T) {
 
 	t.Run("should return error when trying to rename to same name", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		parentDir, err := directory.New(connID, "parent", directory.RootPath)
-		require.NoError(t, err)
-
-		dir, err := directory.New(connID, "oldname", parentDir.Path())
-		require.NoError(t, err)
+		dir := testutil.NewNotLoadedDirectory(t, "oldname", "/parent/")
 
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -626,15 +581,10 @@ func TestDirectory_Rename(t *testing.T) {
 
 	t.Run("should update directory state on rename success event", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		parentDir, err := directory.New(connID, "parent", directory.RootPath)
-		require.NoError(t, err)
-
-		dir, err := directory.New(connID, "oldname", parentDir.Path())
-		require.NoError(t, err)
+		dir := testutil.NewNotLoadedDirectory(t, "oldname", "/parent/")
 
 		loadEvt := directory.NewLoadSuccessEvent(dir, nil, nil)
-		_, err = dir.Load()
+		_, err := dir.Load()
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
@@ -653,7 +603,7 @@ func TestDirectory_Rename(t *testing.T) {
 
 	t.Run("should update sub directories' parent path recursively", func(t *testing.T) {
 		// Given
-		dir := testutil.NewDirectory(t, "oldname", directory.RootPath)
+		dir := testutil.NewLoadedDirectory(t, "oldname", directory.RootPath)
 		f1 := testutil.AddFileToDirectory(t, dir, "f1.txt")
 
 		subdir1 := testutil.AddSubDirectoryToDirectory(t, dir, "sub1")
@@ -696,62 +646,62 @@ func TestDirectory_Rename(t *testing.T) {
 func TestDirectory_Resume(t *testing.T) {
 	t.Run("should returns a rename resume event when directory is in a resumable state with a rename pending status after a failing rename", func(t *testing.T) {
 		// Given
-		dir := testutil.NewDirectory(t, "oldname", directory.RootPath)
+		root := testutil.FakeLoadedRootDirectory(t)
+		oldDir := testutil.AddSubDirectoryToDirectory(t, root, "oldname")
+		newDir := testutil.AddSubDirectoryToDirectory(t, root, "newname")
 
 		urErr := directory.UncompletedRename{
-			SourceDirPath:      dir.Path(),
-			DestinationDirPath: directory.Path("/newname/"),
+			SourceDirPath:      "/oldname/",
+			DestinationDirPath: "/newname/",
 		}
-		renameFailedEvt := directory.NewRenameFailureEvent(urErr, dir, "newname")
-		require.NoError(t, dir.Notify(renameFailedEvt))
+		renameFailedEvt := directory.NewRenameFailureEvent(urErr, oldDir, "newname")
+		require.NoError(t, oldDir.Notify(renameFailedEvt))
 
 		// When
-		evt, err := dir.Resume()
+		evt, err := oldDir.Resume()
 
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, directory.RenamePendingStatus{
-			CurrentDirectory: dir,
+			CurrentDirectory: oldDir,
 			IsSourceDir:      true,
 			OtherDirPath:     "/newname/",
-		}, dir.Status())
-		assert.Equal(t, directory.RenameEventType.AsResume(), evt.Type())
+		}, oldDir.Status())
+		assert.Equal(t, directory.RenameResumeEventType, evt.Type())
 
 		res := evt.(directory.RenameResumeEvent)
-		assert.True(t, res.IsSourceDir())
-		assert.Equal(t, directory.Path("/newname/"), res.OtherDirPath())
-		assert.Equal(t, dir, res.Directory())
+		assert.Equal(t, newDir, res.DstDir())
+		assert.Equal(t, oldDir, res.Directory())
 	})
 
 	t.Run("should returns a rename resume event when directory is in a resumable state with a rename pending status after a failing loading", func(t *testing.T) {
 		// Given
-		connID := connection_deck.NewConnectionID()
-		dir, err := directory.New(connID, "mydir", directory.RootPath)
-		require.NoError(t, err)
+		root := testutil.FakeLoadedRootDirectory(t)
+		oldDir := testutil.AddSubDirectoryToDirectory(t, root, "oldname")
+		newDir := testutil.AddSubDirectoryToDirectory(t, root, "newname")
 
 		urErr := directory.UncompletedRename{
-			SourceDirPath:      "/newname/",
-			DestinationDirPath: "/mydir/",
+			SourceDirPath:      "/oldname/",
+			DestinationDirPath: "/newname/",
 		}
-		_, err = dir.Load()
+		_, err := oldDir.Load()
 		require.NoError(t, err)
-		require.NoError(t, dir.Notify(directory.NewLoadFailureEvent(urErr, dir)))
+		require.NoError(t, oldDir.Notify(directory.NewLoadFailureEvent(urErr, oldDir)))
 
 		// When
-		evt, err := dir.Resume()
+		evt, err := oldDir.Resume()
 
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, directory.RenamePendingStatus{
-			CurrentDirectory: dir,
+			CurrentDirectory: newDir,
 			IsSourceDir:      false,
-			OtherDirPath:     "/newname/",
-		}, dir.Status())
-		assert.Equal(t, directory.RenameEventType.AsResume(), evt.Type())
+			OtherDirPath:     "/oldname/",
+		}, newDir.Status())
+		assert.Equal(t, directory.RenameResumeEventType, evt.Type())
 
 		res := evt.(directory.RenameResumeEvent)
-		assert.False(t, res.IsSourceDir())
-		assert.Equal(t, directory.Path("/newname/"), res.OtherDirPath())
-		assert.Equal(t, dir, res.Directory())
+		assert.Equal(t, newDir, res.DstDir())
+		assert.Equal(t, oldDir, res.Directory())
 	})
 }

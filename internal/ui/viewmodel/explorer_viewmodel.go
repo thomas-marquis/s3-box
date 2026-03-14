@@ -744,7 +744,7 @@ func (v *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection
 
 	displayLabel := "Bucket: " + c.Bucket()
 
-	rootDir, err := directory.New(c.ID(), directory.RootDirName, directory.NilParentPath)
+	rootDir, err := directory.NewRoot(c.ID())
 	if err != nil {
 		newErr := fmt.Errorf("error initializing the root directory: %w", err)
 		v.notifier.NotifyError(newErr)

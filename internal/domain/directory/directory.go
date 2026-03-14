@@ -21,10 +21,14 @@ type Directory struct {
 	connectionID connection_deck.ConnectionID
 	path         Path
 	name         string
-	parentPath   Path
+	parent       *Directory
 	isOpen       bool
 
 	currentState state
+}
+
+func NewRoot(connectionID connection_deck.ConnectionID) (*Directory, error) {
+	return New(connectionID, RootDirName, nil)
 }
 
 // New creates a new S3 directory entity.
@@ -32,17 +36,26 @@ type Directory struct {
 func New(
 	connectionID connection_deck.ConnectionID,
 	name string,
-	parentPath Path,
+	parent *Directory,
 ) (*Directory, error) {
-	if err := validateName(name, parentPath); err != nil {
+	if parent == nil {
+		if name != RootDirName {
+			return nil, errors.New("parent directory is nil")
+		}
+		parent = &Directory{
+			path: NilParentPath,
+		}
+	}
+
+	if err := validateName(name, parent.Path()); err != nil {
 		return nil, err
 	}
 
 	d := &Directory{
 		connectionID: connectionID,
 		name:         name,
-		parentPath:   parentPath,
-		path:         parentPath.NewSubPath(name),
+		parent:       parent,
+		path:         parent.Path().NewSubPath(name),
 	}
 
 	d.currentState = newNotLoadedState(d, nil)
@@ -61,7 +74,7 @@ func (d *Directory) IsFileExists(name FileName) bool {
 }
 
 func (d *Directory) IsRoot() bool {
-	return d.parentPath == NilParentPath && d.path == RootPath
+	return d.parent.Path() == NilParentPath && d.path == RootPath
 }
 
 func (d *Directory) GetFileByName(name FileName) (*File, error) {
@@ -94,7 +107,7 @@ func (d *Directory) Name() string {
 }
 
 func (d *Directory) ParentPath() Path {
-	return d.parentPath
+	return d.parent.Path()
 }
 
 func (d *Directory) SubDirectories() []*Directory {
@@ -118,7 +131,7 @@ func (d *Directory) NewSubDirectory(name string) (CreatedEvent, error) {
 			return CreatedEvent{}, fmt.Errorf("subdirectory %s already exists", path)
 		}
 	}
-	newDir, err := New(d.connectionID, name, d.path)
+	newDir, err := New(d.connectionID, name, d)
 	if err != nil {
 		return CreatedEvent{}, fmt.Errorf("failed to create subdirectory: %w", err)
 	}
@@ -154,7 +167,7 @@ func (d *Directory) RemoveFile(name FileName) (FileDeletedEvent, error) {
 }
 
 func (d *Directory) RemoveSubDirectory(name string) (DeletedEvent, error) {
-	path := d.parentPath.NewSubPath(name)
+	path := d.parent.Path().NewSubPath(name)
 	subDirectories := d.currentState.SubDirectories()
 	for _, sd := range subDirectories {
 		if sd.Path() == path {
@@ -289,8 +302,7 @@ func (d *Directory) uploadFile(localPath string, overwrite bool) (ContentUploade
 	return uploadedEvt, nil
 }
 
-func (d *Directory) updateParentPath(newParentPath Path) {
-	d.parentPath = newParentPath
+func (d *Directory) updatePath(newParentPath Path) {
 	d.path = newParentPath.NewSubPath(d.name)
 	for _, file := range d.currentState.Files() {
 		file.updateDirectoryPath(d.path)
@@ -298,7 +310,7 @@ func (d *Directory) updateParentPath(newParentPath Path) {
 
 	subDirs := d.currentState.SubDirectories()
 	for _, subDir := range subDirs {
-		subDir.updateParentPath(d.path)
+		subDir.updatePath(d.path)
 	}
 }
 

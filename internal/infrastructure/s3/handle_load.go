@@ -79,7 +79,7 @@ func (r *RepositoryImpl) handleLoadDirectory(e event.Event) {
 			s3Prefix := *obj.Prefix
 			isDir := strings.HasSuffix(s3Prefix, "/")
 			if isDir {
-				d, err := directory.New(dir.ConnectionID(), directory.NewPath(s3Prefix).DirectoryName(), dir.Path())
+				d, err := directory.New(dir.ConnectionID(), directory.NewPath(s3Prefix).DirectoryName(), dir)
 				if err != nil {
 					handleError(fmt.Errorf("error while loading a directory: %w", err))
 					return
