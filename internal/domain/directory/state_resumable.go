@@ -41,17 +41,16 @@ func (s *resumableState) Notify(evt event.Event) error {
 		for _, subDir := range s.subDirs {
 			subDir.updatePath(s.d.path)
 		}
-		s.d.setState(newLoadedState(s.baseState.Clone(), s.subDirs, s.files))
+		s.d.setState(newLoadedState(s.baseState, s.subDirs, s.files))
 
 	case RenameFailureEvent:
-		var urErr UncompletedRename
-		if errors.As(e.Error(), &urErr) {
+		if errors.Is(e.Error(), &UncompletedRename{}) {
 			status := RenamePendingStatus{
 				CurrentDirectory: s.d,
 				IsSourceDir:      true,
 				OtherDirPath:     s.d.ParentPath().NewSubPath(e.NewName()),
 			}
-			s.d.setState(newResumableState(s.baseState.Clone(), status))
+			s.d.setState(newResumableState(s.baseState, status))
 		}
 	}
 	return nil

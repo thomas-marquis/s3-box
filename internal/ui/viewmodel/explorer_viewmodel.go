@@ -586,12 +586,14 @@ func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 		err error
 	)
 	n, err = v.tree.GetValue(dir.Path().String())
+	n = node.NewDirectoryNode(dir)
 	if err != nil {
-		n = node.NewDirectoryNode(dir)
 		if err := v.tree.Prepend(dir.ParentPath().String(), n.ID(), n); err != nil {
 			v.notifier.NotifyError(fmt.Errorf("error adding new directory node: %w", err))
 			return
 		}
+	} else {
+		v.tree.SetValue(dir.Path().String(), n) //nolint:errcheck
 	}
 	newDirNode := n.(node.DirectoryNode)
 
