@@ -621,35 +621,11 @@ func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) error {
-	if dir.Status() == nil {
-		return errors.New("nothing to get resumed from")
-	}
-	status, ok := dir.Status().(directory.RenamePendingStatus)
-	if !ok {
-		return errors.New("this directory is not in a rename pending state")
-	}
-
-	var srcDir, dstDir *directory.Directory
-	otherDirPath := status.OtherDirPath
-
-	odNode, err := v.tree.GetValue(otherDirPath.String())
+	evt, err := dir.Resume()
 	if err != nil {
-		return fmt.Errorf("impossible to find the other directory: %w", err) // TODO: give the user an option to deal with it
+		return fmt.Errorf("impossible to resume rename: %w", err)
 	}
-	othDirNode, ok := odNode.(node.DirectoryNode)
-	if !ok {
-		return errors.New("not a directory")
-	}
-
-	if status.IsSourceDir {
-		srcDir = dir
-		dstDir = othDirNode.Directory()
-	} else {
-		srcDir = othDirNode.Directory()
-		dstDir = dir
-	}
-
-	v.bus.Publish(directory.NewRenameResumeEvent(srcDir, dstDir))
+	v.bus.Publish(evt)
 	return nil
 }
 

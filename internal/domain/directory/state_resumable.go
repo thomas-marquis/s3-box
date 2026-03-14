@@ -58,5 +58,5 @@ func (s *resumableState) Resume() (event.Event, error) {
 
 		return NewRenameResumeEvent(srcDir, dstDir), nil
 	}
-	return nil, nil
+	return nil, errors.New("nothing to resume")
 }
