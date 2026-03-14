@@ -789,6 +789,8 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "oldname/subdir/file6.txt")
 
 			assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "oldname/.s3box-rename-src")
+			assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "oldname/.s3box-rename-dst")
+			assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "newname/.s3box-rename-src")
 			assertObjectNotExists(t, client, testutil.FakeS3LikeBucketName, "newname/.s3box-rename-dst")
 		})
 	}

@@ -379,6 +379,10 @@ func (r *RepositoryImpl) renameObjects(
 }
 
 func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldKey, newKey string) error {
+	if strings.HasSuffix(oldKey, markerSrcFileName) || strings.HasSuffix(oldKey, markerDstFileName) {
+		return nil
+	}
+
 	bucket := sess.connection.Bucket()
 	headRes, err := sess.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
