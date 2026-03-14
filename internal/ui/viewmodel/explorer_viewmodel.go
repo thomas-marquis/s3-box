@@ -262,7 +262,7 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 		v.notifier.NotifyError(fmt.Errorf("error filling sub tree: %w", err))
 	}
 
-	if v.selectedDirectory != nil && v.selectedDirectory.Is(dir) {
+	if dir.Is(v.selectedDirectory) {
 		v.isSelectedDirLoading.Set(false) // nolint:errcheck
 	}
 
@@ -278,7 +278,7 @@ func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
 	}
 	v.infoMessage.Set(e.Error().Error()) //nolint:errcheck
 
-	if v.selectedDirectory != nil && v.selectedDirectory.Is(dir) {
+	if dir.Is(v.selectedDirectory) {
 		v.isSelectedDirLoading.Set(false) // nolint:errcheck
 	}
 
@@ -563,12 +563,20 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 		return
 	}
 
+	v.isSelectedDirLoading.Set(true) // nolint:errcheck
 	v.bus.Publish(evt)
 }
 
 func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 	e := evt.(directory.RenameSuccessEvent)
 	dir := e.Directory()
+
+	defer func() {
+		if dir.Is(v.selectedDirectory) {
+			v.isSelectedDirLoading.Set(false) // nolint:errcheck
+		}
+	}()
+
 	oldPath := dir.Path().String()
 
 	if err := dir.Notify(e); err != nil {
@@ -610,6 +618,12 @@ func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
 	e := evt.(directory.RenameFailureEvent)
 	dir := e.Directory()
 
+	defer func() {
+		if dir.Is(v.selectedDirectory) {
+			v.isSelectedDirLoading.Set(false) // nolint:errcheck
+		}
+	}()
+
 	err := fmt.Errorf("error renaming directory: %w", e.Error())
 	if err := dir.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
@@ -626,6 +640,7 @@ func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) error {
 		return fmt.Errorf("impossible to resume rename: %w", err)
 	}
 	v.bus.Publish(evt)
+	v.isSelectedDirLoading.Set(true) // nolint:errcheck
 	return nil
 }
 

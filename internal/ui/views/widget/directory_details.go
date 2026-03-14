@@ -104,7 +104,7 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 		w.actionRequiredBtn,
 	)
 
-	content := container.NewStack(
+	content := container.NewVBox(
 		w.statusLabel,
 		arContainer,
 	)
