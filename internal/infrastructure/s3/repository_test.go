@@ -12,10 +12,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
-	mocks_connection_deck "github.com/thomas-marquis/s3-box/mocks/connection_deck"
-	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
-	mocks_notification "github.com/thomas-marquis/s3-box/mocks/notification"
-	"go.uber.org/mock/gomock"
 )
 
 func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
@@ -24,30 +20,19 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 	defer terminate()
 	client := setupS3Client(t, endpoint)
 
-	setupS3Bucket(ctx, t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
+	bucket := testutil.FakeRandomBucketName()
+	setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
 		{Key: "root_file.txt", Body: strings.NewReader("coucou")},
 		{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("lolo")},
 	})
-
-	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint)
+	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
 
 	t.Run("should return the file content", func(t *testing.T) {
 		// Given
-		ctrl := gomock.NewController(t)
-		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
-		mockBus := mocks_event.NewMockBus(ctrl)
-		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
 
 		fakeEventChan := make(chan event.Event)
 		defer close(fakeEventChan)
-		mockBus.EXPECT().
-			Subscribe().
-			Return(event.NewSubscriber(fakeEventChan))
-
-		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
-			Return(fakeDeck, nil).
-			Times(1)
+		mockBus, mockConnRepo, mockNotifRepo := setupMocks(t, fakeDeck, fakeEventChan)
 
 		repo, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
@@ -71,21 +56,10 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 
 	t.Run("should return the file content", func(t *testing.T) {
 		// Given
-		ctrl := gomock.NewController(t)
-		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
-		mockBus := mocks_event.NewMockBus(ctrl)
-		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
-
 		fakeEventChan := make(chan event.Event)
 		defer close(fakeEventChan)
-		mockBus.EXPECT().
-			Subscribe().
-			Return(event.NewSubscriber(fakeEventChan))
 
-		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
-			Return(fakeDeck, nil).
-			Times(1)
+		mockBus, mockConnRepo, mockNotifRepo := setupMocks(t, fakeDeck, fakeEventChan)
 
 		repo, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)

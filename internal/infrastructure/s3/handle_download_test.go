@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,9 +13,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
-	mocks_connection_deck "github.com/thomas-marquis/s3-box/mocks/connection_deck"
-	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
-	mocks_notification "github.com/thomas-marquis/s3-box/mocks/notification"
 	"go.uber.org/mock/gomock"
 )
 
@@ -26,30 +22,17 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 	defer terminate()
 	client := setupS3Client(t, endpoint)
 
-	setupS3Bucket(ctx, t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
-		{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("download-me")},
-	})
-
-	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint)
-
 	t.Run("should download file content and publish success", func(t *testing.T) {
 		// Given
-		ctrl := gomock.NewController(t)
-		mockBus := mocks_event.NewMockBus(ctrl)
-		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
-		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
+		bucket := testutil.FakeRandomBucketName()
+		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+			{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("download-me")},
+		})
+		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
-
-		mockBus.EXPECT().
-			Subscribe().
-			Return(event.NewSubscriber(fakeEventChan))
-
-		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
-			Return(fakeDeck, nil).
-			Times(1)
+		mockBus, mockConnRepo, mockNotifRepo := setupMocks(t, fakeDeck, fakeEventChan)
 
 		done := make(chan struct{})
 		mockBus.EXPECT().
@@ -74,15 +57,9 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 
 		// When
 		fakeEventChan <- directory.NewContentDownloadedEvent(testutil.FakeS3LikeConnectionId, content)
-		assert.Eventually(t, func() bool {
-			select {
-			case <-done:
-				return true
-			default:
-				return false
-			}
-		}, 5*time.Second, 100*time.Millisecond)
 
+		// Then
+		assertEventually(t, done)
 		downloaded, err := os.ReadFile(destPath)
 		require.NoError(t, err)
 		assert.Equal(t, "download-me", string(downloaded))
@@ -90,24 +67,17 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 
 	t.Run("should publish failure when object is missing", func(t *testing.T) {
 		// Given
-		ctrl := gomock.NewController(t)
-		mockBus := mocks_event.NewMockBus(ctrl)
-		mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
-		mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
-
-		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(1)
+		bucket := testutil.FakeRandomBucketName()
+		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+			{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("download-me")},
+		})
+		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
+		mockBus, mockConnRepo, mockNotifRepo := setupMocks(t, fakeDeck, fakeEventChan)
 
-		mockBus.EXPECT().
-			Subscribe().
-			Return(event.NewSubscriber(fakeEventChan))
-
-		mockConnRepo.EXPECT().
-			Get(gomock.AssignableToTypeOf(testutil.CtxType)).
-			Return(fakeDeck, nil).
-			Times(1)
+		mockNotifRepo.EXPECT().NotifyError(gomock.Any()).Times(1)
 
 		done := make(chan struct{})
 		mockBus.EXPECT().
@@ -133,13 +103,6 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 
 		// When & Then
 		fakeEventChan <- directory.NewContentDownloadedEvent(testutil.FakeS3LikeConnectionId, content)
-		assert.Eventually(t, func() bool {
-			select {
-			case <-done:
-				return true
-			default:
-				return false
-			}
-		}, 5*time.Second, 100*time.Millisecond)
+		assertEventually(t, done)
 	})
 }

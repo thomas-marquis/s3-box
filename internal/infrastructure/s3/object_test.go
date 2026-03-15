@@ -24,11 +24,11 @@ func TestS3Object_Read(t *testing.T) {
 	downloader := manager.NewDownloader(client)
 	uploader := manager.NewUploader(client)
 
-	setupS3Bucket(ctx, t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{
+	bucket := testutil.FakeS3LikeBucketName
+	setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
 		{Key: "existing-file.txt", Body: strings.NewReader("hello world")},
 	})
-
-	conn := testutil.FakeS3LikeConnection(t, endpoint)
+	conn := testutil.FakeS3LikeConnection(t, endpoint, bucket)
 
 	t.Run("should read the object content when exists", func(t *testing.T) {
 		// Given
@@ -98,9 +98,9 @@ func TestS3Object_Write(t *testing.T) {
 	downloader := manager.NewDownloader(client)
 	uploader := manager.NewUploader(client)
 
-	setupS3Bucket(ctx, t, client, testutil.FakeS3LikeBucketName, []fakeS3Object{})
-
-	conn := testutil.FakeS3LikeConnection(t, endpoint)
+	bucket := testutil.FakeS3LikeBucketName
+	setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{})
+	conn := testutil.FakeS3LikeConnection(t, endpoint, bucket)
 
 	t.Run("should create the object if not exists then makes it readable", func(t *testing.T) {
 		// Given

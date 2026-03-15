@@ -1,7 +1,9 @@
 package testutil
 
 import (
+	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 )
@@ -35,28 +37,40 @@ func FakeDeckWithConnections(t *testing.T, connections ...*connection_deck.Conne
 	return connection_deck.New(connection_deck.WithConnections(connections))
 }
 
-func FakeAwsConnection(t *testing.T) *connection_deck.Connection {
+func FakeAwsConnection(t *testing.T, bucket string) *connection_deck.Connection {
 	t.Helper()
 	return FakeEmptyDeck(t).
-		New(FakeAwsConnectionName, FakeAwsAccessKeyId, FakeAwsSecretAccessKey, FakeAwsBucketName,
+		New(FakeAwsConnectionName, FakeAwsAccessKeyId, FakeAwsSecretAccessKey, bucket,
 			connection_deck.AsAWS(FakeAwsRegion),
 			connection_deck.WithID(FakeAwsConnectionId)).
 		Connection()
 }
 
-func FakeS3LikeConnection(t *testing.T, endpoint string) *connection_deck.Connection {
+func FakeS3LikeConnection(t *testing.T, endpoint, bucket string) *connection_deck.Connection {
 	t.Helper()
 	return FakeEmptyDeck(t).
-		New(FakeS3LikeConnectionName, FakeS3LikeAccessKeyId, FakeS3LikeSecretKey, FakeS3LikeBucketName,
+		New(FakeS3LikeConnectionName, FakeS3LikeAccessKeyId, FakeS3LikeSecretKey, bucket,
 			connection_deck.AsS3Like(endpoint, false),
 			connection_deck.WithID(FakeS3LikeConnectionId)).
 		Connection()
 }
 
-func FakeDeckWithS3LikeConnection(t *testing.T, endpoint string) *connection_deck.Deck {
+func FakeDeckWithS3LikeConnection(t *testing.T, endpoint, bucket string) *connection_deck.Deck {
 	t.Helper()
 
 	return connection_deck.New(connection_deck.WithConnections([]*connection_deck.Connection{
-		FakeS3LikeConnection(t, endpoint),
+		FakeS3LikeConnection(t, endpoint, bucket),
 	}))
+}
+
+func FakeRandomBucketName() string {
+	const charset = "abcdefghijklmnopqrstuvwxyz"
+	const length = 16
+
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	result := make([]byte, length)
+	for i := range result {
+		result[i] = charset[r.Intn(len(charset))]
+	}
+	return string(result)
 }

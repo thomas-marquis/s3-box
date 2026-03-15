@@ -24,6 +24,14 @@ and managing your cloud storage directly from your desktop.
 * **Connect to multiple S3 buckets or providers (AWS, MinIO, etc.) and switch between them effortlessly. Perfect for managing distributed storage or multi-cloud environments.**
 ![Connection deck animated demo](docs/assets/connection.gif)
 
+* **Activate a read-only mode to be sure to don't break anything on critical buckets**
+
+* **Rename a single file aor a whole directory seamlessly**
+
+Warning for directory renaming: Keep in mind that this operation requires to rename all the keys under the directory
+(actually, ther is no notion of 'directory' in classical S3...). Fortunately, a recovery system is integrated to S3 Box
+to resuming aborted renaming.
+
 ## Installation
 
 ### Linux
