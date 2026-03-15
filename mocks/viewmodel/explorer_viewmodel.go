@@ -16,6 +16,7 @@ import (
 	binding "fyne.io/fyne/v2/data/binding"
 	connection_deck "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
+	event "github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	node "github.com/thomas-marquis/s3-box/internal/ui/node"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -42,6 +43,18 @@ func NewMockExplorerViewModel(ctrl *gomock.Controller) *MockExplorerViewModel {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockExplorerViewModel) EXPECT() *MockExplorerViewModelMockRecorder {
 	return m.recorder
+}
+
+// AddStateListener mocks base method.
+func (m *MockExplorerViewModel) AddStateListener(arg0 func()) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AddStateListener", arg0)
+}
+
+// AddStateListener indicates an expected call of AddStateListener.
+func (mr *MockExplorerViewModelMockRecorder) AddStateListener(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddStateListener", reflect.TypeOf((*MockExplorerViewModel)(nil).AddStateListener), arg0)
 }
 
 // CreateEmptyDirectory mocks base method.
@@ -233,6 +246,58 @@ func (mr *MockExplorerViewModelMockRecorder) Loading() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Loading", reflect.TypeOf((*MockExplorerViewModel)(nil).Loading))
 }
 
+// PendingUserValidations mocks base method.
+func (m *MockExplorerViewModel) PendingUserValidations() <-chan directory.UserValidationEvent {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PendingUserValidations")
+	ret0, _ := ret[0].(<-chan directory.UserValidationEvent)
+	return ret0
+}
+
+// PendingUserValidations indicates an expected call of PendingUserValidations.
+func (mr *MockExplorerViewModelMockRecorder) PendingUserValidations() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PendingUserValidations", reflect.TypeOf((*MockExplorerViewModel)(nil).PendingUserValidations))
+}
+
+// RenameDirectory mocks base method.
+func (m *MockExplorerViewModel) RenameDirectory(dir *directory.Directory, newName string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RenameDirectory", dir, newName)
+}
+
+// RenameDirectory indicates an expected call of RenameDirectory.
+func (mr *MockExplorerViewModelMockRecorder) RenameDirectory(dir, newName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).RenameDirectory), dir, newName)
+}
+
+// RenameFile mocks base method.
+func (m *MockExplorerViewModel) RenameFile(file *directory.File, newName string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RenameFile", file, newName)
+}
+
+// RenameFile indicates an expected call of RenameFile.
+func (mr *MockExplorerViewModelMockRecorder) RenameFile(file, newName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameFile", reflect.TypeOf((*MockExplorerViewModel)(nil).RenameFile), file, newName)
+}
+
+// ResumeRename mocks base method.
+func (m *MockExplorerViewModel) ResumeRename(dir *directory.Directory) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResumeRename", dir)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResumeRename indicates an expected call of ResumeRename.
+func (mr *MockExplorerViewModelMockRecorder) ResumeRename(dir any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResumeRename", reflect.TypeOf((*MockExplorerViewModel)(nil).ResumeRename), dir)
+}
+
 // SelectedConnection mocks base method.
 func (m *MockExplorerViewModel) SelectedConnection() binding.Untyped {
 	m.ctrl.T.Helper()
@@ -325,4 +390,16 @@ func (m *MockExplorerViewModel) UploadFile(localPath string, dir *directory.Dire
 func (mr *MockExplorerViewModelMockRecorder) UploadFile(localPath, dir, overwrite any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadFile", reflect.TypeOf((*MockExplorerViewModel)(nil).UploadFile), localPath, dir, overwrite)
+}
+
+// Validate mocks base method.
+func (m *MockExplorerViewModel) Validate(dir *directory.Directory, reason event.Event, validated bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Validate", dir, reason, validated)
+}
+
+// Validate indicates an expected call of Validate.
+func (mr *MockExplorerViewModelMockRecorder) Validate(dir, reason, validated any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Validate", reflect.TypeOf((*MockExplorerViewModel)(nil).Validate), dir, reason, validated)
 }

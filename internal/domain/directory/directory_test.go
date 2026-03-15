@@ -115,7 +115,7 @@ func TestDirectory_Load(t *testing.T) {
 		assert.False(t, dir.IsLoaded())
 	})
 
-	t.Run("should return error when directory is already loaded", func(t *testing.T) {
+	t.Run("should trigger a reload when directory is already loaded", func(t *testing.T) {
 		// Given
 		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
@@ -125,34 +125,12 @@ func TestDirectory_Load(t *testing.T) {
 		require.True(t, dir.IsLoaded())
 
 		// When
-		_, err = dir.Load()
+		res, err := dir.Load()
 
 		// Then
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "already loaded")
-		assert.True(t, dir.IsLoaded())
-		assert.False(t, dir.IsLoading())
-		assert.False(t, dir.IsOpened())
-	})
-
-	t.Run("should return error when directory is already opened", func(t *testing.T) {
-		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
-
-		_, err := dir.Load()
-		require.NoError(t, err)
-		require.NoError(t, dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil)))
-		dir.Open()
-		require.True(t, dir.IsOpened())
-
-		// When
-		_, err = dir.Load()
-
-		// Then
-		assert.Error(t, err)
-		assert.True(t, dir.IsOpened())
-		assert.True(t, dir.IsLoaded())
-		assert.False(t, dir.IsLoading())
+		assert.NoError(t, err)
+		assert.Equal(t, directory.LoadEventType, res.Type())
+		assert.Equal(t, dir, res.Directory())
 	})
 }
 
@@ -256,7 +234,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		assert.NoError(t, dir.Notify(uploadedSuccessFileEvt))
 
 		assert.Len(t, dir.Files(), 1)
-		assert.Equal(t, "main.go", resFiles[0].Name().String())
+		assert.Equal(t, "main.go", dir.Files()[0].Name().String())
 	})
 
 	t.Run("should return error when file does not exist", func(t *testing.T) {
@@ -626,6 +604,9 @@ func TestDirectory_Rename(t *testing.T) {
 		require.Equal(t, "/oldname/sub1/f11.txt", f11.FullPath())
 		require.Equal(t, "/oldname/sub1/subsub1/f111.txt", f111.FullPath())
 
+		_, err := dir.Rename("newname")
+		require.NoError(t, err)
+
 		// When
 		successEvt := directory.NewRenameSuccessEvent(dir, "newname")
 		require.NoError(t, dir.Notify(successEvt))
@@ -647,15 +628,18 @@ func TestDirectory_Resume(t *testing.T) {
 	t.Run("should returns a rename resume event when directory is in a resumable state with a rename pending status after a failing rename", func(t *testing.T) {
 		// Given
 		root := testutil.FakeLoadedRootDirectory(t)
-		oldDir := testutil.AddSubDirectoryToDirectory(t, root, "oldname")
-		newDir := testutil.AddSubDirectoryToDirectory(t, root, "newname")
+		oldDir := testutil.AddSubNotLoadedDirectoryToDirectory(t, root, "oldname")
+		newDir := testutil.AddSubNotLoadedDirectoryToDirectory(t, root, "newname")
+
+		_, err := oldDir.Load()
+		require.NoError(t, err)
 
 		urErr := directory.UncompletedRename{
 			SourceDirPath:      "/oldname/",
 			DestinationDirPath: "/newname/",
 		}
-		renameFailedEvt := directory.NewRenameFailureEvent(urErr, oldDir, "newname")
-		require.NoError(t, oldDir.Notify(renameFailedEvt))
+		loadFailureEvent := directory.NewLoadFailureEvent(urErr, oldDir) // Simulate a loading failure due to an inconsistent state from a rename failure
+		require.NoError(t, oldDir.Notify(loadFailureEvent))
 
 		// When
 		evt, err := oldDir.Resume()
@@ -677,8 +661,8 @@ func TestDirectory_Resume(t *testing.T) {
 	t.Run("should returns a rename resume event when directory is in a resumable state with a rename pending status after a failing loading", func(t *testing.T) {
 		// Given
 		root := testutil.FakeLoadedRootDirectory(t)
-		oldDir := testutil.AddSubDirectoryToDirectory(t, root, "oldname")
-		newDir := testutil.AddSubDirectoryToDirectory(t, root, "newname")
+		oldDir := testutil.AddSubNotLoadedDirectoryToDirectory(t, root, "oldname")
+		newDir := testutil.AddSubNotLoadedDirectoryToDirectory(t, root, "newname")
 
 		urErr := directory.UncompletedRename{
 			SourceDirPath:      "/oldname/",
