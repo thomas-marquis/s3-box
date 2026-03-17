@@ -96,6 +96,8 @@ type ExplorerViewModel interface {
 	Validate(dir *directory.Directory, reason event.Event, validated bool)
 
 	ResumeRename(dir *directory.Directory) error
+	RollbackRename(dir *directory.Directory) error
+	AbortRename(dir *directory.Directory) error
 }
 
 type explorerViewModelImpl struct {
@@ -177,6 +179,7 @@ func NewExplorerViewModel(
 		On(event.Is(directory.FileRenamedEventType.AsSuccess()), v.handleRenameFileSuccess).
 		On(event.Is(directory.FileRenamedEventType.AsFailure()), v.handleRenameFileFailure).
 		On(event.Is(directory.UserValidationEventType), v.handleUserValidationRequest).
+		On(event.Is(directory.UserValidationRefusedEventType), v.handleUserValidationRefused).
 		ListenWithWorkers(1)
 
 	return v
@@ -194,8 +197,12 @@ func (v *explorerViewModelImpl) triggerStateListeners() {
 	})
 }
 
-func (v *explorerViewModelImpl) Validate(dir *directory.Directory, reason event.Event, validated bool) {
-	v.bus.Publish(directory.NewUserValidationSuccessEvent(dir, reason, validated))
+func (v *explorerViewModelImpl) Validate(dir *directory.Directory, reason event.Event, accepted bool) {
+	if accepted {
+		v.bus.Publish(directory.NewUserValidationAcceptedEvent(dir, reason))
+	} else {
+		v.bus.Publish(directory.NewUserValidationRefusedEvent(dir, reason))
+	}
 }
 
 func (v *explorerViewModelImpl) PendingUserValidations() <-chan directory.UserValidationEvent {
@@ -205,6 +212,22 @@ func (v *explorerViewModelImpl) PendingUserValidations() <-chan directory.UserVa
 func (v *explorerViewModelImpl) handleUserValidationRequest(evt event.Event) {
 	e := evt.(directory.UserValidationEvent)
 	v.pendingUserValidations <- e
+}
+
+func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
+	e := evt.(directory.UserValidationRefusedEvent)
+	dir := e.Directory()
+
+	if err := dir.Notify(e); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+
+	if dir.Is(v.selectedDirectory) {
+		v.isSelectedDirLoading.Set(false) // nolint:errcheck
+	}
+
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) Tree() binding.Tree[node.Node] {
@@ -638,6 +661,26 @@ func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) error {
 	evt, err := dir.Recover(directory.RecoveryChoiceRenameResume)
 	if err != nil {
 		return fmt.Errorf("impossible to resume rename: %w", err)
+	}
+	v.bus.Publish(evt)
+	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	return nil
+}
+
+func (v *explorerViewModelImpl) RollbackRename(dir *directory.Directory) error {
+	evt, err := dir.Recover(directory.RecoveryChoiceRenameRollback)
+	if err != nil {
+		return fmt.Errorf("impossible to rollback rename: %w", err)
+	}
+	v.bus.Publish(evt)
+	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	return nil
+}
+
+func (v *explorerViewModelImpl) AbortRename(dir *directory.Directory) error {
+	evt, err := dir.Recover(directory.RecoveryChoiceRenameAbort)
+	if err != nil {
+		return fmt.Errorf("impossible to abort rename: %w", err)
 	}
 	v.bus.Publish(evt)
 	v.isSelectedDirLoading.Set(true) // nolint:errcheck

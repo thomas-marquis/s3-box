@@ -5,12 +5,15 @@ import (
 )
 
 const (
-	CreatedEventType        event.Type = "event.directory.created"
-	DeletedEventType        event.Type = "event.directory.deleted"
-	LoadEventType           event.Type = "event.directory.load"
-	RenameEventType         event.Type = "event.directory.rename"
-	RenameRecoverEventType  event.Type = "event.directory.rename.resume"
-	UserValidationEventType event.Type = "event.directory.user.validation"
+	CreatedEventType       event.Type = "event.directory.created"
+	DeletedEventType       event.Type = "event.directory.deleted"
+	LoadEventType          event.Type = "event.directory.load"
+	RenameEventType        event.Type = "event.directory.rename"
+	RenameRecoverEventType event.Type = "event.directory.rename.recovery"
+
+	UserValidationEventType         event.Type = "event.directory.user.validation"
+	UserValidationAcceptedEventType event.Type = "event.directory.user.validation.accepted"
+	UserValidationRefusedEventType  event.Type = "event.directory.user.validation.refused"
 )
 
 type withDirectory struct {
@@ -267,22 +270,30 @@ func (e UserValidationEvent) Message() string {
 	return e.message
 }
 
-type UserValidationSuccessEvent struct {
+type UserValidationAcceptedEvent struct {
 	event.BaseEvent
 	withDirectory
 	withReason
-	validated bool
 }
 
-func NewUserValidationSuccessEvent(directory *Directory, reason event.Event, validated bool, opts ...event.Option) UserValidationSuccessEvent {
-	return UserValidationSuccessEvent{
-		event.NewBaseEvent(UserValidationEventType.AsSuccess(), opts...),
+func NewUserValidationAcceptedEvent(directory *Directory, reason event.Event, opts ...event.Option) UserValidationAcceptedEvent {
+	return UserValidationAcceptedEvent{
+		event.NewBaseEvent(UserValidationAcceptedEventType, opts...),
 		withDirectory{directory},
 		withReason{reason},
-		validated,
 	}
 }
 
-func (e UserValidationSuccessEvent) Validated() bool {
-	return e.validated
+type UserValidationRefusedEvent struct {
+	event.BaseEvent
+	withDirectory
+	withReason
+}
+
+func NewUserValidationRefusedEvent(directory *Directory, reason event.Event, opts ...event.Option) UserValidationRefusedEvent {
+	return UserValidationRefusedEvent{
+		event.NewBaseEvent(UserValidationRefusedEventType, opts...),
+		withDirectory{directory},
+		withReason{reason},
+	}
 }

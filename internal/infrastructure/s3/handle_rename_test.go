@@ -178,7 +178,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 
 		// When
 		originalEvt := directory.NewRenameEvent(originalDir, "newname")
-		fakeEventChan <- directory.NewUserValidationSuccessEvent(originalDir, originalEvt, true)
+		fakeEventChan <- directory.NewUserValidationAcceptedEvent(originalDir, originalEvt, true)
 
 		// Then
 		assertEventually(t, done)
@@ -243,7 +243,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 
 		// When
 		originalEvt := directory.NewRenameEvent(subdir, "newname")
-		fakeEventChan <- directory.NewUserValidationSuccessEvent(subdir, originalEvt, true)
+		fakeEventChan <- directory.NewUserValidationAcceptedEvent(subdir, originalEvt, true)
 
 		// Then
 		assertEventually(t, done)
@@ -362,7 +362,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			})
 		require.NoError(t, err)
 
-		fakeEventChan <- directory.NewUserValidationSuccessEvent(originalDir,
+		fakeEventChan <- directory.NewUserValidationAcceptedEvent(originalDir,
 			directory.NewRenameEvent(originalDir, "newname"), true)
 		assertEventually(t, done)
 

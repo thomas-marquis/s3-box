@@ -65,18 +65,27 @@ func (s *errorState) Recover(choice RecoveryChoice) (event.Event, error) {
 	case RenameFailedStatus:
 		var srcDir, dstDir *Directory
 
+		if status.IsSourceDir {
+			srcDir = s.d
+		} else {
+			dstDir = s.d
+		}
+
 		parent := s.d.parent // no need to check parent nullity: renaming root dir is forbidden
 		otherDir, err := parent.GetSubDirectoryByName(status.OtherDirPath.DirectoryName())
 		if err != nil {
+			if errors.Is(err, ErrNotFound) && choice == RecoveryChoiceRenameAbort {
+				// meh...
+				s.d.setState(newLoadingState(s.baseState))
+				return NewRenameRecoverEvent(srcDir, dstDir, choice), nil
+			}
 			return nil, err
 		}
 
 		if status.IsSourceDir {
-			srcDir = s.d
 			dstDir = otherDir
 		} else {
 			srcDir = otherDir
-			dstDir = s.d
 		}
 
 		s.d.setState(newLoadingState(s.baseState))

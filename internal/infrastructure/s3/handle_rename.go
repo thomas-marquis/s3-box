@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/transport/http"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
@@ -194,13 +195,10 @@ func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 
 func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 	ctx := e.Context()
-	uve := e.(directory.UserValidationSuccessEvent)
+	uve := e.(directory.UserValidationAcceptedEvent)
 
 	re, ok := uve.Reason().(directory.RenameEvent)
 	if !ok {
-		return
-	}
-	if !uve.Validated() {
 		return
 	}
 
@@ -318,27 +316,56 @@ func (r *RepositoryImpl) handleRenameResuming(ctx context.Context, srcDir, dstDi
 
 func (r *RepositoryImpl) handleRenameAbort(ctx context.Context, srcDir, dstDir *directory.Directory) {
 	handleError := func(err error) {
-		r.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
+		r.notifier.NotifyError(fmt.Errorf("failed aborting rename: %w", err))
 		r.bus.Publish(directory.NewRenameFailureEvent(err, srcDir, dstDir.Name()))
 	}
 
-	sess, err := r.getSession(ctx, srcDir.ConnectionID())
+	// meh...
+	var connID connection_deck.ConnectionID
+	if srcDir != nil {
+		connID = srcDir.ConnectionID()
+	} else {
+		connID = dstDir.ConnectionID()
+	}
+
+	sess, err := r.getSession(ctx, connID)
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	srcDirKey := mapPathToSearchKey(srcDir.Path())
-	dstDirKey := mapPathToSearchKey(dstDir.Path())
+	var srcDirKey, dstDirKey string
+	if srcDir != nil {
+		srcDirKey = mapPathToSearchKey(srcDir.Path())
+	}
+	if dstDir != nil {
+		dstDirKey = mapPathToSearchKey(dstDir.Path())
+	}
+
+	if srcDirKey == "" {
+		srcDirKey = dstDirKey
+	} else if dstDirKey == "" {
+		dstDirKey = srcDirKey
+	}
 
 	if err := deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey, false); err != nil {
 		handleError(err)
 	}
 
-	go r.loadDirectory(ctx, sess, srcDir)
-	go r.loadDirectory(ctx, sess, dstDir)
-	//r.bus.Publish(directory.NewLoadSuccessEvent(srcDir, srcDir.SubDirectories(), srcDir.Files()))
-	//r.bus.Publish(directory.NewLoadSuccessEvent(dstDir, dstDir.SubDirectories(), dstDir.Files()))
+	if srcDir != nil {
+		go func() {
+			if err := r.loadDirectory(ctx, sess, srcDir); err != nil {
+				handleError(err)
+			}
+		}()
+	}
+	if dstDir != nil {
+		go func() {
+			if err := r.loadDirectory(ctx, sess, dstDir); err != nil {
+				handleError(err)
+			}
+		}()
+	}
 }
 
 func (r *RepositoryImpl) renameObjects(
@@ -391,8 +418,7 @@ func (r *RepositoryImpl) renameObjects(
 			for {
 				select {
 				case <-ctx.Done():
-					wg.Done()
-					return
+					return // TODO: to test
 				case key := <-workload:
 					if err := r.renameObject(ctx, sess, key, getObjectDstKey(srcDirKey, dstDirKey, key)); err != nil {
 						atomic.AddInt64(&errCnt, 1)

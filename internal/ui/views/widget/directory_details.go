@@ -22,9 +22,8 @@ type DirectoryDetails struct {
 
 	appCtx appcontext.AppContext
 
-	pathLabel         *widget.Label
-	statusLabel       *OpenableLabel
-	actionRequiredBtn *widget.Button
+	pathLabel        *widget.Label
+	renameErrContent *renameFailedPanel
 
 	toolbar            *widget.Toolbar
 	newDirectoryAction *ToolbarButton
@@ -37,13 +36,6 @@ type DirectoryDetails struct {
 func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	pathLabel := widget.NewLabel("")
 	pathLabel.Selectable = true
-
-	statusLabel := NewOpenableLabel("", appCtx.Window())
-	statusLabel.Selectable = false
-	statusLabel.Alignment = fyne.TextAlignLeading
-	statusLabel.Truncation = fyne.TextTruncateEllipsis
-	statusLabel.TextStyle = fyne.TextStyle{Bold: true}
-	statusLabel.Hide()
 
 	actionRequiredBtn := widget.NewButton("Action required", func() {})
 	actionRequiredBtn.Hide()
@@ -64,14 +56,13 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	w := &DirectoryDetails{
 		appCtx:             appCtx,
 		pathLabel:          pathLabel,
-		statusLabel:        statusLabel,
-		actionRequiredBtn:  actionRequiredBtn,
 		toolbar:            toolbar,
 		newDirectoryAction: createDirAction,
 		uploadAction:       uploadAction,
 		createFileAction:   createFileAction,
 		renameAction:       renameAction,
 		loadingBar:         loadingBar,
+		renameErrContent:   newRenameFailedPanel(appCtx.Window()),
 	}
 	w.ExtendBaseWidget(w)
 
@@ -100,13 +91,8 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 		fyne.CurrentApp().Clipboard().SetContent(sd.Path().String())
 	})
 
-	arContainer := container.NewCenter(
-		w.actionRequiredBtn,
-	)
-
 	content := container.NewVBox(
-		w.statusLabel,
-		arContainer,
+		w.renameErrContent,
 	)
 
 	return widget.NewSimpleRenderer(container.NewVBox(
@@ -157,14 +143,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	}
 	w.pathLabel.SetText(path)
 
-	if dir.Status() != nil {
-		w.statusLabel.SetText(dir.Status().Title() + ": " + dir.Status().Message())
-		w.statusLabel.Show()
-	} else {
-		w.statusLabel.SetText("")
-		w.statusLabel.Hide()
-	}
-
 	w.uploadAction.SetOnTapped(w.makeOnUpload(vm, dir))
 	w.newDirectoryAction.SetOnTapped(w.makeOnCreateDirectory(vm, dir))
 	w.createFileAction.SetOnTapped(w.makeOnCreateFile(vm, dir))
@@ -177,11 +155,26 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	}
 
 	if dir.HasError() {
-		w.actionRequiredBtn.Show()
-		w.actionRequiredBtn.OnTapped = w.makeOnResumeRename(vm, dir)
+		w.renameErrContent.Show()
+		w.renameErrContent.SetMessage(dir.Status().Title() + ": " + dir.Status().Message())
+		w.renameErrContent.SetCallbacks(func() {
+			if err := vm.ResumeRename(dir); err != nil {
+				dialog.ShowError(err, w.appCtx.Window())
+			}
+		}, func() {
+			if err := vm.RollbackRename(dir); err != nil {
+				dialog.ShowError(err, w.appCtx.Window())
+			}
+		}, func() {
+			if err := vm.AbortRename(dir); err != nil {
+				dialog.ShowError(err, w.appCtx.Window())
+			}
+		})
 	} else {
-		w.actionRequiredBtn.Hide()
-		w.actionRequiredBtn.OnTapped = func() {}
+		w.renameErrContent.Hide()
+		w.renameErrContent.OnResume = func() {}
+		w.renameErrContent.OnRollback = func() {}
+		w.renameErrContent.OnAbort = func() {}
 	}
 
 	if w.appCtx.ConnectionViewModel().IsReadOnly() || !dir.IsLoaded() || dir.HasError() {
@@ -193,14 +186,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.newDirectoryAction.Enable()
 		w.uploadAction.Enable()
 		w.createFileAction.Enable()
-	}
-}
-
-func (w *DirectoryDetails) makeOnResumeRename(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
-	return func() {
-		if err := vm.ResumeRename(dir); err != nil {
-			dialog.ShowError(err, w.appCtx.Window())
-		}
 	}
 }
 
@@ -334,58 +319,88 @@ func entryWithShortcuts(onSubmit, onDismiss func()) *EntryWithShortcuts {
 	})
 }
 
-type renameFailedDirDetailsContent struct {
-	status directory.RenameFailedStatus
-	window fyne.Window
+type renameFailedPanel struct {
+	widget.BaseWidget
 
-	onResume   func()
-	onRollback func()
-	onAbort    func()
+	window      fyne.Window
+	statusLabel *OpenableLabel
+
+	OnResume   func()
+	OnRollback func()
+	OnAbort    func()
+
+	resumeBtn   *widget.Button
+	rollbackBtn *widget.Button
+	abortBtn    *widget.Button
 }
 
-func NewRenameFailedDirDetailsContent(status directory.RenameFailedStatus, w fyne.Window, onResume, onRollback, onAbort func()) *renameFailedDirDetailsContent {
-	return &renameFailedDirDetailsContent{
-		status:     status,
-		window:     w,
-		onResume:   onResume,
-		onRollback: onRollback,
-		onAbort:    onAbort,
+func newRenameFailedPanel(window fyne.Window) *renameFailedPanel {
+	w := &renameFailedPanel{
+		window:     window,
+		OnResume:   func() {},
+		OnRollback: func() {},
+		OnAbort:    func() {},
 	}
+	w.ExtendBaseWidget(w)
+	return w
 }
 
 const renameExplanation = `
-### Ooops... it appears the rename failed...
+### Ooops... it appears renaming failed...
 
-Renaming a directory is a complex process on S3. Something probably went wrong, leaving this directory (and the new named one) in an inconsistent state (e.g. some of your files have been renamed, but some others not).
+
+Renaming a directory is a complex process on S3. 
+
+Something probably went wrong, leaving this directory (and the new named one) 
+
+in an inconsistent state (e.g. some of your files have been renamed, but some others not).
+
 
 But don't worry (too much), here are your options:
+
 
 * 1. Resume the renaming operation (recommended)
 * 2. Rollback to the old name
 * 3. Abort the process completely and leave everything as is.
 `
 
-func (w *renameFailedDirDetailsContent) CreateRenderer() fyne.WidgetRenderer {
-	statusLabel := NewOpenableLabel(w.status.Message(), w.window)
+func (w *renameFailedPanel) CreateRenderer() fyne.WidgetRenderer {
+	w.ExtendBaseWidget(w)
+
+	statusLabel := NewOpenableLabel("", w.window)
 	statusLabel.Selectable = false
 	statusLabel.Alignment = fyne.TextAlignLeading
 	statusLabel.Truncation = fyne.TextTruncateEllipsis
 	statusLabel.TextStyle = fyne.TextStyle{Bold: true}
 
-	resumeBtn := widget.NewButton("Resume", func() {})
-	rollbackBtn := widget.NewButton("Rollback", func() {})
-	abortBtn := widget.NewButton("Abort", func() {})
+	w.resumeBtn = widget.NewButton("Resume", func() {})
+	w.rollbackBtn = widget.NewButton("Rollback", func() {})
+	w.abortBtn = widget.NewButton("Abort", func() {})
+
+	staticLabel := widget.NewRichTextFromMarkdown(renameExplanation)
+	staticLabel.Scroll = fyne.ScrollHorizontalOnly
 
 	c := container.NewVBox(
-		container.NewCenter(widget.NewIcon(theme.ErrorIcon())),
 		statusLabel,
-		widget.NewRichTextFromMarkdown(renameExplanation),
+		staticLabel,
 		container.NewHBox(
-			resumeBtn,
-			rollbackBtn,
-			abortBtn,
+			w.resumeBtn,
+			w.rollbackBtn,
+			w.abortBtn,
 		),
 	)
 
+	w.statusLabel = statusLabel
+
 	return widget.NewSimpleRenderer(c)
+}
+
+func (w *renameFailedPanel) SetMessage(msg string) {
+	w.statusLabel.SetText(msg)
+}
+
+func (w *renameFailedPanel) SetCallbacks(resume, rollback, abort func()) {
+	w.resumeBtn.OnTapped = resume
+	w.rollbackBtn.OnTapped = rollback
+	w.abortBtn.OnTapped = abort
 }

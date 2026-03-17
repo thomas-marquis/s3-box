@@ -48,13 +48,7 @@ func (s *loadingState) Notify(evt event.Event) error {
 						IsSourceDir:      !isSrc,
 						OtherDirPath:     s.d.Path(),
 					}))
-			} else if err != nil {
-				if errors.Is(err, ErrNotFound) {
-					// Could append if the other directory has been removed in the meantime.
-					// In such a case, we simply load the directory normally.
-					s.d.setState(newLoadedState(s.baseState, s.subDirs, s.files))
-					return nil
-				}
+			} else if err != nil && !errors.Is(err, ErrNotFound) {
 				return err
 			}
 
@@ -89,6 +83,10 @@ func (s *loadingState) Notify(evt event.Event) error {
 			}
 			s.d.setState(newErrorState(s.baseState, status))
 		}
+		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: e.Error()}))
+
+	case UserValidationRefusedEvent:
+		s.d.setState(newLoadedState(s.baseState, s.subDirs, s.files))
 	}
 
 	return nil
