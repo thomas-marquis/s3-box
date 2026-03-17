@@ -10,17 +10,17 @@ type Status interface {
 	Message() string
 }
 
-type RenamePendingStatus struct {
+type RenameFailedStatus struct {
 	CurrentDirectory *Directory
 	IsSourceDir      bool
 	OtherDirPath     Path
 }
 
-func (s RenamePendingStatus) Title() string {
+func (s RenameFailedStatus) Title() string {
 	return "Rename pending"
 }
 
-func (s RenamePendingStatus) Message() string {
+func (s RenameFailedStatus) Message() string {
 	msg := strings.Builder{}
 	msg.WriteString("A rename operation is pending for this directory ")
 	srcPath := s.CurrentDirectory.Path()

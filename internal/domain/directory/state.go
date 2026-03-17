@@ -8,14 +8,14 @@ const (
 	stateTypeNotLoaded StateType = iota
 	stateTypeLoading
 	stateTypeLoaded
-	stateTypeResumable
+	stateTypeError
 )
 
 type state interface {
 	Type() StateType
 	Load() (LoadEvent, error)
 	Status() Status
-	Resume() (event.Event, error)
+	Recover(choice RecoveryChoice) (event.Event, error)
 	Files() []*File
 	SubDirectories() []*Directory
 	UploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error)
@@ -53,6 +53,6 @@ func (s *baseState) Status() Status {
 	return nil
 }
 
-func (s *baseState) Resume() (event.Event, error) {
+func (s *baseState) Recover(RecoveryChoice) (event.Event, error) {
 	return nil, ErrNotResumable
 }

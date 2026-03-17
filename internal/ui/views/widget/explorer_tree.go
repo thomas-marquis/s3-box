@@ -113,7 +113,7 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 
 		switch n := nodeItem.(type) {
 		case node.DirectoryNode:
-			if !n.Directory().IsLoaded() && !n.Directory().IsLoading() && !n.Directory().IsResumable() {
+			if !n.Directory().IsLoaded() && !n.Directory().IsLoading() && !n.Directory().HasError() {
 				if err := vm.LoadDirectory(n); err != nil {
 					dialog.ShowError(err, w.appCtx.Window())
 					return

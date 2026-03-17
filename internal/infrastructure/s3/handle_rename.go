@@ -171,7 +171,7 @@ func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 	}
 
 	if lsSrc.IsEmpty() {
-		if err := r.renameObjects(ctx, sess, dir.Path(), evt.NewName(), lsSrc.Keys, true); err != nil {
+		if err := r.renameObjects(ctx, sess, dir.Path(), evt.NewName(), lsSrc.Keys, true, false); err != nil {
 			handleError(err)
 			return
 		}
@@ -232,7 +232,7 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 		return
 	}
 
-	if err := r.renameObjects(ctx, sess, dir.Path(), newName, lsRes.Keys, true); err != nil {
+	if err := r.renameObjects(ctx, sess, dir.Path(), newName, lsRes.Keys, true, false); err != nil {
 		handleError(err)
 		return
 	}
@@ -240,16 +240,26 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 	r.bus.Publish(directory.NewRenameSuccessEvent(dir, newName))
 }
 
-func (r *RepositoryImpl) handleRenameResume(evt event.Event) {
-	e := evt.(directory.RenameResumeEvent)
+func (r *RepositoryImpl) handleRenameRecovery(evt event.Event) {
+	e := evt.(directory.RenameRecoverEvent)
+	ctx := e.Context()
 
-	srcDir := e.Directory()
-	dstDir := e.DstDir()
+	switch e.Choice() {
+	case directory.RecoveryChoiceRenameResume:
+		r.handleRenameResuming(ctx, e.Directory(), e.DstDir(), false)
+	case directory.RecoveryChoiceRenameRollback:
+		r.handleRenameResuming(ctx, e.DstDir(), e.Directory(), true)
+	case directory.RecoveryChoiceRenameAbort:
+		r.handleRenameAbort(ctx, e.Directory(), e.DstDir())
+	default:
+		return
+	}
+}
 
+func (r *RepositoryImpl) handleRenameResuming(ctx context.Context, srcDir, dstDir *directory.Directory, isRollback bool) {
 	srcPath := srcDir.Path()
 	dstPath := dstDir.Path()
 
-	ctx := e.Context()
 	newName := dstPath.DirectoryName()
 
 	handleError := func(err error) {
@@ -266,18 +276,28 @@ func (r *RepositoryImpl) handleRenameResume(evt event.Event) {
 	srcDirKey := mapPathToSearchKey(srcPath)
 	dstDirKey := mapPathToSearchKey(dstPath)
 
-	srcMrk, err := readRenameMarker(ctx, sess, srcDirKey+markerSrcFileName)
+	var srcMarkerKey, dstMarkerKey string
+	if isRollback {
+		srcMarkerKey = dstDirKey + markerSrcFileName
+		dstMarkerKey = srcDirKey + markerDstFileName
+	} else {
+		srcMarkerKey = srcDirKey + markerSrcFileName
+		dstMarkerKey = dstDirKey + markerDstFileName
+	}
+
+	srcMrk, err := readRenameMarker(ctx, sess, srcMarkerKey)
 	if err != nil {
-		handleError(fmt.Errorf("failed reading rename marker at %s: %w", srcDirKey+markerSrcFileName, err))
+		handleError(fmt.Errorf("failed reading rename marker at %s: %w", srcMarkerKey, err))
 		return
 	}
-	dstMrk, err := readRenameMarker(ctx, sess, dstDirKey+markerDstFileName)
+	dstMrk, err := readRenameMarker(ctx, sess, dstMarkerKey)
 	if err != nil {
-		handleError(fmt.Errorf("failed reading rename marker at %s: %w", dstDirKey+markerDstFileName, err))
+		handleError(fmt.Errorf("failed reading rename marker at %s: %w", dstMarkerKey, err))
 		return
 	}
 
-	if dstMrk.SrcDirPath != srcPath || srcMrk.DstDirPath != dstPath {
+	if (!isRollback && (dstMrk.SrcDirPath != srcPath || srcMrk.DstDirPath != dstPath)) ||
+		(isRollback && (srcMrk.DstDirPath != srcPath || dstMrk.SrcDirPath != dstPath)) {
 		handleError(errors.New("invalid rename marker(s) content"))
 		return
 	}
@@ -288,12 +308,37 @@ func (r *RepositoryImpl) handleRenameResume(evt event.Event) {
 		return
 	}
 
-	if err := r.renameObjects(ctx, sess, srcPath, newName, lsRes.Keys, false); err != nil {
+	if err := r.renameObjects(ctx, sess, srcPath, newName, lsRes.Keys, false, isRollback); err != nil {
 		handleError(err)
 		return
 	}
 
 	r.bus.Publish(directory.NewRenameSuccessEvent(srcDir, newName))
+}
+
+func (r *RepositoryImpl) handleRenameAbort(ctx context.Context, srcDir, dstDir *directory.Directory) {
+	handleError := func(err error) {
+		r.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
+		r.bus.Publish(directory.NewRenameFailureEvent(err, srcDir, dstDir.Name()))
+	}
+
+	sess, err := r.getSession(ctx, srcDir.ConnectionID())
+	if err != nil {
+		handleError(err)
+		return
+	}
+
+	srcDirKey := mapPathToSearchKey(srcDir.Path())
+	dstDirKey := mapPathToSearchKey(dstDir.Path())
+
+	if err := deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey, false); err != nil {
+		handleError(err)
+	}
+
+	go r.loadDirectory(ctx, sess, srcDir)
+	go r.loadDirectory(ctx, sess, dstDir)
+	//r.bus.Publish(directory.NewLoadSuccessEvent(srcDir, srcDir.SubDirectories(), srcDir.Files()))
+	//r.bus.Publish(directory.NewLoadSuccessEvent(dstDir, dstDir.SubDirectories(), dstDir.Files()))
 }
 
 func (r *RepositoryImpl) renameObjects(
@@ -303,6 +348,7 @@ func (r *RepositoryImpl) renameObjects(
 	newName string,
 	keys []string,
 	createMarkers bool,
+	isRollback bool,
 ) error {
 	//aclRes, err := sess.client.GetBucketAcl(ctx, &s3.GetBucketAclInput{
 	//	Bucket: aws.String(sess.connection.Bucket()),
@@ -315,7 +361,7 @@ func (r *RepositoryImpl) renameObjects(
 	dstDirKey := getDstDirKey(srcDirKey, newName)
 
 	if len(keys) == 0 {
-		return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey)
+		return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey, isRollback)
 	}
 
 	if createMarkers {
@@ -329,7 +375,7 @@ func (r *RepositoryImpl) renameObjects(
 		if err := r.renameObject(ctx, sess, key, getObjectDstKey(srcDirKey, dstDirKey, key)); err != nil {
 			return err
 		}
-		return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey)
+		return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey, isRollback)
 	}
 
 	var (
@@ -345,6 +391,7 @@ func (r *RepositoryImpl) renameObjects(
 			for {
 				select {
 				case <-ctx.Done():
+					wg.Done()
 					return
 				case key := <-workload:
 					if err := r.renameObject(ctx, sess, key, getObjectDstKey(srcDirKey, dstDirKey, key)); err != nil {
@@ -371,7 +418,7 @@ func (r *RepositoryImpl) renameObjects(
 		}
 	}
 
-	return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey)
+	return deleteRenameMarkers(ctx, sess.client, sess.connection.Bucket(), srcDirKey, dstDirKey, isRollback)
 }
 
 func (r *RepositoryImpl) renameObject(ctx context.Context, sess *s3Session, oldKey, newKey string) error {
@@ -543,7 +590,7 @@ func createRenameMarkers(ctx context.Context, client *s3.Client, bucket, srcDirP
 	select {
 	case err := <-errChan:
 		close(errChan)
-		if err := deleteRenameMarkers(ctx, client, bucket, srcKey, dstKey); err != nil {
+		if err := deleteRenameMarkers(ctx, client, bucket, srcKey, dstKey, false); err != nil {
 			return err
 		}
 		return err
@@ -569,7 +616,7 @@ func readRenameMarker(ctx context.Context, sess *s3Session, key string) (*rename
 	return &m, nil
 }
 
-func deleteRenameMarkers(ctx context.Context, client *s3.Client, bucket, srcDirPrefix, dstDirPrefix string) error {
+func deleteRenameMarkers(ctx context.Context, client *s3.Client, bucket, srcDirPrefix, dstDirPrefix string, markerInversed bool) error {
 	var (
 		srcKey = srcDirPrefix + markerSrcFileName
 		dstKey = dstDirPrefix + markerDstFileName
@@ -577,6 +624,10 @@ func deleteRenameMarkers(ctx context.Context, client *s3.Client, bucket, srcDirP
 		wg      sync.WaitGroup
 		errChan = make(chan error)
 	)
+	if markerInversed {
+		srcKey = dstDirPrefix + markerSrcFileName
+		dstKey = srcDirPrefix + markerDstFileName
+	}
 
 	wg.Add(2)
 

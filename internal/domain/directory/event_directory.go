@@ -9,7 +9,7 @@ const (
 	DeletedEventType        event.Type = "event.directory.deleted"
 	LoadEventType           event.Type = "event.directory.load"
 	RenameEventType         event.Type = "event.directory.rename"
-	RenameResumeEventType   event.Type = "event.directory.rename.resume"
+	RenameRecoverEventType  event.Type = "event.directory.rename.resume"
 	UserValidationEventType event.Type = "event.directory.user.validation"
 )
 
@@ -223,22 +223,28 @@ func (e withReason) Reason() event.Event {
 	return e.reason
 }
 
-type RenameResumeEvent struct {
+type RenameRecoverEvent struct {
 	event.BaseEvent
 	withDirectory
 	dstDir *Directory
+	choice RecoveryChoice
 }
 
-func NewRenameResumeEvent(srcDir *Directory, dstDir *Directory, opts ...event.Option) RenameResumeEvent {
-	return RenameResumeEvent{
-		event.NewBaseEvent(RenameResumeEventType, opts...),
+func NewRenameRecoverEvent(srcDir *Directory, dstDir *Directory, choice RecoveryChoice, opts ...event.Option) RenameRecoverEvent {
+	return RenameRecoverEvent{
+		event.NewBaseEvent(RenameRecoverEventType, opts...),
 		withDirectory{srcDir},
 		dstDir,
+		choice,
 	}
 }
 
-func (e RenameResumeEvent) DstDir() *Directory {
+func (e RenameRecoverEvent) DstDir() *Directory {
 	return e.dstDir
+}
+
+func (e RenameRecoverEvent) Choice() RecoveryChoice {
+	return e.choice
 }
 
 type UserValidationEvent struct {

@@ -6,30 +6,30 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
-type resumableState struct {
+type errorState struct {
 	baseState
 	currentStatus Status
 }
 
-var _ state = (*resumableState)(nil)
+var _ state = (*errorState)(nil)
 
-func newResumableState(previous baseState, status Status) *resumableState {
-	return &resumableState{previous.Clone(), status}
+func newErrorState(previous baseState, status Status) *errorState {
+	return &errorState{previous.Clone(), status}
 }
 
-func (s *resumableState) Type() StateType {
-	return stateTypeResumable
+func (s *errorState) Type() StateType {
+	return stateTypeError
 }
 
-func (s *resumableState) Load() (LoadEvent, error) {
+func (s *errorState) Load() (LoadEvent, error) {
 	return LoadEvent{}, NewError(s.d, "this directory is already loaded")
 }
 
-func (s *resumableState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {
+func (s *errorState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {
 	return ContentUploadedEvent{}, errors.New("you can't upload files to a resumable directory")
 }
 
-func (s *resumableState) Notify(evt event.Event) error {
+func (s *errorState) Notify(evt event.Event) error {
 	switch e := evt.(type) {
 
 	case RenameSuccessEvent:
@@ -45,24 +45,24 @@ func (s *resumableState) Notify(evt event.Event) error {
 
 	case RenameFailureEvent:
 		if errors.Is(e.Error(), &UncompletedRename{}) {
-			status := RenamePendingStatus{
+			status := RenameFailedStatus{
 				CurrentDirectory: s.d,
 				IsSourceDir:      true,
 				OtherDirPath:     s.d.ParentPath().NewSubPath(e.NewName()),
 			}
-			s.d.setState(newResumableState(s.baseState, status))
+			s.d.setState(newErrorState(s.baseState, status))
 		}
 	}
 	return nil
 }
 
-func (s *resumableState) Status() Status {
+func (s *errorState) Status() Status {
 	return s.currentStatus
 }
 
-func (s *resumableState) Resume() (event.Event, error) {
+func (s *errorState) Recover(choice RecoveryChoice) (event.Event, error) {
 	switch status := s.currentStatus.(type) {
-	case RenamePendingStatus:
+	case RenameFailedStatus:
 		var srcDir, dstDir *Directory
 
 		parent := s.d.parent // no need to check parent nullity: renaming root dir is forbidden
@@ -79,7 +79,9 @@ func (s *resumableState) Resume() (event.Event, error) {
 			dstDir = s.d
 		}
 
-		return NewRenameResumeEvent(srcDir, dstDir), nil
+		s.d.setState(newLoadingState(s.baseState))
+		otherDir.setState(newLoadingState(baseState{d: otherDir}))
+		return NewRenameRecoverEvent(srcDir, dstDir, choice), nil
 	}
-	return nil, errors.New("nothing to resume")
+	return nil, errors.New("nothing to recover")
 }

@@ -11,6 +11,14 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 )
 
+type RecoveryChoice int
+
+const (
+	RecoveryChoiceRenameResume RecoveryChoice = iota
+	RecoveryChoiceRenameRollback
+	RecoveryChoiceRenameAbort
+)
+
 const (
 	RootDirName   = ""
 	NilParentPath = Path("")
@@ -255,8 +263,8 @@ func (d *Directory) IsLoaded() bool {
 	return d.currentState.Type() == stateTypeLoaded
 }
 
-func (d *Directory) IsResumable() bool {
-	return d.currentState.Type() == stateTypeResumable
+func (d *Directory) HasError() bool {
+	return d.currentState.Type() == stateTypeError
 }
 
 func (d *Directory) Load() (LoadEvent, error) {
@@ -275,8 +283,9 @@ func (d *Directory) Close() {
 	d.isOpen = false
 }
 
-func (d *Directory) Resume() (event.Event, error) {
-	return d.currentState.Resume()
+// Recover run the recovery process if the directory is in error, according to the solution chosen by the user.
+func (d *Directory) Recover(choice RecoveryChoice) (event.Event, error) {
+	return d.currentState.Recover(choice)
 }
 
 // Status returns the current status of the directory.

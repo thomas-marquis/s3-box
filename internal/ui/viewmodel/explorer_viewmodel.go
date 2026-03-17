@@ -635,7 +635,7 @@ func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) error {
-	evt, err := dir.Resume()
+	evt, err := dir.Recover(directory.RecoveryChoiceRenameResume)
 	if err != nil {
 		return fmt.Errorf("impossible to resume rename: %w", err)
 	}

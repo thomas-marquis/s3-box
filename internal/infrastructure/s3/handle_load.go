@@ -22,13 +22,19 @@ func (r *RepositoryImpl) handleLoadDirectory(e event.Event) {
 		r.bus.Publish(directory.NewLoadFailureEvent(err, dir))
 	}
 
-	searchKey := mapPathToSearchKey(dir.Path())
-
 	s, err := r.getSession(ctx, dir.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
 	}
+
+	if err := r.loadDirectory(ctx, s, dir); err != nil {
+		handleError(err)
+	}
+}
+
+func (r *RepositoryImpl) loadDirectory(ctx context.Context, s *s3Session, dir *directory.Directory) error {
+	searchKey := mapPathToSearchKey(dir.Path())
 
 	inputs := &s3.ListObjectsV2Input{
 		Bucket:    aws.String(s.connection.Bucket()),
@@ -44,19 +50,17 @@ func (r *RepositoryImpl) handleLoadDirectory(e event.Event) {
 	for paginator.HasMorePages() {
 		page, err := paginator.NextPage(ctx)
 		if err != nil {
-			handleError(r.manageAwsSdkError(
+			return r.manageAwsSdkError(
 				fmt.Errorf("error while fetching next objects page: %w", err),
 				searchKey,
-				s))
-			return
+				s)
 		}
 
 		for _, obj := range page.Contents {
 			key := *obj.Key
 
 			if isRenameMarkerFile(key) {
-				handleError(r.getPendingRenameErr(ctx, s, dir, key))
-				return
+				return r.getPendingRenameErr(ctx, s, dir, key)
 			}
 
 			if key == searchKey {
@@ -66,8 +70,7 @@ func (r *RepositoryImpl) handleLoadDirectory(e event.Event) {
 				directory.WithFileSize(int(*obj.Size)),
 				directory.WithFileLastModified(*obj.LastModified))
 			if err != nil {
-				handleError(fmt.Errorf("error while creating a file: %w", err))
-				return
+				return fmt.Errorf("error while creating a file: %w", err)
 			}
 			files = append(files, f)
 		}
@@ -81,14 +84,14 @@ func (r *RepositoryImpl) handleLoadDirectory(e event.Event) {
 			if isDir {
 				d, err := directory.New(dir.ConnectionID(), directory.NewPath(s3Prefix).DirectoryName(), dir)
 				if err != nil {
-					handleError(fmt.Errorf("error while loading a directory: %w", err))
-					return
+					return fmt.Errorf("error while loading a directory: %w", err)
 				}
 				subDirectories = append(subDirectories, d)
 			}
 		}
 	}
 	r.bus.Publish(directory.NewLoadSuccessEvent(dir, subDirectories, files))
+	return nil
 }
 
 func (r *RepositoryImpl) handleLoadFile(e event.Event) {

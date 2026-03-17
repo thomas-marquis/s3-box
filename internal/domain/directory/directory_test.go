@@ -641,21 +641,26 @@ func TestDirectory_Resume(t *testing.T) {
 		loadFailureEvent := directory.NewLoadFailureEvent(urErr, oldDir) // Simulate a loading failure due to an inconsistent state from a rename failure
 		require.NoError(t, oldDir.Notify(loadFailureEvent))
 
-		// When
-		evt, err := oldDir.Resume()
-
-		// Then
-		assert.NoError(t, err)
-		assert.Equal(t, directory.RenamePendingStatus{
+		require.Equal(t, directory.RenameFailedStatus{
 			CurrentDirectory: oldDir,
 			IsSourceDir:      true,
 			OtherDirPath:     "/newname/",
 		}, oldDir.Status())
-		assert.Equal(t, directory.RenameResumeEventType, evt.Type())
 
-		res := evt.(directory.RenameResumeEvent)
+		// When
+		evt, err := oldDir.Recover(directory.RecoveryChoiceRenameResume)
+
+		// Then
+		assert.NoError(t, err)
+		assert.Equal(t, directory.RenameRecoverEventType, evt.Type())
+
+		res := evt.(directory.RenameRecoverEvent)
 		assert.Equal(t, newDir, res.DstDir())
 		assert.Equal(t, oldDir, res.Directory())
+		assert.Equal(t, directory.RecoveryChoiceRenameResume, res.Choice())
+
+		assert.True(t, oldDir.IsLoading())
+		assert.True(t, newDir.IsLoading())
 	})
 
 	t.Run("should returns a rename resume event when directory is in a resumable state with a rename pending status after a failing loading", func(t *testing.T) {
@@ -673,18 +678,18 @@ func TestDirectory_Resume(t *testing.T) {
 		require.NoError(t, oldDir.Notify(directory.NewLoadFailureEvent(urErr, oldDir)))
 
 		// When
-		evt, err := oldDir.Resume()
+		evt, err := oldDir.Recover(directory.RecoveryChoiceRenameResume)
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.RenamePendingStatus{
+		assert.Equal(t, directory.RenameFailedStatus{
 			CurrentDirectory: newDir,
 			IsSourceDir:      false,
 			OtherDirPath:     "/oldname/",
 		}, newDir.Status())
-		assert.Equal(t, directory.RenameResumeEventType, evt.Type())
+		assert.Equal(t, directory.RenameRecoverEventType, evt.Type())
 
-		res := evt.(directory.RenameResumeEvent)
+		res := evt.(directory.RenameRecoverEvent)
 		assert.Equal(t, newDir, res.DstDir())
 		assert.Equal(t, oldDir, res.Directory())
 	})

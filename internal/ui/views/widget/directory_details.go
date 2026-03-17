@@ -176,7 +176,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.renameAction.Enable()
 	}
 
-	if dir.IsResumable() {
+	if dir.HasError() {
 		w.actionRequiredBtn.Show()
 		w.actionRequiredBtn.OnTapped = w.makeOnResumeRename(vm, dir)
 	} else {
@@ -184,7 +184,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.actionRequiredBtn.OnTapped = func() {}
 	}
 
-	if w.appCtx.ConnectionViewModel().IsReadOnly() || !dir.IsLoaded() || dir.IsResumable() {
+	if w.appCtx.ConnectionViewModel().IsReadOnly() || !dir.IsLoaded() || dir.HasError() {
 		w.newDirectoryAction.Disable()
 		w.uploadAction.Disable()
 		w.createFileAction.Disable()
@@ -332,4 +332,60 @@ func entryWithShortcuts(onSubmit, onDismiss func()) *EntryWithShortcuts {
 			Callback: onDismiss,
 		},
 	})
+}
+
+type renameFailedDirDetailsContent struct {
+	status directory.RenameFailedStatus
+	window fyne.Window
+
+	onResume   func()
+	onRollback func()
+	onAbort    func()
+}
+
+func NewRenameFailedDirDetailsContent(status directory.RenameFailedStatus, w fyne.Window, onResume, onRollback, onAbort func()) *renameFailedDirDetailsContent {
+	return &renameFailedDirDetailsContent{
+		status:     status,
+		window:     w,
+		onResume:   onResume,
+		onRollback: onRollback,
+		onAbort:    onAbort,
+	}
+}
+
+const renameExplanation = `
+### Ooops... it appears the rename failed...
+
+Renaming a directory is a complex process on S3. Something probably went wrong, leaving this directory (and the new named one) in an inconsistent state (e.g. some of your files have been renamed, but some others not).
+
+But don't worry (too much), here are your options:
+
+* 1. Resume the renaming operation (recommended)
+* 2. Rollback to the old name
+* 3. Abort the process completely and leave everything as is.
+`
+
+func (w *renameFailedDirDetailsContent) CreateRenderer() fyne.WidgetRenderer {
+	statusLabel := NewOpenableLabel(w.status.Message(), w.window)
+	statusLabel.Selectable = false
+	statusLabel.Alignment = fyne.TextAlignLeading
+	statusLabel.Truncation = fyne.TextTruncateEllipsis
+	statusLabel.TextStyle = fyne.TextStyle{Bold: true}
+
+	resumeBtn := widget.NewButton("Resume", func() {})
+	rollbackBtn := widget.NewButton("Rollback", func() {})
+	abortBtn := widget.NewButton("Abort", func() {})
+
+	c := container.NewVBox(
+		container.NewCenter(widget.NewIcon(theme.ErrorIcon())),
+		statusLabel,
+		widget.NewRichTextFromMarkdown(renameExplanation),
+		container.NewHBox(
+			resumeBtn,
+			rollbackBtn,
+			abortBtn,
+		),
+	)
+
+	return widget.NewSimpleRenderer(c)
 }
