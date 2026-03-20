@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
@@ -79,57 +78,6 @@ func (r *RepositoryImpl) loadDirectory(ctx context.Context, client s3client.Clie
 		return err
 	}
 
-	//inputs := &s3.ListObjectsV2Input{
-	//	Bucket:    aws.String(s.connection.Bucket()),
-	//	Prefix:    aws.String(searchKey),
-	//	Delimiter: aws.String("/"),
-	//	MaxKeys:   aws.Int32(1000),
-	//}
-	//
-	//paginator := s3.NewListObjectsV2Paginator(s.client, inputs)
-	//for paginator.HasMorePages() {
-	//	page, err := paginator.NextPage(ctx)
-	//	if err != nil {
-	//		return r.manageAwsSdkError(
-	//			fmt.Errorf("error while fetching next objects page: %w", err),
-	//			searchKey,
-	//			s)
-	//	}
-
-	//for _, obj := range page.Contents {
-	//	key := *obj.Key
-	//
-	//	if isRenameMarkerFile(key) {
-	//		return r.getPendingRenameErr(ctx, s, dir, key)
-	//	}
-	//
-	//	if key == searchKey {
-	//		continue
-	//	}
-	//	f, err := directory.NewFile(mapKeyToObjectName(key), dir.Path(),
-	//		directory.WithFileSize(int(*obj.Size)),
-	//		directory.WithFileLastModified(*obj.LastModified))
-	//	if err != nil {
-	//		return fmt.Errorf("error while creating a file: %w", err)
-	//	}
-	//	files = append(files, f)
-	//}
-	//
-	//for _, obj := range page.CommonPrefixes {
-	//	if *obj.Prefix == searchKey {
-	//		continue
-	//	}
-	//	s3Prefix := *obj.Prefix
-	//	isDir := strings.HasSuffix(s3Prefix, "/")
-	//	if isDir {
-	//		d, err := directory.New(dir.ConnectionID(), directory.NewPath(s3Prefix).DirectoryName(), dir)
-	//		if err != nil {
-	//			return fmt.Errorf("error while loading a directory: %w", err)
-	//		}
-	//		subDirectories = append(subDirectories, d)
-	//	}
-	//}
-	//}
 	r.bus.Publish(directory.NewLoadSuccessEvent(dir, subDirectories, files))
 	return nil
 }
@@ -151,5 +99,5 @@ func (r *RepositoryImpl) loadFile(ctx context.Context, file *directory.File, con
 	if err != nil {
 		return nil, err
 	}
-	return NewObject(ctx, client.Downloader(), client.Uploader(), sess.connection, file)
+	return NewObject(ctx, client, file)
 }

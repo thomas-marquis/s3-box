@@ -46,16 +46,18 @@ func (f *factoryImpl) Get(ctx context.Context, connID connection_deck.Connection
 		return nil, err
 	}
 
+	var newClient Client
 	// TODO: implement a better discrimination system between connection types
 	if conn.Region() == "" {
 		// S3Like
-		return nil, nil
+		newClient = NewS3LikeClient(conn)
+	} else {
+		// AWS
+		newClient = NewAwsClient(conn)
 	}
 
-	// AWS
-	c := newAwsClient(conn, f.notifier)
-	f.cache[connID] = c
-	return c, nil
+	f.cache[connID] = newClient
+	return newClient, nil
 }
 
 func (f *factoryImpl) Remove(connId connection_deck.ConnectionID) {

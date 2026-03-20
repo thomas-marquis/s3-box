@@ -2,7 +2,6 @@ package s3client
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 
@@ -12,17 +11,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/logging"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
-	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 )
 
 type awsClient struct {
 	*baseApiImpl
 
-	notifier notification.Repository
-	logger   *log.Logger
+	logger *log.Logger
 }
 
-func newAwsClient(conn *connection_deck.Connection, notifier notification.Repository, opts ...func(*s3.Options)) Client {
+func NewAwsClient(conn *connection_deck.Connection, opts ...func(*s3.Options)) Client {
 	logger := log.New(os.Stdout, conn.ID().String(), log.LstdFlags)
 	client := s3.New(s3.Options{
 		Credentials:  credentials.NewStaticCredentialsProvider(conn.AccessKey(), conn.SecretKey(), ""),
@@ -33,16 +30,19 @@ func newAwsClient(conn *connection_deck.Connection, notifier notification.Reposi
 
 	return newClientImpl(client, conn.Bucket(), &awsClient{
 		baseApiImpl: newBaseApiImpl(client, conn.Bucket()),
-		notifier:    notifier,
 		logger:      logger,
 	})
 }
 
-func (c *awsClient) GetObjectGrants(ctx context.Context, key string) (Grants, error) {
-	aclRes, err := c.client.GetObjectAcl(ctx, &s3.GetObjectAclInput{
+func (c *awsClient) GetObjectGrants(ctx context.Context, key string, opts ...Option) (Grants, error) {
+	in := &s3.GetObjectAclInput{
 		Bucket: aws.String(c.bucket),
 		Key:    aws.String(key),
-	})
+	}
+	for _, opt := range opts {
+		opt(in)
+	}
+	aclRes, err := c.client.GetObjectAcl(ctx, in)
 	if err != nil {
 		return Grants{}, err
 	}
@@ -64,10 +64,6 @@ func (c *awsClient) GetObjectGrants(ctx context.Context, key string) (Grants, er
 			grantWriteAcp = append(grantWriteAcp, generatePermissionGrant(grant.Grantee))
 		case types.PermissionFullControl:
 			grantFullControl = append(grantFullControl, generatePermissionGrant(grant.Grantee))
-		case types.PermissionWrite:
-			c.notifier.NotifyDebug("ignoring write permission at object level")
-		default:
-			c.notifier.NotifyDebug(fmt.Sprintf("unknown permission for grant: %s", grant.Permission))
 		}
 	}
 
