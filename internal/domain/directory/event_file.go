@@ -9,7 +9,7 @@ const (
 	FileCreatedEventType event.Type = "event.file.created"
 	FileDeletedEventType event.Type = "event.file.deleted"
 	FileLoadEventType    event.Type = "event.file.load"
-	FileRenamedEventType event.Type = "event.file.renamed"
+	FileRenameEventType  event.Type = "event.file.rename"
 )
 
 type withFile struct {
@@ -152,58 +152,50 @@ func NewFileLoadFailureEvent(err error, file *File) FileLoadFailureEvent {
 	}
 }
 
-type withOldFileName struct {
-	oldName FileName
-}
-
-func (e withOldFileName) OldName() FileName {
-	return e.oldName
-}
-
-type FileRenamedEvent struct {
+type FileRenameEvent struct {
 	event.BaseEvent
 	withFile
-	withOldFileName
-	withParentDirectory
+	withNewName
+	withDirectory
 }
 
-func NewFileRenamedEvent(parent *Directory, file *File, oldName FileName, opts ...event.Option) FileRenamedEvent {
-	return FileRenamedEvent{
-		event.NewBaseEvent(FileRenamedEventType, opts...),
+func NewFileRenameEvent(dir *Directory, file *File, newName string, opts ...event.Option) FileRenameEvent {
+	return FileRenameEvent{
+		event.NewBaseEvent(FileRenameEventType, opts...),
 		withFile{file},
-		withOldFileName{oldName},
-		withParentDirectory{parent},
+		withNewName{newName},
+		withDirectory{dir},
 	}
 }
 
-type FileRenamedSuccessEvent struct {
+type FileRenameSuccessEvent struct {
 	event.BaseEvent
 	withFile
-	withOldFileName
-	withParentDirectory
+	withNewName
+	withDirectory
 }
 
-func NewFileRenamedSuccessEvent(parent *Directory, file *File, oldName FileName, opts ...event.Option) FileRenamedSuccessEvent {
-	return FileRenamedSuccessEvent{
-		event.NewBaseEvent(FileRenamedEventType.AsSuccess(), opts...),
+func NewFileRenameSuccessEvent(dir *Directory, file *File, newName string, opts ...event.Option) FileRenameSuccessEvent {
+	return FileRenameSuccessEvent{
+		event.NewBaseEvent(FileRenameEventType.AsSuccess(), opts...),
 		withFile{file},
-		withOldFileName{oldName},
-		withParentDirectory{parent},
+		withNewName{newName},
+		withDirectory{dir},
 	}
 }
 
-type FileRenamedFailureEvent struct {
+type FileRenameFailureEvent struct {
 	event.BaseErrorEvent
 	withFile
-	withOldFileName
-	withParentDirectory
+	withNewName
+	withDirectory
 }
 
-func NewFileRenamedFailureEvent(err error, parent *Directory, file *File, oldName FileName) FileRenamedFailureEvent {
-	return FileRenamedFailureEvent{
-		event.NewBaseErrorEvent(FileRenamedEventType.AsFailure(), err),
+func NewFileRenameFailureEvent(err error, dir *Directory, file *File, newName string) FileRenameFailureEvent {
+	return FileRenameFailureEvent{
+		event.NewBaseErrorEvent(FileRenameEventType.AsFailure(), err),
 		withFile{file},
-		withOldFileName{oldName},
-		withParentDirectory{parent},
+		withNewName{newName},
+		withDirectory{dir},
 	}
 }

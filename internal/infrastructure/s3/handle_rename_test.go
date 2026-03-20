@@ -35,10 +35,7 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
 
 		parentDir := testutil.NewLoadedDirectory(t, "mydir", directory.RootPath)
-		testutil.AddFileToDirectory(t, parentDir, "original.txt")
-
-		renamedFile, err := directory.NewFile("renamed.txt", parentDir.Path())
-		require.NoError(t, err)
+		originalFile := testutil.AddFileToDirectory(t, parentDir, "original.txt")
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -50,21 +47,20 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
-				e, ok := evt.(directory.FileRenamedSuccessEvent)
+				e, ok := evt.(directory.FileRenameSuccessEvent)
 				res := assert.True(t, ok) &&
-					assert.Equal(t, "renamed.txt", e.File().Name().String())
+					assert.Equal(t, "renamed.txt", e.NewName())
 				close(done)
 				return res
 			})).
 			Times(1)
 
-		_, err = s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		repo, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
-
-		oldName := directory.FileName("original.txt")
+		_ = repo
 
 		// When
-		fakeEventChan <- directory.NewFileRenamedEvent(parentDir, renamedFile, oldName)
+		fakeEventChan <- directory.NewFileRenameEvent(parentDir, originalFile, "renamed.txt")
 
 		// Then
 		testutil.AssertEventually(t, done)

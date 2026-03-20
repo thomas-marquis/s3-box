@@ -30,7 +30,8 @@ func TestS3Object_Read(t *testing.T) {
 
 	t.Run("should read the object content when exists", func(t *testing.T) {
 		// Given
-		file, err := directory.NewFile("existing-file.txt", directory.RootPath)
+		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		file, err := directory.NewFile("existing-file.txt", rootDir)
 		require.NoError(t, err)
 
 		obj, err := s3.NewObject(ctx, client, file)
@@ -50,7 +51,8 @@ func TestS3Object_Read(t *testing.T) {
 
 	t.Run("should read the object content when exists with non-zero offset", func(t *testing.T) {
 		// Given
-		file, err := directory.NewFile("existing-file.txt", directory.RootPath)
+		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		file, err := directory.NewFile("existing-file.txt", rootDir)
 		require.NoError(t, err)
 
 		obj, err := s3.NewObject(ctx, client, file)
@@ -70,7 +72,8 @@ func TestS3Object_Read(t *testing.T) {
 
 	t.Run("should return an error when the object does not exists", func(t *testing.T) {
 		// Given
-		file, err := directory.NewFile("non-existing-file.txt", directory.RootPath)
+		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		file, err := directory.NewFile("non-existing-file.txt", rootDir)
 		require.NoError(t, err)
 
 		obj, err := s3.NewObject(ctx, client, file)
@@ -101,7 +104,8 @@ func TestS3Object_Write(t *testing.T) {
 	t.Run("should create the object if not exists then makes it readable", func(t *testing.T) {
 		// Given
 		fileKey := "brand-new-file.txt"
-		file, err := directory.NewFile(fileKey, directory.RootPath)
+		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 
 		obj, err := s3.NewObject(ctx, client, file)
@@ -127,7 +131,8 @@ func TestS3Object_Write(t *testing.T) {
 		fileKey := "this-file-exists-0.txt"
 		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
 
-		file, err := directory.NewFile(fileKey, directory.RootPath)
+		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 
 		obj, err := s3.NewObject(ctx, client, file)
@@ -154,7 +159,8 @@ func TestS3Object_Write(t *testing.T) {
 		fileKey := "this-file-exists-1.txt"
 		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
 
-		file, err := directory.NewFile(fileKey, directory.RootPath)
+		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 
 		obj, err := s3.NewObject(ctx, client, file)
@@ -183,7 +189,8 @@ func TestS3Object_Write(t *testing.T) {
 		fileKey := "this-file-exists-2.txt"
 		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
 
-		file, err := directory.NewFile(fileKey, directory.RootPath)
+		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 
 		newCtx, cancel := context.WithCancel(ctx)
@@ -214,7 +221,8 @@ func TestS3Object_Write(t *testing.T) {
 
 		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
 
-		file, err := directory.NewFile(fileKey, directory.RootPath)
+		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 
 		newCtx, cancel := context.WithCancel(ctx)

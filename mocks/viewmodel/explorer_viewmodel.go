@@ -45,6 +45,20 @@ func (m *MockExplorerViewModel) EXPECT() *MockExplorerViewModelMockRecorder {
 	return m.recorder
 }
 
+// AbortRename mocks base method.
+func (m *MockExplorerViewModel) AbortRename(dir *directory.Directory) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AbortRename", dir)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AbortRename indicates an expected call of AbortRename.
+func (mr *MockExplorerViewModelMockRecorder) AbortRename(dir any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AbortRename", reflect.TypeOf((*MockExplorerViewModel)(nil).AbortRename), dir)
+}
+
 // AddStateListener mocks base method.
 func (m *MockExplorerViewModel) AddStateListener(arg0 func()) {
 	m.ctrl.T.Helper()
@@ -296,6 +310,20 @@ func (m *MockExplorerViewModel) ResumeRename(dir *directory.Directory) error {
 func (mr *MockExplorerViewModelMockRecorder) ResumeRename(dir any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResumeRename", reflect.TypeOf((*MockExplorerViewModel)(nil).ResumeRename), dir)
+}
+
+// RollbackRename mocks base method.
+func (m *MockExplorerViewModel) RollbackRename(dir *directory.Directory) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RollbackRename", dir)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RollbackRename indicates an expected call of RollbackRename.
+func (mr *MockExplorerViewModelMockRecorder) RollbackRename(dir any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RollbackRename", reflect.TypeOf((*MockExplorerViewModel)(nil).RollbackRename), dir)
 }
 
 // SelectedConnection mocks base method.

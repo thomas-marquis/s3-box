@@ -68,8 +68,6 @@
 					</widget>
 				</container>
 				<container pos="0,150" size="567x0">
-					<container size="567x0">
-					</container>
 				</container>
 			</container>
 		</widget>

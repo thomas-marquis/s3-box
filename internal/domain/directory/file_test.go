@@ -14,7 +14,7 @@ func TestFile_Rename(t *testing.T) {
 		// Given
 		parentDir := testutil.NewNotLoadedDirectory(t, "parent", directory.RootPath)
 
-		file, err := directory.NewFile("oldname.txt", parentDir.Path())
+		file, err := directory.NewFile("oldname.txt", parentDir)
 		require.NoError(t, err)
 
 		// When
@@ -22,16 +22,16 @@ func TestFile_Rename(t *testing.T) {
 
 		// Then
 		require.NoError(t, err)
-		assert.Equal(t, directory.FileRenamedEventType, evt.Type())
-		assert.Equal(t, directory.FileName("newname.txt"), file.Name())
-		assert.Equal(t, directory.FileName("oldname.txt"), evt.OldName())
+		assert.Equal(t, directory.FileRenameEventType, evt.Type())
+		assert.Equal(t, directory.FileName("oldname.txt"), file.Name())
+		assert.Equal(t, "newname.txt", evt.NewName())
 	})
 
 	t.Run("should return error when new name is invalid", func(t *testing.T) {
 		// Given
 		parentDir := testutil.NewNotLoadedDirectory(t, "parent", directory.RootPath)
 
-		file, err := directory.NewFile("oldname.txt", parentDir.Path())
+		file, err := directory.NewFile("oldname.txt", parentDir)
 		require.NoError(t, err)
 
 		// When & Then - empty name
@@ -54,7 +54,7 @@ func TestFile_Rename(t *testing.T) {
 		// Given
 		parentDir := testutil.NewNotLoadedDirectory(t, "parent", directory.RootPath)
 
-		file, err := directory.NewFile("oldname.txt", parentDir.Path())
+		file, err := directory.NewFile("oldname.txt", parentDir)
 		require.NoError(t, err)
 
 		loadEvt := directory.NewLoadSuccessEvent(parentDir, nil, []*directory.File{file})
@@ -62,12 +62,11 @@ func TestFile_Rename(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, parentDir.Notify(loadEvt))
 
-		oldName := file.Name()
 		_, err = file.Rename("newname.txt")
 		require.NoError(t, err)
 
 		// When
-		successEvt := directory.NewFileRenamedSuccessEvent(parentDir, file, oldName)
+		successEvt := directory.NewFileRenameSuccessEvent(parentDir, file, "newname.txt")
 		err = parentDir.Notify(successEvt)
 
 		// Then

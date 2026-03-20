@@ -36,7 +36,7 @@ func TestExplorerTree(t *testing.T) {
 	childDir := node.NewDirectoryNode(child)
 	_ = treeData.Append(rootNode.ID(), childDir.ID(), childDir)
 
-	file, _ := directory.NewFile("test.txt", root.Path())
+	file, _ := directory.NewFile("test.txt", root)
 	childFile := node.NewFileNode(file)
 	_ = treeData.Append(rootNode.ID(), childFile.ID(), childFile)
 

@@ -65,9 +65,6 @@ func (s *loadingState) Notify(evt event.Event) error {
 	case RenameSuccessEvent:
 		s.d.name = e.NewName()
 		s.d.path = s.d.parent.Path().NewSubPath(e.NewName())
-		for _, file := range s.files {
-			file.updateDirectoryPath(s.d.path)
-		}
 		for _, subDir := range s.subDirs {
 			subDir.updatePath(s.d.path)
 		}

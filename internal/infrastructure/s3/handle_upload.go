@@ -52,7 +52,7 @@ func (r *RepositoryImpl) handleUploadFile(e event.Event) {
 	}
 
 	uploadedFile, err := directory.NewFile(
-		content.File().Name().String(), content.File().DirectoryPath(),
+		content.File().Name().String(), evt.Directory(),
 		directory.WithFileSize(int(info.Size())),
 		directory.WithFileLastModified(info.ModTime()))
 	if err != nil {

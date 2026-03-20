@@ -26,7 +26,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
 
 		dir := testutil.NewLoadedDirectory(t, "mydir", directory.RootPath)
-		newFile, err := directory.NewFile("new_file.txt", dir.Path())
+		newFile, err := directory.NewFile("new_file.txt", dir)
 		require.NoError(t, err)
 
 		fakeEventChan := make(chan event.Event, 1)

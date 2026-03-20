@@ -59,34 +59,33 @@ func (r *RepositoryImpl) checkRenamingState(ctx context.Context, client s3client
 
 func (r *RepositoryImpl) handleRenameFile(e event.Event) {
 	ctx := e.Context()
-	evt := e.(directory.FileRenamedEvent)
+	evt := e.(directory.FileRenameEvent)
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed renaming file: %w", err))
-		r.bus.Publish(directory.NewFileRenamedFailureEvent(err, evt.Parent(), evt.File(), evt.OldName()))
+		r.bus.Publish(directory.NewFileRenameFailureEvent(err, evt.Directory(), evt.File(), evt.NewName()))
 	}
 
-	client, err := r.clientFactory.Get(ctx, evt.Parent().ConnectionID())
+	client, err := r.clientFactory.Get(ctx, evt.Directory().ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	// TODO: Uff... Construct old key using the old file name
-	oldFile, err := directory.NewFile(string(evt.OldName()), evt.Parent().Path())
+	oldKey := mapFileToKey(evt.File())
+	newFile, err := directory.NewFile(evt.NewName(), evt.Directory())
 	if err != nil {
 		handleError(err)
 		return
 	}
-	oldKey := mapFileToKey(oldFile)
-	newKey := mapFileToKey(evt.File())
+	newKey := mapFileToKey(newFile)
 
 	if err := client.RenameObject(ctx, oldKey, newKey); err != nil {
 		handleError(err)
 		return
 	}
 
-	r.bus.Publish(directory.NewFileRenamedSuccessEvent(evt.Parent(), evt.File(), evt.OldName()))
+	r.bus.Publish(directory.NewFileRenameSuccessEvent(evt.Directory(), evt.File(), evt.NewName()))
 }
 
 func (r *RepositoryImpl) handleRenameRequest(e event.Event) {

@@ -49,7 +49,8 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
-		file, err := directory.NewFile("file_in_dir.txt", directory.NewPath("/mydir/"))
+		mydir := testutil.NewNotLoadedDirectory(t, "mydir", directory.RootPath)
+		file, err := directory.NewFile("file_in_dir.txt", mydir)
 		require.NoError(t, err)
 
 		destPath := filepath.Join(t.TempDir(), "file_in_dir.txt")
@@ -95,7 +96,8 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
-		file, err := directory.NewFile("missing.txt", directory.NewPath("/mydir/"))
+		mydir := testutil.NewNotLoadedDirectory(t, "mydir", directory.RootPath)
+		file, err := directory.NewFile("missing.txt", mydir)
 		require.NoError(t, err)
 
 		destPath := filepath.Join(t.TempDir(), "missing.txt")

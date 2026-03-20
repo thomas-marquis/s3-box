@@ -65,7 +65,7 @@ func NewRepositoryImpl(
 		On(event.Is(directory.LoadEventType), r.handleLoadDirectory).
 		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
 		On(event.Is(directory.UserValidationAcceptedEventType), r.handleRenameDirectory).
-		On(event.Is(directory.FileRenamedEventType), r.handleRenameFile).
+		On(event.Is(directory.FileRenameEventType), r.handleRenameFile).
 		On(event.Is(directory.RenameEventType), r.handleRenameRequest).
 		On(event.Is(directory.RenameRecoverEventType), r.handleRenameRecovery).
 		On(event.IsOneOf(

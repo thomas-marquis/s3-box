@@ -19,6 +19,7 @@
 - don't use comments in the code (except for function documentation). Instead, use readable and meaningful names form variables, functions, etc.
 - write short functions or methods. No more than 100 lines.
 - use design patterns when it's relevant
+- only a root entity can be notified by an event.
 
 ## Testing Guidelines
 

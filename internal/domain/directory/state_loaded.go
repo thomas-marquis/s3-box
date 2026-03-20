@@ -81,8 +81,18 @@ func (s *loadedState) Notify(evt event.Event) error {
 	case FileCreatedSuccessEvent:
 		s.files = append(s.files, e.File())
 
-	case FileRenamedSuccessEvent:
-		s.updateFile(e.File())
+	case FileRenameSuccessEvent:
+		for _, f := range s.files {
+			if f.Is(e.File()) {
+				n, err := NewFileName(e.NewName())
+				if err != nil {
+					return err
+				}
+				f.name = n
+				return nil
+			}
+		}
+		return fmt.Errorf("file %s not found in directory", e.File().Name())
 
 	case CreatedSuccessEvent:
 		s.subDirs = append(s.subDirs, e.Directory())

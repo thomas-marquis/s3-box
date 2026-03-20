@@ -152,7 +152,7 @@ func (d *Directory) NewSubDirectory(name string) (CreatedEvent, error) {
 // NewFile creates a new fileObj in the current directory
 // returns an error when the file name is not valid or if the file already exists if overwrite is false
 func (d *Directory) NewFile(name string, overwrite bool, opts ...FileOption) (FileCreatedEvent, error) {
-	file, err := NewFile(name, d.Path(), opts...)
+	file, err := NewFile(name, d, opts...)
 	if err != nil {
 		return FileCreatedEvent{}, fmt.Errorf("failed to create file: %w", err)
 	}
@@ -315,9 +315,6 @@ func (d *Directory) uploadFile(localPath string, overwrite bool) (ContentUploade
 
 func (d *Directory) updatePath(newParentPath Path) {
 	d.path = newParentPath.NewSubPath(d.name)
-	for _, file := range d.currentState.Files() {
-		file.updateDirectoryPath(d.path)
-	}
 
 	subDirs := d.currentState.SubDirectories()
 	for _, subDir := range subDirs {

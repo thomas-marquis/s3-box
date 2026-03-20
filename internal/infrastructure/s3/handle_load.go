@@ -50,7 +50,7 @@ func (r *RepositoryImpl) loadDirectory(ctx context.Context, client s3client.Clie
 			if key == searchKey {
 				continue
 			}
-			f, err := directory.NewFile(mapKeyToObjectName(key), dir.Path(),
+			f, err := directory.NewFile(mapKeyToObjectName(key), dir,
 				directory.WithFileSize(int(*obj.Size)),
 				directory.WithFileLastModified(*obj.LastModified))
 			if err != nil {
