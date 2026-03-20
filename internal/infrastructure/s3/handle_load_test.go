@@ -16,14 +16,14 @@ import (
 
 func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 	ctx := context.Background()
-	endpoint, terminate := setupS3testContainer(ctx, t)
+	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()
-	client := setupS3Client(t, endpoint)
+	client := testutil.SetupS3Client(t, endpoint)
 
 	t.Run("should publish root directory and its content", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "root_file.txt"},
 			{Key: "mydir/"},
 			{Key: "mydir/file_in_dir.txt"},
@@ -62,13 +62,13 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		fakeEventChan <- directory.NewLoadEvent(rootDir)
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 	})
 
 	t.Run("should returns subdirectory and its content", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "root_file.txt"},
 			{Key: "mydir/"},
 			{Key: "mydir/file_in_dir.txt"},
@@ -104,13 +104,13 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 
 		// When
 		fakeEventChan <- directory.NewLoadEvent(dir)
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 	})
 
 	t.Run("should handle AWS connection without custom endpoint", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "root_file.txt"},
 			{Key: "mydir/"},
 			{Key: "mydir/file_in_dir.txt"},
@@ -153,13 +153,13 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		fakeEventChan <- directory.NewLoadEvent(dir)
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 	})
 
 	t.Run("should emit a failure event with a UncompletedRename error when markers are detected", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "root_file.txt"},
 			{Key: "mydir/"},
 			{Key: "mydir/file_in_dir.txt"},
@@ -198,6 +198,6 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 
 		// When
 		fakeEventChan <- directory.NewLoadEvent(dir)
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 	})
 }

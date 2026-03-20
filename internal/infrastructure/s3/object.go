@@ -40,7 +40,7 @@ func NewObject(ctx context.Context, client s3client.Client, file *directory.File
 	// Check if an object exists to determine the initial state
 	buff := manager.NewWriteAtBuffer([]byte{})
 	key := buildS3Key(file)
-	if err := client.Download(ctx, key, buff, nil); err != nil {
+	if err := client.Download(ctx, key, buff); err != nil {
 		if isNotFoundError(err) {
 			obj.setState(&s3ObjectNotExists{obj: obj})
 		} else {

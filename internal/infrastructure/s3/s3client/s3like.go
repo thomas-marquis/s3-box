@@ -3,7 +3,9 @@ package s3client
 import (
 	"log"
 	"os"
+	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go/logging"
@@ -18,9 +20,29 @@ type s3LikeClient struct {
 
 func NewS3LikeClient(conn *connection_deck.Connection, opts ...func(*s3.Options)) Client {
 	logger := log.New(os.Stdout, conn.ID().String(), log.LstdFlags)
+
+	var baseEndpoint *string
+	if conn.Server() != "" {
+		server := conn.Server()
+		if !strings.HasPrefix(server, "http://") && !strings.HasPrefix(server, "https://") {
+			protocol := "http://"
+			if conn.IsTLSActivated() {
+				protocol = "https://"
+			}
+			server = protocol + server
+		}
+		baseEndpoint = aws.String(server)
+	}
+
+	region := conn.Region()
+	if region == "" {
+		region = "us-east-1"
+	}
+
 	client := s3.New(s3.Options{
 		Credentials:  credentials.NewStaticCredentialsProvider(conn.AccessKey(), conn.SecretKey(), ""),
-		Region:       conn.Region(),
+		Region:       region,
+		BaseEndpoint: baseEndpoint,
 		Logger:       logging.NewStandardLogger(logger.Writer()),
 		UsePathStyle: true,
 	}, opts...)

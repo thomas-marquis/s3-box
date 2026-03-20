@@ -18,14 +18,14 @@ import (
 
 func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 	ctx := context.Background()
-	endpoint, terminate := setupS3testContainer(ctx, t)
+	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()
-	client := setupS3Client(t, endpoint)
+	client := testutil.SetupS3Client(t, endpoint)
 
 	t.Run("should download file content and publish success", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("download-me")},
 		})
 		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
@@ -59,7 +59,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		fakeEventChan <- directory.NewContentDownloadedEvent(testutil.FakeS3LikeConnectionId, content)
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 		downloaded, err := os.ReadFile(destPath)
 		require.NoError(t, err)
 		assert.Equal(t, "download-me", string(downloaded))
@@ -68,7 +68,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 	t.Run("should publish failure when object is missing", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("download-me")},
 		})
 		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
@@ -103,6 +103,6 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 
 		// When & Then
 		fakeEventChan <- directory.NewContentDownloadedEvent(testutil.FakeS3LikeConnectionId, content)
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 	})
 }

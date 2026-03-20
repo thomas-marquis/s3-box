@@ -25,6 +25,8 @@ const (
 	RootPath      = Path("/")
 )
 
+// Directory is the entity that represents a directory in S3.
+// This is a root entity.
 type Directory struct {
 	connectionID connection_deck.ConnectionID
 	path         Path

@@ -52,7 +52,7 @@ func NewRepositoryImpl(
 		bus:                  bus,
 		notifier:             notifier,
 		s3ClientOptions:      s3ClientOptions,
-		clientFactory:        s3client.NewFactory(connectionsRepository, notifier),
+		clientFactory:        s3client.NewFactory(connectionsRepository, notifier, s3ClientOptions...),
 	}
 
 	bus.Subscribe().
@@ -64,7 +64,7 @@ func NewRepositoryImpl(
 		On(event.Is(directory.ContentDownloadEventType), r.handleDownloadFile).
 		On(event.Is(directory.LoadEventType), r.handleLoadDirectory).
 		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
-		On(event.Is(directory.UserValidationEventType.AsSuccess()), r.handleRenameDirectory).
+		On(event.Is(directory.UserValidationAcceptedEventType), r.handleRenameDirectory).
 		On(event.Is(directory.FileRenamedEventType), r.handleRenameFile).
 		On(event.Is(directory.RenameEventType), r.handleRenameRequest).
 		On(event.Is(directory.RenameRecoverEventType), r.handleRenameRecovery).

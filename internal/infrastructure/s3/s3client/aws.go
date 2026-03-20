@@ -21,9 +21,15 @@ type awsClient struct {
 
 func NewAwsClient(conn *connection_deck.Connection, opts ...func(*s3.Options)) Client {
 	logger := log.New(os.Stdout, conn.ID().String(), log.LstdFlags)
+
+	region := conn.Region()
+	if region == "" {
+		region = "us-east-1"
+	}
+
 	client := s3.New(s3.Options{
 		Credentials:  credentials.NewStaticCredentialsProvider(conn.AccessKey(), conn.SecretKey(), ""),
-		Region:       conn.Region(),
+		Region:       region,
 		Logger:       logging.NewStandardLogger(logger.Writer()),
 		UsePathStyle: true,
 	}, opts...)

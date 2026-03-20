@@ -15,14 +15,14 @@ import (
 
 func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 	ctx := context.Background()
-	endpoint, terminate := setupS3testContainer(ctx, t)
+	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()
-	client := setupS3Client(t, endpoint)
+	client := testutil.SetupS3Client(t, endpoint)
 
 	t.Run("should create an empty file", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{})
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{})
 		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
 
 		dir := testutil.NewLoadedDirectory(t, "mydir", directory.RootPath)
@@ -50,8 +50,8 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 
 		// When
 		fakeEventChan <- directory.NewFileCreatedEvent(testutil.FakeS3LikeConnectionId, dir, newFile)
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
-		assertObjectContent(t, client, bucket, "mydir/new_file.txt", "")
+		testutil.AssertObjectContent(t, client, bucket, "mydir/new_file.txt", "")
 	})
 }

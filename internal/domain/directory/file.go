@@ -27,6 +27,8 @@ func (name FileName) String() string {
 	return string(name)
 }
 
+// File is an entity representing a file in a directory.
+// This is a Directory sub-entity.
 type File struct {
 	name          FileName
 	directoryPath Path

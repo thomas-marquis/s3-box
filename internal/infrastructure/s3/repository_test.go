@@ -16,12 +16,12 @@ import (
 
 func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 	ctx := context.Background()
-	endpoint, terminate := setupS3testContainer(ctx, t)
+	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()
-	client := setupS3Client(t, endpoint)
+	client := testutil.SetupS3Client(t, endpoint)
 
 	bucket := testutil.FakeRandomBucketName()
-	setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+	testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 		{Key: "root_file.txt", Body: strings.NewReader("coucou")},
 		{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("lolo")},
 	})

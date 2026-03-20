@@ -22,14 +22,14 @@ import (
 
 func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 	ctx := context.Background()
-	endpoint, terminate := setupS3testContainer(ctx, t)
+	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()
-	client := setupS3Client(t, endpoint)
+	client := testutil.SetupS3Client(t, endpoint)
 
 	t.Run("should rename a file successfully", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "mydir/original.txt", Body: strings.NewReader("original content")},
 		})
 		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
@@ -67,23 +67,23 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 		fakeEventChan <- directory.NewFileRenamedEvent(parentDir, renamedFile, oldName)
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
-		assertObjectNotExists(t, client, bucket, "mydir/original.txt")
-		assertObjectContent(t, client, bucket, "mydir/renamed.txt", "original content")
+		testutil.AssertObjectNotExists(t, client, bucket, "mydir/original.txt")
+		testutil.AssertObjectContent(t, client, bucket, "mydir/renamed.txt", "original content")
 	})
 }
 
 func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 	ctx := context.Background()
-	endpoint, terminate := setupS3testContainer(ctx, t)
+	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()
-	client := setupS3Client(t, endpoint)
+	client := testutil.SetupS3Client(t, endpoint)
 
 	t.Run("should ask for user validation before renaming a non-empty directory", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "originaldir/empty/", Body: strings.NewReader("")},
@@ -121,28 +121,28 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		fakeEventChan <- inputEvt
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
 		// Ensure the bucket content is left unchanged until the user has validated the operation
-		oldKeys := listKeys(t, client, bucket, "originaldir/")
+		oldKeys := testutil.ListKeys(t, client, bucket, "originaldir/")
 		assert.Len(t, oldKeys, 5)
 
-		assertObjectContent(t, client, bucket, "originaldir/file.txt", "file content")
-		assertObjectContent(t, client, bucket, "originaldir/empty/", "")
-		assertObjectContent(t, client, bucket, "originaldir/subdir/", "")
-		assertObjectContent(t, client, bucket, "originaldir/subdir/nested.txt", "nested content")
-		assertObjectContent(t, client, bucket, "originaldir/subdir/originaldir/more-nested.txt", "more nested content")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/file.txt", "file content")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/empty/", "")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/subdir/", "")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/subdir/nested.txt", "nested content")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/subdir/originaldir/more-nested.txt", "more nested content")
 
-		assertObjectNotExists(t, client, bucket, "newname1/file.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname1/file.txt")
 
-		assertObjectNotExists(t, client, bucket, "originaldir/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "newname1/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname1/.s3box-rename-dst")
 	})
 
 	t.Run("should rename directory and its content after user had validated it", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "originaldir/empty/", Body: strings.NewReader("")},
@@ -181,34 +181,34 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		fakeEventChan <- directory.NewUserValidationAcceptedEvent(originalDir, originalEvt)
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
-		oldKeys := listKeys(t, client, bucket, "originaldir/")
+		oldKeys := testutil.ListKeys(t, client, bucket, "originaldir/")
 		assert.Len(t, oldKeys, 0)
 
-		resKeys := listKeys(t, client, bucket, "newname/")
+		resKeys := testutil.ListKeys(t, client, bucket, "newname/")
 		assert.Len(t, resKeys, 5)
 
-		assertObjectContent(t, client, bucket, "newname/file.txt", "file content")
-		assertObjectContent(t, client, bucket, "newname/empty/", "")
-		assertObjectContent(t, client, bucket, "newname/subdir/", "")
-		assertObjectContent(t, client, bucket, "newname/subdir/nested.txt", "nested content")
-		assertObjectContent(t, client, bucket, "newname/subdir/originaldir/more-nested.txt", "more nested content")
+		testutil.AssertObjectContent(t, client, bucket, "newname/file.txt", "file content")
+		testutil.AssertObjectContent(t, client, bucket, "newname/empty/", "")
+		testutil.AssertObjectContent(t, client, bucket, "newname/subdir/", "")
+		testutil.AssertObjectContent(t, client, bucket, "newname/subdir/nested.txt", "nested content")
+		testutil.AssertObjectContent(t, client, bucket, "newname/subdir/originaldir/more-nested.txt", "more nested content")
 
-		assertObjectNotExists(t, client, bucket, "originaldir/file.txt")
-		assertObjectNotExists(t, client, bucket, "originaldir/empty/")
-		assertObjectNotExists(t, client, bucket, "originaldir/subdir/")
-		assertObjectNotExists(t, client, bucket, "originaldir/subdir/nested.txt")
-		assertObjectNotExists(t, client, bucket, "originaldir/subdir/originaldir/more-nested.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/file.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/empty/")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/subdir/")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/subdir/nested.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/subdir/originaldir/more-nested.txt")
 
-		assertObjectNotExists(t, client, bucket, "originaldir/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "newname/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/.s3box-rename-dst")
 	})
 
 	t.Run("should rename non-base directory and its content after user had validated it", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "originaldir/empty/", Body: strings.NewReader("")},
@@ -246,32 +246,32 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		fakeEventChan <- directory.NewUserValidationAcceptedEvent(subdir, originalEvt)
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
-		oldKeys := listKeys(t, client, bucket, "originaldir/subdir")
+		oldKeys := testutil.ListKeys(t, client, bucket, "originaldir/subdir")
 		assert.Len(t, oldKeys, 0)
 
-		resKeys := listKeys(t, client, bucket, "originaldir/newname/")
+		resKeys := testutil.ListKeys(t, client, bucket, "originaldir/newname/")
 		assert.Len(t, resKeys, 2)
 
-		assertObjectContent(t, client, bucket, "originaldir/file.txt", "file content")
-		assertObjectContent(t, client, bucket, "originaldir/empty/", "")
-		assertObjectContent(t, client, bucket, "originaldir/newname/", "")
-		assertObjectContent(t, client, bucket, "originaldir/newname/nested.txt", "nested content")
-		assertObjectContent(t, client, bucket, "originaldir/newname/originaldir/more-nested.txt", "more nested content")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/file.txt", "file content")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/empty/", "")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/newname/", "")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/newname/nested.txt", "nested content")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/newname/originaldir/more-nested.txt", "more nested content")
 
-		assertObjectNotExists(t, client, bucket, "originaldir/subdir/")
-		assertObjectNotExists(t, client, bucket, "originaldir/subdir/nested.txt")
-		assertObjectNotExists(t, client, bucket, "originaldir/subdir/originaldir/more-nested.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/subdir/")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/subdir/nested.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/subdir/originaldir/more-nested.txt")
 
-		assertObjectNotExists(t, client, bucket, "originaldir/subdir/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "originaldir/newname/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/subdir/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/newname/.s3box-rename-dst")
 	})
 
 	t.Run("should rename empty directory directly without validation", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(context.TODO(), t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(context.TODO(), t, client, bucket, []testutil.FakeS3Object{
 			{Key: "base/empty/", Body: strings.NewReader("")},
 		})
 		dir := testutil.NewLoadedDirectory(t, "empty", "/base/")
@@ -304,19 +304,19 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		fakeEventChan <- directory.NewRenameEvent(dir, "newname")
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
-		assertObjectContent(t, client, bucket, "base/newname/", "")
-		assertObjectNotExists(t, client, bucket, "base/empty/")
+		testutil.AssertObjectContent(t, client, bucket, "base/newname/", "")
+		testutil.AssertObjectNotExists(t, client, bucket, "base/empty/")
 
-		assertObjectNotExists(t, client, bucket, "base/empty/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "base/newname/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "base/empty/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "base/newname/.s3box-rename-dst")
 	})
 
 	t.Run("should handle rename failure gracefully and write maker files", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "originaldir/empty/", Body: strings.NewReader("")},
@@ -364,32 +364,32 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 
 		fakeEventChan <- directory.NewUserValidationAcceptedEvent(originalDir,
 			directory.NewRenameEvent(originalDir, "newname"))
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
 		// copy errors results
-		assertObjectContent(t, client, bucket, "originaldir/subdir/nested.txt", "nested content")
-		assertObjectContent(t, client, bucket, "originaldir/subdir/", "")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/subdir/nested.txt", "nested content")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/subdir/", "")
 
-		assertObjectNotExists(t, client, bucket, "newname/subdir/nested.txt")
-		assertObjectNotExists(t, client, bucket, "newname/subdir/")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/subdir/nested.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/subdir/")
 
 		// delete errors results
-		assertObjectContent(t, client, bucket, "originaldir/subdir/originaldir/more-nested.txt", "more nested content")
-		assertObjectContent(t, client, bucket, "newname/subdir/originaldir/more-nested.txt", "more nested content")
+		testutil.AssertObjectContent(t, client, bucket, "originaldir/subdir/originaldir/more-nested.txt", "more nested content")
+		testutil.AssertObjectContent(t, client, bucket, "newname/subdir/originaldir/more-nested.txt", "more nested content")
 
 		// what's been moved to the dest directory
-		assertObjectContent(t, client, bucket, "newname/file.txt", "file content")
-		assertObjectContent(t, client, bucket, "newname/empty/", "")
+		testutil.AssertObjectContent(t, client, bucket, "newname/file.txt", "file content")
+		testutil.AssertObjectContent(t, client, bucket, "newname/empty/", "")
 
-		assertObjectNotExists(t, client, bucket, "originaldir/file.txt")
-		assertObjectNotExists(t, client, bucket, "originaldir/empty/")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/file.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/empty/")
 
 		// check marker files are still there
-		assertJSONObjectContent(t, client, bucket, "originaldir/.s3box-rename-src", `
+		testutil.AssertJSONObjectContent(t, client, bucket, "originaldir/.s3box-rename-src", `
 		{
 			"dstPath": "/newname/"
 		}`)
-		assertJSONObjectContent(t, client, bucket, "newname/.s3box-rename-dst", `
+		testutil.AssertJSONObjectContent(t, client, bucket, "newname/.s3box-rename-dst", `
 		{
 			"srcPath": "/originaldir/"
 		}`)
@@ -398,7 +398,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 	t.Run("should fails when the destination directory already exists", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "newname/", Body: strings.NewReader("")},
@@ -433,16 +433,16 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		fakeEventChan <- directory.NewRenameEvent(originalDir, "newname")
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
-		assertObjectNotExists(t, client, bucket, "originaldir/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "newname/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "originaldir/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/.s3box-rename-dst")
 	})
 
 	t.Run("should fails when the src directory already contains a marker file", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "originaldir/.s3box-rename-src", Body: strings.NewReader(`{"dstPath": "/othernewname/"}`)},
@@ -479,13 +479,13 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		fakeEventChan <- directory.NewRenameEvent(originalDir, "newname")
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 	})
 
 	t.Run("should rename with default grants when user doesn't have GetObjectACL permission", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(context.TODO(), t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(context.TODO(), t, client, bucket, []testutil.FakeS3Object{
 			{Key: "base/empty/", Body: strings.NewReader("")},
 		})
 		dir := testutil.NewLoadedDirectory(t, "empty", directory.NewPath("base"))
@@ -520,26 +520,26 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		fakeEventChan <- directory.NewRenameEvent(dir, "newname")
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
-		assertObjectContent(t, client, bucket, "base/newname/", "")
-		assertObjectNotExists(t, client, bucket, "base/empty/")
+		testutil.AssertObjectContent(t, client, bucket, "base/newname/", "")
+		testutil.AssertObjectNotExists(t, client, bucket, "base/empty/")
 
-		assertObjectNotExists(t, client, bucket, "base/empty/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "base/newname/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "base/empty/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "base/newname/.s3box-rename-dst")
 	})
 }
 
 func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 	ctx := context.Background()
-	endpoint, terminate := setupS3testContainer(ctx, t)
+	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()
-	client := setupS3Client(t, endpoint)
+	client := testutil.SetupS3Client(t, endpoint)
 
 	t.Run("should successfully resume renaming directory when marker files are present", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "oldname/", Body: strings.NewReader("")},
 			{Key: "oldname/.s3box-rename-src", Body: strings.NewReader(`{"dstPath": "/newname/"}`)},
 			{Key: "oldname/file1.txt", Body: strings.NewReader("content 1")},
@@ -585,34 +585,34 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 		fakeEventChan <- directory.NewRenameRecoverEvent(oldDir, newDir, directory.RecoveryChoiceRenameResume)
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
 		// Check everything is moved
-		assertObjectContent(t, client, bucket, "newname/file1.txt", "content 1")
-		assertObjectContent(t, client, bucket, "newname/file2.txt", "content 2")
-		assertObjectContent(t, client, bucket, "newname/file3.txt", "content 3")
-		assertObjectContent(t, client, bucket, "newname/subdir/file4.txt", "content 4")
-		assertObjectContent(t, client, bucket, "newname/subdir/file5.txt", "content 5")
-		assertObjectContent(t, client, bucket, "newname/subdir/file6.txt", "content 6")
+		testutil.AssertObjectContent(t, client, bucket, "newname/file1.txt", "content 1")
+		testutil.AssertObjectContent(t, client, bucket, "newname/file2.txt", "content 2")
+		testutil.AssertObjectContent(t, client, bucket, "newname/file3.txt", "content 3")
+		testutil.AssertObjectContent(t, client, bucket, "newname/subdir/file4.txt", "content 4")
+		testutil.AssertObjectContent(t, client, bucket, "newname/subdir/file5.txt", "content 5")
+		testutil.AssertObjectContent(t, client, bucket, "newname/subdir/file6.txt", "content 6")
 
 		// Check markers are gone
-		assertObjectNotExists(t, client, bucket, "oldname/file1.txt")
-		assertObjectNotExists(t, client, bucket, "oldname/file2.txt")
-		assertObjectNotExists(t, client, bucket, "oldname/file3.txt")
-		assertObjectNotExists(t, client, bucket, "oldname/subdir/file4.txt")
-		assertObjectNotExists(t, client, bucket, "oldname/subdir/file5.txt")
-		assertObjectNotExists(t, client, bucket, "oldname/subdir/file6.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/file1.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/file2.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/file3.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/subdir/file4.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/subdir/file5.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/subdir/file6.txt")
 
-		assertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-dst")
-		assertObjectNotExists(t, client, bucket, "newname/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "newname/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/.s3box-rename-dst")
 	})
 
 	t.Run("should successfully rollback renaming directory when marker files are present", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "oldname/", Body: strings.NewReader("")},
 			{Key: "oldname/.s3box-rename-src", Body: strings.NewReader(`{"dstPath": "/newname/"}`)},
 			{Key: "oldname/file1.txt", Body: strings.NewReader("content 1")},
@@ -658,34 +658,34 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 		fakeEventChan <- directory.NewRenameRecoverEvent(oldDir, newDir, directory.RecoveryChoiceRenameRollback)
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
 		// Check everything is moved
-		assertObjectContent(t, client, bucket, "oldname/file1.txt", "content 1")
-		assertObjectContent(t, client, bucket, "oldname/file2.txt", "content 2")
-		assertObjectContent(t, client, bucket, "oldname/file3.txt", "content 3")
-		assertObjectContent(t, client, bucket, "oldname/subdir/file4.txt", "content 4")
-		assertObjectContent(t, client, bucket, "oldname/subdir/file5.txt", "content 5")
-		assertObjectContent(t, client, bucket, "oldname/subdir/file6.txt", "content 6")
+		testutil.AssertObjectContent(t, client, bucket, "oldname/file1.txt", "content 1")
+		testutil.AssertObjectContent(t, client, bucket, "oldname/file2.txt", "content 2")
+		testutil.AssertObjectContent(t, client, bucket, "oldname/file3.txt", "content 3")
+		testutil.AssertObjectContent(t, client, bucket, "oldname/subdir/file4.txt", "content 4")
+		testutil.AssertObjectContent(t, client, bucket, "oldname/subdir/file5.txt", "content 5")
+		testutil.AssertObjectContent(t, client, bucket, "oldname/subdir/file6.txt", "content 6")
 
 		// Check markers are gone
-		assertObjectNotExists(t, client, bucket, "newname/file1.txt")
-		assertObjectNotExists(t, client, bucket, "newname/file2.txt")
-		assertObjectNotExists(t, client, bucket, "newname/file3.txt")
-		assertObjectNotExists(t, client, bucket, "newname/subdir/file4.txt")
-		assertObjectNotExists(t, client, bucket, "newname/subdir/file5.txt")
-		assertObjectNotExists(t, client, bucket, "newname/subdir/file6.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/file1.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/file2.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/file3.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/subdir/file4.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/subdir/file5.txt")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/subdir/file6.txt")
 
-		assertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-dst")
-		assertObjectNotExists(t, client, bucket, "newname/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "newname/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/.s3box-rename-dst")
 	})
 
 	t.Run("should successfully abort renaming directory when marker files are present", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
-		setupS3Bucket(ctx, t, client, bucket, []fakeS3Object{
+		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "oldname/", Body: strings.NewReader("")},
 			{Key: "oldname/.s3box-rename-src", Body: strings.NewReader(`{"dstPath": "/newname/"}`)},
 			{Key: "oldname/file1.txt", Body: strings.NewReader("content 1")},
@@ -752,28 +752,28 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 		fakeEventChan <- directory.NewRenameRecoverEvent(oldDir, newDir, directory.RecoveryChoiceRenameAbort)
 
 		// Then
-		assertEventually(t, done)
+		testutil.AssertEventually(t, done)
 
 		// Check everything is moved
-		assertObjectContent(t, client, bucket, "oldname/file1.txt", "content 1")
-		assertObjectNotExists(t, client, bucket, "oldname/file2.txt")
-		assertObjectContent(t, client, bucket, "oldname/file3.txt", "content 3")
-		assertObjectContent(t, client, bucket, "oldname/subdir/file4.txt", "content 4")
-		assertObjectNotExists(t, client, bucket, "oldname/subdir/file5.txt")
-		assertObjectContent(t, client, bucket, "oldname/subdir/file6.txt", "content 6")
+		testutil.AssertObjectContent(t, client, bucket, "oldname/file1.txt", "content 1")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/file2.txt")
+		testutil.AssertObjectContent(t, client, bucket, "oldname/file3.txt", "content 3")
+		testutil.AssertObjectContent(t, client, bucket, "oldname/subdir/file4.txt", "content 4")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/subdir/file5.txt")
+		testutil.AssertObjectContent(t, client, bucket, "oldname/subdir/file6.txt", "content 6")
 
 		// Check markers are gone
-		assertObjectContent(t, client, bucket, "newname/file1.txt", "content 1")
-		assertObjectContent(t, client, bucket, "newname/file2.txt", "content 2")
-		assertObjectNotExists(t, client, bucket, "newname/file3.txt")
-		assertObjectContent(t, client, bucket, "newname/subdir/file4.txt", "content 4")
-		assertObjectContent(t, client, bucket, "newname/subdir/file5.txt", "content 5")
-		assertObjectNotExists(t, client, bucket, "newname/subdir/file6.txt")
+		testutil.AssertObjectContent(t, client, bucket, "newname/file1.txt", "content 1")
+		testutil.AssertObjectContent(t, client, bucket, "newname/file2.txt", "content 2")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/file3.txt")
+		testutil.AssertObjectContent(t, client, bucket, "newname/subdir/file4.txt", "content 4")
+		testutil.AssertObjectContent(t, client, bucket, "newname/subdir/file5.txt", "content 5")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/subdir/file6.txt")
 
-		assertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-dst")
-		assertObjectNotExists(t, client, bucket, "newname/.s3box-rename-src")
-		assertObjectNotExists(t, client, bucket, "newname/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "oldname/.s3box-rename-dst")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/.s3box-rename-src")
+		testutil.AssertObjectNotExists(t, client, bucket, "newname/.s3box-rename-dst")
 	})
 }
 
