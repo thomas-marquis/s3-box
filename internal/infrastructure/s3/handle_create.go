@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
@@ -42,7 +40,7 @@ func (r *RepositoryImpl) handleCreateDirectory(e event.Event) {
 		r.bus.Publish(directory.NewCreatedFailureEvent(err, evt.Parent()))
 	}
 
-	sess, err := r.getSession(ctx, evt.Parent().ConnectionID())
+	client, err := r.clientFactory.Get(ctx, evt.Parent().ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
@@ -55,15 +53,10 @@ func (r *RepositoryImpl) handleCreateDirectory(e event.Event) {
 	}
 
 	key := mapDirToObjectKey(newDir)
-	if _, err := sess.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(sess.connection.Bucket()),
-		Key:    aws.String(key),
-		Body:   strings.NewReader(""),
-	}); err != nil {
-		handleError(r.manageAwsSdkError(err, newDir.Path().String(), sess))
+	if err := client.PutObject(ctx, key, strings.NewReader("")); err != nil {
+		handleError(err)
 		return
 	}
 
-	r.bus.Publish(
-		directory.NewCreatedSuccessEvent(evt.Parent(), evt.Directory()))
+	r.bus.Publish(directory.NewCreatedSuccessEvent(evt.Parent(), evt.Directory()))
 }

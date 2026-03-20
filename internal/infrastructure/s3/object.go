@@ -7,22 +7,18 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 )
 
 // Object implements directory.FileObject for S3 objects using a state pattern.
 // It manages the lifecycle of an S3 object, transitioning between states based on
 // whether the object exists in S3 or not.
 type Object struct {
-	ctx        context.Context
-	conn       *connection_deck.Connection
-	downloader *manager.Downloader
-	uploader   *manager.Uploader
-	file       *directory.File
+	ctx    context.Context
+	client s3client.Client
+	file   *directory.File
 
 	currentState s3ObjectState
 }
@@ -34,23 +30,17 @@ var (
 // NewObject creates a new Object and initializes its state based on
 // whether the object exists in S3. If the object exists, it downloads the content
 // and initializes the state with it. If not, it starts in a non-existent state.
-func NewObject(ctx context.Context, downloader *manager.Downloader, uploader *manager.Uploader, conn *connection_deck.Connection, file *directory.File) (*Object, error) {
+func NewObject(ctx context.Context, client s3client.Client, file *directory.File) (*Object, error) {
 	obj := &Object{
-		ctx:        ctx,
-		conn:       conn,
-		file:       file,
-		downloader: downloader,
-		uploader:   uploader,
+		ctx:    ctx,
+		file:   file,
+		client: client,
 	}
 
 	// Check if an object exists to determine the initial state
 	buff := manager.NewWriteAtBuffer([]byte{})
 	key := buildS3Key(file)
-	_, err := downloader.Download(ctx, buff, &s3.GetObjectInput{ // TODO: use a better way
-		Bucket: aws.String(conn.Bucket()),
-		Key:    aws.String(key),
-	})
-	if err != nil {
+	if err := client.Download(ctx, key, buff, nil); err != nil {
 		if isNotFoundError(err) {
 			obj.setState(&s3ObjectNotExists{obj: obj})
 		} else {
@@ -128,18 +118,11 @@ func (s *s3ObjectNotExists) Write(p []byte) (n int, err error) {
 		return n, fmt.Errorf("failed to buffer content: %w", err)
 	}
 
-	// Upload the content to S3
 	key := buildS3Key(s.obj.file)
-	_, err = s.obj.uploader.Upload(s.obj.ctx, &s3.PutObjectInput{
-		Bucket: aws.String(s.obj.conn.Bucket()),
-		Key:    aws.String(key),
-		Body:   bytes.NewReader(s.buffer.Bytes()),
-	})
-	if err != nil {
+	if err := s.obj.client.Upload(s.obj.ctx, key, bytes.NewReader(s.buffer.Bytes())); err != nil {
 		return n, fmt.Errorf("failed to upload object: %w", err)
 	}
 
-	// Transition to exists state
 	s.obj.setState(&s3ObjectExists{
 		obj:      s.obj,
 		content:  s.buffer.Bytes(),
@@ -186,7 +169,6 @@ func (s *s3ObjectExists) Write(p []byte) (n int, err error) {
 		s.content = append(s.content, make([]byte, endPos-int64(initialContentLen))...)
 	}
 
-	//replacedContent := s.content[s.position:initialContentLen]
 	truncLen := int64(initialContentLen) - s.position
 	truncatedParts := make([]byte, truncLen)
 	copy(truncatedParts, s.content[s.position:initialContentLen])
@@ -196,12 +178,7 @@ func (s *s3ObjectExists) Write(p []byte) (n int, err error) {
 
 	key := buildS3Key(s.obj.file)
 	s.position = 0 // reset the cursor to let the sdk reads the entier content
-	_, err = s.obj.uploader.Upload(s.obj.ctx, &s3.PutObjectInput{
-		Bucket: aws.String(s.obj.conn.Bucket()),
-		Key:    aws.String(key),
-		Body:   s,
-	})
-	if err != nil {
+	if err := s.obj.client.Upload(s.obj.ctx, key, s); err != nil {
 		s.position = endPos - int64(len(p))
 		s.content = append(s.content[:s.position], truncatedParts...)
 		return 0, fmt.Errorf("failed to upload updated content: %w", err)

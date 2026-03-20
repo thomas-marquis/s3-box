@@ -3,10 +3,9 @@ package s3
 import (
 	"fmt"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 )
 
 func (r *RepositoryImpl) handleUploadFile(e event.Event) {
@@ -18,7 +17,7 @@ func (r *RepositoryImpl) handleUploadFile(e event.Event) {
 		r.bus.Publish(directory.NewContentUploadedFailureEvent(err, evt.Directory()))
 	}
 
-	sess, err := r.getSession(ctx, evt.Directory().ConnectionID())
+	client, err := r.clientFactory.Get(ctx, evt.Directory().ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
@@ -47,13 +46,8 @@ func (r *RepositoryImpl) handleUploadFile(e event.Event) {
 		return
 	}
 
-	if _, err = sess.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:        aws.String(sess.connection.Bucket()),
-		Key:           aws.String(mapFileToKey(content.File())),
-		Body:          fileObj,
-		ContentLength: aws.Int64(info.Size()),
-	}); err != nil {
-		handleError(r.manageAwsSdkError(err, content.File().FullPath(), sess))
+	if err := client.PutObject(ctx, mapFileToKey(content.File()), fileObj, s3client.WithContentLength(info.Size())); err != nil {
+		handleError(err)
 		return
 	}
 
