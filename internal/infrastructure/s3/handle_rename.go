@@ -356,17 +356,20 @@ func (r *RepositoryImpl) renameObjects(
 	var (
 		nbWorkers = min(len(keys), maxRenamingWorkers)
 		workload  = make(chan string)
+		done      = make(chan struct{})
 
 		errCnt int64
 		wg     sync.WaitGroup
+		once   sync.Once
 	)
+	defer close(workload)
 
 	for range nbWorkers {
 		go func() {
 			for {
 				select {
-				case <-ctx.Done():
-					return // TODO: to test
+				case <-done:
+					return
 				case key := <-workload:
 					if isRenameMarkerFile(key) {
 						wg.Done()
@@ -382,11 +385,18 @@ func (r *RepositoryImpl) renameObjects(
 	}
 
 	for _, key := range keys {
-		wg.Add(1)
-		workload <- key
+		select {
+		case <-ctx.Done():
+			once.Do(func() { close(done) })
+			break
+		default:
+			wg.Add(1)
+			workload <- key
+		}
 	}
 
-	wg.Wait() // TODO: !!WARNING!! this WG will block if the context is canceled before all workers are done
+	wg.Wait()
+	once.Do(func() { close(done) })
 
 	if errCnt > 0 {
 		return directory.UncompletedRename{
