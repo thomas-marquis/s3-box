@@ -725,7 +725,7 @@ func (v *explorerViewModelImpl) handleRenameFileSuccess(evt event.Event) {
 
 	// Add the new file node to the tree
 	newFileNode := node.NewFileNode(file)
-	if err := v.tree.Prepend(file.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
+	if err := v.tree.Append(file.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
 		v.notifier.NotifyError(fmt.Errorf("error adding new file node: %w", err))
 		return
 	}
