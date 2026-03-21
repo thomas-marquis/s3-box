@@ -32,8 +32,8 @@ func TestClient_RenameObject(t *testing.T) {
 		{Key: oldKey, Body: strings.NewReader(content)},
 	})
 
-	conn := testutil.FakeS3LikeConnection(t, endpoint, bucketName)
-	client := s3client.NewS3LikeClient(conn, func(o *s3.Options) {
+	conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucketName)
+	client := s3client.NewAwsClient(conn, func(o *s3.Options) {
 		o.Region = "us-east-1"
 	})
 
@@ -74,8 +74,8 @@ func TestClient_ListObjects(t *testing.T) {
 		{Key: "file4.txt", Body: strings.NewReader("4444")},
 	})
 
-	conn := testutil.FakeS3LikeConnection(t, endpoint, bucketName)
-	client := s3client.NewS3LikeClient(conn, func(o *s3.Options) {
+	conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucketName)
+	client := s3client.NewAwsClient(conn, func(o *s3.Options) {
 		o.Region = "us-east-1"
 	})
 
@@ -140,8 +140,8 @@ func TestClient_ListObjectsWithCallback(t *testing.T) {
 		{Key: "file3.txt", Body: strings.NewReader("3")},
 	})
 
-	conn := testutil.FakeS3LikeConnection(t, endpoint, bucketName)
-	client := s3client.NewS3LikeClient(conn, func(o *s3.Options) {
+	conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucketName)
+	client := s3client.NewAwsClient(conn, func(o *s3.Options) {
 		o.Region = "us-east-1"
 	})
 
@@ -179,8 +179,8 @@ func TestClient_UploadAndDownload(t *testing.T) {
 
 	testutil.SetupS3Bucket(ctx, t, s3Client, bucketName, nil)
 
-	conn := testutil.FakeS3LikeConnection(t, endpoint, bucketName)
-	client := s3client.NewS3LikeClient(conn, func(o *s3.Options) {
+	conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucketName)
+	client := s3client.NewAwsClient(conn, func(o *s3.Options) {
 		o.Region = "us-east-1"
 	})
 

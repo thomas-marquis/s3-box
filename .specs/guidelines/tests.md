@@ -59,3 +59,8 @@ This document provides guidelines for writing tests in the `s3-box` project. Fol
 - **No Comments**: Avoid comments in the code except for `// Given`, `// When`, `// Then` or function documentation. Use readable names instead.
 - **Conciseness**: Keep test functions focused. Avoid complex logic or branching in tests.
 - **Minimal Mocking**: Prefer real domain objects over mocks when testing domain logic. Mock external infrastructure, UI context, and complex dependencies.
+
+## 7. Run the tests
+
+- **Important** surround the test name with double quotes ("") when it contains simple quotes. For instance:
+`go test -v ./internal/infrastructure/s3/ -run "TestNewRepositoryImpl_renameDirectory/should_rename_with_default_grants_when_user_doesn't_have_GetObjectACL_permission"`

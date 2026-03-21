@@ -23,9 +23,9 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
 		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{})
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		dir := testutil.NewLoadedDirectory(t, "mydir", directory.RootPath)
+		dir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
 		newFile, err := directory.NewFile("new_file.txt", dir)
 		require.NoError(t, err)
 
@@ -49,7 +49,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		fakeEventChan <- directory.NewFileCreatedEvent(testutil.FakeS3LikeConnectionId, dir, newFile)
+		fakeEventChan <- directory.NewFileCreatedEvent(testutil.FakeAwsConnectionId, dir, newFile)
 		testutil.AssertEventually(t, done)
 
 		testutil.AssertObjectContent(t, client, bucket, "mydir/new_file.txt", "")

@@ -28,7 +28,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("download-me")},
 		})
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -49,7 +49,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
-		mydir := testutil.NewNotLoadedDirectory(t, "mydir", directory.RootPath)
+		mydir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
 		file, err := directory.NewFile("file_in_dir.txt", mydir)
 		require.NoError(t, err)
 
@@ -57,7 +57,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		content := directory.NewFileContent(file, directory.FromLocalFile(destPath), directory.WithOpenModeWrite())
 
 		// When
-		fakeEventChan <- directory.NewContentDownloadedEvent(testutil.FakeS3LikeConnectionId, content)
+		fakeEventChan <- directory.NewContentDownloadedEvent(testutil.FakeAwsConnectionId, content)
 
 		// Then
 		testutil.AssertEventually(t, done)
@@ -72,7 +72,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("download-me")},
 		})
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -96,7 +96,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
-		mydir := testutil.NewNotLoadedDirectory(t, "mydir", directory.RootPath)
+		mydir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
 		file, err := directory.NewFile("missing.txt", mydir)
 		require.NoError(t, err)
 
@@ -104,7 +104,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		content := directory.NewFileContent(file, directory.FromLocalFile(destPath), directory.WithOpenModeWrite())
 
 		// When & Then
-		fakeEventChan <- directory.NewContentDownloadedEvent(testutil.FakeS3LikeConnectionId, content)
+		fakeEventChan <- directory.NewContentDownloadedEvent(testutil.FakeAwsConnectionId, content)
 		testutil.AssertEventually(t, done)
 	})
 }

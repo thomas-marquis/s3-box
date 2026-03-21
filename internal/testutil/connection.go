@@ -39,11 +39,39 @@ func FakeDeckWithConnections(t *testing.T, connections ...*connection_deck.Conne
 
 func FakeAwsConnection(t *testing.T, bucket string) *connection_deck.Connection {
 	t.Helper()
-	return FakeEmptyDeck(t).
+	return FakeAwsConnectionWithEndpoint(t, "", bucket)
+}
+
+func FakeAwsConnectionWithEndpoint(t *testing.T, endpoint, bucket string) *connection_deck.Connection {
+	t.Helper()
+
+	conn := FakeEmptyDeck(t).
 		New(FakeAwsConnectionName, FakeAwsAccessKeyId, FakeAwsSecretAccessKey, bucket,
 			connection_deck.AsAWS(FakeAwsRegion),
 			connection_deck.WithID(FakeAwsConnectionId)).
 		Connection()
+
+	if endpoint != "" {
+		conn.UpdateServer(endpoint)
+	}
+
+	return conn
+}
+
+func FakeAwsConnectionWithCustomID(t *testing.T, id connection_deck.ConnectionID, endpoint, bucket string) *connection_deck.Connection {
+	t.Helper()
+
+	conn := FakeEmptyDeck(t).
+		New(FakeAwsConnectionName, FakeAwsAccessKeyId, FakeAwsSecretAccessKey, bucket,
+			connection_deck.AsAWS(FakeAwsRegion),
+			connection_deck.WithID(id)).
+		Connection()
+
+	if endpoint != "" {
+		conn.UpdateServer(endpoint)
+	}
+
+	return conn
 }
 
 func FakeS3LikeConnection(t *testing.T, endpoint, bucket string) *connection_deck.Connection {
@@ -60,6 +88,14 @@ func FakeDeckWithS3LikeConnection(t *testing.T, endpoint, bucket string) *connec
 
 	return connection_deck.New(connection_deck.WithConnections([]*connection_deck.Connection{
 		FakeS3LikeConnection(t, endpoint, bucket),
+	}))
+}
+
+func FakeDeckWithAwsConnection(t *testing.T, endpoint, bucket string) *connection_deck.Deck {
+	t.Helper()
+
+	return connection_deck.New(connection_deck.WithConnections([]*connection_deck.Connection{
+		FakeAwsConnectionWithEndpoint(t, endpoint, bucket),
 	}))
 }
 

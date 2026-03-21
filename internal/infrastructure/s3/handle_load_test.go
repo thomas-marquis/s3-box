@@ -32,9 +32,10 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			{Key: "mydir/newname/.s3box-rename-dst", Body: strings.NewReader(`{"srcPath": "/mydir/oldname/"}`)},
 			{Key: "mydir/newname/copied.md", Body: strings.NewReader("lolo")},
 		})
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		require.NoError(t, err)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -55,8 +56,9 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		repo, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
+		_ = repo
 
 		// When
 		fakeEventChan <- directory.NewLoadEvent(rootDir)
@@ -77,13 +79,13 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			{Key: "mydir/newname/.s3box-rename-dst", Body: strings.NewReader(`{"srcPath": "/mydir/oldname/"}`)},
 			{Key: "mydir/newname/copied.md", Body: strings.NewReader("lolo")},
 		})
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
 		mockBus, mockConnRepo, mockNotifRepo := setupMocks(t, fakeDeck, fakeEventChan)
 
-		dir := testutil.NewLoadedDirectory(t, "mydir", directory.RootPath)
+		dir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
 
 		done := make(chan struct{})
 		mockBus.EXPECT().
@@ -99,8 +101,9 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		repo, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
+		_ = repo
 
 		// When
 		fakeEventChan <- directory.NewLoadEvent(dir)
@@ -168,7 +171,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			{Key: "mydir/newname/.s3box-rename-dst", Body: strings.NewReader(`{"srcPath": "/mydir/oldname/"}`)},
 			{Key: "mydir/newname/copied.md", Body: strings.NewReader("lolo")},
 		})
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -191,7 +194,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		dir := testutil.NewNotLoadedDirectory(t, "oldname", "/mydir/")
+		dir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "oldname", "/mydir/")
 
 		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)

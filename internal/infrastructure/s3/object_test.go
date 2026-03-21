@@ -25,12 +25,13 @@ func TestS3Object_Read(t *testing.T) {
 	testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
 		{Key: "existing-file.txt", Body: strings.NewReader("hello world")},
 	})
-	conn := testutil.FakeS3LikeConnection(t, endpoint, bucket)
-	client := s3client.NewS3LikeClient(conn)
+	conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
+	client := s3client.NewAwsClient(conn)
 
 	t.Run("should read the object content when exists", func(t *testing.T) {
 		// Given
-		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		require.NoError(t, err)
 		file, err := directory.NewFile("existing-file.txt", rootDir)
 		require.NoError(t, err)
 
@@ -51,7 +52,8 @@ func TestS3Object_Read(t *testing.T) {
 
 	t.Run("should read the object content when exists with non-zero offset", func(t *testing.T) {
 		// Given
-		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		require.NoError(t, err)
 		file, err := directory.NewFile("existing-file.txt", rootDir)
 		require.NoError(t, err)
 
@@ -72,7 +74,8 @@ func TestS3Object_Read(t *testing.T) {
 
 	t.Run("should return an error when the object does not exists", func(t *testing.T) {
 		// Given
-		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		require.NoError(t, err)
 		file, err := directory.NewFile("non-existing-file.txt", rootDir)
 		require.NoError(t, err)
 
@@ -98,13 +101,14 @@ func TestS3Object_Write(t *testing.T) {
 
 	bucket := testutil.FakeS3LikeBucketName
 	testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{})
-	conn := testutil.FakeS3LikeConnection(t, endpoint, bucket)
-	client := s3client.NewS3LikeClient(conn)
+	conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
+	client := s3client.NewAwsClient(conn)
 
 	t.Run("should create the object if not exists then makes it readable", func(t *testing.T) {
 		// Given
 		fileKey := "brand-new-file.txt"
-		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		require.NoError(t, err)
 		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 
@@ -131,7 +135,8 @@ func TestS3Object_Write(t *testing.T) {
 		fileKey := "this-file-exists-0.txt"
 		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
 
-		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		require.NoError(t, err)
 		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 
@@ -159,7 +164,8 @@ func TestS3Object_Write(t *testing.T) {
 		fileKey := "this-file-exists-1.txt"
 		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
 
-		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		require.NoError(t, err)
 		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 
@@ -189,7 +195,8 @@ func TestS3Object_Write(t *testing.T) {
 		fileKey := "this-file-exists-2.txt"
 		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
 
-		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		require.NoError(t, err)
 		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 
@@ -221,7 +228,8 @@ func TestS3Object_Write(t *testing.T) {
 
 		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
 
-		rootDir := testutil.FakeNotLoadedRootDirectory(t)
+		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		require.NoError(t, err)
 		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 

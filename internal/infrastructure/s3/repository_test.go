@@ -25,7 +25,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 		{Key: "root_file.txt", Body: strings.NewReader("coucou")},
 		{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("lolo")},
 	})
-	fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+	fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 	t.Run("should return the file content", func(t *testing.T) {
 		// Given
@@ -42,7 +42,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		res, err := repo.GetFileContent(context.TODO(), testutil.FakeS3LikeConnectionId, file)
+		res, err := repo.GetFileContent(context.TODO(), testutil.FakeAwsConnectionId, file)
 
 		// Then
 		assert.NoError(t, err)
@@ -70,7 +70,7 @@ func TestNewS3DirectoryRepository_GetFileContent(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		res, err := repo.GetFileContent(context.TODO(), testutil.FakeS3LikeConnectionId, file)
+		res, err := repo.GetFileContent(context.TODO(), testutil.FakeAwsConnectionId, file)
 
 		// Then
 		assert.NoError(t, err)

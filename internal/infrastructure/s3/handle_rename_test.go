@@ -32,9 +32,9 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
 			{Key: "mydir/original.txt", Body: strings.NewReader("original content")},
 		})
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		parentDir := testutil.NewLoadedDirectory(t, "mydir", directory.RootPath)
+		parentDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
 		originalFile := testutil.AddFileToDirectory(t, parentDir, "original.txt")
 
 		fakeEventChan := make(chan event.Event, 1)
@@ -87,8 +87,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			{Key: "originaldir/subdir/nested.txt", Body: strings.NewReader("nested content")},
 			{Key: "originaldir/subdir/originaldir/more-nested.txt", Body: strings.NewReader("more nested content")},
 		})
-		originalDir := testutil.NewLoadedDirectory(t, "originaldir", directory.RootPath)
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		originalDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "originaldir", directory.RootPath)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -146,8 +146,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			{Key: "originaldir/subdir/nested.txt", Body: strings.NewReader("nested content")},
 			{Key: "originaldir/subdir/originaldir/more-nested.txt", Body: strings.NewReader("more nested content")},
 		})
-		originalDir := testutil.NewLoadedDirectory(t, "originaldir", directory.RootPath)
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		originalDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "originaldir", directory.RootPath)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -212,8 +212,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			{Key: "originaldir/subdir/nested.txt", Body: strings.NewReader("nested content")},
 			{Key: "originaldir/subdir/originaldir/more-nested.txt", Body: strings.NewReader("more nested content")},
 		})
-		subdir := testutil.NewLoadedDirectory(t, "subdir", "/originaldir/")
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		subdir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "subdir", "/originaldir/")
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -270,8 +270,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		testutil.SetupS3Bucket(context.TODO(), t, client, bucket, []testutil.FakeS3Object{
 			{Key: "base/empty/", Body: strings.NewReader("")},
 		})
-		dir := testutil.NewLoadedDirectory(t, "empty", "/base/")
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		dir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "empty", "/base/")
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -320,8 +320,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			{Key: "originaldir/subdir/nested.txt", Body: strings.NewReader("nested content")},
 			{Key: "originaldir/subdir/originaldir/more-nested.txt", Body: strings.NewReader("more nested content")},
 		})
-		originalDir := testutil.NewLoadedDirectory(t, "originaldir", directory.RootPath)
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		originalDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "originaldir", directory.RootPath)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -400,8 +400,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			{Key: "newname/", Body: strings.NewReader("")},
 			{Key: "newname/somefile.txt", Body: strings.NewReader("some content")},
 		})
-		originalDir := testutil.NewLoadedDirectory(t, "originaldir", directory.RootPath)
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		originalDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "originaldir", directory.RootPath)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -443,8 +443,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "originaldir/.s3box-rename-src", Body: strings.NewReader(`{"dstPath": "/othernewname/"}`)},
 		})
-		originalDir := testutil.NewLoadedDirectory(t, "originaldir", directory.RootPath)
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		originalDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "originaldir", directory.RootPath)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -484,8 +484,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		testutil.SetupS3Bucket(context.TODO(), t, client, bucket, []testutil.FakeS3Object{
 			{Key: "base/empty/", Body: strings.NewReader("")},
 		})
-		dir := testutil.NewLoadedDirectory(t, "empty", directory.NewPath("base"))
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		dir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "empty", directory.NewPath("base"))
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -550,10 +550,10 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			{Key: "newname/subdir/file4.txt", Body: strings.NewReader("content 4")},
 			{Key: "newname/subdir/file5.txt", Body: strings.NewReader("content 5")},
 		})
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		oldDir := testutil.NewLoadedDirectory(t, "oldname", directory.RootPath)
-		newDir := testutil.NewLoadedDirectory(t, "newname", directory.RootPath)
+		oldDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "oldname", directory.RootPath)
+		newDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "newname", directory.RootPath)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -623,10 +623,10 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			{Key: "newname/subdir/file4.txt", Body: strings.NewReader("content 4")},
 			{Key: "newname/subdir/file5.txt", Body: strings.NewReader("content 5")},
 		})
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		oldDir := testutil.NewLoadedDirectory(t, "oldname", directory.RootPath)
-		newDir := testutil.NewLoadedDirectory(t, "newname", directory.RootPath)
+		oldDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "oldname", directory.RootPath)
+		newDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "newname", directory.RootPath)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -696,10 +696,10 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			{Key: "newname/subdir/file4.txt", Body: strings.NewReader("content 4")},
 			{Key: "newname/subdir/file5.txt", Body: strings.NewReader("content 5")},
 		})
-		fakeDeck := testutil.FakeDeckWithS3LikeConnection(t, endpoint, bucket)
+		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		oldDir := testutil.NewNotLoadedDirectory(t, "oldname", directory.RootPath)
-		newDir := testutil.NewNotLoadedDirectory(t, "newname", directory.RootPath)
+		oldDir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "oldname", directory.RootPath)
+		newDir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "newname", directory.RootPath)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
