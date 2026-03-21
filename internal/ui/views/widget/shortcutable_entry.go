@@ -32,7 +32,7 @@ func NewEntryWithShortcuts(actions []ActionShortcuts) *EntryWithShortcuts {
 func (d *EntryWithShortcuts) TypedShortcut(s fyne.Shortcut) {
 	val, ok := s.(*desktop.CustomShortcut)
 	if !ok {
-		d.TypedShortcut(s)
+		d.Entry.TypedShortcut(s)
 		return
 	}
 	for _, a := range d.Actions {

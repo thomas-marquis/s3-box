@@ -52,7 +52,8 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
 		ctx := context.TODO()
 
-		file, err := directory.NewFile("test.txt", directory.RootPath)
+		rootDir, _ := directory.NewRoot(conn.ID())
+		file, err := directory.NewFile("test.txt", rootDir)
 		require.NoError(t, err)
 
 		// When opening the editor
@@ -109,7 +110,8 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
 		ctx := context.TODO()
 
-		file, err := directory.NewFile("test.txt", directory.RootPath)
+		rootDir, _ := directory.NewRoot(conn.ID())
+		file, err := directory.NewFile("test.txt", rootDir)
 		require.NoError(t, err)
 
 		// When opening the editor
@@ -162,7 +164,8 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
 		ctx := context.TODO()
 
-		file, err := directory.NewFile("test.txt", directory.RootPath)
+		rootDir, _ := directory.NewRoot(conn.ID())
+		file, err := directory.NewFile("test.txt", rootDir)
 		require.NoError(t, err)
 
 		// When
@@ -197,10 +200,11 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
 		ctx := context.TODO()
 
-		file, err := directory.NewFile("test.txt", directory.RootPath)
+		rootDir, _ := directory.NewRoot(conn.ID())
+		file, err := directory.NewFile("test.txt", rootDir)
 		require.NoError(t, err)
 
-		file2, err := directory.NewFile("test2.txt", directory.RootPath)
+		file2, err := directory.NewFile("test2.txt", rootDir)
 		require.NoError(t, err)
 
 		oe1, _ := vm.Open(ctx, file)
@@ -243,11 +247,13 @@ func TestEditorViewModelImpl_IsOpened(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
 		ctx := context.TODO()
 
-		file1, err := directory.NewFile("test1.txt", directory.RootPath)
+		rootDir, _ := directory.NewRoot(conn.ID())
+		file1, err := directory.NewFile("test1.txt", rootDir)
 		require.NoError(t, err)
-		file2, err := directory.NewFile("test1.txt", directory.RootPath)
+		file2, err := directory.NewFile("test1.txt", rootDir)
 		require.NoError(t, err)
-		file3, err := directory.NewFile("test1.txt", directory.NewPath("mydir"))
+		mydir, _ := directory.New(conn.ID(), "mydir", rootDir)
+		file3, err := directory.NewFile("test1.txt", mydir)
 		require.NoError(t, err)
 
 		// When & Then
@@ -291,11 +297,13 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
 		ctx := context.TODO()
 
-		file1, err := directory.NewFile("test1.txt", directory.RootPath)
+		rootDir, _ := directory.NewRoot(conn.ID())
+		file1, err := directory.NewFile("test1.txt", rootDir)
 		require.NoError(t, err)
-		file2, err := directory.NewFile("test1.txt", directory.RootPath)
+		file2, err := directory.NewFile("test1.txt", rootDir)
 		require.NoError(t, err)
-		file3, err := directory.NewFile("test1.txt", directory.NewPath("mydir"))
+		mydir, _ := directory.New(conn.ID(), "mydir", rootDir)
+		file3, err := directory.NewFile("test1.txt", mydir)
 		require.NoError(t, err)
 
 		// When & Then

@@ -43,7 +43,7 @@ jobs:
 
       - name: Package for Linux
         run: |
-          fyne-cross linux -arch=amd64 -name ${{ env.BASE_APP_NAME }} -icon icon.png -app-version ${{ steps.get_version.outputs.version }}
+          fyne-cross linux -arch=amd64 -name ${{ env.BASE_APP_NAME }} -icon resources/logo-wbg.png -app-version ${{ steps.get_version.outputs.version }}
 
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v2

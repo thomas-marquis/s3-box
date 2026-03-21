@@ -5,8 +5,7 @@ import (
 
 	"fyne.io/fyne/v2/data/binding"
 	fyne_test "fyne.io/fyne/v2/test"
-	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
-	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/testutil"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 	mocks_appcontext "github.com/thomas-marquis/s3-box/mocks/context"
 	mocks_viewmodel "github.com/thomas-marquis/s3-box/mocks/viewmodel"
@@ -16,24 +15,23 @@ import (
 func TestDirectoryDetails(t *testing.T) {
 	fyne_test.NewApp()
 
-	ctrl := gomock.NewController(t)
-	mockAppCtx := mocks_appcontext.NewMockAppContext(ctrl)
-	mockExplorerVM := mocks_viewmodel.NewMockExplorerViewModel(ctrl)
-	mockConnVM := mocks_viewmodel.NewMockConnectionViewModel(ctrl)
-
-	mockAppCtx.EXPECT().ExplorerViewModel().Return(mockExplorerVM).AnyTimes()
-	mockAppCtx.EXPECT().ConnectionViewModel().Return(mockConnVM).AnyTimes()
-
-	fakeIsLoadingBinding := binding.NewBool()
-	mockExplorerVM.EXPECT().IsSelectedDirectoryLoading().Return(fakeIsLoadingBinding).AnyTimes()
-
-	dir, _ := directory.New(connection_deck.NewConnectionID(), "test-dir", directory.RootPath)
-
 	t.Run("should display directory details", func(t *testing.T) {
 		// Given
-		mockConnVM.EXPECT().IsReadOnly().Return(false)
+		ctrl := gomock.NewController(t)
+		mockAppCtx := mocks_appcontext.NewMockAppContext(ctrl)
+		mockExplorerVM := mocks_viewmodel.NewMockExplorerViewModel(ctrl)
+		mockConnVM := mocks_viewmodel.NewMockConnectionViewModel(ctrl)
 
-		mockExplorerVM.EXPECT().SetSelectedDirectory(gomock.Eq(dir)).Times(1)
+		mockAppCtx.EXPECT().ExplorerViewModel().Return(mockExplorerVM).AnyTimes()
+		mockAppCtx.EXPECT().ConnectionViewModel().Return(mockConnVM).AnyTimes()
+		mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
+
+		fakeIsLoadingBinding := binding.NewBool()
+		mockExplorerVM.EXPECT().IsSelectedDirectoryLoading().Return(fakeIsLoadingBinding).AnyTimes()
+
+		dir := testutil.FakeNotLoadedRootDirectory(t)
+
+		mockConnVM.EXPECT().IsReadOnly().Return(false)
 
 		// When
 		res := widget.NewDirectoryDetails(mockAppCtx)
@@ -46,9 +44,21 @@ func TestDirectoryDetails(t *testing.T) {
 
 	t.Run("should display directory details in read-only mode", func(t *testing.T) {
 		// Given
-		mockConnVM.EXPECT().IsReadOnly().Return(true)
+		ctrl := gomock.NewController(t)
+		mockAppCtx := mocks_appcontext.NewMockAppContext(ctrl)
+		mockExplorerVM := mocks_viewmodel.NewMockExplorerViewModel(ctrl)
+		mockConnVM := mocks_viewmodel.NewMockConnectionViewModel(ctrl)
 
-		mockExplorerVM.EXPECT().SetSelectedDirectory(gomock.Eq(dir)).Times(1)
+		mockAppCtx.EXPECT().ExplorerViewModel().Return(mockExplorerVM).AnyTimes()
+		mockAppCtx.EXPECT().ConnectionViewModel().Return(mockConnVM).AnyTimes()
+		mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
+
+		fakeIsLoadingBinding := binding.NewBool()
+		mockExplorerVM.EXPECT().IsSelectedDirectoryLoading().Return(fakeIsLoadingBinding).AnyTimes()
+
+		dir := testutil.FakeNotLoadedRootDirectory(t)
+
+		mockConnVM.EXPECT().IsReadOnly().Return(true)
 
 		// When
 		res := widget.NewDirectoryDetails(mockAppCtx)

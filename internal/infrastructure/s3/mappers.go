@@ -1,8 +1,9 @@
-package infrastructure
+package s3
 
 import (
-	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"strings"
+
+	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
 func mapDirToObjectKey(dir *directory.Directory) string {

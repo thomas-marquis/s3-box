@@ -19,6 +19,10 @@ import (
 	"fyne.io/fyne/v2/storage"
 )
 
+const (
+	maxPendingUserValidations = 30
+)
+
 // ExplorerViewModel represents the view model for the file explorer interface.
 // It handles the tree structure display, file operations, and directory management
 // while maintaining the connection with the underlying storage system.
@@ -46,13 +50,18 @@ type ExplorerViewModel interface {
 	SetSelectedDirectory(dir *directory.Directory)
 	IsSelectedDirectoryLoading() binding.Bool
 
+	PendingUserValidations() <-chan directory.UserValidationEvent
+
+	// AddStateListener registers a callback function to be notified of any changes in directories or files.
+	AddStateListener(func())
+
 	////////////////////////
 	// Action methods
 	////////////////////////
 
 	// LoadDirectory sync a directory with the actual s3 one and load its files and children.
 	// If the directory is already open, it will do nothing.
-	LoadDirectory(dirNode node.DirectoryNode) error // TODO: use this method for refreshing the content too
+	LoadDirectory(dirNode node.DirectoryNode) error
 
 	// GetFileContent retrieves the content of the specified file, returning a Content object or an error if the operation fails.
 	GetFileContent(f *directory.File) (*directory.Content, error)
@@ -77,6 +86,18 @@ type ExplorerViewModel interface {
 
 	// CreateEmptyFile creates an empty file in the given parent directory
 	CreateEmptyFile(parent *directory.Directory, name string)
+
+	// RenameDirectory renames a directory
+	RenameDirectory(dir *directory.Directory, newName string)
+
+	// RenameFile renames a file
+	RenameFile(file *directory.File, newName string)
+
+	Validate(dir *directory.Directory, reason event.Event, validated bool)
+
+	ResumeRename(dir *directory.Directory) error
+	RollbackRename(dir *directory.Directory) error
+	AbortRename(dir *directory.Directory) error
 }
 
 type explorerViewModelImpl struct {
@@ -95,6 +116,10 @@ type explorerViewModelImpl struct {
 	selectedDirectory    *directory.Directory
 	isSelectedDirLoading binding.Bool
 
+	pendingUserValidations chan directory.UserValidationEvent
+
+	stateListeners []func()
+
 	notifier notification.Repository
 	bus      event.Bus
 }
@@ -111,14 +136,16 @@ func NewExplorerViewModel(
 			errorMessage: binding.NewString(),
 			infoMessage:  binding.NewString(),
 		},
-		settingsVm:            settingsVm,
-		directoryRepository:   directoryRepository,
-		notifier:              notifier,
-		selectedConnectionVal: initialConnection,
-		selectedConnection:    binding.NewUntyped(),
-		bus:                   bus,
-		selectedDirectory:     nil,
-		isSelectedDirLoading:  binding.NewBool(),
+		settingsVm:             settingsVm,
+		directoryRepository:    directoryRepository,
+		notifier:               notifier,
+		selectedConnectionVal:  initialConnection,
+		selectedConnection:     binding.NewUntyped(),
+		bus:                    bus,
+		selectedDirectory:      nil,
+		isSelectedDirLoading:   binding.NewBool(),
+		pendingUserValidations: make(chan directory.UserValidationEvent, maxPendingUserValidations),
+		stateListeners:         make([]func(), 0),
 	}
 
 	if err := v.initializeTreeData(initialConnection); err != nil {
@@ -147,9 +174,60 @@ func NewExplorerViewModel(
 		On(event.Is(directory.ContentDownloadEventType.AsFailure()), v.handleDownloadFileFailure).
 		On(event.Is(directory.LoadEventType.AsSuccess()), v.handleLoadDirSuccess).
 		On(event.Is(directory.LoadEventType.AsFailure()), v.handleLoadDirFailure).
+		On(event.Is(directory.RenameEventType.AsSuccess()), v.handleRenameDirectorySuccess).
+		On(event.Is(directory.RenameEventType.AsFailure()), v.handleRenameDirectoryFailure).
+		On(event.Is(directory.FileRenameEventType.AsSuccess()), v.handleRenameFileSuccess).
+		On(event.Is(directory.FileRenameEventType.AsFailure()), v.handleRenameFileFailure).
+		On(event.Is(directory.UserValidationEventType), v.handleUserValidationRequest).
+		On(event.Is(directory.UserValidationRefusedEventType), v.handleUserValidationRefused).
 		ListenWithWorkers(1)
 
 	return v
+}
+
+func (v *explorerViewModelImpl) AddStateListener(listener func()) {
+	v.stateListeners = append(v.stateListeners, listener)
+}
+
+func (v *explorerViewModelImpl) triggerStateListeners() {
+	fyne.Do(func() {
+		for _, listener := range v.stateListeners {
+			listener()
+		}
+	})
+}
+
+func (v *explorerViewModelImpl) Validate(dir *directory.Directory, reason event.Event, accepted bool) {
+	if accepted {
+		v.bus.Publish(directory.NewUserValidationAcceptedEvent(dir, reason))
+	} else {
+		v.bus.Publish(directory.NewUserValidationRefusedEvent(dir, reason))
+	}
+}
+
+func (v *explorerViewModelImpl) PendingUserValidations() <-chan directory.UserValidationEvent {
+	return v.pendingUserValidations
+}
+
+func (v *explorerViewModelImpl) handleUserValidationRequest(evt event.Event) {
+	e := evt.(directory.UserValidationEvent)
+	v.pendingUserValidations <- e
+}
+
+func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
+	e := evt.(directory.UserValidationRefusedEvent)
+	dir := e.Directory()
+
+	if err := dir.Notify(e); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+
+	if dir.Is(v.selectedDirectory) {
+		v.isSelectedDirLoading.Set(false) // nolint:errcheck
+	}
+
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) Tree() binding.Tree[node.Node] {
@@ -183,13 +261,9 @@ func (v *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error 
 		return err
 	}
 
-	if dirNode.Directory().IsLoaded() {
-		return nil
-	}
-
 	evt, err := dirNode.Directory().Load()
 	if err != nil {
-		wErr := fmt.Errorf("error loading directory: %w", err)
+		wErr := fmt.Errorf("impossible to (re)load the directory: %w", err)
 		v.notifier.NotifyError(wErr)
 		return wErr
 	}
@@ -206,14 +280,16 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 		v.notifier.NotifyError(err)
 		return
 	}
+
 	if err := v.fillSubTree(dir); err != nil {
-		dir.SetLoaded(false)
 		v.notifier.NotifyError(fmt.Errorf("error filling sub tree: %w", err))
 	}
 
-	if v.selectedDirectory != nil && v.selectedDirectory.Is(dir) {
+	if dir.Is(v.selectedDirectory) {
 		v.isSelectedDirLoading.Set(false) // nolint:errcheck
 	}
+
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
@@ -223,12 +299,13 @@ func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
 		v.notifier.NotifyError(err)
 		return
 	}
-	dir.SetLoaded(false)
 	v.infoMessage.Set(e.Error().Error()) //nolint:errcheck
 
-	if v.selectedDirectory != nil && v.selectedDirectory.Is(dir) {
+	if dir.Is(v.selectedDirectory) {
 		v.isSelectedDirLoading.Set(false) // nolint:errcheck
 	}
+
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) GetFileContent(file *directory.File) (*directory.Content, error) {
@@ -308,6 +385,7 @@ func (v *explorerViewModelImpl) handleFileUploadSuccess(evt event.Event) {
 		return
 	}
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("File upload", "success"))
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
@@ -318,6 +396,7 @@ func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
 	}
 	v.notifier.NotifyError(err)
 	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) DeleteFile(file *directory.File) {
@@ -358,6 +437,7 @@ func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
 
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("File deleted",
 		fmt.Sprintf("File %s deleted", e.File().Name())))
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleDeleteFileFailure(evt event.Event) {
@@ -369,6 +449,7 @@ func (v *explorerViewModelImpl) handleDeleteFileFailure(evt event.Event) {
 	err := fmt.Errorf("error deleting file: %w", e.Error())
 	v.notifier.NotifyError(err)
 	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) LastDownloadLocation() fyne.ListableURI {
@@ -431,6 +512,7 @@ func (v *explorerViewModelImpl) handleCreateDirSuccess(evt event.Event) {
 	if err := e.Parent().Notify(e); err != nil {
 		v.notifier.NotifyError(err)
 	}
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleCreateDirFailure(evt event.Event) {
@@ -442,6 +524,7 @@ func (v *explorerViewModelImpl) handleCreateDirFailure(evt event.Event) {
 	err := fmt.Errorf("error creating directory: %w", e.Error())
 	v.notifier.NotifyError(err)
 	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, name string) {
@@ -473,6 +556,7 @@ func (v *explorerViewModelImpl) handleCreateFileSuccess(evt event.Event) {
 		v.notifier.NotifyError(err)
 		return
 	}
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleCreateFileFailure(evt event.Event) {
@@ -483,6 +567,184 @@ func (v *explorerViewModelImpl) handleCreateFileFailure(evt event.Event) {
 	}
 	v.notifier.NotifyError(err)
 	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	v.triggerStateListeners()
+}
+
+func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newName string) {
+	if v.selectedConnectionVal == nil {
+		err := ErrNoConnectionSelected
+		v.notifier.NotifyError(err)
+		v.bus.Publish(directory.NewRenameFailureEvent(err, dir, newName))
+		return
+	}
+
+	evt, err := dir.Rename(newName)
+	if err != nil {
+		wErr := fmt.Errorf("error renaming directory: %w", err)
+		v.notifier.NotifyError(wErr)
+		v.bus.Publish(directory.NewRenameFailureEvent(wErr, dir, newName))
+		return
+	}
+
+	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	v.bus.Publish(evt)
+}
+
+func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
+	e := evt.(directory.RenameSuccessEvent)
+	dir := e.Directory()
+
+	defer func() {
+		if dir.Is(v.selectedDirectory) {
+			v.isSelectedDirLoading.Set(false) // nolint:errcheck
+		}
+	}()
+
+	oldPath := dir.Path().String()
+
+	if err := dir.Notify(e); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+
+	if err := v.tree.Remove(oldPath); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error removing old directory node: %w", err))
+		return
+	}
+
+	var (
+		n   node.Node
+		err error
+	)
+	_, err = v.tree.GetValue(dir.Path().String())
+	n = node.NewDirectoryNode(dir)
+	if err != nil {
+		if err := v.tree.Prepend(dir.ParentPath().String(), n.ID(), n); err != nil {
+			v.notifier.NotifyError(fmt.Errorf("error adding new directory node: %w", err))
+			return
+		}
+	} else {
+		v.tree.SetValue(dir.Path().String(), n) //nolint:errcheck
+	}
+	newDirNode := n.(node.DirectoryNode)
+
+	if err := v.LoadDirectory(newDirNode); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error loading the renamed directory: %w", err))
+	}
+
+	fyne.CurrentApp().SendNotification(fyne.NewNotification("Directory renamed",
+		fmt.Sprintf("Directory %s renamed to %s", oldPath, dir.Name())))
+	v.triggerStateListeners()
+}
+
+func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
+	e := evt.(directory.RenameFailureEvent)
+	dir := e.Directory()
+
+	defer func() {
+		if dir.Is(v.selectedDirectory) {
+			v.isSelectedDirLoading.Set(false) // nolint:errcheck
+		}
+	}()
+
+	err := fmt.Errorf("error renaming directory: %w", e.Error())
+	if err := dir.Notify(evt); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+	v.notifier.NotifyError(err)
+	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	v.triggerStateListeners()
+}
+
+func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) error {
+	evt, err := dir.Recover(directory.RecoveryChoiceRenameResume)
+	if err != nil {
+		return fmt.Errorf("impossible to resume rename: %w", err)
+	}
+	v.bus.Publish(evt)
+	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	return nil
+}
+
+func (v *explorerViewModelImpl) RollbackRename(dir *directory.Directory) error {
+	evt, err := dir.Recover(directory.RecoveryChoiceRenameRollback)
+	if err != nil {
+		return fmt.Errorf("impossible to rollback rename: %w", err)
+	}
+	v.bus.Publish(evt)
+	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	return nil
+}
+
+func (v *explorerViewModelImpl) AbortRename(dir *directory.Directory) error {
+	evt, err := dir.Recover(directory.RecoveryChoiceRenameAbort)
+	if err != nil {
+		return fmt.Errorf("impossible to abort rename: %w", err)
+	}
+	v.bus.Publish(evt)
+	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	return nil
+}
+
+func (v *explorerViewModelImpl) RenameFile(file *directory.File, newName string) {
+	if v.selectedConnectionVal == nil {
+		err := ErrNoConnectionSelected
+		v.notifier.NotifyError(err)
+		v.bus.Publish(directory.NewFileRenameFailureEvent(err, nil, file, newName))
+		return
+	}
+
+	evt, err := file.Rename(newName)
+	if err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+
+	v.bus.Publish(evt)
+}
+
+func (v *explorerViewModelImpl) handleRenameFileSuccess(evt event.Event) {
+	e := evt.(directory.FileRenameSuccessEvent)
+	file := e.File()
+	parentDir := e.Directory()
+
+	oldFullPath := file.FullPath()
+
+	// Update the parent directory's state
+	if err := parentDir.Notify(e); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+
+	// Remove the old file node from the tree
+	if err := v.tree.Remove(oldFullPath); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error removing old file node: %w", err))
+		return
+	}
+
+	// Add the new file node to the tree
+	newFileNode := node.NewFileNode(file)
+	if err := v.tree.Append(file.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error adding new file node: %w", err))
+		return
+	}
+
+	fyne.CurrentApp().SendNotification(fyne.NewNotification("File renamed",
+		fmt.Sprintf("File renamed to %s", file.Name())))
+	v.triggerStateListeners()
+}
+
+func (v *explorerViewModelImpl) handleRenameFileFailure(evt event.Event) {
+	e := evt.(directory.FileRenameFailureEvent)
+	err := fmt.Errorf("error renaming file: %w", e.Error())
+	if err := e.Directory().Notify(e); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+	v.notifier.NotifyError(err)
+	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection) error {
@@ -498,7 +760,7 @@ func (v *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection
 
 	displayLabel := "Bucket: " + c.Bucket()
 
-	rootDir, err := directory.New(c.ID(), directory.RootDirName, directory.NilParentPath)
+	rootDir, err := directory.NewRoot(c.ID())
 	if err != nil {
 		newErr := fmt.Errorf("error initializing the root directory: %w", err)
 		v.notifier.NotifyError(newErr)
@@ -521,30 +783,24 @@ func (v *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection
 }
 
 func (v *explorerViewModelImpl) fillSubTree(dir *directory.Directory) error {
-	files, err := dir.Files()
-	if err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error getting files: %w", err))
-		return err
-	}
+	files := dir.Files()
+	subDirs := dir.SubDirectories()
 
-	subDirs, err := dir.SubDirectories()
-	if err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error getting subdirectories: %w", err))
-		return err
+	for _, subDir := range subDirs {
+		subDirNode := node.NewDirectoryNode(subDir)
+		if err := v.tree.Append(dir.Path().String(), subDirNode.ID(), subDirNode); err != nil {
+			v.notifier.NotifyError(fmt.Errorf("error appending subdirectory to tree: %w", err))
+			continue
+		}
+		if err := v.fillSubTree(subDir); err != nil {
+			return err
+		}
 	}
 
 	for _, file := range files {
 		fileNode := node.NewFileNode(file)
 		if err := v.tree.Append(dir.Path().String(), fileNode.ID(), fileNode); err != nil {
 			v.notifier.NotifyError(fmt.Errorf("error appending file to tree: %w", err))
-			continue
-		}
-	}
-
-	for _, subDirPath := range subDirs {
-		subDirNode := node.NewDirectoryNode(subDirPath)
-		if err := v.tree.Append(dir.Path().String(), subDirNode.ID(), subDirNode); err != nil {
-			v.notifier.NotifyError(fmt.Errorf("error appending subdirectory to tree: %w", err))
 			continue
 		}
 	}
@@ -559,7 +815,7 @@ func (v *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Direct
 		return fmt.Errorf("impossible to retrieve the parent directory from path: %s", parentPath)
 	}
 	childNode := node.NewDirectoryNode(dirToAdd)
-	if err := v.tree.Append(parentNodeItem.(node.DirectoryNode).ID(), childNode.ID(), childNode); err != nil {
+	if err := v.tree.Prepend(parentNodeItem.(node.DirectoryNode).ID(), childNode.ID(), childNode); err != nil {
 		return fmt.Errorf("error appending directory to tree: %w", err)
 	}
 	return nil
@@ -573,7 +829,7 @@ func (v *explorerViewModelImpl) addNewFileToTree(fileToAdd *directory.File) erro
 	}
 
 	newFileNode := node.NewFileNode(fileToAdd)
-	if err := v.tree.Prepend(fileToAdd.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
+	if err := v.tree.Append(fileToAdd.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
 		return fmt.Errorf("error appending file to the tree: %w", err)
 	}
 	return nil

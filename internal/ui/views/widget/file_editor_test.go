@@ -6,6 +6,7 @@ import (
 
 	"fyne.io/fyne/v2/data/binding"
 	fyne_test "fyne.io/fyne/v2/test"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
@@ -29,7 +30,8 @@ func TestFileEditor(t *testing.T) {
 	mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
 
 	lastModified := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
-	file, _ := directory.NewFile("test.txt", directory.RootPath,
+	rootDir, _ := directory.NewRoot(connection_deck.NewConnectionID())
+	file, _ := directory.NewFile("test.txt", rootDir,
 		directory.WithFileSize(1024),
 		directory.WithFileLastModified(lastModified),
 	)

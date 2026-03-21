@@ -1,4 +1,4 @@
-package infrastructure
+package s3
 
 import (
 	"bytes"
@@ -8,45 +8,41 @@ import (
 	"os"
 	"sync"
 
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
-type s3Session struct {
-	connection *connection_deck.Connection
-	client     *s3.Client
-	downloader *manager.Downloader
-	uploader   *manager.Uploader
-}
-
-type S3DirectoryRepository struct {
+type RepositoryImpl struct {
 	sync.Mutex
 	connectionRepository connection_deck.Repository
 	logger               *log.Logger
-	cache                map[connection_deck.ConnectionID]*s3Session
 	bus                  event.Bus
 	notifier             notification.Repository
+	s3ClientOptions      []func(*s3.Options)
+
+	clientFactory s3client.Factory
 }
 
-var _ directory.Repository = (*S3DirectoryRepository)(nil)
+var _ directory.Repository = (*RepositoryImpl)(nil)
 
-func NewS3DirectoryRepository(
+func NewRepositoryImpl(
 	connectionsRepository connection_deck.Repository,
 	bus event.Bus,
 	notifier notification.Repository,
-) (*S3DirectoryRepository, error) {
-	r := &S3DirectoryRepository{
+	s3ClientOptions ...func(*s3.Options),
+) (*RepositoryImpl, error) {
+	r := &RepositoryImpl{
 		connectionRepository: connectionsRepository,
 		logger:               log.New(os.Stdout, "S3Repository: ", log.LstdFlags),
-		cache:                make(map[connection_deck.ConnectionID]*s3Session),
 		bus:                  bus,
 		notifier:             notifier,
+		s3ClientOptions:      s3ClientOptions,
+		clientFactory:        s3client.NewFactory(connectionsRepository, notifier, s3ClientOptions...),
 	}
 
 	bus.Subscribe().
@@ -56,31 +52,41 @@ func NewS3DirectoryRepository(
 		On(event.Is(directory.FileDeletedEventType), r.handleDeleteFile).
 		On(event.Is(directory.ContentUploadedEventType), r.handleUploadFile).
 		On(event.Is(directory.ContentDownloadEventType), r.handleDownloadFile).
-		On(event.Is(directory.LoadEventType), r.handleLoading).
+		On(event.Is(directory.LoadEventType), r.handleLoadDirectory).
 		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
+		On(event.Is(directory.UserValidationAcceptedEventType), r.handleRenameDirectory).
+		On(event.Is(directory.FileRenameEventType), r.handleRenameFile).
+		On(event.Is(directory.RenameEventType), r.handleRenameRequest).
+		On(event.Is(directory.RenameRecoverEventType), r.handleRenameRecovery).
+		On(event.IsOneOf(
+			connection_deck.RemoveEventType.AsSuccess(),
+			connection_deck.UpdateEventType.AsSuccess(),
+		), r.handleConnectionChanged).
 		ListenNonBlocking() // TODO: set a limit of simultaneous tasks
 
 	return r, nil
 }
 
-func (r *S3DirectoryRepository) GetFileContent(
+func (r *RepositoryImpl) handleConnectionChanged(evt event.Event) {
+	if e, ok := evt.(connection_deck.ConnectionEvent); ok {
+		cId := e.Connection().ID()
+		r.clientFactory.Remove(cId)
+	}
+}
+
+func (r *RepositoryImpl) GetFileContent(
 	ctx context.Context,
 	connId connection_deck.ConnectionID,
 	file *directory.File,
 ) (*directory.Content, error) {
-	s, err := r.getSession(ctx, connId)
+	client, err := r.clientFactory.Get(ctx, connId)
 	if err != nil {
 		return nil, fmt.Errorf("GetFileContent: %w", err)
 	}
 
-	input := &s3.GetObjectInput{
-		Bucket: aws.String(s.connection.Bucket()),
-		Key:    aws.String(mapFileToKey(file)),
-	}
-
-	result, err := s.client.GetObject(ctx, input)
+	result, err := client.GetObject(ctx, mapFileToKey(file))
 	if err != nil {
-		return nil, r.manageAwsSdkError(err, file.FullPath(), s)
+		return nil, err
 	}
 
 	defer result.Body.Close() //nolint:errcheck
@@ -90,7 +96,10 @@ func (r *S3DirectoryRepository) GetFileContent(
 		return nil, fmt.Errorf("fail reading the body content: %w", err)
 	}
 
-	rd, w, _ := os.Pipe()
+	rd, w, err := os.Pipe()
+	if err != nil {
+		return nil, err
+	}
 	defer w.Close() //nolint:errcheck
 	if _, err := w.Write(buff.Bytes()); err != nil {
 		return nil, fmt.Errorf("fail writing the body content: %w", err)

@@ -80,7 +80,6 @@ func (b *eventBusImpl) Subscribe() *event.Subscriber {
 }
 
 func (b *eventBusImpl) Publish(evt event.Event) {
-	b.notifier.NotifyDebug(fmt.Sprintf("publishing event: %s", evt.Type()))
 	b.Lock()
 	defer b.Unlock()
 

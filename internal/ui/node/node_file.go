@@ -20,7 +20,6 @@ var (
 func NewFileNode(file *directory.File, opts ...Option) FileNode {
 	b := baseNode{
 		id:          file.FullPath(),
-		nodeType:    FileNodeType,
 		displayName: file.Name().String(),
 		icon:        nil,
 	}

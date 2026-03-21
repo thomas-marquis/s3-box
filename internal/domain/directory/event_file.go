@@ -9,6 +9,7 @@ const (
 	FileCreatedEventType event.Type = "event.file.created"
 	FileDeletedEventType event.Type = "event.file.deleted"
 	FileLoadEventType    event.Type = "event.file.load"
+	FileRenameEventType  event.Type = "event.file.rename"
 )
 
 type withFile struct {
@@ -148,5 +149,53 @@ func NewFileLoadFailureEvent(err error, file *File) FileLoadFailureEvent {
 	return FileLoadFailureEvent{
 		event.NewBaseErrorEvent(FileLoadEventType.AsFailure(), err),
 		withFile{file},
+	}
+}
+
+type FileRenameEvent struct {
+	event.BaseEvent
+	withFile
+	withNewName
+	withDirectory
+}
+
+func NewFileRenameEvent(dir *Directory, file *File, newName string, opts ...event.Option) FileRenameEvent {
+	return FileRenameEvent{
+		event.NewBaseEvent(FileRenameEventType, opts...),
+		withFile{file},
+		withNewName{newName},
+		withDirectory{dir},
+	}
+}
+
+type FileRenameSuccessEvent struct {
+	event.BaseEvent
+	withFile
+	withNewName
+	withDirectory
+}
+
+func NewFileRenameSuccessEvent(dir *Directory, file *File, newName string, opts ...event.Option) FileRenameSuccessEvent {
+	return FileRenameSuccessEvent{
+		event.NewBaseEvent(FileRenameEventType.AsSuccess(), opts...),
+		withFile{file},
+		withNewName{newName},
+		withDirectory{dir},
+	}
+}
+
+type FileRenameFailureEvent struct {
+	event.BaseErrorEvent
+	withFile
+	withNewName
+	withDirectory
+}
+
+func NewFileRenameFailureEvent(err error, dir *Directory, file *File, newName string) FileRenameFailureEvent {
+	return FileRenameFailureEvent{
+		event.NewBaseErrorEvent(FileRenameEventType.AsFailure(), err),
+		withFile{file},
+		withNewName{newName},
+		withDirectory{dir},
 	}
 }

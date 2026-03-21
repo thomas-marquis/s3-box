@@ -75,20 +75,40 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 		vm.InfoMessage().Set("") //nolint:errcheck
 	}))
 
+	go func() {
+		for evt := range vm.PendingUserValidations() {
+			dialog.ShowConfirm("It's up to you!", evt.Message(), func(validated bool) {
+				vm.Validate(evt.Directory(), evt.Reason(), validated)
+			}, appCtx.Window())
+		}
+	}()
+
 	detailsContainer := container.NewVBox()
 	fileDetails := widget.NewFileDetails(appCtx)
 	dirDetails := widget.NewDirectoryDetails(appCtx)
 
 	tree := widget.NewExplorerTree(appCtx,
 		func(dir *directory.Directory) {
+			vm.SetSelectedDirectory(dir)
 			dirDetails.Select(dir)
 			detailsContainer.Objects = []fyne.CanvasObject{dirDetails}
 		},
 		func(file *directory.File) {
+			vm.SetSelectedDirectory(nil)
 			fileDetails.Select(file)
 			detailsContainer.Objects = []fyne.CanvasObject{fileDetails}
 		},
 	)
+
+	vm.AddStateListener(func() {
+		tree.Refresh()
+		currSelected := vm.SelectedDirectory()
+		if currSelected == nil {
+			return
+		}
+		// Refresh the details view
+		dirDetails.Select(currSelected)
+	})
 
 	content.Leading = container.NewScroll(tree)
 	content.Trailing = detailsContainer

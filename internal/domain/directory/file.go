@@ -27,21 +27,23 @@ func (name FileName) String() string {
 	return string(name)
 }
 
+// File is an entity representing a file in a directory.
+// This is a Directory sub-entity.
 type File struct {
-	name          FileName
-	directoryPath Path
-	sizeBytes     int
-	lastModified  time.Time
+	name         FileName
+	parent       *Directory
+	sizeBytes    int
+	lastModified time.Time
 }
 
-func NewFile(name string, parentPath Path, opts ...FileOption) (*File, error) {
+func NewFile(name string, parent *Directory, opts ...FileOption) (*File, error) {
 	fileName, err := NewFileName(name)
 	if err != nil {
 		return nil, err
 	}
 	f := &File{
-		name:          fileName,
-		directoryPath: parentPath,
+		name:   fileName,
+		parent: parent,
 	}
 	for _, opt := range opts {
 		opt(f)
@@ -53,7 +55,7 @@ func (f *File) Is(other *File) bool {
 	if other == nil {
 		return false
 	}
-	return f.name == other.name && f.directoryPath == other.directoryPath
+	return f.name == other.name && f.DirectoryPath() == other.DirectoryPath()
 }
 
 func (f *File) Equal(other *File) bool {
@@ -72,7 +74,11 @@ func (f *File) Name() FileName {
 
 // DirectoryPath returns the path of the directory containing the file.
 func (f *File) DirectoryPath() Path {
-	return f.directoryPath
+	return f.parent.Path()
+}
+
+func (f *File) Parent() *Directory {
+	return f.parent
 }
 
 func (f *File) SizeBytes() int {
@@ -86,7 +92,7 @@ func (f *File) LastModified() time.Time {
 // FullPath returns the full path of the file in the directory.
 // FullPath is unique within a given bucket.
 func (f *File) FullPath() string {
-	return f.directoryPath.String() + f.name.String()
+	return f.DirectoryPath().String() + f.name.String()
 }
 
 func (f *File) Download(connID connection_deck.ConnectionID, toPath string) ContentDownloadedEvent {
@@ -95,4 +101,16 @@ func (f *File) Download(connID connection_deck.ConnectionID, toPath string) Cont
 
 func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) FileLoadEvent {
 	return NewFileLoadEvent(connId, f, opts...)
+}
+
+// Rename changes the name of the file.
+// Returns a FileRenameEvent.
+// Returns an error if the new name is invalid.
+func (f *File) Rename(newName string) (FileRenameEvent, error) {
+	_, err := NewFileName(newName)
+	if err != nil {
+		return FileRenameEvent{}, err
+	}
+
+	return NewFileRenameEvent(f.parent, f, newName), nil
 }

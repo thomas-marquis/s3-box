@@ -65,3 +65,9 @@ func (p Path) Is(dir *Directory) bool {
 	}
 	return dir.Path() == p
 }
+
+func (p Path) Split() []string {
+	return strings.Split(
+		strings.Trim(p.String(), "/"),
+		"/")
+}
