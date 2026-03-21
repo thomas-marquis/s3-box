@@ -55,6 +55,10 @@ func (s *loadedState) Rename(newName string) (RenameEvent, error) {
 		return RenameEvent{}, fmt.Errorf("new name must be different from current name %s", s.d.name)
 	}
 
+	if _, err := s.d.parent.GetSubDirectoryByName(newName); !errors.Is(err, ErrNotFound) {
+		return RenameEvent{}, fmt.Errorf("a directory with name %s already exists in %s", newName, s.d.parent.Path())
+	}
+
 	s.d.setState(newLoadingState(s.baseState))
 	return NewRenameEvent(s.d, newName), nil
 }
