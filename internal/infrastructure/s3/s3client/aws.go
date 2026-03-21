@@ -41,6 +41,12 @@ func NewAwsClient(conn *connection_deck.Connection, opts ...func(*s3.Options)) C
 		baseEndpoint = aws.String(server)
 	}
 
+	// handle unsecured AWS server (typically, localstack for testing)
+	var httpClient s3.HTTPClient
+	if !conn.IsTLSActivated() || (baseEndpoint != nil && strings.HasPrefix(*baseEndpoint, "http://")) {
+		httpClient = &http2.Client{Transport: &http2.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+	}
+
 	region := conn.Region()
 	if region == "" {
 		region = "us-east-1"
@@ -52,7 +58,7 @@ func NewAwsClient(conn *connection_deck.Connection, opts ...func(*s3.Options)) C
 		BaseEndpoint: baseEndpoint,
 		Logger:       logging.NewStandardLogger(logger.Writer()),
 		UsePathStyle: true,
-		HTTPClient:   &http2.Client{Transport: &http2.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}},
+		HTTPClient:   httpClient,
 	}, opts...)
 
 	return newClientImpl(client, conn.Bucket(), &awsClient{

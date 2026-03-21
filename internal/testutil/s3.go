@@ -29,7 +29,7 @@ func SetupS3testContainer(ctx context.Context, t *testing.T) (string, func()) {
 	endpoint, err := lsContainer.PortEndpoint(ctx, "4566", "")
 	require.NoError(t, err)
 
-	return endpoint, func() {
+	return "http://" + endpoint, func() {
 		_ = lsContainer.Terminate(ctx)
 	}
 }
@@ -39,7 +39,7 @@ func SetupS3Client(t *testing.T, endpoint string) *s3.Client {
 
 	awsCfg := aws.Config{
 		Region:       "us-east-1",
-		BaseEndpoint: aws.String("http://" + endpoint),
+		BaseEndpoint: aws.String(endpoint),
 	}
 	s3Client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
 		o.UsePathStyle = true
