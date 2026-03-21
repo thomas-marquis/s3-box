@@ -388,7 +388,6 @@ func (r *RepositoryImpl) renameObjects(
 		select {
 		case <-ctx.Done():
 			once.Do(func() { close(done) })
-			break
 		default:
 			wg.Add(1)
 			workload <- key

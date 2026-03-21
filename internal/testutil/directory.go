@@ -34,26 +34,6 @@ func FakeLoadedRootDirectory(t *testing.T) *directory.Directory {
 	return dir
 }
 
-func newLoadedDirectory(t *testing.T, name string, parent *directory.Directory) *directory.Directory {
-	dir, err := directory.New(FakeS3LikeConnectionId, name, parent)
-	require.NoError(t, err)
-
-	_, err = dir.Load()
-	require.NoError(t, err)
-
-	err = dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil))
-	require.NoError(t, err)
-
-	return dir
-}
-
-func newNotLoadedDirectory(t *testing.T, name string, parent *directory.Directory) *directory.Directory {
-	dir, err := directory.New(FakeS3LikeConnectionId, name, parent)
-	require.NoError(t, err)
-
-	return dir
-}
-
 // NewLoadedDirectoryWithConn creates a new loaded directory with the provided connection ID
 func NewLoadedDirectoryWithConn(t *testing.T, connID connection_deck.ConnectionID, name string, parentPath directory.Path) *directory.Directory {
 	t.Helper()

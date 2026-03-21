@@ -22,7 +22,6 @@ func WithDisplayName(displayName string) Option {
 
 type baseNode struct {
 	id          string
-	nodeType    string
 	displayName string
 	icon        fyne.Resource
 }

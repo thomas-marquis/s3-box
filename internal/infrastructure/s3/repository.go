@@ -8,7 +8,6 @@ import (
 	"os"
 	"sync"
 
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
@@ -18,18 +17,10 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
-type s3Session struct {
-	connection *connection_deck.Connection
-	client     *s3.Client
-	downloader *manager.Downloader
-	uploader   *manager.Uploader
-}
-
 type RepositoryImpl struct {
 	sync.Mutex
 	connectionRepository connection_deck.Repository
 	logger               *log.Logger
-	cache                map[connection_deck.ConnectionID]*s3Session
 	bus                  event.Bus
 	notifier             notification.Repository
 	s3ClientOptions      []func(*s3.Options)
@@ -48,7 +39,6 @@ func NewRepositoryImpl(
 	r := &RepositoryImpl{
 		connectionRepository: connectionsRepository,
 		logger:               log.New(os.Stdout, "S3Repository: ", log.LstdFlags),
-		cache:                make(map[connection_deck.ConnectionID]*s3Session),
 		bus:                  bus,
 		notifier:             notifier,
 		s3ClientOptions:      s3ClientOptions,

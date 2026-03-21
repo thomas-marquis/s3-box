@@ -195,8 +195,8 @@ func TestClient_UploadAndDownload(t *testing.T) {
 		// When (Download)
 		tmpFile, err := os.CreateTemp("", "download-test")
 		require.NoError(t, err)
-		defer os.Remove(tmpFile.Name())
-		defer tmpFile.Close()
+		defer os.Remove(tmpFile.Name()) // nolint:errcheck
+		defer tmpFile.Close()           //nolint:errcheck
 
 		err = client.Download(ctx, key, tmpFile)
 		assert.NoError(t, err)
