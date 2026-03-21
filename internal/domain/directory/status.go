@@ -22,14 +22,15 @@ func (s RenameFailedStatus) Title() string {
 
 func (s RenameFailedStatus) Message() string {
 	msg := strings.Builder{}
-	msg.WriteString("A rename operation is pending for this directory ")
+	fmt.Fprintf(&msg, "A rename operation is pending for this directory ") // nolint:errcheck
 	srcPath := s.CurrentDirectory.Path()
 	dstPath := s.OtherDirPath
 	if !s.IsSourceDir {
 		srcPath, dstPath = dstPath, srcPath
 	}
-	msg.WriteString(fmt.Sprintf("from '%s' to '%s'", srcPath.DirectoryName(), dstPath.DirectoryName()))
+	fmt.Fprintf(&msg, "from '%s' to '%s'", srcPath.DirectoryName(), dstPath.DirectoryName()) // nolint:errcheck
 	return msg.String()
+
 }
 
 type ErrorStatus struct {

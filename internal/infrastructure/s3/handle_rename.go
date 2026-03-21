@@ -137,11 +137,9 @@ func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 			}
 		}
 
-		msg := strings.Builder{}
-		msg.WriteString("This directory is not empty.\n")
-		msg.WriteString(fmt.Sprintf("It contains %d objects (%d kB).\n", len(lsSrc.Keys), lsSrc.SizeBytesTot/1024))
-		msg.WriteString("This operation will modify all of them. Are you sure you want to proceed?")
-		r.bus.Publish(directory.NewUserValidationEvent(dir, evt, msg.String()))
+		msg := fmt.Sprintf("Directory %s is not empty.\nIt contains %d objects (%d kB).\nThis operation will modify all of them. Are you sure you want to proceed?",
+			dir.Path(), len(lsSrc.Keys), lsSrc.SizeBytesTot/1024)
+		r.bus.Publish(directory.NewUserValidationEvent(dir, evt, msg))
 	}
 }
 
