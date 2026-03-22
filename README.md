@@ -50,13 +50,11 @@ Use the very same process to update the application. Your existing connections a
 
 ### Windows
 
-**Requirements**
-
-- ``
-
 **Process**
 
-*
+* Download the zip archive from the [releases page](https://github.com/thomas-marquis/s3-box/releases)
+* Extract the archive (e.g. `tar -xf S3box-windows-amd64-*.zip`). This archive contains the application's binary
+* Execute the binary (and/or add it to your PATH). A warning message may be displayed: simply ignore it.
 
 ## Contributing
 If you're interested in contributing to S3-Box, whether it's reporting bugs, suggesting features, or submitting code, please read our [Contributing Guide](CONTRIBUTING.md) for more information.
