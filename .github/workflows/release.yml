@@ -107,6 +107,5 @@ jobs:
           asset_name: ${{ env.BASE_APP_NAME }}-windows-amd64-${{ github.ref_name }}.zip
           tag: ${{ github.ref }}
           overwrite: true
-          body: "New release ${{ github.ref_name }}"
           draft: false
           prerelease: false
