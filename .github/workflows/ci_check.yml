@@ -71,8 +71,8 @@ jobs:
       - shell: msys2 {0}
         name: Setup environment
         run: |
-          pacman -Syu
-          pacman -Sy git mingw-w64-x86_64-toolchain mingw-w64-x86_64-go
+          pacman -Syu --noconfirm 
+          pacman -S git mingw-w64-x86_64-toolchain mingw-w64-x86_64-go --noconfirm 
           echo "export PATH=\$PATH:~/Go/bin" >> ~/.bashrc
 
       - name: Install dependencies
