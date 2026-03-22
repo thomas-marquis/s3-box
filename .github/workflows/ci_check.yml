@@ -90,4 +90,5 @@ jobs:
 
       - name: Test
         run: |
-          go test ./... 
+          docker network create --driver nat network-name
+          go test -short ./... 

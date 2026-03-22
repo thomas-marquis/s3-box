@@ -15,6 +15,10 @@ import (
 )
 
 func TestClient_RenameObject(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping testcontainers tests in short mode")
+	}
+
 	// Given
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -57,6 +61,10 @@ func TestClient_RenameObject(t *testing.T) {
 }
 
 func TestClient_ListObjects(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping testcontainers tests in short mode")
+	}
+
 	// Given
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -124,6 +132,10 @@ func TestClient_ListObjects(t *testing.T) {
 }
 
 func TestClient_ListObjectsWithCallback(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping testcontainers tests in short mode")
+	}
+
 	// Given
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -165,6 +177,10 @@ func TestClient_ListObjectsWithCallback(t *testing.T) {
 }
 
 func TestClient_UploadAndDownload(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping testcontainers tests in short mode")
+	}
+
 	// Given
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()

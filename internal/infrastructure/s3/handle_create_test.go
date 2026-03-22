@@ -14,6 +14,10 @@ import (
 )
 
 func TestNewS3DirectoryRepository_createFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping testcontainers tests in short mode")
+	}
+
 	ctx := context.Background()
 	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()

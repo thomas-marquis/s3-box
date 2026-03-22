@@ -32,7 +32,7 @@ and managing your cloud storage directly from your desktop.
 (actually, there is no notion of 'directory' in classical S3...). Fortunately, a recovery system is integrated to S3 Box
 to resuming aborted or failed renaming.
 
-## Installation
+## Installation and update
 
 ### Linux
 
@@ -43,12 +43,20 @@ to resuming aborted or failed renaming.
 **Process**
 
 * Download the `*.tar.xz` file from the [releases page](https://github.com/thomas-marquis/s3-box/releases)
-* Extract the archive (e.g. `tar -xf s3-box-*.tar.xz`)
+* Extract the archive (e.g. `tar -xf S3box-linux-amd64-*.tar.xz`)
 * Run `make user-install`
+
+Use the very same process to update the application. Your existing connections and settings will remain unchanged.
 
 ### Windows
 
-Coming soon!
+**Requirements**
+
+- ``
+
+**Process**
+
+*
 
 ## Contributing
 If you're interested in contributing to S3-Box, whether it's reporting bugs, suggesting features, or submitting code, please read our [Contributing Guide](CONTRIBUTING.md) for more information.
