@@ -58,26 +58,25 @@ jobs:
           
           # Check for ::noci:: (only on non-main branches)
           IS_MAIN="false"
-          if [[ "${{ github.ref_name }}" == "main" ]] || [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
+          # In push events, github.ref_name is the branch name (e.g., 'main').
+          # In pull_request events, github.ref_name is the merge ref (e.g., '97/merge'), 
+          # which is NEVER 'main'. This matches the requirement to allow skipping on PRs.
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
             IS_MAIN="true"
           fi
           
-          # For pull_request, github.ref_name is refs/pull/XX/merge or similar, 
-          # which is NOT 'main'. So IS_MAIN relies on github.event.pull_request.base.ref.
-          # For push, github.ref_name IS the branch name.
-          
-          echo "DEBUG: IS_MAIN=$IS_MAIN"
+          echo "DEBUG: Decision: IS_MAIN=$IS_MAIN (ref_name=${{ github.ref_name }})"
 
           if [[ "$IS_MAIN" == "false" ]]; then
              if [[ "$MSG" == *"::noci::"* ]]; then
-               echo "DEBUG: Detected ::noci:: on non-main branch"
+               echo "DEBUG: Detected ::noci:: on non-main branch. Setting skip_all=true."
                SKIP_ALL="true"
              fi
           fi
           
           # Check for ::nociwin::
           if [[ "$MSG" == *"::nociwin::"* ]]; then
-            echo "DEBUG: Detected ::nociwin::"
+            echo "DEBUG: Detected ::nociwin::. Setting skip_windows=true."
             SKIP_WINDOWS="true"
           fi
           
