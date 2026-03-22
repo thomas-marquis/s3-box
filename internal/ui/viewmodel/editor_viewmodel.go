@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -43,6 +44,7 @@ type EditorViewModel interface {
 
 type editorViewModelImpl struct {
 	baseViewModel
+	sync.Mutex
 
 	openedEditors      map[string]*OpenedEditor
 	selectedConnection *connection_deck.Connection
@@ -75,6 +77,8 @@ func NewEditorViewModel(
 }
 
 func (v *editorViewModelImpl) SelectedConnection() *connection_deck.Connection {
+	v.Lock()
+	defer v.Unlock()
 	return v.selectedConnection
 }
 
@@ -188,6 +192,8 @@ func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {
 		for _, oe := range v.openedEditors {
 			v.Close(oe)
 		}
+		v.Lock()
 		v.selectedConnection = conn
+		v.Unlock()
 	}
 }
