@@ -21,6 +21,10 @@ import (
 )
 
 func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping testcontainers tests in short mode")
+	}
+
 	ctx := context.Background()
 	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()
@@ -71,6 +75,10 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 }
 
 func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping testcontainers tests in short mode")
+	}
+
 	ctx := context.Background()
 	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()
@@ -527,6 +535,10 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 }
 
 func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping testcontainers tests in short mode")
+	}
+
 	ctx := context.Background()
 	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()

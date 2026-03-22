@@ -42,9 +42,15 @@ understanding the project structure, and submitting your contributions.
    ```bash
    make test
    ```
+
    or, for a full check (tests + linter):
    ```bash
    make check
+   ```
+
+   To skip integration tests (testcontainers):
+   ```bash
+   make test-short
    ```
 
 6. **Generate mocks (if needed):**
@@ -174,7 +180,7 @@ External concerns like storage, APIs, and third-party integrations.
 
 ## Coding Conventions
 
-For detailed coding conventions, testing guidelines, and best practices, please refer to the [Guidelines](.junie/guidelines.md) document.
+For detailed coding conventions, testing guidelines, and best practices, please refer to the [Constitution](.specs/constitution.md) document.
 
 ### Key Points
 

@@ -16,6 +16,10 @@ import (
 )
 
 func TestS3Object_Read(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping testcontainers tests in short mode")
+	}
+
 	ctx := context.Background()
 	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()
@@ -94,6 +98,10 @@ func TestS3Object_Read(t *testing.T) {
 }
 
 func TestS3Object_Write(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping testcontainers tests in short mode")
+	}
+
 	ctx := context.Background()
 	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
 	defer terminate()
