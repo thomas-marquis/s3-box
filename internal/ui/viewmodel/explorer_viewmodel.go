@@ -3,6 +3,7 @@ package viewmodel
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 
@@ -102,6 +103,7 @@ type ExplorerViewModel interface {
 
 type explorerViewModelImpl struct {
 	baseViewModel
+	sync.Mutex
 
 	directoryRepository directory.Repository
 	tree                binding.Tree[node.Node]
@@ -239,6 +241,8 @@ func (v *explorerViewModelImpl) SelectedConnection() binding.Untyped {
 }
 
 func (v *explorerViewModelImpl) CurrentSelectedConnection() *connection_deck.Connection {
+	v.Lock()
+	defer v.Unlock()
 	return v.selectedConnectionVal
 }
 
@@ -851,8 +855,11 @@ func (v *explorerViewModelImpl) handleConnectionChange(evt event.Event) {
 		(v.selectedConnectionVal != nil && conn == nil) ||
 		(v.selectedConnectionVal != nil && !v.selectedConnectionVal.Is(conn))
 	if hasChanged {
+		v.Lock()
 		v.selectedConnectionVal = conn
 		v.selectedConnection.Set(conn) //nolint:errcheck
+		v.Unlock()
+
 		if err := v.initializeTreeData(conn); err != nil {
 			v.errorMessage.Set(err.Error()) //nolint:errcheck
 			return
