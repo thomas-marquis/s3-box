@@ -64,6 +64,7 @@ jobs:
 
       - shell: msys2 {0}
         name: "Setup environment: sync pacman packages"
+        continue-on-error: true
         run: |
           pacman -Syu --noconfirm 
 
