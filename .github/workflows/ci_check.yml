@@ -69,11 +69,14 @@ jobs:
           cache: true
 
       - shell: msys2 {0}
-        name: Setup environment
+        name: "Setup environment: sync pacman packages"
         run: |
           pacman -Syu --noconfirm 
+
+      - shell: msys2 {0}
+        name: "Setup environment: install packages"
+        run: |
           pacman -S git mingw-w64-x86_64-toolchain mingw-w64-x86_64-go --noconfirm 
-          echo "export PATH=\$PATH:~/Go/bin" >> ~/.bashrc
 
       - name: Install dependencies
         run: |
