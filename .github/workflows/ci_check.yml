@@ -1,12 +1,15 @@
 name: CI_Check
 
 on:
+  push:
+    branches: ["**"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   check-skip:
@@ -16,44 +19,70 @@ jobs:
       skip_windows: ${{ steps.check.outputs.skip_windows }}
     steps:
       - id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Default values
           SKIP_ALL="false"
           SKIP_WINDOWS="false"
           
+          echo "DEBUG: event_name=${{ github.event_name }}"
+          echo "DEBUG: ref_name=${{ github.ref_name }}"
+          echo "DEBUG: pr_base_ref=${{ github.event.pull_request.base.ref }}"
+          echo "DEBUG: pr_head_sha=${{ github.event.pull_request.head.sha }}"
+          echo "DEBUG: head_commit_sha=${{ github.event.head_commit.id }}"
+
           # Get the commit message
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "DEBUG: Processing pull_request"
             # Use the PR head SHA to get the commit message.
-            # Using a simplified curl with GITHUB_TOKEN.
-            MSG=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            MSG=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
               "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.event.pull_request.head.sha }}" | jq -r '.commit.message')
+            
+            echo "DEBUG: API Message: $MSG"
             
             # If the API call fails or message is empty, fallback to PR title
             if [ -z "$MSG" ] || [ "$MSG" == "null" ]; then
+              echo "DEBUG: Fallback to PR title"
               MSG="${{ github.event.pull_request.title }}"
             fi
-          else
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "DEBUG: Processing push"
             MSG="${{ github.event.head_commit.message }}"
+          else
+            echo "DEBUG: Processing other event"
+            MSG=""
           fi
           
-          echo "Commit message: $MSG"
+          echo "DEBUG: Final message used: $MSG"
           
           # Check for ::noci:: (only on non-main branches)
           IS_MAIN="false"
           if [[ "${{ github.ref_name }}" == "main" ]] || [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
             IS_MAIN="true"
           fi
+          
+          # For pull_request, github.ref_name is refs/pull/XX/merge or similar, 
+          # which is NOT 'main'. So IS_MAIN relies on github.event.pull_request.base.ref.
+          # For push, github.ref_name IS the branch name.
+          
+          echo "DEBUG: IS_MAIN=$IS_MAIN"
 
           if [[ "$IS_MAIN" == "false" ]]; then
              if [[ "$MSG" == *"::noci::"* ]]; then
+               echo "DEBUG: Detected ::noci:: on non-main branch"
                SKIP_ALL="true"
              fi
           fi
           
           # Check for ::nociwin::
           if [[ "$MSG" == *"::nociwin::"* ]]; then
+            echo "DEBUG: Detected ::nociwin::"
             SKIP_WINDOWS="true"
           fi
+          
+          echo "DEBUG: Final skip_all=$SKIP_ALL"
+          echo "DEBUG: Final skip_windows=$SKIP_WINDOWS"
           
           echo "skip_all=$SKIP_ALL" >> $GITHUB_OUTPUT
           echo "skip_windows=$SKIP_WINDOWS" >> $GITHUB_OUTPUT
