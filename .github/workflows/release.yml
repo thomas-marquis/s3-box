@@ -45,6 +45,7 @@ jobs:
 
       - name: Get semver
         id: get_version
+        shell: bash
         run: |
           VERSION="${{ github.event.inputs.version || github.ref_name }}"
           echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
@@ -54,7 +55,11 @@ jobs:
         run: |
           fyne-cross linux -arch=amd64 -name ${{ env.BASE_APP_NAME }} -icon resources/logo-wbg.png -app-version ${{ steps.get_version.outputs.version }}
 
-      - name: Upload binary to release
+      - name: Package for Windows
+        run: |
+          fyne-cross windows -arch=amd64 -name ${{ env.BASE_APP_NAME }} -icon resources/logo-wbg.png -app-version ${{ steps.get_version.outputs.version }}
+
+      - name: Upload Linux binary to release
         uses: svenstaro/upload-release-action@v2
         with:
           make_latest: true
@@ -67,49 +72,7 @@ jobs:
           draft: false
           prerelease: false
 
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: msys2/setup-msys2@v2
-
-      - uses: actions/checkout@v6
-
-      - shell: msys2 {0}
-        name: "Setup environment: sync pacman packages"
-        continue-on-error: true
-        run: |
-          pacman -Syu --noconfirm 
-
-      - shell: msys2 {0}
-        name: "Setup environment: install packages"
-        continue-on-error: true
-        run: |
-          pacman -S git mingw-w64-x86_64-toolchain mingw-w64-x86_64-go --noconfirm 
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.24.x'
-          cache: true
-
-      - name: Install dependencies
-        run: |
-          go get .
-          go install fyne.io/fyne/v2/cmd/fyne@latest
-          go install github.com/fyne-io/fyne-cross@latest
-
-      - name: Get semver
-        id: get_version
-        run: |
-          VERSION="${{ github.event.inputs.version || github.ref_name }}"
-          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
-          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Package for Windows
-        run: |
-          fyne-cross windows -arch=amd64 -name ${{ env.BASE_APP_NAME }} -icon resources/logo-wbg.png -app-version ${{ steps.get_version.outputs.version }}
-
-      - name: Upload binary to release
+      - name: Upload Windows binary to release
         uses: svenstaro/upload-release-action@v2
         with:
           make_latest: true
