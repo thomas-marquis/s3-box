@@ -5,11 +5,64 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  check-skip:
+    runs-on: ubuntu-latest
+    outputs:
+      skip_all: ${{ steps.check.outputs.skip_all }}
+      skip_windows: ${{ steps.check.outputs.skip_windows }}
+    steps:
+      - id: check
+        run: |
+          # Default values
+          SKIP_ALL="false"
+          SKIP_WINDOWS="false"
+          
+          # Get the commit message
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Use the PR head SHA to get the commit message.
+            # Using a simplified curl with GITHUB_TOKEN.
+            MSG=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.event.pull_request.head.sha }}" | jq -r '.commit.message')
+            
+            # If the API call fails or message is empty, fallback to PR title
+            if [ -z "$MSG" ] || [ "$MSG" == "null" ]; then
+              MSG="${{ github.event.pull_request.title }}"
+            fi
+          else
+            MSG="${{ github.event.head_commit.message }}"
+          fi
+          
+          echo "Commit message: $MSG"
+          
+          # Check for ::noci:: (only on non-main branches)
+          IS_MAIN="false"
+          if [[ "${{ github.ref_name }}" == "main" ]] || [[ "${{ github.event.pull_request.base.ref }}" == "main" ]]; then
+            IS_MAIN="true"
+          fi
+
+          if [[ "$IS_MAIN" == "false" ]]; then
+             if [[ "$MSG" == *"::noci::"* ]]; then
+               SKIP_ALL="true"
+             fi
+          fi
+          
+          # Check for ::nociwin::
+          if [[ "$MSG" == *"::nociwin::"* ]]; then
+            SKIP_WINDOWS="true"
+          fi
+          
+          echo "skip_all=$SKIP_ALL" >> $GITHUB_OUTPUT
+          echo "skip_windows=$SKIP_WINDOWS" >> $GITHUB_OUTPUT
+
   test-linux:
+    needs: check-skip
     runs-on: ubuntu-latest
     if: |
-      !(github.ref_name != 'main' && contains(github.event.head_commit.message, '::noci::'))
+      needs.check-skip.outputs.skip_all != 'true'
     steps:
       - uses: actions/checkout@v6
 
@@ -58,10 +111,11 @@ jobs:
           go tool cover -fun>c=coverage/coverage.out | tee coverage/summary.txt
 
   test-windows:
+    needs: check-skip
     runs-on: windows-latest
     if: |
-      !(github.ref_name != 'main' && contains(github.event.head_commit.message, '::noci::')) &&
-      !contains(github.event.head_commit.message, '::nociwin::')
+      needs.check-skip.outputs.skip_all != 'true' &&
+      needs.check-skip.outputs.skip_windows != 'true'
     steps:
       - uses: msys2/setup-msys2@v2
 
