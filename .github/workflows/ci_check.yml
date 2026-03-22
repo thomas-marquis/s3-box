@@ -72,7 +72,7 @@ jobs:
         name: Setup environment
         run: |
           pacman -Syu
-          pacman -S git mingw-w64-x86_64-toolchain mingw-w64-x86_64-go
+          pacman -Sy git mingw-w64-x86_64-toolchain mingw-w64-x86_64-go
           echo "export PATH=\$PATH:~/Go/bin" >> ~/.bashrc
 
       - name: Install dependencies
