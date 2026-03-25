@@ -1,13 +1,13 @@
 package event
 
 type Subscriber struct {
-	registered map[Matcher]func(Event)
+	registered map[Matcher][]func(Event)
 	events     <-chan Event
 	started    bool
 }
 
 func NewSubscriber(event <-chan Event) *Subscriber {
-	return &Subscriber{registered: make(map[Matcher]func(Event)), events: event}
+	return &Subscriber{registered: make(map[Matcher][]func(Event)), events: event}
 }
 
 func (s *Subscriber) On(matcher Matcher, callback func(Event)) *Subscriber {
@@ -15,19 +15,21 @@ func (s *Subscriber) On(matcher Matcher, callback func(Event)) *Subscriber {
 		panic("cannot register callback after listening started")
 	}
 
-	if _, exists := s.registered[matcher]; exists {
-		return s
-	}
+	//if _, exists := s.registered[matcher]; exists {
+	//	return s
+	//}
 
-	s.registered[matcher] = callback
+	s.registered[matcher] = append(s.registered[matcher], callback)
 	return s
 }
 
 func (s *Subscriber) listen() {
 	for event := range s.events {
-		for matcher, callback := range s.registered {
+		for matcher, callbacks := range s.registered {
 			if matcher.Match(event) {
-				callback(event)
+				for _, callback := range callbacks {
+					callback(event)
+				}
 			}
 		}
 	}
@@ -44,9 +46,11 @@ func (s *Subscriber) ListenNonBlocking() {
 	s.started = true
 	go func() {
 		for event := range s.events {
-			for matcher, callback := range s.registered {
+			for matcher, callbacks := range s.registered {
 				if matcher.Match(event) {
-					go callback(event)
+					for _, callback := range callbacks {
+						go callback(event)
+					}
 				}
 			}
 		}
