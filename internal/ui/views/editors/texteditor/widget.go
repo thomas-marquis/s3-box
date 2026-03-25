@@ -116,8 +116,8 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 				return
 			}
 			w.contentHash = sha256Hex(evt.Content)
-			w.stateLabel.Set(fmt.Sprintf("#Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
-			state.IsLoaded.Set(true)                                                  // nolint:errcheck
+			w.stateLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
+			state.IsLoaded.Set(true)                                                 // nolint:errcheck
 			if w.cancelFunc != nil {
 				w.cancelFunc()
 			}

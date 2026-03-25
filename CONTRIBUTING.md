@@ -14,6 +14,7 @@ understanding the project structure, and submitting your contributions.
   - Ubuntu/Debian: `sudo apt-get install golang gcc libgl1-mesa-dev xorg-dev`
   - Fedora: `sudo dnf install golang gcc libX11-devel libXcursor-devel libXrandr-devel libXinerama-devel mesa-libGL-devel libXi-devel libXxf86vm-devel`
   - Arch: `sudo pacman -S go gcc libx11 libxcursor libxrandr libxinerama mesa libxi libxxf86vm`
+- python 3.13 and uv installed (see [here](https://docs.astral.sh/uv/getting-started/installation/) for detailed setup instructions).
 
 ### Installing a Development Environment
 
@@ -57,6 +58,16 @@ understanding the project structure, and submitting your contributions.
    ```bash
    go generate ./...
    ```
+
+7. **(optional) setup python environment**
+   ```bash
+   uv sync
+   ```
+
+   Python is used for running tools and utilities during the development process only.
+   S3 Box application doesn't need python at all to run.
+
+   Always runs your scripts with uv (and not directly with python), e.g. `uv run ./tools/diff_images.py`
 
 ## Process
 
