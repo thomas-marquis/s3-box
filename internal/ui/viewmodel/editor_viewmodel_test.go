@@ -307,10 +307,10 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 		require.NoError(t, err)
 
 		// When & Then
-		oe1, _ := vm.Open(ctx, file1)
+		vm.Open(ctx, file1) // nolint:errcheck
 		vm.Open(ctx, file3) // nolint:errcheck
 
-		vm.Close(oe1)
+		vm.Close(file1)
 
 		assert.False(t, vm.IsOpened(file1))
 		assert.False(t, vm.IsOpened(file2))

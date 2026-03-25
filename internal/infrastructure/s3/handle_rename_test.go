@@ -788,6 +788,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 type fakeErrorInterceptor struct {
 	CopyErrorForKeys   []string
 	DeleteErrorForKeys []string
+	PutErrorForKeys    []string
 }
 
 func (i *fakeErrorInterceptor) BeforeTransmit(ctx context.Context, in *http.InterceptorContext) error {
@@ -802,6 +803,14 @@ func (i *fakeErrorInterceptor) BeforeTransmit(ctx context.Context, in *http.Inte
 	if delIn, ok := in.Input.(*awsS3.DeleteObjectInput); ok {
 		for _, key := range i.DeleteErrorForKeys {
 			if key == *delIn.Key {
+				return fmt.Errorf("fake error for key: %s", key)
+			}
+		}
+	}
+
+	if upIn, ok := in.Input.(*awsS3.PutObjectInput); ok {
+		for _, key := range i.PutErrorForKeys {
+			if key == *upIn.Key {
 				return fmt.Errorf("fake error for key: %s", key)
 			}
 		}

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	awsS3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
@@ -200,24 +201,31 @@ func TestS3Object_Write(t *testing.T) {
 
 	t.Run("should reset the object content and offset on error when the file exists", func(t *testing.T) {
 		// Given
-		fileKey := "this-file-exists-2.txt"
-		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
+		fileKey := "this-file-exists.txt"
 
-		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		bucketName := testutil.FakeRandomBucketName()
+		testutil.SetupS3Bucket(context.TODO(), t, testClient, bucketName, []testutil.FakeS3Object{
+			{Key: fileKey, Body: strings.NewReader("initial content")},
+		})
+		conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucketName)
+		client := s3client.NewAwsClient(conn, func(options *awsS3.Options) {
+			options.Interceptors.AddBeforeTransmit(&fakeErrorInterceptor{
+				PutErrorForKeys: []string{fileKey},
+			})
+		})
+
+		rootDir, err := directory.NewRoot(conn.ID())
 		require.NoError(t, err)
 		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 
-		newCtx, cancel := context.WithCancel(ctx)
-		obj, err := s3.NewObject(newCtx, client, file)
+		obj, err := s3.NewObject(context.TODO(), client, file)
 		require.NoError(t, err)
 
 		// When
 		_, err = obj.Seek(0, io.SeekStart)
 		require.NoError(t, err)
 
-		// simulate a server error, then write
-		cancel()
 		_, err = obj.Write([]byte("should not be written"))
 
 		// Then
@@ -227,22 +235,30 @@ func TestS3Object_Write(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "initial content", string(localContent))
 
-		testutil.AssertObjectContent(t, testClient, testutil.FakeS3LikeBucketName, fileKey, "initial content")
+		testutil.AssertObjectContent(t, testClient, bucketName, fileKey, "initial content")
 	})
 
 	t.Run("should reset the object content and offset on error with a non-zero offset", func(t *testing.T) {
 		// Given
-		fileKey := "this-file-exists-3.txt"
+		fileKey := "this-file-exists.txt"
 
-		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
+		bucketName := testutil.FakeRandomBucketName()
+		testutil.SetupS3Bucket(context.TODO(), t, testClient, bucketName, []testutil.FakeS3Object{
+			{Key: fileKey, Body: strings.NewReader("initial content")},
+		})
+		conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucketName)
+		client := s3client.NewAwsClient(conn, func(options *awsS3.Options) {
+			options.Interceptors.AddBeforeTransmit(&fakeErrorInterceptor{
+				PutErrorForKeys: []string{fileKey},
+			})
+		})
 
-		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		rootDir, err := directory.NewRoot(conn.ID())
 		require.NoError(t, err)
 		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
 
-		newCtx, cancel := context.WithCancel(ctx)
-		obj, err := s3.NewObject(newCtx, client, file)
+		obj, err := s3.NewObject(ctx, client, file)
 		require.NoError(t, err)
 
 		// When
@@ -250,7 +266,6 @@ func TestS3Object_Write(t *testing.T) {
 		require.NoError(t, err)
 
 		// simulate a server error, then write
-		cancel()
 		_, err = obj.Write([]byte("new"))
 
 		// Then
@@ -265,6 +280,6 @@ func TestS3Object_Write(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "initial content", string(localContent))
 
-		testutil.AssertObjectContent(t, testClient, testutil.FakeS3LikeBucketName, fileKey, "initial content")
+		testutil.AssertObjectContent(t, testClient, bucketName, fileKey, "initial content")
 	})
 }

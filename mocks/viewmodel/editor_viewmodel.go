@@ -16,7 +16,7 @@ import (
 	binding "fyne.io/fyne/v2/data/binding"
 	connection_deck "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
-	viewmodel "github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
+	fileeditor "github.com/thomas-marquis/s3-box/internal/ui/views/editors/fileeditor"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -45,15 +45,15 @@ func (m *MockEditorViewModel) EXPECT() *MockEditorViewModelMockRecorder {
 }
 
 // Close mocks base method.
-func (m *MockEditorViewModel) Close(editor *viewmodel.OpenedEditor) {
+func (m *MockEditorViewModel) Close(file *directory.File) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Close", editor)
+	m.ctrl.Call(m, "Close", file)
 }
 
 // Close indicates an expected call of Close.
-func (mr *MockEditorViewModelMockRecorder) Close(editor any) *gomock.Call {
+func (mr *MockEditorViewModelMockRecorder) Close(file any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockEditorViewModel)(nil).Close), editor)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockEditorViewModel)(nil).Close), file)
 }
 
 // ErrorMessage mocks base method.
@@ -127,10 +127,10 @@ func (mr *MockEditorViewModelMockRecorder) Loading() *gomock.Call {
 }
 
 // Open mocks base method.
-func (m *MockEditorViewModel) Open(ctx context.Context, file *directory.File) (*viewmodel.OpenedEditor, error) {
+func (m *MockEditorViewModel) Open(ctx context.Context, file *directory.File) (*fileeditor.State, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Open", ctx, file)
-	ret0, _ := ret[0].(*viewmodel.OpenedEditor)
+	ret0, _ := ret[0].(*fileeditor.State)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
