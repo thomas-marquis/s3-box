@@ -17,6 +17,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
 	"github.com/thomas-marquis/s3-box/internal/utils"
 )
 
@@ -175,7 +176,7 @@ func (w *FileDetails) Select(file *directory.File) {
 	w.editAction.SetOnTapped(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 
-		oe, err := edVm.Open(ctx, file)
+		es, err := edVm.Open(ctx, file)
 		if err != nil {
 			if !errors.Is(err, viewmodel.ErrEditorAlreadyOpened) {
 				dialog.ShowError(err, w.appCtx.Window())
@@ -183,20 +184,20 @@ func (w *FileDetails) Select(file *directory.File) {
 			cancel()
 			return
 		}
-		editor := NewFileEditor(oe)
+		editor := texteditor.NewTextEditor(es)
 
-		oe.Window.SetOnClosed(func() {
+		es.Window.SetOnClosed(func() {
 			cancel()
-			edVm.Close(oe)
-			w.editAction.Icon = theme.DocumentCreateIcon()
-			w.actionToolbar.Refresh()
+			edVm.Close(file)
+			//w.editAction.Icon = theme.DocumentCreateIcon()
+			//w.actionToolbar.Refresh()
 		})
-		oe.Window.SetContent(editor)
-		oe.Window.SetFixedSize(false)
-		oe.Window.Resize(fyne.NewSize(700, 500))
-		oe.Window.Show()
+		es.Window.SetContent(editor)
+		es.Window.SetFixedSize(false)
+		es.Window.Resize(fyne.NewSize(700, 500))
+		es.Window.Show()
 
-		oe.Window.RequestFocus()
+		es.Window.RequestFocus()
 	})
 
 	w.downloadAction.SetOnTapped(func() {

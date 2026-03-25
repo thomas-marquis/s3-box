@@ -12,22 +12,12 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/fileeditor"
 )
 
 var (
 	ErrEditorAlreadyOpened = fmt.Errorf("editor already opened")
 )
-
-type OpenedEditor struct {
-	Window fyne.Window
-	File   *directory.File
-
-	Content  binding.String
-	IsLoaded binding.Bool
-	ErrorMsg binding.String
-
-	OnSave func(fileContent string) error
-}
 
 type EditorViewModel interface {
 	ViewModel
@@ -36,17 +26,22 @@ type EditorViewModel interface {
 
 	// Open opens the given file in a new editor window.
 	// Returns an ErrAlreadyOpened error if the file is already opened.
-	Open(ctx context.Context, file *directory.File) (*OpenedEditor, error)
+	Open(ctx context.Context, file *directory.File) (*fileeditor.State, error)
 
 	IsOpened(file *directory.File) bool
-	Close(editor *OpenedEditor)
+	Close(file *directory.File)
+}
+
+type openedEditor struct {
+	state   *fileeditor.State
+	content directory.FileObject
 }
 
 type editorViewModelImpl struct {
 	baseViewModel
 	sync.Mutex
 
-	openedEditors      map[string]*OpenedEditor
+	openedEditors      map[string]*openedEditor
 	selectedConnection *connection_deck.Connection
 
 	bus      event.Bus
@@ -59,7 +54,7 @@ func NewEditorViewModel(
 	initialConnection *connection_deck.Connection,
 ) EditorViewModel {
 	vm := &editorViewModelImpl{
-		openedEditors:      make(map[string]*OpenedEditor),
+		openedEditors:      make(map[string]*openedEditor),
 		bus:                bus,
 		notifier:           notifier,
 		selectedConnection: initialConnection,
@@ -68,10 +63,28 @@ func NewEditorViewModel(
 	bus.Subscribe().
 		On(event.Is(directory.FileLoadEventType.AsSuccess()), vm.handleFileLoadingSuccess).
 		On(event.Is(directory.FileLoadEventType.AsFailure()), vm.handleFileLoadingFailure).
-		On(event.IsOneOf(connection_deck.SelectEventType.AsSuccess(),
+		On(event.IsOneOf(
+			connection_deck.SelectEventType.AsSuccess(),
 			connection_deck.UpdateEventType.AsSuccess(),
-			connection_deck.RemoveEventType.AsSuccess()), vm.handleConnectionChanged).
-		ListenWithWorkers(1)
+			connection_deck.RemoveEventType.AsSuccess(),
+		), vm.handleConnectionChanged).
+		On(event.Is(fileeditor.SaveEventType), func(e event.Event) {
+			evt := e.(fileeditor.SaveEvent)
+			oe, ok := vm.openedEditors[evt.File.FullPath()]
+			if !ok {
+				// The editor has been closed before in the meantime (unlikely). But it's okay
+				return
+			}
+
+			if _, err := oe.content.Seek(0, io.SeekStart); err != nil {
+				bus.Publish(fileeditor.NewSaveFailureEvent(evt.File, err))
+			}
+			if _, err := fmt.Fprint(oe.content, evt.Content); err != nil {
+				bus.Publish(fileeditor.NewSaveFailureEvent(evt.File, err))
+			}
+			bus.Publish(fileeditor.NewSaveSuccessEvent(evt.File, evt.Content))
+		}).
+		ListenNonBlocking()
 
 	return vm
 }
@@ -82,29 +95,31 @@ func (v *editorViewModelImpl) SelectedConnection() *connection_deck.Connection {
 	return v.selectedConnection
 }
 
-func (v *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (*OpenedEditor, error) {
+func (v *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (*fileeditor.State, error) {
 	if v.selectedConnection == nil {
 		return nil, ErrNoConnectionSelected
 	}
 
 	if oe, ok := v.openedEditors[file.FullPath()]; ok {
-		oe.Window.RequestFocus()
+		oe.state.Window.RequestFocus()
 		return nil, ErrEditorAlreadyOpened
 	}
 
-	oe := &OpenedEditor{
+	es := &fileeditor.State{
 		Window:   fyne.CurrentApp().NewWindow(file.Name().String()),
 		File:     file,
-		OnSave:   func(string) error { return nil },
 		Content:  binding.NewString(),
 		IsLoaded: binding.NewBool(),
 		ErrorMsg: binding.NewString(),
+		Bus:      v.bus,
 	}
-	v.openedEditors[file.FullPath()] = oe
+	v.openedEditors[file.FullPath()] = &openedEditor{
+		state: es,
+	}
 
 	v.bus.Publish(file.Load(v.selectedConnection.ID(), event.WithContext(ctx)))
 
-	return oe, nil
+	return es, nil
 }
 
 func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
@@ -116,33 +131,25 @@ func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
 		return
 	}
 
+	oe.content = content
+
 	if _, err := content.Seek(0, io.SeekStart); err != nil {
 		v.notifier.NotifyError(err)
-		oe.IsLoaded.Set(true)        // nolint:errcheck
-		oe.ErrorMsg.Set(err.Error()) // nolint:errcheck
+		oe.state.IsLoaded.Set(true)        // nolint:errcheck
+		oe.state.ErrorMsg.Set(err.Error()) // nolint:errcheck
 		return
-	}
-
-	oe.OnSave = func(newContent string) error {
-		if _, err := content.Seek(0, io.SeekStart); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprint(content, newContent); err != nil {
-			return err
-		}
-		return nil
 	}
 
 	contentVal, err := io.ReadAll(content)
 	if err != nil {
 		v.notifier.NotifyError(err)
-		oe.IsLoaded.Set(true)        // nolint:errcheck
-		oe.ErrorMsg.Set(err.Error()) // nolint:errcheck
+		oe.state.IsLoaded.Set(true)        // nolint:errcheck
+		oe.state.ErrorMsg.Set(err.Error()) // nolint:errcheck
 		return
 	}
 
-	oe.Content.Set(string(contentVal)) // nolint:errcheck
-	oe.IsLoaded.Set(true)              // nolint:errcheck
+	oe.state.Content.Set(string(contentVal)) // nolint:errcheck
+	oe.state.IsLoaded.Set(true)              // nolint:errcheck
 }
 
 func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
@@ -153,8 +160,8 @@ func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
 		// The editor has been closed before the file was loaded. And it's okay
 		return
 	}
-	oe.ErrorMsg.Set(e.Error().Error()) // nolint:errcheck
-	oe.IsLoaded.Set(true)              // nolint:errcheck
+	oe.state.ErrorMsg.Set(e.Error().Error()) // nolint:errcheck
+	oe.state.IsLoaded.Set(true)              // nolint:errcheck
 }
 
 func (v *editorViewModelImpl) IsOpened(file *directory.File) bool {
@@ -162,8 +169,8 @@ func (v *editorViewModelImpl) IsOpened(file *directory.File) bool {
 	return ok
 }
 
-func (v *editorViewModelImpl) Close(editor *OpenedEditor) {
-	delete(v.openedEditors, editor.File.FullPath())
+func (v *editorViewModelImpl) Close(file *directory.File) {
+	delete(v.openedEditors, file.FullPath())
 }
 
 func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {
@@ -190,7 +197,7 @@ func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {
 
 	if hasChanged {
 		for _, oe := range v.openedEditors {
-			v.Close(oe)
+			v.Close(oe.state.File)
 		}
 		v.Lock()
 		v.selectedConnection = conn
