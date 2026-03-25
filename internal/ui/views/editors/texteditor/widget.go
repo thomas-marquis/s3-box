@@ -133,7 +133,7 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 			if !evt.File.Is(state.File) {
 				return
 			}
-			state.IsLoaded.Set(true)
+			state.IsLoaded.Set(true)            // nolint:errcheck
 			w.stateLabel.Set("error (unsaved)") // nolint:errcheck
 			dialog.ShowError(evt.Error(), w.state.Window)
 			w.shouldCloseWhenSaved = false
@@ -163,7 +163,7 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 	var cancelBtn *widget.Button
 	cancelBtn = widget.NewButton("Cancel", func() {
 		if w.cancelFunc != nil {
-			w.stateLabel.Set("cancelling...")
+			w.stateLabel.Set("cancelling...") // nolint:errcheck
 			cancelBtn.Disable()
 			w.cancelFunc()
 		}

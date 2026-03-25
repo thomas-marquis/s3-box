@@ -16,9 +16,8 @@ import (
 // It manages the lifecycle of an S3 object, transitioning between states based on
 // whether the object exists in S3 or not.
 type Object struct {
-	client    s3client.Client
-	file      *directory.File
-	cancelCbs []func()
+	client s3client.Client
+	file   *directory.File
 
 	currentState s3ObjectState
 }

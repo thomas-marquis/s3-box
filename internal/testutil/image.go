@@ -31,7 +31,7 @@ func AssertImageMatches(t *testing.T, masterFilename string, img image.Image, ms
 
 	file, err := os.Open(masterPath)
 	require.NoError(t, err)
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 	raw, _, err := image.Decode(file)
 	require.NoError(t, err)
 
@@ -100,7 +100,7 @@ func writeImage(path string, img image.Image) error {
 		return err
 	}
 	if err = png.Encode(f, img); err != nil {
-		f.Close()
+		f.Close() //nolint:errcheck
 		return err
 	}
 	return f.Close()
