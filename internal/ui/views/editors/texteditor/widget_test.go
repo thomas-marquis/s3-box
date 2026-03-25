@@ -20,6 +20,10 @@ import (
 // uv run ./tools/diff_images.py --folders internal/ui/views/editors/texteditor/testdata/images internal/ui/views/editors/texteditor/testdata/failed/images --color "red"
 
 func TestFileEditor_loading(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping image matching tests in short mode")
+	}
+
 	fyne_test.NewApp()
 
 	lastModified := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
