@@ -113,6 +113,10 @@ type FileObject interface {
 	io.Writer
 	io.Closer
 	io.Seeker
+
+	// Cancel cancels all in-progress operations.
+	// This method can leave the underlying object in an inconsistent state.
+	Cancel()
 }
 
 var ErrInvalidSeek = errors.New("invalid seek")
@@ -159,3 +163,5 @@ func (f *InMemoryFileObject) Seek(offset int64, whence int) (int64, error) {
 	f.Pos = newPos
 	return f.Pos, nil
 }
+
+func (f *InMemoryFileObject) Cancel() {}

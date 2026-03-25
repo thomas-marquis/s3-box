@@ -68,22 +68,8 @@ func NewEditorViewModel(
 			connection_deck.UpdateEventType.AsSuccess(),
 			connection_deck.RemoveEventType.AsSuccess(),
 		), vm.handleConnectionChanged).
-		On(event.Is(fileeditor.SaveEventType), func(e event.Event) {
-			evt := e.(fileeditor.SaveEvent)
-			oe, ok := vm.openedEditors[evt.File.FullPath()]
-			if !ok {
-				// The editor has been closed before in the meantime (unlikely). But it's okay
-				return
-			}
-
-			if _, err := oe.content.Seek(0, io.SeekStart); err != nil {
-				bus.Publish(fileeditor.NewSaveFailureEvent(evt.File, err))
-			}
-			if _, err := fmt.Fprint(oe.content, evt.Content); err != nil {
-				bus.Publish(fileeditor.NewSaveFailureEvent(evt.File, err))
-			}
-			bus.Publish(fileeditor.NewSaveSuccessEvent(evt.File, evt.Content))
-		}).
+		On(event.Is(fileeditor.SaveEventType), vm.handleFileSave).
+		On(event.Is(fileeditor.SaveEventType.AsFailure()), vm.handleFileSaveFailure).
 		ListenNonBlocking()
 
 	return vm
@@ -171,6 +157,41 @@ func (v *editorViewModelImpl) IsOpened(file *directory.File) bool {
 
 func (v *editorViewModelImpl) Close(file *directory.File) {
 	delete(v.openedEditors, file.FullPath())
+}
+
+func (v *editorViewModelImpl) handleFileSave(e event.Event) {
+	evt := e.(fileeditor.SaveEvent)
+	oe, ok := v.openedEditors[evt.File.FullPath()]
+	if !ok {
+		// The editor has been closed before in the meantime (unlikely). But it's okay
+		return
+	}
+
+	terminated := make(chan struct{})
+
+	go func() {
+		defer close(terminated)
+		if _, err := oe.content.Seek(0, io.SeekStart); err != nil {
+			v.bus.Publish(fileeditor.NewSaveFailureEvent(evt.File, err))
+			return
+		}
+		if _, err := fmt.Fprint(oe.content, evt.Content); err != nil {
+			v.bus.Publish(fileeditor.NewSaveFailureEvent(evt.File, err))
+			return
+		}
+		v.bus.Publish(fileeditor.NewSaveSuccessEvent(evt.File, evt.Content))
+	}()
+
+	select {
+	case <-evt.Context().Done():
+		oe.content.Cancel()
+	case <-terminated:
+	}
+}
+
+func (v *editorViewModelImpl) handleFileSaveFailure(evt event.Event) {
+	e := evt.(fileeditor.SaveFailureEvent)
+	v.notifier.NotifyError(e.Error())
 }
 
 func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {

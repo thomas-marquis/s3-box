@@ -15,9 +15,9 @@ type SaveEvent struct {
 	Content string
 }
 
-func NewSaveEvent(file *directory.File, content string) SaveEvent {
+func NewSaveEvent(file *directory.File, content string, options ...event.Option) SaveEvent {
 	return SaveEvent{
-		BaseEvent: event.NewBaseEvent(SaveEventType),
+		BaseEvent: event.NewBaseEvent(SaveEventType, options...),
 		File:      file,
 		Content:   content,
 	}
@@ -29,9 +29,9 @@ type SaveSuccessEvent struct {
 	Content string
 }
 
-func NewSaveSuccessEvent(file *directory.File, content string) SaveSuccessEvent {
+func NewSaveSuccessEvent(file *directory.File, content string, options ...event.Option) SaveSuccessEvent {
 	return SaveSuccessEvent{
-		BaseEvent: event.NewBaseEvent(SaveEventType.AsSuccess()),
+		BaseEvent: event.NewBaseEvent(SaveEventType.AsSuccess(), options...),
 		File:      file,
 		Content:   content,
 	}

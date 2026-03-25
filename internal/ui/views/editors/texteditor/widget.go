@@ -1,6 +1,7 @@
 package texteditor
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -23,6 +24,7 @@ type textContentEntry struct {
 	widget.Entry
 
 	onValidate func(string)
+	onClose    func()
 }
 
 var (
@@ -33,19 +35,22 @@ func (e *textContentEntry) TypedShortcut(s fyne.Shortcut) {
 	if val, ok := s.(*desktop.CustomShortcut); ok {
 		if val.KeyName == fyne.KeyS && val.Modifier == fyne.KeyModifierControl {
 			e.onValidate(e.Text)
+		} else if val.KeyName == fyne.KeyQ && val.Modifier == fyne.KeyModifierControl {
+			e.onClose()
 		}
 	} else {
 		e.Entry.TypedShortcut(s)
 	}
 }
 
-func newTextEditorEntry(onValidate func(string)) *textContentEntry {
+func newTextEditorEntry(onValidate func(string), onCLose func()) *textContentEntry {
 	e := &textContentEntry{
 		Entry: widget.Entry{
 			MultiLine: true,
 			Wrapping:  fyne.TextWrap(fyne.TextTruncateClip),
 		},
 		onValidate: onValidate,
+		onClose:    onCLose,
 	}
 	e.ExtendBaseWidget(e)
 	return e
@@ -58,6 +63,7 @@ type TextEditor struct {
 	contentHash          string
 	stateLabel           binding.String
 	shouldCloseWhenSaved bool
+	cancelFunc           func()
 }
 
 func NewTextEditor(state *fileeditor.State) *TextEditor {
@@ -80,18 +86,7 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 		})
 	}))
 
-	state.Window.SetCloseIntercept(func() {
-		val, _ := state.Content.Get()
-		if w.hasChanged(val) {
-			dialog.ShowConfirm("Discard changes?", "Do you want to discard your changes?", func(confirmed bool) {
-				if confirmed {
-					state.Window.Close()
-				}
-			}, state.Window)
-		} else {
-			state.Window.Close()
-		}
-	})
+	state.Window.SetCloseIntercept(w.close)
 
 	state.ErrorMsg.AddListener(binding.NewDataListener(func() {
 		msg, _ := state.ErrorMsg.Get()
@@ -119,6 +114,10 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 			w.contentHash = sha256Hex(evt.Content)
 			w.stateLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
 			state.IsLoaded.Set(true)                                                 // nolint:errcheck
+			if w.cancelFunc != nil {
+				w.cancelFunc()
+			}
+			w.cancelFunc = nil
 			if w.shouldCloseWhenSaved {
 				state.Window.Close()
 			}
@@ -129,9 +128,13 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 				return
 			}
 			state.IsLoaded.Set(true)
-			w.stateLabel.Set("error") // nolint:errcheck
+			w.stateLabel.Set("error (unsaved)") // nolint:errcheck
 			dialog.ShowError(evt.Error(), w.state.Window)
 			w.shouldCloseWhenSaved = false
+			if w.cancelFunc != nil {
+				w.cancelFunc()
+			}
+			w.cancelFunc = nil
 		}).
 		ListenWithWorkers(1)
 
@@ -141,7 +144,7 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
-	editor := newTextEditorEntry(w.save)
+	editor := newTextEditorEntry(w.save, w.close)
 	editor.Bind(w.state.Content)
 
 	toolbar := widget.NewToolbar(
@@ -151,13 +154,29 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 	)
 
 	loader := widget.NewProgressBarInfinite()
-	loader.Hide()
+	var cancelBtn *widget.Button
+	cancelBtn = widget.NewButton("Cancel", func() {
+		if w.cancelFunc != nil {
+			w.stateLabel.Set("cancelling...")
+			cancelBtn.Disable()
+			w.cancelFunc()
+		}
+	})
+	loaderContainer := container.NewBorder(
+		nil, nil, nil,
+		cancelBtn, loader,
+	)
+	loader.Stop()
+	loaderContainer.Hide()
+
 	w.state.IsLoaded.AddListener(binding.NewDataListener(func() {
 		loaded, _ := w.state.IsLoaded.Get()
 		if loaded {
-			loader.Hide()
+			loaderContainer.Hide()
+			loader.Stop()
 		} else {
-			loader.Show()
+			loaderContainer.Show()
+			loader.Start()
 		}
 	}))
 
@@ -166,7 +185,7 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 			w.save(editor.Text)
 			w.shouldCloseWhenSaved = true
 		}), nil,
-		loader,
+		loaderContainer,
 	)
 
 	c := container.NewBorder(
@@ -179,7 +198,22 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (w *TextEditor) save(content string) {
-	w.state.Bus.Publish(fileeditor.NewSaveEvent(w.state.File, content))
+	ctx, cancel := context.WithCancel(context.Background())
+	w.cancelFunc = cancel
+	w.state.Bus.Publish(fileeditor.NewSaveEvent(w.state.File, content, event.WithContext(ctx)))
+}
+
+func (w *TextEditor) close() {
+	val, _ := w.state.Content.Get()
+	if w.hasChanged(val) {
+		dialog.ShowConfirm("Discard changes?", "Do you want to discard your changes?", func(confirmed bool) {
+			if confirmed {
+				w.state.Window.Close()
+			}
+		}, w.state.Window)
+	} else {
+		w.state.Window.Close()
+	}
 }
 
 func (w *TextEditor) hasChanged(newContent string) bool {
