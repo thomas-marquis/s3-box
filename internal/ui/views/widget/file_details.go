@@ -189,8 +189,6 @@ func (w *FileDetails) Select(file *directory.File) {
 		es.Window.SetOnClosed(func() {
 			cancel()
 			edVm.Close(file)
-			//w.editAction.Icon = theme.DocumentCreateIcon()
-			//w.actionToolbar.Refresh()
 		})
 		es.Window.SetContent(editor)
 		es.Window.SetFixedSize(false)
