@@ -16,7 +16,6 @@ import (
 // It manages the lifecycle of an S3 object, transitioning between states based on
 // whether the object exists in S3 or not.
 type Object struct {
-	ctx    context.Context
 	client s3client.Client
 	file   *directory.File
 
@@ -32,7 +31,6 @@ var (
 // and initializes the state with it. If not, it starts in a non-existent state.
 func NewObject(ctx context.Context, client s3client.Client, file *directory.File) (*Object, error) {
 	obj := &Object{
-		ctx:    ctx,
 		file:   file,
 		client: client,
 	}
@@ -73,6 +71,10 @@ func (o *Object) Seek(offset int64, whence int) (int64, error) {
 	return o.currentState.Seek(offset, whence)
 }
 
+func (o *Object) Cancel() {
+	o.currentState.Cancel()
+}
+
 func (o *Object) setState(state s3ObjectState) {
 	o.currentState = state
 }
@@ -95,20 +97,39 @@ var (
 	_ s3ObjectState = (*s3ObjectExists)(nil)
 )
 
+type withCancelCbs struct {
+	cancelCbs []func()
+}
+
+func (c *withCancelCbs) Cancel() {
+	for _, cb := range c.cancelCbs {
+		cb()
+	}
+}
+
+func (c *withCancelCbs) addCallback(cb func()) {
+	c.cancelCbs = append(c.cancelCbs, cb)
+}
+
 // s3ObjectNotExists represents the state when the S3 object does not exist.
-// In this state, reads will fail and writes will create the object and transition to exists state.
+// In this state, reads will fail and writes will create the object and transition to the existing state.
 type s3ObjectNotExists struct {
+	withCancelCbs
+
 	obj    *Object
 	buffer *bytes.Buffer
 }
 
 // Read returns an error since the object doesn't exist
-func (s *s3ObjectNotExists) Read(p []byte) (n int, err error) {
+func (s *s3ObjectNotExists) Read(_ []byte) (n int, err error) {
 	return 0, fmt.Errorf("object does not exist: %s", s.obj.file.Name())
 }
 
-// Write buffers the content and uploads it to S3, then transitions to exists state
+// Write buffers the content and uploads it to S3, then transitions to exist state
 func (s *s3ObjectNotExists) Write(p []byte) (n int, err error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	s.addCallback(cancel)
+
 	if s.buffer == nil {
 		s.buffer = new(bytes.Buffer)
 	}
@@ -119,7 +140,8 @@ func (s *s3ObjectNotExists) Write(p []byte) (n int, err error) {
 	}
 
 	key := buildS3Key(s.obj.file)
-	if err := s.obj.client.Upload(s.obj.ctx, key, bytes.NewReader(s.buffer.Bytes())); err != nil {
+
+	if err := s.obj.client.Upload(ctx, key, bytes.NewReader(s.buffer.Bytes())); err != nil {
 		return n, fmt.Errorf("failed to upload object: %w", err)
 	}
 
@@ -137,13 +159,15 @@ func (s *s3ObjectNotExists) Close() error {
 	return nil
 }
 
-func (s *s3ObjectNotExists) Seek(offset int64, whence int) (int64, error) {
+func (s *s3ObjectNotExists) Seek(_ int64, _ int) (int64, error) {
 	return 0, errors.New("cannot seek on non-existent object")
 }
 
 // s3ObjectExists represents the state when the S3 object exists.
 // In this state, reads stream from the downloaded content and writes append and re-upload.
 type s3ObjectExists struct {
+	withCancelCbs
+
 	obj      *Object
 	content  []byte
 	position int64
@@ -162,6 +186,9 @@ func (s *s3ObjectExists) Read(p []byte) (n int, err error) {
 }
 
 func (s *s3ObjectExists) Write(p []byte) (n int, err error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	s.addCallback(cancel)
+
 	endPos := s.position + int64(len(p))
 	initialContentLen := len(s.content)
 
@@ -178,7 +205,8 @@ func (s *s3ObjectExists) Write(p []byte) (n int, err error) {
 
 	key := buildS3Key(s.obj.file)
 	s.position = 0 // reset the cursor to let the sdk reads the entier content
-	if err := s.obj.client.Upload(s.obj.ctx, key, s); err != nil {
+
+	if err := s.obj.client.Upload(ctx, key, s); err != nil {
 		s.position = endPos - int64(len(p))
 		s.content = append(s.content[:s.position], truncatedParts...)
 		return 0, fmt.Errorf("failed to upload updated content: %w", err)

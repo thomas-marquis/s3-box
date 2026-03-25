@@ -42,3 +42,4 @@ go.work.sum
 **/testdata/failed/
 .output.txt
 /.ai-next-actions.md
+/.diff_images

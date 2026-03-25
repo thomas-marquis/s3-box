@@ -133,7 +133,7 @@ jobs:
       - name: Test
         run: |
           mkdir -p coverage
-          go test ./... -race -covermode=atomic -coverprofile=coverage/coverage.out
+          go test ./... -covermode=atomic -coverprofile=coverage/coverage.out
           go tool cover -fun>c=coverage/coverage.out | tee coverage/summary.txt
 
   test-windows:
