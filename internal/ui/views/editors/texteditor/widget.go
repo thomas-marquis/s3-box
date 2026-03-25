@@ -119,7 +119,9 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 			}
 			w.cancelFunc = nil
 			if w.shouldCloseWhenSaved {
-				state.Window.Close()
+				fyne.Do(func() {
+					state.Window.Close()
+				})
 			}
 		}).
 		On(event.Is(fileeditor.SaveEventType.AsFailure()), func(e event.Event) {
