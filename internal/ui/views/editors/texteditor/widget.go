@@ -64,6 +64,10 @@ type TextEditor struct {
 	stateLabel           binding.String
 	shouldCloseWhenSaved bool
 	cancelFunc           func()
+
+	// put as struct attributes to be used in tests (meh...):
+	textEditor *textContentEntry
+	saveBtn    *widget.ToolbarAction
 }
 
 func NewTextEditor(state *fileeditor.State) *TextEditor {
@@ -103,8 +107,8 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 				return
 			}
 
-			state.IsLoaded.Set(false)     // nolint:errcheck
-			w.stateLabel.Set("Saving...") // nolint:errcheck
+			state.IsLoaded.Set(false)      // nolint:errcheck
+			w.stateLabel.Set("!Saving...") // nolint:errcheck
 		}).
 		On(event.Is(fileeditor.SaveEventType.AsSuccess()), func(e event.Event) {
 			evt := e.(fileeditor.SaveSuccessEvent)
@@ -112,8 +116,8 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 				return
 			}
 			w.contentHash = sha256Hex(evt.Content)
-			w.stateLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
-			state.IsLoaded.Set(true)                                                 // nolint:errcheck
+			w.stateLabel.Set(fmt.Sprintf("#Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
+			state.IsLoaded.Set(true)                                                  // nolint:errcheck
 			if w.cancelFunc != nil {
 				w.cancelFunc()
 			}
@@ -147,13 +151,13 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
 	editor := newTextEditorEntry(w.save, w.close)
+	w.textEditor = editor
 	editor.Bind(w.state.Content)
 
-	toolbar := widget.NewToolbar(
-		widget.NewToolbarAction(theme.DocumentSaveIcon(), func() {
-			w.save(editor.Text)
-		}),
-	)
+	w.saveBtn = widget.NewToolbarAction(theme.DocumentSaveIcon(), func() {
+		w.save(editor.Text)
+	})
+	toolbar := widget.NewToolbar(w.saveBtn)
 
 	loader := widget.NewProgressBarInfinite()
 	var cancelBtn *widget.Button
