@@ -153,6 +153,8 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	w.renameAction.SetOnTapped(w.makeOnRename(vm, dir))
 	w.reloadAction.SetOnTapped(w.makeOnReload(vm, dir))
 
+	w.reloadAction.Enable()
+
 	if dir.IsRoot() {
 		w.renameAction.Disable()
 	} else {
@@ -187,6 +189,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.uploadAction.Disable()
 		w.createFileAction.Disable()
 		w.renameAction.Disable()
+		w.reloadAction.Disable()
 	} else {
 		w.newDirectoryAction.Enable()
 		w.uploadAction.Enable()

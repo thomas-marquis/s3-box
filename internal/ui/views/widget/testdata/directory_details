@@ -29,12 +29,12 @@
 				<container pos="0,75" size="659x36">
 					<widget pos="5,0" size="649x36" type="*widget.Toolbar">
 						<widget size="87x36" type="*widget.Button">
-							<rectangle fillColor="button" radius="4" size="87x36"/>
+							<rectangle fillColor="disabled button" radius="4" size="87x36"/>
 							<rectangle size="87x36"/>
 							<widget pos="32,8" size="47x20" type="*widget.RichText">
-								<text alignment="center" bold size="47x19">Reload</text>
+								<text alignment="center" bold color="disabled" size="47x19">Reload</text>
 							</widget>
-							<image fillMode="contain" pos="8,8" rsc="viewRefreshIcon" size="iconInlineSize" themed="foreground"/>
+							<image fillMode="contain" pos="8,8" rsc="viewRefreshIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
 						<widget pos="91,0" size="187x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="187x36"/>
