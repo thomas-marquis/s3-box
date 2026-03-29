@@ -22,7 +22,9 @@ func (s *errorState) Type() StateType {
 }
 
 func (s *errorState) Load() (LoadEvent, error) {
-	return LoadEvent{}, NewError(s.d, "this directory is already loaded")
+	// reload
+	s.d.setState(newLoadingState(s.baseState))
+	return NewLoadEvent(s.d), nil
 }
 
 func (s *errorState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {

@@ -64,6 +64,8 @@ type ExplorerViewModel interface {
 	// If the directory is already open, it will do nothing.
 	LoadDirectory(dirNode node.DirectoryNode) error
 
+	ReloadDirectory(dir *directory.Directory) error
+
 	// GetFileContent retrieves the content of the specified file, returning a Content object or an error if the operation fails.
 	GetFileContent(f *directory.File) (*directory.Content, error)
 
@@ -273,6 +275,41 @@ func (v *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error 
 	}
 	v.isSelectedDirLoading.Set(true) // nolint:errcheck
 	v.bus.Publish(evt)
+
+	return nil
+}
+
+func (v *explorerViewModelImpl) ReloadDirectory(dir *directory.Directory) error {
+	if v.selectedConnectionVal == nil {
+		err := ErrNoConnectionSelected
+		v.notifier.NotifyError(err)
+		return err
+	}
+
+	var subNodePaths []string
+	for _, sd := range dir.SubDirectories() {
+		subNodePaths = append(subNodePaths, sd.Path().String())
+	}
+	for _, f := range dir.Files() {
+		subNodePaths = append(subNodePaths, f.FullPath())
+	}
+
+	evt, err := dir.Load()
+	if err != nil {
+		wErr := fmt.Errorf("impossible to (re)load the directory: %w", err)
+		v.notifier.NotifyError(wErr)
+		return wErr
+	}
+	v.bus.Publish(evt)
+
+	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+
+	for _, p := range subNodePaths {
+		if err := v.tree.Remove(p); err != nil {
+			v.notifier.NotifyError(fmt.Errorf("error removing directory node: %w", err))
+			return nil
+		}
+	}
 
 	return nil
 }
