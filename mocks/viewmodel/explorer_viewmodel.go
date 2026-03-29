@@ -274,6 +274,20 @@ func (mr *MockExplorerViewModelMockRecorder) PendingUserValidations() *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PendingUserValidations", reflect.TypeOf((*MockExplorerViewModel)(nil).PendingUserValidations))
 }
 
+// ReloadDirectory mocks base method.
+func (m *MockExplorerViewModel) ReloadDirectory(dir *directory.Directory) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReloadDirectory", dir)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReloadDirectory indicates an expected call of ReloadDirectory.
+func (mr *MockExplorerViewModelMockRecorder) ReloadDirectory(dir any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReloadDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).ReloadDirectory), dir)
+}
+
 // RenameDirectory mocks base method.
 func (m *MockExplorerViewModel) RenameDirectory(dir *directory.Directory, newName string) {
 	m.ctrl.T.Helper()
