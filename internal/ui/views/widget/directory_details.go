@@ -30,6 +30,7 @@ type DirectoryDetails struct {
 	uploadAction       *ToolbarButton
 	createFileAction   *ToolbarButton
 	renameAction       *ToolbarButton
+	reloadAction       *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
 }
 
@@ -40,11 +41,13 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	actionRequiredBtn := widget.NewButton("Action required", func() {})
 	actionRequiredBtn.Hide()
 
+	reloadAction := NewToolbarButton("Reload", theme.ViewRefreshIcon(), func() {})
 	createDirAction := NewToolbarButton("New empty directory", theme.FolderNewIcon(), func() {})
 	createFileAction := NewToolbarButton("New empty file", theme.ContentAddIcon(), func() {})
 	uploadAction := NewToolbarButton("Upload file", theme.UploadIcon(), func() {})
 	renameAction := NewToolbarButton("Rename", theme.FileTextIcon(), func() {})
 	toolbar := widget.NewToolbar(
+		reloadAction,
 		createDirAction,
 		createFileAction,
 		uploadAction,
@@ -61,6 +64,7 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 		uploadAction:       uploadAction,
 		createFileAction:   createFileAction,
 		renameAction:       renameAction,
+		reloadAction:       reloadAction,
 		loadingBar:         loadingBar,
 		renameErrContent:   newRenameFailedPanel(appCtx.Window()),
 	}
@@ -147,6 +151,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	w.newDirectoryAction.SetOnTapped(w.makeOnCreateDirectory(vm, dir))
 	w.createFileAction.SetOnTapped(w.makeOnCreateFile(vm, dir))
 	w.renameAction.SetOnTapped(w.makeOnRename(vm, dir))
+	w.reloadAction.SetOnTapped(w.makeOnReload(vm, dir))
 
 	if dir.IsRoot() {
 		w.renameAction.Disable()
@@ -299,6 +304,14 @@ func (w *DirectoryDetails) makeOnRename(vm viewmodel.ExplorerViewModel, dir *dir
 		)
 		d.Resize(fyne.NewSize(400, 150))
 		d.Show()
+	}
+}
+
+func (w *DirectoryDetails) makeOnReload(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
+	return func() {
+		if err := vm.ReloadDirectory(dir); err != nil {
+			dialog.ShowError(err, w.appCtx.Window())
+		}
 	}
 }
 
