@@ -1,8 +1,8 @@
-<canvas padded size="575x158">
+<canvas padded size="667x158">
 	<content>
-		<widget pos="4,4" size="567x150" type="*widget.DirectoryDetails">
-			<container size="567x150">
-				<container size="567x36">
+		<widget pos="4,4" size="659x150" type="*widget.DirectoryDetails">
+			<container size="659x150">
+				<container size="659x36">
 					<container size="45x36">
 						<widget size="20x36" type="*widget.Icon">
 							<image fillMode="contain" rsc="folderIcon" size="20x36" themed="foreground"/>
@@ -15,20 +15,28 @@
 							</widget>
 						</widget>
 					</container>
-					<widget pos="531,0" size="36x36" type="*widget.Button">
+					<widget pos="623,0" size="36x36" type="*widget.Button">
 						<rectangle fillColor="button" radius="4" size="36x36"/>
 						<rectangle size="36x36"/>
 						<image fillMode="contain" pos="8,8" rsc="contentCopyIcon" size="iconInlineSize" themed="foreground"/>
 					</widget>
 				</container>
-				<container pos="0,40" size="567x31">
-					<widget pos="0,10" size="567x1" type="*widget.Separator">
-						<rectangle fillColor="separator" size="567x1"/>
+				<container pos="0,40" size="659x31">
+					<widget pos="0,10" size="659x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="659x1"/>
 					</widget>
 				</container>
-				<container pos="0,75" size="567x36">
-					<widget pos="5,0" size="557x36" type="*widget.Toolbar">
-						<widget size="187x36" type="*widget.Button">
+				<container pos="0,75" size="659x36">
+					<widget pos="5,0" size="649x36" type="*widget.Toolbar">
+						<widget size="87x36" type="*widget.Button">
+							<rectangle fillColor="button" radius="4" size="87x36"/>
+							<rectangle size="87x36"/>
+							<widget pos="32,8" size="47x20" type="*widget.RichText">
+								<text alignment="center" bold size="47x19">Reload</text>
+							</widget>
+							<image fillMode="contain" pos="8,8" rsc="viewRefreshIcon" size="iconInlineSize" themed="foreground"/>
+						</widget>
+						<widget pos="91,0" size="187x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="187x36"/>
 							<rectangle size="187x36"/>
 							<widget pos="32,8" size="147x20" type="*widget.RichText">
@@ -36,7 +44,7 @@
 							</widget>
 							<image fillMode="contain" pos="8,8" rsc="folderNewIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
-						<widget pos="191,0" size="145x36" type="*widget.Button">
+						<widget pos="283,0" size="145x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="145x36"/>
 							<rectangle size="145x36"/>
 							<widget pos="32,8" size="105x20" type="*widget.RichText">
@@ -44,7 +52,7 @@
 							</widget>
 							<image fillMode="contain" pos="8,8" rsc="contentAddIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
-						<widget pos="341,0" size="115x36" type="*widget.Button">
+						<widget pos="432,0" size="115x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="115x36"/>
 							<rectangle size="115x36"/>
 							<widget pos="32,8" size="75x20" type="*widget.RichText">
@@ -52,7 +60,7 @@
 							</widget>
 							<image fillMode="contain" pos="8,8" rsc="upload.svg" size="iconInlineSize" themed="disabled"/>
 						</widget>
-						<widget pos="460,0" size="97x36" type="*widget.Button">
+						<widget pos="552,0" size="97x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="97x36"/>
 							<rectangle size="97x36"/>
 							<widget pos="32,8" size="57x20" type="*widget.RichText">
@@ -62,12 +70,12 @@
 						</widget>
 					</widget>
 				</container>
-				<container pos="0,115" size="567x31">
-					<widget pos="0,10" size="567x1" type="*widget.Separator">
-						<rectangle fillColor="separator" size="567x1"/>
+				<container pos="0,115" size="659x31">
+					<widget pos="0,10" size="659x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="659x1"/>
 					</widget>
 				</container>
-				<container pos="0,150" size="567x0">
+				<container pos="0,150" size="659x0">
 				</container>
 			</container>
 		</widget>
