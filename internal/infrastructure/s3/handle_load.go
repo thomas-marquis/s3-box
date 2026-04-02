@@ -12,28 +12,28 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 )
 
-func (r *EventHandler) handleLoadDirectory(e event.Event) {
+func (h *EventHandler) handleLoadDirectory(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.LoadEvent)
 	dir := evt.Directory()
 
 	handleError := func(err error) {
-		r.notifier.NotifyError(fmt.Errorf("failed loading directory: %w", err))
-		r.bus.Publish(directory.NewLoadFailureEvent(err, dir))
+		h.notifier.NotifyError(fmt.Errorf("failed loading directory: %w", err))
+		h.bus.Publish(directory.NewLoadFailureEvent(err, dir))
 	}
 
-	client, err := r.clientFactory.Get(ctx, dir.ConnectionID())
+	client, err := h.clientFactory.Get(ctx, dir.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	if err := r.loadDirectory(ctx, client, dir); err != nil {
+	if err := h.loadDirectory(ctx, client, dir); err != nil {
 		handleError(err)
 	}
 }
 
-func (r *EventHandler) loadDirectory(ctx context.Context, client s3client.Client, dir *directory.Directory) error {
+func (h *EventHandler) loadDirectory(ctx context.Context, client s3client.Client, dir *directory.Directory) error {
 	searchKey := mapPathToSearchKey(dir.Path())
 
 	files := make([]*directory.File, 0)
@@ -44,7 +44,7 @@ func (r *EventHandler) loadDirectory(ctx context.Context, client s3client.Client
 			key := *obj.Key
 
 			if isRenameMarkerFile(key) {
-				return r.getPendingRenameErr(ctx, client, dir, key)
+				return h.getPendingRenameErr(ctx, client, dir, key)
 			}
 
 			if key == searchKey {
@@ -78,24 +78,24 @@ func (r *EventHandler) loadDirectory(ctx context.Context, client s3client.Client
 		return err
 	}
 
-	r.bus.Publish(directory.NewLoadSuccessEvent(dir, subDirectories, files))
+	h.bus.Publish(directory.NewLoadSuccessEvent(dir, subDirectories, files))
 	return nil
 }
 
-func (r *EventHandler) handleLoadFile(e event.Event) {
+func (h *EventHandler) handleLoadFile(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.FileLoadEvent)
-	obj, err := r.loadFile(ctx, evt.File(), evt.ConnectionID())
+	obj, err := h.loadFile(ctx, evt.File(), evt.ConnectionID())
 	if err != nil {
-		r.notifier.NotifyError(fmt.Errorf("failed loading file: %w", err))
-		r.bus.Publish(directory.NewFileLoadFailureEvent(err, evt.File()))
+		h.notifier.NotifyError(fmt.Errorf("failed loading file: %w", err))
+		h.bus.Publish(directory.NewFileLoadFailureEvent(err, evt.File()))
 		return
 	}
-	r.bus.Publish(directory.NewFileLoadSuccessEvent(evt.File(), obj))
+	h.bus.Publish(directory.NewFileLoadSuccessEvent(evt.File(), obj))
 }
 
-func (r *EventHandler) loadFile(ctx context.Context, file *directory.File, connID connection_deck.ConnectionID) (directory.FileContent, error) {
-	client, err := r.clientFactory.Get(ctx, connID)
+func (h *EventHandler) loadFile(ctx context.Context, file *directory.File, connID connection_deck.ConnectionID) (directory.FileContent, error) {
+	client, err := h.clientFactory.Get(ctx, connID)
 	if err != nil {
 		return nil, err
 	}

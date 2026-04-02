@@ -8,17 +8,17 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
-func (r *EventHandler) handleCreateFile(evt event.Event) {
+func (h *EventHandler) handleCreateFile(evt event.Event) {
 	ctx := evt.Context()
 
 	e := evt.(directory.FileCreatedEvent)
 
 	handleError := func(err error) {
-		r.notifier.NotifyError(fmt.Errorf("failed creating file: %w", err))
-		r.bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory()))
+		h.notifier.NotifyError(fmt.Errorf("failed creating file: %w", err))
+		h.bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory()))
 	}
 
-	obj, err := r.loadFile(ctx, e.File(), e.ConnectionID())
+	obj, err := h.loadFile(ctx, e.File(), e.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
@@ -28,19 +28,19 @@ func (r *EventHandler) handleCreateFile(evt event.Event) {
 		return
 	}
 
-	r.bus.Publish(directory.NewFileCreatedSuccessEvent(e.Directory(), e.File()))
+	h.bus.Publish(directory.NewFileCreatedSuccessEvent(e.Directory(), e.File()))
 }
 
-func (r *EventHandler) handleCreateDirectory(e event.Event) {
+func (h *EventHandler) handleCreateDirectory(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.CreatedEvent)
 
 	handleError := func(err error) {
-		r.notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
-		r.bus.Publish(directory.NewCreatedFailureEvent(err, evt.Parent()))
+		h.notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
+		h.bus.Publish(directory.NewCreatedFailureEvent(err, evt.Parent()))
 	}
 
-	client, err := r.clientFactory.Get(ctx, evt.Parent().ConnectionID())
+	client, err := h.clientFactory.Get(ctx, evt.Parent().ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
@@ -58,5 +58,5 @@ func (r *EventHandler) handleCreateDirectory(e event.Event) {
 		return
 	}
 
-	r.bus.Publish(directory.NewCreatedSuccessEvent(evt.Parent(), evt.Directory()))
+	h.bus.Publish(directory.NewCreatedSuccessEvent(evt.Parent(), evt.Directory()))
 }

@@ -41,30 +41,30 @@ func NewS3EventHandler(
 	}
 }
 
-func (r *EventHandler) Listen() {
-	r.bus.Subscribe().
-		On(event.Is(directory.CreatedEventType), r.handleCreateDirectory).
-		On(event.Is(directory.DeletedEventType), r.handleDeleteDirectory).
-		On(event.Is(directory.FileCreatedEventType), r.handleCreateFile).
-		On(event.Is(directory.FileDeletedEventType), r.handleDeleteFile).
-		On(event.Is(directory.FileUploadEventType), r.handleUploadFile).
-		On(event.Is(directory.FileDownloadEventType), r.handleDownloadFile).
-		On(event.Is(directory.LoadEventType), r.handleLoadDirectory).
-		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
-		On(event.Is(directory.UserValidationAcceptedEventType), r.handleRenameDirectory).
-		On(event.Is(directory.FileRenameEventType), r.handleRenameFile).
-		On(event.Is(directory.RenameEventType), r.handleRenameRequest).
-		On(event.Is(directory.RenameRecoverEventType), r.handleRenameRecovery).
+func (h *EventHandler) Listen() {
+	h.bus.Subscribe().
+		On(event.Is(directory.CreatedEventType), h.handleCreateDirectory).
+		On(event.Is(directory.DeletedEventType), h.handleDeleteDirectory).
+		On(event.Is(directory.FileCreatedEventType), h.handleCreateFile).
+		On(event.Is(directory.FileDeletedEventType), h.handleDeleteFile).
+		On(event.Is(directory.FileUploadEventType), h.handleUploadFile).
+		On(event.Is(directory.FileDownloadEventType), h.handleDownloadFile).
+		On(event.Is(directory.LoadEventType), h.handleLoadDirectory).
+		On(event.Is(directory.FileLoadEventType), h.handleLoadFile).
+		On(event.Is(directory.UserValidationAcceptedEventType), h.handleRenameDirectory).
+		On(event.Is(directory.FileRenameEventType), h.handleRenameFile).
+		On(event.Is(directory.RenameEventType), h.handleRenameRequest).
+		On(event.Is(directory.RenameRecoverEventType), h.handleRenameRecovery).
 		On(event.IsOneOf(
 			connection_deck.RemoveEventType.AsSuccess(),
 			connection_deck.UpdateEventType.AsSuccess(),
-		), r.handleConnectionChanged).
+		), h.handleConnectionChanged).
 		ListenNonBlocking() // TODO: set a limit of simultaneous tasks
 }
 
-func (r *EventHandler) handleConnectionChanged(evt event.Event) {
+func (h *EventHandler) handleConnectionChanged(evt event.Event) {
 	if e, ok := evt.(connection_deck.ConnectionEvent); ok {
 		cId := e.Connection().ID()
-		r.clientFactory.Remove(cId)
+		h.clientFactory.Remove(cId)
 	}
 }

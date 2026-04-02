@@ -9,16 +9,16 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
-func (r *EventHandler) handleUploadFile(e event.Event) {
+func (h *EventHandler) handleUploadFile(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.FileUploadEvent)
 
 	handleError := func(err error) {
-		r.notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
-		r.bus.Publish(directory.NewFileUploadFailureEvent(err, evt.Directory()))
+		h.notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
+		h.bus.Publish(directory.NewFileUploadFailureEvent(err, evt.Directory()))
 	}
 
-	client, err := r.clientFactory.Get(ctx, evt.Directory().ConnectionID())
+	client, err := h.clientFactory.Get(ctx, evt.Directory().ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
@@ -55,5 +55,5 @@ func (r *EventHandler) handleUploadFile(e event.Event) {
 		return
 	}
 
-	r.bus.Publish(directory.NewFileUploadSuccessEvent(evt.Directory(), newFile))
+	h.bus.Publish(directory.NewFileUploadSuccessEvent(evt.Directory(), newFile))
 }

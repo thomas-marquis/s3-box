@@ -8,16 +8,16 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
-func (r *EventHandler) handleDownloadFile(e event.Event) {
+func (h *EventHandler) handleDownloadFile(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.FileDownloadEvent)
 
 	handleError := func(err error) {
-		r.notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
-		r.bus.Publish(directory.NewFileDownloadFailureEvent(err))
+		h.notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
+		h.bus.Publish(directory.NewFileDownloadFailureEvent(err))
 	}
 
-	client, err := r.clientFactory.Get(ctx, evt.ConnectionID())
+	client, err := h.clientFactory.Get(ctx, evt.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
@@ -35,5 +35,5 @@ func (r *EventHandler) handleDownloadFile(e event.Event) {
 		return
 	}
 
-	r.bus.Publish(directory.NewFileDownloadSuccessEvent(evt.File()))
+	h.bus.Publish(directory.NewFileDownloadSuccessEvent(evt.File()))
 }
