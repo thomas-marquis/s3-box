@@ -171,7 +171,6 @@ func (w *DropZone) dropAnimation() {
 type dropZoneRenderer struct {
 	uiutils.BaseRenderer
 
-	icon       *canvas.Image
 	text       *widget.RichText
 	background *canvas.Rectangle
 	w          *DropZone
