@@ -49,8 +49,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err = s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
 		fakeEventChan <- directory.NewFileCreatedEvent(testutil.FakeAwsConnectionId, dir, newFile)

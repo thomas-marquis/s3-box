@@ -34,7 +34,7 @@ type EditorViewModel interface {
 
 type openedEditor struct {
 	state   *fileeditor.State
-	content directory.FileObject
+	content directory.FileContent
 }
 
 type editorViewModelImpl struct {

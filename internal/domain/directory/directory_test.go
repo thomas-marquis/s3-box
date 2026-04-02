@@ -227,10 +227,8 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		assert.Len(t, resFiles, 0)
 
 		// Then, we upload again the deleted file
-		uploadFileEvt, err := dir.UploadFile("project/src/main.go", false)
-		assert.NoError(t, err)
-
-		uploadedSuccessFileEvt := directory.NewContentUploadedSuccessEvent(dir, uploadFileEvt.Content().File())
+		newFile, _ := directory.NewFile("main.go", dir)
+		uploadedSuccessFileEvt := directory.NewFileUploadSuccessEvent(dir, newFile)
 		assert.NoError(t, dir.Notify(uploadedSuccessFileEvt))
 
 		assert.Len(t, dir.Files(), 1)
@@ -373,12 +371,12 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.ContentUploadedEventType, evt.Type())
+		assert.Equal(t, directory.FileUploadEventType, evt.Type())
 		assert.Equal(t, dir, evt.Directory())
-		assert.Equal(t, "report.csv", evt.Content().File().Name().String())
+		assert.Equal(t, "local/report.csv", evt.SrcPath())
 
 		file, _ := directory.NewFile("report.csv", dir)
-		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
+		successEvt := directory.NewFileUploadSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
 		files := dir.Files()
@@ -408,12 +406,12 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.ContentUploadedEventType, evt.Type())
+		assert.Equal(t, directory.FileUploadEventType, evt.Type())
 		assert.Equal(t, dir, evt.Directory())
-		assert.Equal(t, "report.csv", evt.Content().File().Name().String())
+		assert.Equal(t, "local/report.csv", evt.SrcPath())
 
 		file, _ := directory.NewFile("report.csv", dir)
-		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
+		successEvt := directory.NewFileUploadSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
 		resFiles := dir.Files()
@@ -440,10 +438,10 @@ func TestDirectory_UploadFile(t *testing.T) {
 		assert.NoError(t, err)
 
 		file, _ := directory.NewFile("report.csv", dir, directory.WithFileSize(1337))
-		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
+		successEvt := directory.NewFileUploadSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
-		assert.Equal(t, "report.csv", evt.Content().File().Name().String())
+		assert.Equal(t, "tmp/report.csv", evt.SrcPath())
 
 		files := dir.Files()
 		require.Len(t, files, 1)

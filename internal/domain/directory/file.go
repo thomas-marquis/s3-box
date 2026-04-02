@@ -42,8 +42,9 @@ func NewFile(name string, parent *Directory, opts ...FileOption) (*File, error) 
 		return nil, err
 	}
 	f := &File{
-		name:   fileName,
-		parent: parent,
+		name:         fileName,
+		parent:       parent,
+		lastModified: time.Now(),
 	}
 	for _, opt := range opts {
 		opt(f)
@@ -95,8 +96,8 @@ func (f *File) FullPath() string {
 	return f.DirectoryPath().String() + f.name.String()
 }
 
-func (f *File) Download(connID connection_deck.ConnectionID, toPath string) ContentDownloadedEvent {
-	return NewContentDownloadedEvent(connID, NewFileContent(f, FromLocalFile(toPath), WithOpenModeWrite()))
+func (f *File) Download(connID connection_deck.ConnectionID, toPath string) FileDownloadEvent {
+	return NewFileDownloadEvent(connID, f, toPath)
 }
 
 func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) FileLoadEvent {

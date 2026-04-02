@@ -24,7 +24,7 @@ const (
 	markerDstFileName = ".s3box-rename-dst"
 )
 
-func (r *RepositoryImpl) checkRenamingState(ctx context.Context, client s3client.Client, srcDirKey, dstDirKey string) (bool, error) {
+func (h *EventHandler) checkRenamingState(ctx context.Context, client s3client.Client, srcDirKey, dstDirKey string) (bool, error) {
 	srcMarkerKey := srcDirKey + markerSrcFileName
 	dstMarkerKey := dstDirKey + markerDstFileName
 
@@ -57,16 +57,16 @@ func (r *RepositoryImpl) checkRenamingState(ctx context.Context, client s3client
 	return false, nil
 }
 
-func (r *RepositoryImpl) handleRenameFile(e event.Event) {
+func (h *EventHandler) handleRenameFile(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.FileRenameEvent)
 
 	handleError := func(err error) {
-		r.notifier.NotifyError(fmt.Errorf("failed renaming file: %w", err))
-		r.bus.Publish(directory.NewFileRenameFailureEvent(err, evt.Directory(), evt.File(), evt.NewName()))
+		h.notifier.NotifyError(fmt.Errorf("failed renaming file: %w", err))
+		h.bus.Publish(directory.NewFileRenameFailureEvent(err, evt.Directory(), evt.File(), evt.NewName()))
 	}
 
-	client, err := r.clientFactory.Get(ctx, evt.Directory().ConnectionID())
+	client, err := h.clientFactory.Get(ctx, evt.Directory().ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
@@ -85,20 +85,20 @@ func (r *RepositoryImpl) handleRenameFile(e event.Event) {
 		return
 	}
 
-	r.bus.Publish(directory.NewFileRenameSuccessEvent(evt.Directory(), evt.File(), evt.NewName()))
+	h.bus.Publish(directory.NewFileRenameSuccessEvent(evt.Directory(), evt.File(), evt.NewName()))
 }
 
-func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
+func (h *EventHandler) handleRenameRequest(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.RenameEvent)
 	dir := evt.Directory()
 
 	handleError := func(err error) {
-		r.notifier.NotifyError(fmt.Errorf("failed handling rename request: %w", err))
-		r.bus.Publish(directory.NewRenameFailureEvent(err, dir, evt.NewName()))
+		h.notifier.NotifyError(fmt.Errorf("failed handling rename request: %w", err))
+		h.bus.Publish(directory.NewRenameFailureEvent(err, dir, evt.NewName()))
 	}
 
-	client, err := r.clientFactory.Get(ctx, dir.ConnectionID())
+	client, err := h.clientFactory.Get(ctx, dir.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
@@ -124,26 +124,26 @@ func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 	}
 
 	if lsSrc.IsEmpty() {
-		if err := r.renameObjects(ctx, client, dir.Path(), evt.NewName(), lsSrc.Keys, true, false); err != nil {
+		if err := h.renameObjects(ctx, client, dir.Path(), evt.NewName(), lsSrc.Keys, true, false); err != nil {
 			handleError(err)
 			return
 		}
-		r.bus.Publish(directory.NewRenameSuccessEvent(dir, evt.NewName()))
+		h.bus.Publish(directory.NewRenameSuccessEvent(dir, evt.NewName()))
 	} else {
 		for _, key := range lsSrc.Keys {
 			if isRenameMarkerFile(key) {
-				handleError(r.getPendingRenameErr(ctx, client, dir, key))
+				handleError(h.getPendingRenameErr(ctx, client, dir, key))
 				return
 			}
 		}
 
 		msg := fmt.Sprintf("Directory %s is not empty.\nIt contains %d objects (%d kB).\nThis operation will modify all of them. Are you sure you want to proceed?",
 			dir.Path(), len(lsSrc.Keys), lsSrc.SizeBytesTot/1024)
-		r.bus.Publish(directory.NewUserValidationEvent(dir, evt, msg))
+		h.bus.Publish(directory.NewUserValidationEvent(dir, evt, msg))
 	}
 }
 
-func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
+func (h *EventHandler) handleRenameDirectory(e event.Event) {
 	ctx := e.Context()
 	uve := e.(directory.UserValidationAcceptedEvent)
 
@@ -156,11 +156,11 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 	newName := re.NewName()
 
 	handleError := func(err error) {
-		r.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
-		r.bus.Publish(directory.NewRenameFailureEvent(err, dir, re.NewName()))
+		h.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
+		h.bus.Publish(directory.NewRenameFailureEvent(err, dir, re.NewName()))
 	}
 
-	client, err := r.clientFactory.Get(ctx, dir.ConnectionID())
+	client, err := h.clientFactory.Get(ctx, dir.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
@@ -169,7 +169,7 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 	srcDirKey := mapDirToObjectKey(dir)
 	dstDirKey := getDstDirKey(srcDirKey, newName)
 
-	if _, err := r.checkRenamingState(ctx, client, srcDirKey, dstDirKey); err != nil {
+	if _, err := h.checkRenamingState(ctx, client, srcDirKey, dstDirKey); err != nil {
 		handleError(err)
 		return
 	}
@@ -180,42 +180,42 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 		return
 	}
 
-	if err := r.renameObjects(ctx, client, dir.Path(), newName, lsRes.Keys, true, false); err != nil {
+	if err := h.renameObjects(ctx, client, dir.Path(), newName, lsRes.Keys, true, false); err != nil {
 		handleError(err)
 		return
 	}
 
-	r.bus.Publish(directory.NewRenameSuccessEvent(dir, newName))
+	h.bus.Publish(directory.NewRenameSuccessEvent(dir, newName))
 }
 
-func (r *RepositoryImpl) handleRenameRecovery(evt event.Event) {
+func (h *EventHandler) handleRenameRecovery(evt event.Event) {
 	e := evt.(directory.RenameRecoverEvent)
 	ctx := e.Context()
 
 	switch e.Choice() {
 	case directory.RecoveryChoiceRenameResume:
-		r.handleRenameResuming(ctx, e.Directory(), e.DstDir(), false)
+		h.handleRenameResuming(ctx, e.Directory(), e.DstDir(), false)
 	case directory.RecoveryChoiceRenameRollback:
-		r.handleRenameResuming(ctx, e.DstDir(), e.Directory(), true)
+		h.handleRenameResuming(ctx, e.DstDir(), e.Directory(), true)
 	case directory.RecoveryChoiceRenameAbort:
-		r.handleRenameAbort(ctx, e.Directory(), e.DstDir())
+		h.handleRenameAbort(ctx, e.Directory(), e.DstDir())
 	default:
 		return
 	}
 }
 
-func (r *RepositoryImpl) handleRenameResuming(ctx context.Context, srcDir, dstDir *directory.Directory, isRollback bool) {
+func (h *EventHandler) handleRenameResuming(ctx context.Context, srcDir, dstDir *directory.Directory, isRollback bool) {
 	srcPath := srcDir.Path()
 	dstPath := dstDir.Path()
 
 	newName := dstPath.DirectoryName()
 
 	handleError := func(err error) {
-		r.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
-		r.bus.Publish(directory.NewRenameFailureEvent(err, srcDir, newName))
+		h.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
+		h.bus.Publish(directory.NewRenameFailureEvent(err, srcDir, newName))
 	}
 
-	client, err := r.clientFactory.Get(ctx, srcDir.ConnectionID())
+	client, err := h.clientFactory.Get(ctx, srcDir.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
@@ -256,18 +256,18 @@ func (r *RepositoryImpl) handleRenameResuming(ctx context.Context, srcDir, dstDi
 		return
 	}
 
-	if err := r.renameObjects(ctx, client, srcPath, newName, lsRes.Keys, false, isRollback); err != nil {
+	if err := h.renameObjects(ctx, client, srcPath, newName, lsRes.Keys, false, isRollback); err != nil {
 		handleError(err)
 		return
 	}
 
-	r.bus.Publish(directory.NewRenameSuccessEvent(srcDir, newName))
+	h.bus.Publish(directory.NewRenameSuccessEvent(srcDir, newName))
 }
 
-func (r *RepositoryImpl) handleRenameAbort(ctx context.Context, srcDir, dstDir *directory.Directory) {
+func (h *EventHandler) handleRenameAbort(ctx context.Context, srcDir, dstDir *directory.Directory) {
 	handleError := func(err error) {
-		r.notifier.NotifyError(fmt.Errorf("failed aborting rename: %w", err))
-		r.bus.Publish(directory.NewRenameFailureEvent(err, srcDir, dstDir.Name()))
+		h.notifier.NotifyError(fmt.Errorf("failed aborting rename: %w", err))
+		h.bus.Publish(directory.NewRenameFailureEvent(err, srcDir, dstDir.Name()))
 	}
 
 	// meh...
@@ -278,7 +278,7 @@ func (r *RepositoryImpl) handleRenameAbort(ctx context.Context, srcDir, dstDir *
 		connID = dstDir.ConnectionID()
 	}
 
-	client, err := r.clientFactory.Get(ctx, connID)
+	client, err := h.clientFactory.Get(ctx, connID)
 	if err != nil {
 		handleError(err)
 		return
@@ -304,21 +304,21 @@ func (r *RepositoryImpl) handleRenameAbort(ctx context.Context, srcDir, dstDir *
 
 	if srcDir != nil {
 		go func() {
-			if err := r.loadDirectory(ctx, client, srcDir); err != nil {
+			if err := h.loadDirectory(ctx, client, srcDir); err != nil {
 				handleError(err)
 			}
 		}()
 	}
 	if dstDir != nil {
 		go func() {
-			if err := r.loadDirectory(ctx, client, dstDir); err != nil {
+			if err := h.loadDirectory(ctx, client, dstDir); err != nil {
 				handleError(err)
 			}
 		}()
 	}
 }
 
-func (r *RepositoryImpl) renameObjects(
+func (h *EventHandler) renameObjects(
 	ctx context.Context,
 	client s3client.Client,
 	srcPath directory.Path,
@@ -406,7 +406,7 @@ func (r *RepositoryImpl) renameObjects(
 	return deleteRenameMarkers(ctx, client, srcDirKey, dstDirKey, isRollback)
 }
 
-func (r *RepositoryImpl) getPendingRenameErr(ctx context.Context, client s3client.Client, dir *directory.Directory, markerKey string) error {
+func (h *EventHandler) getPendingRenameErr(ctx context.Context, client s3client.Client, dir *directory.Directory, markerKey string) error {
 	m, err := readRenameMarker(ctx, client, markerKey)
 	if err != nil {
 		wErr := fmt.Errorf("error while reading rename marker: %w", err)

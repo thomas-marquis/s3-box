@@ -11,7 +11,7 @@ import (
 func TestInMemoryFileObject_Read(t *testing.T) {
 	t.Run("Read from empty buffer", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{Data: []byte("")}
+		f := &directory.InMemoryContent{Data: []byte("")}
 		buf := make([]byte, 4)
 
 		// When
@@ -24,7 +24,7 @@ func TestInMemoryFileObject_Read(t *testing.T) {
 
 	t.Run("Read from buffer with data", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{Data: []byte("test data")}
+		f := &directory.InMemoryContent{Data: []byte("test data")}
 		buf := make([]byte, 4)
 
 		// When
@@ -38,7 +38,7 @@ func TestInMemoryFileObject_Read(t *testing.T) {
 
 	t.Run("Read at end of buffer", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{Data: []byte("test data"), Pos: 9}
+		f := &directory.InMemoryContent{Data: []byte("test data"), Pos: 9}
 		buf := make([]byte, 4)
 
 		// When
@@ -53,7 +53,7 @@ func TestInMemoryFileObject_Read(t *testing.T) {
 func TestInMemoryFileObject_Write(t *testing.T) {
 	t.Run("Write to empty buffer", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{}
+		f := &directory.InMemoryContent{}
 		data := []byte("test data")
 
 		// When
@@ -67,7 +67,7 @@ func TestInMemoryFileObject_Write(t *testing.T) {
 
 	t.Run("Write empty slice", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{Data: []byte{}}
+		f := &directory.InMemoryContent{Data: []byte{}}
 		data := []byte("")
 
 		// When
@@ -81,7 +81,7 @@ func TestInMemoryFileObject_Write(t *testing.T) {
 
 	t.Run("Write more data to existing buffer", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{Data: []byte("existing"), Pos: 8}
+		f := &directory.InMemoryContent{Data: []byte("existing"), Pos: 8}
 		moreData := []byte(" more data")
 
 		// When
@@ -97,7 +97,7 @@ func TestInMemoryFileObject_Write(t *testing.T) {
 func TestInMemoryFileObject_Close(t *testing.T) {
 	t.Run("Close file", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{}
+		f := &directory.InMemoryContent{}
 
 		// When
 		err := f.Close()
@@ -110,7 +110,7 @@ func TestInMemoryFileObject_Close(t *testing.T) {
 func TestInMemoryFileObject_Seek(t *testing.T) {
 	t.Run("Seek to start", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{Data: []byte("test data"), Pos: 0}
+		f := &directory.InMemoryContent{Data: []byte("test data"), Pos: 0}
 
 		// When
 		pos, err := f.Seek(0, io.SeekStart)
@@ -122,7 +122,7 @@ func TestInMemoryFileObject_Seek(t *testing.T) {
 
 	t.Run("Seek to current position", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{Data: []byte("test data"), Pos: 4}
+		f := &directory.InMemoryContent{Data: []byte("test data"), Pos: 4}
 
 		// When
 		pos, err := f.Seek(0, io.SeekCurrent)
@@ -134,7 +134,7 @@ func TestInMemoryFileObject_Seek(t *testing.T) {
 
 	t.Run("Seek to end", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{Data: []byte("test data"), Pos: 0}
+		f := &directory.InMemoryContent{Data: []byte("test data"), Pos: 0}
 
 		// When
 		pos, err := f.Seek(0, io.SeekEnd)
@@ -146,7 +146,7 @@ func TestInMemoryFileObject_Seek(t *testing.T) {
 
 	t.Run("Seek beyond end", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{Data: []byte("test data"), Pos: 0}
+		f := &directory.InMemoryContent{Data: []byte("test data"), Pos: 0}
 
 		// When
 		pos, err := f.Seek(100, io.SeekStart)
@@ -158,7 +158,7 @@ func TestInMemoryFileObject_Seek(t *testing.T) {
 
 	t.Run("Seek with invalid offset", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{Data: []byte("test data"), Pos: 0}
+		f := &directory.InMemoryContent{Data: []byte("test data"), Pos: 0}
 
 		// When
 		_, err := f.Seek(-1, io.SeekStart)
@@ -169,7 +169,7 @@ func TestInMemoryFileObject_Seek(t *testing.T) {
 
 	t.Run("Seek with invalid whence", func(t *testing.T) {
 		// Given
-		f := &directory.InMemoryFileObject{Data: []byte("test data"), Pos: 0}
+		f := &directory.InMemoryContent{Data: []byte("test data"), Pos: 0}
 
 		// When
 		_, err := f.Seek(0, 42)

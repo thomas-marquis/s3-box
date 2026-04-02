@@ -27,8 +27,8 @@ func (s *errorState) Load() (LoadEvent, error) {
 	return NewLoadEvent(s.d), nil
 }
 
-func (s *errorState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {
-	return ContentUploadedEvent{}, errors.New("you can't upload files to a resumable directory")
+func (s *errorState) UploadFile(localPtah string, overwrite bool) (FileUploadEvent, error) {
+	return FileUploadEvent{}, errors.New("you can't upload files to a resumable directory")
 }
 
 func (s *errorState) Notify(evt event.Event) error {

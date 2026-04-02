@@ -12,7 +12,6 @@ import (
 	"github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
@@ -59,9 +58,7 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 			})).
 			Times(1)
 
-		repo, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
-		_ = repo
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
 		fakeEventChan <- directory.NewFileRenameEvent(parentDir, originalFile, "renamed.txt")
@@ -118,8 +115,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
 		fakeEventChan <- inputEvt
@@ -177,8 +173,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
 		originalEvt := directory.NewRenameEvent(originalDir, "newname")
@@ -242,8 +237,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
 		originalEvt := directory.NewRenameEvent(subdir, "newname")
@@ -301,8 +295,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
 		fakeEventChan <- directory.NewRenameEvent(dir, "newname")
@@ -354,7 +347,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo,
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo,
 			func(o *awsS3.Options) {
 				o.Interceptors.AddBeforeTransmit(&fakeErrorInterceptor{
 					CopyErrorForKeys: []string{
@@ -363,8 +356,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 					DeleteErrorForKeys: []string{
 						"originaldir/subdir/originaldir/more-nested.txt"},
 				})
-			})
-		require.NoError(t, err)
+			}).Listen()
 
 		fakeEventChan <- directory.NewUserValidationAcceptedEvent(originalDir,
 			directory.NewRenameEvent(originalDir, "newname"))
@@ -430,8 +422,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
 		fakeEventChan <- directory.NewRenameEvent(originalDir, "newname")
@@ -476,8 +467,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
 		fakeEventChan <- directory.NewRenameEvent(originalDir, "newname")
@@ -515,10 +505,9 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo, func(opt *awsS3.Options) {
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo, func(opt *awsS3.Options) {
 			opt.Interceptors.AddAfterExecution(&fakeGetObjectAclErrorInterceptor{})
-		})
-		require.NoError(t, err)
+		}).Listen()
 
 		// When
 		fakeEventChan <- directory.NewRenameEvent(dir, "newname")
@@ -586,8 +575,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
 		fakeEventChan <- directory.NewRenameRecoverEvent(oldDir, newDir, directory.RecoveryChoiceRenameResume)
@@ -659,8 +647,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
 		fakeEventChan <- directory.NewRenameRecoverEvent(oldDir, newDir, directory.RecoveryChoiceRenameRollback)
@@ -753,8 +740,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			close(done)
 		}()
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
 		fakeEventChan <- directory.NewRenameRecoverEvent(oldDir, newDir, directory.RecoveryChoiceRenameAbort)

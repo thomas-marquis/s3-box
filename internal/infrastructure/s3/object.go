@@ -12,7 +12,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 )
 
-// Object implements directory.FileObject for S3 objects using a state pattern.
+// Object implements directory.FileContent for S3 objects using a state pattern.
 // It manages the lifecycle of an S3 object, transitioning between states based on
 // whether the object exists in S3 or not.
 type Object struct {
@@ -23,7 +23,7 @@ type Object struct {
 }
 
 var (
-	_ directory.FileObject = (*Object)(nil)
+	_ directory.FileContent = (*Object)(nil)
 )
 
 // NewObject creates a new Object and initializes its state based on
@@ -90,7 +90,7 @@ func buildS3Key(file *directory.File) string {
 
 // s3ObjectState represents the state interface for Object.
 // Each state implements different behavior for Read, Write, and Close operations.
-type s3ObjectState directory.FileObject
+type s3ObjectState directory.FileContent
 
 var (
 	_ s3ObjectState = (*s3ObjectNotExists)(nil)

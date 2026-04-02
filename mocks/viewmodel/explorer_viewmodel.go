@@ -147,21 +147,6 @@ func (mr *MockExplorerViewModelMockRecorder) ErrorMessage() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ErrorMessage", reflect.TypeOf((*MockExplorerViewModel)(nil).ErrorMessage))
 }
 
-// GetFileContent mocks base method.
-func (m *MockExplorerViewModel) GetFileContent(f *directory.File) (*directory.Content, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFileContent", f)
-	ret0, _ := ret[0].(*directory.Content)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetFileContent indicates an expected call of GetFileContent.
-func (mr *MockExplorerViewModelMockRecorder) GetFileContent(f any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileContent", reflect.TypeOf((*MockExplorerViewModel)(nil).GetFileContent), f)
-}
-
 // InfoMessage mocks base method.
 func (m *MockExplorerViewModel) InfoMessage() binding.String {
 	m.ctrl.T.Helper()

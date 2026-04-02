@@ -70,7 +70,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		assert.Equal(t, "", errMsg)
 
 		// When the file is loaded
-		fo := &directory.InMemoryFileObject{Data: []byte("Hello world!")}
+		fo := &directory.InMemoryContent{Data: []byte("Hello world!")}
 		eventsChan <- directory.NewFileLoadSuccessEvent(file, fo)
 
 		// Then
