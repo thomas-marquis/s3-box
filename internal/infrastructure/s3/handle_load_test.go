@@ -60,7 +60,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		repo, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		repo, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 		_ = repo
 
@@ -105,7 +105,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		repo, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		repo, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 		_ = repo
 
@@ -153,7 +153,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		dir, err := directory.New(testutil.FakeAwsConnectionId, directory.RootDirName, nil)
 		require.NoError(t, err)
 
-		_, err = s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		_, err = s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -200,7 +200,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 
 		dir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "oldname", "/mydir/")
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When

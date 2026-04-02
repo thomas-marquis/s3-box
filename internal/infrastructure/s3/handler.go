@@ -1,9 +1,6 @@
 package s3
 
 import (
-	"bytes"
-	"context"
-	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -17,7 +14,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
-type RepositoryImpl struct {
+type EventHandler struct {
 	sync.Mutex
 	connectionRepository connection_deck.Repository
 	logger               *log.Logger
@@ -28,15 +25,13 @@ type RepositoryImpl struct {
 	clientFactory s3client.Factory
 }
 
-var _ directory.Repository = (*RepositoryImpl)(nil)
-
-func NewRepositoryImpl(
+func NewS3EventHandler(
 	connectionsRepository connection_deck.Repository,
 	bus event.Bus,
 	notifier notification.Repository,
 	s3ClientOptions ...func(*s3.Options),
-) (*RepositoryImpl, error) {
-	r := &RepositoryImpl{
+) *EventHandler {
+	return &EventHandler{
 		connectionRepository: connectionsRepository,
 		logger:               log.New(os.Stdout, "S3Repository: ", log.LstdFlags),
 		bus:                  bus,
@@ -44,14 +39,16 @@ func NewRepositoryImpl(
 		s3ClientOptions:      s3ClientOptions,
 		clientFactory:        s3client.NewFactory(connectionsRepository, notifier, s3ClientOptions...),
 	}
+}
 
-	bus.Subscribe().
+func (r *EventHandler) Listen() {
+	r.bus.Subscribe().
 		On(event.Is(directory.CreatedEventType), r.handleCreateDirectory).
 		On(event.Is(directory.DeletedEventType), r.handleDeleteDirectory).
 		On(event.Is(directory.FileCreatedEventType), r.handleCreateFile).
 		On(event.Is(directory.FileDeletedEventType), r.handleDeleteFile).
-		On(event.Is(directory.ContentUploadedEventType), r.handleUploadFile).
-		On(event.Is(directory.ContentDownloadEventType), r.handleDownloadFile).
+		On(event.Is(directory.FileUploadEventType), r.handleUploadFile).
+		On(event.Is(directory.FileDownloadEventType), r.handleDownloadFile).
 		On(event.Is(directory.LoadEventType), r.handleLoadDirectory).
 		On(event.Is(directory.FileLoadEventType), r.handleLoadFile).
 		On(event.Is(directory.UserValidationAcceptedEventType), r.handleRenameDirectory).
@@ -63,49 +60,11 @@ func NewRepositoryImpl(
 			connection_deck.UpdateEventType.AsSuccess(),
 		), r.handleConnectionChanged).
 		ListenNonBlocking() // TODO: set a limit of simultaneous tasks
-
-	return r, nil
 }
 
-func (r *RepositoryImpl) handleConnectionChanged(evt event.Event) {
+func (r *EventHandler) handleConnectionChanged(evt event.Event) {
 	if e, ok := evt.(connection_deck.ConnectionEvent); ok {
 		cId := e.Connection().ID()
 		r.clientFactory.Remove(cId)
 	}
-}
-
-func (r *RepositoryImpl) GetFileContent(
-	ctx context.Context,
-	connId connection_deck.ConnectionID,
-	file *directory.File,
-) (*directory.Content, error) {
-	client, err := r.clientFactory.Get(ctx, connId)
-	if err != nil {
-		return nil, fmt.Errorf("GetFileContent: %w", err)
-	}
-
-	result, err := client.GetObject(ctx, mapFileToKey(file))
-	if err != nil {
-		return nil, err
-	}
-
-	defer result.Body.Close() //nolint:errcheck
-
-	buff := new(bytes.Buffer)
-	if _, err = buff.ReadFrom(result.Body); err != nil {
-		return nil, fmt.Errorf("fail reading the body content: %w", err)
-	}
-
-	rd, w, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
-	defer w.Close() //nolint:errcheck
-	if _, err := w.Write(buff.Bytes()); err != nil {
-		return nil, fmt.Errorf("fail writing the body content: %w", err)
-	}
-
-	content := directory.NewFileContent(file, directory.ContentFromFile(rd))
-
-	return content, nil
 }

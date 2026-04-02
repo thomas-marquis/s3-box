@@ -12,7 +12,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 )
 
-func (r *RepositoryImpl) handleLoadDirectory(e event.Event) {
+func (r *EventHandler) handleLoadDirectory(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.LoadEvent)
 	dir := evt.Directory()
@@ -33,7 +33,7 @@ func (r *RepositoryImpl) handleLoadDirectory(e event.Event) {
 	}
 }
 
-func (r *RepositoryImpl) loadDirectory(ctx context.Context, client s3client.Client, dir *directory.Directory) error {
+func (r *EventHandler) loadDirectory(ctx context.Context, client s3client.Client, dir *directory.Directory) error {
 	searchKey := mapPathToSearchKey(dir.Path())
 
 	files := make([]*directory.File, 0)
@@ -82,7 +82,7 @@ func (r *RepositoryImpl) loadDirectory(ctx context.Context, client s3client.Clie
 	return nil
 }
 
-func (r *RepositoryImpl) handleLoadFile(e event.Event) {
+func (r *EventHandler) handleLoadFile(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.FileLoadEvent)
 	obj, err := r.loadFile(ctx, evt.File(), evt.ConnectionID())
@@ -94,7 +94,7 @@ func (r *RepositoryImpl) handleLoadFile(e event.Event) {
 	r.bus.Publish(directory.NewFileLoadSuccessEvent(evt.File(), obj))
 }
 
-func (r *RepositoryImpl) loadFile(ctx context.Context, file *directory.File, connID connection_deck.ConnectionID) (directory.FileObject, error) {
+func (r *EventHandler) loadFile(ctx context.Context, file *directory.File, connID connection_deck.ConnectionID) (directory.FileContent, error) {
 	client, err := r.clientFactory.Get(ctx, connID)
 	if err != nil {
 		return nil, err

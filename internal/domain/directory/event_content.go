@@ -6,90 +6,100 @@ import (
 )
 
 const (
-	ContentUploadedEventType event.Type = "event.content.uploaded"
-	ContentDownloadEventType event.Type = "event.content.downloaded"
+	FileUploadEventType   event.Type = "event.file.upload"
+	FileDownloadEventType event.Type = "event.file.download"
 )
 
-type withContent struct {
-	content *Content
+type withSrcPath struct {
+	srcPath string
 }
 
-func (e withContent) Content() *Content {
-	return e.content
+func (e withSrcPath) SrcPath() string {
+	return e.srcPath
 }
 
-type ContentUploadedEvent struct {
+type withDstPath struct {
+	dstPath string
+}
+
+func (e withDstPath) DstPath() string {
+	return e.dstPath
+}
+
+type FileUploadEvent struct {
 	event.BaseEvent
-	withContent
 	withDirectory
+	withSrcPath
 }
 
-func NewContentUploadedEvent(directory *Directory, content *Content, opts ...event.Option) ContentUploadedEvent {
-	return ContentUploadedEvent{
-		event.NewBaseEvent(ContentUploadedEventType, opts...),
-		withContent{content},
+func NewFileUploadEvent(directory *Directory, localFilePath string, opts ...event.Option) FileUploadEvent {
+	return FileUploadEvent{
+		event.NewBaseEvent(FileUploadEventType, opts...),
 		withDirectory{directory},
+		withSrcPath{localFilePath},
 	}
 }
 
-type ContentUploadedSuccessEvent struct {
+type FileUploadSuccessEvent struct {
 	event.BaseEvent
 	withFile
 	withDirectory
 }
 
-func NewContentUploadedSuccessEvent(directory *Directory, file *File, opts ...event.Option) ContentUploadedSuccessEvent {
-	return ContentUploadedSuccessEvent{
-		event.NewBaseEvent(ContentUploadedEventType.AsSuccess(), opts...),
+func NewFileUploadSuccessEvent(directory *Directory, file *File, opts ...event.Option) FileUploadSuccessEvent {
+	return FileUploadSuccessEvent{
+		event.NewBaseEvent(FileUploadEventType.AsSuccess(), opts...),
 		withFile{file},
 		withDirectory{directory},
 	}
 }
 
-type ContentUploadedFailureEvent struct {
+type FileUploadFailureEvent struct {
 	event.BaseErrorEvent
 	withDirectory
 }
 
-func NewContentUploadedFailureEvent(err error, dir *Directory) ContentUploadedFailureEvent {
-	return ContentUploadedFailureEvent{
-		event.NewBaseErrorEvent(ContentUploadedEventType.AsFailure(), err),
+func NewFileUploadFailureEvent(err error, dir *Directory) FileUploadFailureEvent {
+	return FileUploadFailureEvent{
+		event.NewBaseErrorEvent(FileUploadEventType.AsFailure(), err),
 		withDirectory{dir},
 	}
 }
 
-type ContentDownloadedEvent struct {
+type FileDownloadEvent struct {
 	event.BaseEvent
-	withContent
 	withConnectionID
+	withDstPath
+	withFile
 }
 
-func NewContentDownloadedEvent(connectionID connection_deck.ConnectionID, content *Content, opts ...event.Option) ContentDownloadedEvent {
-	return ContentDownloadedEvent{
-		event.NewBaseEvent(ContentDownloadEventType, opts...),
-		withContent{content},
+func NewFileDownloadEvent(connectionID connection_deck.ConnectionID, file *File, dstLocalPtah string, opts ...event.Option) FileDownloadEvent {
+	return FileDownloadEvent{
+		event.NewBaseEvent(FileDownloadEventType, opts...),
 		withConnectionID{connectionID},
+		withDstPath{dstLocalPtah},
+		withFile{file},
 	}
 }
 
-type ContentDownloadedSuccessEvent struct {
+type FileDownloadSuccessEvent struct {
 	event.BaseEvent
-	withContent
+	withFile
 }
 
-func NewContentDownloadedSuccessEvent(content *Content, opts ...event.Option) ContentDownloadedSuccessEvent {
-	return ContentDownloadedSuccessEvent{
-		event.NewBaseEvent(ContentDownloadEventType.AsSuccess(), opts...),
-		withContent{content},
+func NewFileDownloadSuccessEvent(file *File, opts ...event.Option) FileDownloadSuccessEvent {
+	return FileDownloadSuccessEvent{
+		event.NewBaseEvent(FileDownloadEventType.AsSuccess(), opts...),
+		withFile{file},
 	}
 }
 
-type ContentDownloadedFailureEvent struct {
+type FileDownloadFailureEvent struct {
 	event.BaseErrorEvent
 }
 
-func NewContentDownloadedFailureEvent(err error) ContentDownloadedFailureEvent {
-	return ContentDownloadedFailureEvent{
-		event.NewBaseErrorEvent(ContentDownloadEventType.AsFailure(), err),
+func NewFileDownloadFailureEvent(err error) FileDownloadFailureEvent {
+	return FileDownloadFailureEvent{
+		event.NewBaseErrorEvent(FileDownloadEventType.AsFailure(), err),
 	}
 }

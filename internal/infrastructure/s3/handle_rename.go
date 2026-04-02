@@ -24,7 +24,7 @@ const (
 	markerDstFileName = ".s3box-rename-dst"
 )
 
-func (r *RepositoryImpl) checkRenamingState(ctx context.Context, client s3client.Client, srcDirKey, dstDirKey string) (bool, error) {
+func (r *EventHandler) checkRenamingState(ctx context.Context, client s3client.Client, srcDirKey, dstDirKey string) (bool, error) {
 	srcMarkerKey := srcDirKey + markerSrcFileName
 	dstMarkerKey := dstDirKey + markerDstFileName
 
@@ -57,7 +57,7 @@ func (r *RepositoryImpl) checkRenamingState(ctx context.Context, client s3client
 	return false, nil
 }
 
-func (r *RepositoryImpl) handleRenameFile(e event.Event) {
+func (r *EventHandler) handleRenameFile(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.FileRenameEvent)
 
@@ -88,7 +88,7 @@ func (r *RepositoryImpl) handleRenameFile(e event.Event) {
 	r.bus.Publish(directory.NewFileRenameSuccessEvent(evt.Directory(), evt.File(), evt.NewName()))
 }
 
-func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
+func (r *EventHandler) handleRenameRequest(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.RenameEvent)
 	dir := evt.Directory()
@@ -143,7 +143,7 @@ func (r *RepositoryImpl) handleRenameRequest(e event.Event) {
 	}
 }
 
-func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
+func (r *EventHandler) handleRenameDirectory(e event.Event) {
 	ctx := e.Context()
 	uve := e.(directory.UserValidationAcceptedEvent)
 
@@ -188,7 +188,7 @@ func (r *RepositoryImpl) handleRenameDirectory(e event.Event) {
 	r.bus.Publish(directory.NewRenameSuccessEvent(dir, newName))
 }
 
-func (r *RepositoryImpl) handleRenameRecovery(evt event.Event) {
+func (r *EventHandler) handleRenameRecovery(evt event.Event) {
 	e := evt.(directory.RenameRecoverEvent)
 	ctx := e.Context()
 
@@ -204,7 +204,7 @@ func (r *RepositoryImpl) handleRenameRecovery(evt event.Event) {
 	}
 }
 
-func (r *RepositoryImpl) handleRenameResuming(ctx context.Context, srcDir, dstDir *directory.Directory, isRollback bool) {
+func (r *EventHandler) handleRenameResuming(ctx context.Context, srcDir, dstDir *directory.Directory, isRollback bool) {
 	srcPath := srcDir.Path()
 	dstPath := dstDir.Path()
 
@@ -264,7 +264,7 @@ func (r *RepositoryImpl) handleRenameResuming(ctx context.Context, srcDir, dstDi
 	r.bus.Publish(directory.NewRenameSuccessEvent(srcDir, newName))
 }
 
-func (r *RepositoryImpl) handleRenameAbort(ctx context.Context, srcDir, dstDir *directory.Directory) {
+func (r *EventHandler) handleRenameAbort(ctx context.Context, srcDir, dstDir *directory.Directory) {
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed aborting rename: %w", err))
 		r.bus.Publish(directory.NewRenameFailureEvent(err, srcDir, dstDir.Name()))
@@ -318,7 +318,7 @@ func (r *RepositoryImpl) handleRenameAbort(ctx context.Context, srcDir, dstDir *
 	}
 }
 
-func (r *RepositoryImpl) renameObjects(
+func (r *EventHandler) renameObjects(
 	ctx context.Context,
 	client s3client.Client,
 	srcPath directory.Path,
@@ -406,7 +406,7 @@ func (r *RepositoryImpl) renameObjects(
 	return deleteRenameMarkers(ctx, client, srcDirKey, dstDirKey, isRollback)
 }
 
-func (r *RepositoryImpl) getPendingRenameErr(ctx context.Context, client s3client.Client, dir *directory.Directory, markerKey string) error {
+func (r *EventHandler) getPendingRenameErr(ctx context.Context, client s3client.Client, dir *directory.Directory, markerKey string) error {
 	m, err := readRenameMarker(ctx, client, markerKey)
 	if err != nil {
 		wErr := fmt.Errorf("error while reading rename marker: %w", err)

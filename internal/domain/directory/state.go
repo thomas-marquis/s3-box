@@ -18,7 +18,7 @@ type state interface {
 	Recover(choice RecoveryChoice) (event.Event, error)
 	Files() []*File
 	SubDirectories() []*Directory
-	UploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error)
+	UploadFile(localPath string, overwrite bool) (FileUploadEvent, error)
 	Rename(newName string) (RenameEvent, error)
 	Notify(event.Event) error
 }
@@ -41,8 +41,8 @@ func (s *baseState) Files() []*File {
 	return make([]*File, 0)
 }
 
-func (s *baseState) UploadFile(string, bool) (ContentUploadedEvent, error) {
-	return ContentUploadedEvent{}, ErrNotLoaded
+func (s *baseState) UploadFile(string, bool) (FileUploadEvent, error) {
+	return FileUploadEvent{}, ErrNotLoaded
 }
 
 func (s *baseState) Rename(string) (RenameEvent, error) {

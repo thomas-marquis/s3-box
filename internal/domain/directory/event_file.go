@@ -129,10 +129,10 @@ func NewFileLoadEvent(connectionID connection_deck.ConnectionID, file *File, opt
 type FileLoadSuccessEvent struct {
 	event.BaseEvent
 	withFile
-	Content FileObject
+	Content FileContent
 }
 
-func NewFileLoadSuccessEvent(file *File, content FileObject) FileLoadSuccessEvent {
+func NewFileLoadSuccessEvent(file *File, content FileContent) FileLoadSuccessEvent {
 	return FileLoadSuccessEvent{
 		event.NewBaseEvent(FileLoadEventType.AsSuccess()),
 		withFile{file},
@@ -199,3 +199,25 @@ func NewFileRenameFailureEvent(err error, dir *Directory, file *File, newName st
 		withDirectory{dir},
 	}
 }
+
+//type FileUploadEvent struct {
+//	event.BaseEvent
+//	withFile
+//	srcPtah string
+//}
+//
+//type FileUploadSuccessEvent struct {
+//	event.BaseEvent
+//	withFile
+//}
+//
+//type FileUploadFailureEvent struct {
+//	event.BaseErrorEvent
+//	withFile
+//}
+//
+//type FileDownloadEvent struct {
+//	event.BaseEvent
+//	withFile
+//	dstPtah string
+//}

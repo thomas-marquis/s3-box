@@ -8,7 +8,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
-func (r *RepositoryImpl) handleCreateFile(evt event.Event) {
+func (r *EventHandler) handleCreateFile(evt event.Event) {
 	ctx := evt.Context()
 
 	e := evt.(directory.FileCreatedEvent)
@@ -31,7 +31,7 @@ func (r *RepositoryImpl) handleCreateFile(evt event.Event) {
 	r.bus.Publish(directory.NewFileCreatedSuccessEvent(e.Directory(), e.File()))
 }
 
-func (r *RepositoryImpl) handleCreateDirectory(e event.Event) {
+func (r *EventHandler) handleCreateDirectory(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.CreatedEvent)
 

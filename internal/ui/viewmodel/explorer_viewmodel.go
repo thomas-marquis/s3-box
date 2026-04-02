@@ -1,7 +1,6 @@
 package viewmodel
 
 import (
-	"context"
 	"errors"
 	"sync"
 
@@ -66,9 +65,6 @@ type ExplorerViewModel interface {
 
 	ReloadDirectory(dir *directory.Directory) error
 
-	// GetFileContent retrieves the content of the specified file, returning a Content object or an error if the operation fails.
-	GetFileContent(f *directory.File) (*directory.Content, error)
-
 	// DownloadFile downloads a file to the specified local destination
 	DownloadFile(f *directory.File, dest string)
 
@@ -107,8 +103,7 @@ type explorerViewModelImpl struct {
 	baseViewModel
 	sync.Mutex
 
-	directoryRepository directory.Repository
-	tree                binding.Tree[node.Node]
+	tree binding.Tree[node.Node]
 
 	selectedConnection    binding.Untyped
 	selectedConnectionVal *connection_deck.Connection
@@ -129,7 +124,6 @@ type explorerViewModelImpl struct {
 }
 
 func NewExplorerViewModel(
-	directoryRepository directory.Repository,
 	settingsVm SettingsViewModel,
 	notifier notification.Repository,
 	initialConnection *connection_deck.Connection,
@@ -141,7 +135,6 @@ func NewExplorerViewModel(
 			infoMessage:  binding.NewString(),
 		},
 		settingsVm:             settingsVm,
-		directoryRepository:    directoryRepository,
 		notifier:               notifier,
 		selectedConnectionVal:  initialConnection,
 		selectedConnection:     binding.NewUntyped(),
@@ -166,16 +159,16 @@ func NewExplorerViewModel(
 			connection_deck.UpdateEventType.AsSuccess(),
 		), v.handleConnectionChange).
 		On(event.IsOneOf(connection_deck.RemoveEventType.AsSuccess()), v.handleConnectionRemoved).
-		On(event.Is(directory.ContentUploadedEventType.AsSuccess()), v.handleFileUploadSuccess).
-		On(event.Is(directory.ContentUploadedEventType.AsFailure()), v.handleFileUploadFailure).
+		On(event.Is(directory.FileUploadEventType.AsSuccess()), v.handleFileUploadSuccess).
+		On(event.Is(directory.FileUploadEventType.AsFailure()), v.handleFileUploadFailure).
 		On(event.Is(directory.FileCreatedEventType.AsSuccess()), v.handleCreateFileSuccess).
 		On(event.Is(directory.FileCreatedEventType.AsFailure()), v.handleCreateFileFailure).
 		On(event.Is(directory.CreatedEventType.AsSuccess()), v.handleCreateDirSuccess).
 		On(event.Is(directory.CreatedEventType.AsFailure()), v.handleCreateDirFailure).
 		On(event.Is(directory.FileDeletedEventType.AsSuccess()), v.handleDeleteFileSuccess).
 		On(event.Is(directory.FileDeletedEventType.AsFailure()), v.handleDeleteFileFailure).
-		On(event.Is(directory.ContentDownloadEventType.AsSuccess()), v.handleDownloadFileSuccess).
-		On(event.Is(directory.ContentDownloadEventType.AsFailure()), v.handleDownloadFileFailure).
+		On(event.Is(directory.FileDownloadEventType.AsSuccess()), v.handleDownloadFileSuccess).
+		On(event.Is(directory.FileDownloadEventType.AsFailure()), v.handleDownloadFileFailure).
 		On(event.Is(directory.LoadEventType.AsSuccess()), v.handleLoadDirSuccess).
 		On(event.Is(directory.LoadEventType.AsFailure()), v.handleLoadDirFailure).
 		On(event.Is(directory.RenameEventType.AsSuccess()), v.handleRenameDirectorySuccess).
@@ -349,45 +342,19 @@ func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
 	v.triggerStateListeners()
 }
 
-func (v *explorerViewModelImpl) GetFileContent(file *directory.File) (*directory.Content, error) {
-	if v.selectedConnectionVal == nil {
-		err := ErrNoConnectionSelected
-		v.notifier.NotifyError(err)
-		return nil, err
-	}
-
-	if file.SizeBytes() > v.settingsVm.CurrentFileSizeLimitBytes() {
-		err := fmt.Errorf("file is too big to GetFileContent")
-		v.notifier.NotifyError(err)
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), v.settingsVm.CurrentTimeout())
-	defer cancel()
-
-	content, err := v.directoryRepository.GetFileContent(ctx, v.selectedConnectionVal.ID(), file)
-	if err != nil {
-		newErr := fmt.Errorf("error getting file content: %w", err)
-		v.notifier.NotifyError(newErr)
-		return nil, newErr
-	}
-
-	return content, nil
-}
-
 func (v *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
 	evt := f.Download(v.selectedConnectionVal.ID(), dest)
 	v.bus.Publish(evt)
 }
 
 func (v *explorerViewModelImpl) handleDownloadFileSuccess(evt event.Event) {
-	e := evt.(directory.ContentDownloadedSuccessEvent)
+	e := evt.(directory.FileDownloadSuccessEvent)
 	v.infoMessage.Set( //nolint:errcheck
-		fmt.Sprintf("File %s downloaded", e.Content().File().Name()))
+		fmt.Sprintf("File %s downloaded", e.File().Name()))
 }
 
 func (v *explorerViewModelImpl) handleDownloadFileFailure(evt event.Event) {
-	e := evt.(directory.ContentDownloadedFailureEvent)
+	e := evt.(directory.FileDownloadFailureEvent)
 	err := fmt.Errorf("error downloading file: %w", e.Error())
 	v.notifier.NotifyError(err)
 	v.errorMessage.Set(err.Error()) //nolint:errcheck
@@ -397,7 +364,7 @@ func (v *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Dire
 	if v.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
-		v.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
+		v.bus.Publish(directory.NewFileUploadFailureEvent(err, dir))
 		return nil
 	}
 
@@ -408,7 +375,7 @@ func (v *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Dire
 		}
 		err := fmt.Errorf("error uploading file: %w", err)
 		v.notifier.NotifyError(err)
-		v.bus.Publish(directory.NewContentUploadedFailureEvent(err, dir))
+		v.bus.Publish(directory.NewFileUploadFailureEvent(err, dir))
 		return nil
 	}
 	v.bus.Publish(evt)
@@ -416,9 +383,9 @@ func (v *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Dire
 }
 
 func (v *explorerViewModelImpl) handleFileUploadSuccess(evt event.Event) {
-	e := evt.(directory.ContentUploadedSuccessEvent)
+	e := evt.(directory.FileUploadSuccessEvent)
 	if err := v.addNewFileToTree(e.File()); err != nil {
-		v.bus.Publish(directory.NewContentUploadedFailureEvent(err, e.Directory()))
+		v.bus.Publish(directory.NewFileUploadFailureEvent(err, e.Directory()))
 		return
 	}
 	if err := e.Directory().Notify(e); err != nil {
@@ -430,7 +397,7 @@ func (v *explorerViewModelImpl) handleFileUploadSuccess(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
-	e := evt.(directory.ContentUploadedFailureEvent)
+	e := evt.(directory.FileUploadFailureEvent)
 	err := fmt.Errorf("error uploading file: %w", e.Error())
 	if notifErr := e.Directory().Notify(e); notifErr != nil {
 		err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)

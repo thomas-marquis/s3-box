@@ -2,19 +2,20 @@ package s3
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
-	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 )
 
-func (r *RepositoryImpl) handleUploadFile(e event.Event) {
+func (r *EventHandler) handleUploadFile(e event.Event) {
 	ctx := e.Context()
-	evt := e.(directory.ContentUploadedEvent)
+	evt := e.(directory.FileUploadEvent)
 
 	handleError := func(err error) {
 		r.notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
-		r.bus.Publish(directory.NewContentUploadedFailureEvent(err, evt.Directory()))
+		r.bus.Publish(directory.NewFileUploadFailureEvent(err, evt.Directory()))
 	}
 
 	client, err := r.clientFactory.Get(ctx, evt.Directory().ConnectionID())
@@ -23,20 +24,14 @@ func (r *RepositoryImpl) handleUploadFile(e event.Event) {
 		return
 	}
 
-	content := evt.Content()
-	if content == nil {
-		handleError(fmt.Errorf("content is nil for upload event"))
-		return
-	}
-
-	fileObj, err := content.Open()
+	localFile, err := os.Open(evt.SrcPath())
 	if err != nil {
 		handleError(err)
 		return
 	}
-	defer fileObj.Close() //nolint:errcheck
+	defer localFile.Close() //nolint:errcheck
 
-	info, err := fileObj.Stat()
+	info, err := localFile.Stat()
 	if err != nil {
 		handleError(fmt.Errorf("failed reading the file info: %w", err))
 		return
@@ -46,19 +41,19 @@ func (r *RepositoryImpl) handleUploadFile(e event.Event) {
 		return
 	}
 
-	if err := client.PutObject(ctx, mapFileToKey(content.File()), fileObj, s3client.WithContentLength(info.Size())); err != nil {
+	fileName := filepath.Base(evt.SrcPath())
+	newFile, err := directory.NewFile(fileName, evt.Directory(),
+		directory.WithFileSize(int(info.Size())),
+		directory.WithFileLastModified(info.ModTime()))
+	if err != nil {
 		handleError(err)
 		return
 	}
 
-	uploadedFile, err := directory.NewFile(
-		content.File().Name().String(), evt.Directory(),
-		directory.WithFileSize(int(info.Size())),
-		directory.WithFileLastModified(info.ModTime()))
-	if err != nil {
-		handleError(fmt.Errorf("failed creating uploaded file: %w", err))
+	if err := client.Upload(ctx, mapFileToKey(newFile), localFile); err != nil {
+		handleError(fmt.Errorf("failed uploading file: %w", err))
 		return
 	}
 
-	r.bus.Publish(directory.NewContentUploadedSuccessEvent(evt.Directory(), uploadedFile))
+	r.bus.Publish(directory.NewFileUploadSuccessEvent(evt.Directory(), newFile))
 }

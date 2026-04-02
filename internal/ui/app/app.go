@@ -60,7 +60,6 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		},
 	}
 
-	sugarLog := logger.Sugar()
 	a := fyne_app.NewWithID(appId)
 	a.Settings().SetTheme(apptheme.GetDefaultByVariant(a.Settings().ThemeVariant()))
 	a.SetIcon(resources.NewAppLogo())
@@ -78,15 +77,11 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 
 	settingsRepository := infrastructure.NewSettingsRepository(a.Preferences())
 
-	directoryRepository, err := s3.NewRepositoryImpl(
+	s3.NewS3EventHandler(
 		connectionsRepository,
 		eventBus,
 		notifier,
-	)
-	if err != nil {
-		sugarLog.Error("Error creating directory repository", err)
-		return nil, err
-	}
+	).Listen()
 
 	settingsViewModel := viewmodel.NewSettingsViewModel(settingsRepository, fyneSettings, notifier)
 	connectionViewModel := viewmodel.NewConnectionViewModel(
@@ -96,7 +91,6 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		eventBus,
 	)
 	explorerViewModel := viewmodel.NewExplorerViewModel(
-		directoryRepository,
 		settingsViewModel,
 		notifier,
 		connectionViewModel.Deck().SelectedConnection(),

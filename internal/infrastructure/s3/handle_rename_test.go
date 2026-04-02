@@ -59,7 +59,7 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 			})).
 			Times(1)
 
-		repo, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		repo, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 		_ = repo
 
@@ -118,7 +118,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -177,7 +177,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -242,7 +242,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -301,7 +301,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -354,7 +354,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo,
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo,
 			func(o *awsS3.Options) {
 				o.Interceptors.AddBeforeTransmit(&fakeErrorInterceptor{
 					CopyErrorForKeys: []string{
@@ -430,7 +430,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -476,7 +476,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -515,7 +515,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			}).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo, func(opt *awsS3.Options) {
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo, func(opt *awsS3.Options) {
 			opt.Interceptors.AddAfterExecution(&fakeGetObjectAclErrorInterceptor{})
 		})
 		require.NoError(t, err)
@@ -586,7 +586,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -659,7 +659,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When
@@ -753,7 +753,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 			close(done)
 		}()
 
-		_, err := s3.NewRepositoryImpl(mockConnRepo, mockBus, mockNotifRepo)
+		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
 		require.NoError(t, err)
 
 		// When

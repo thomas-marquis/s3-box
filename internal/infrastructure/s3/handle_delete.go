@@ -7,7 +7,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
-func (r *RepositoryImpl) handleDeleteFile(evt event.Event) {
+func (r *EventHandler) handleDeleteFile(evt event.Event) {
 	ctx := evt.Context()
 	e := evt.(directory.FileDeletedEvent)
 
@@ -38,7 +38,7 @@ func (r *RepositoryImpl) handleDeleteFile(evt event.Event) {
 	r.bus.Publish(directory.NewFileDeletedSuccessEvent(e.Parent(), e.File()))
 }
 
-func (r *RepositoryImpl) handleDeleteDirectory(_ event.Event) {
+func (r *EventHandler) handleDeleteDirectory(_ event.Event) {
 	err := fmt.Errorf("deleting directories is not yet implemented")
 	r.notifier.NotifyError(err)
 	r.bus.Publish(directory.NewDeletedFailureEvent(err))

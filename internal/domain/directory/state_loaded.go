@@ -3,6 +3,7 @@ package directory
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
@@ -38,8 +39,17 @@ func (s *loadedState) Load() (LoadEvent, error) {
 	return NewLoadEvent(s.d), nil
 }
 
-func (s *loadedState) UploadFile(localPtah string, overwrite bool) (ContentUploadedEvent, error) {
-	return s.d.uploadFile(localPtah, overwrite)
+func (s *loadedState) UploadFile(localPath string, overwrite bool) (FileUploadEvent, error) {
+	fileName := filepath.Base(localPath)
+	if s.d.IsFileExists(FileName(fileName)) {
+		return FileUploadEvent{}, errors.Join(
+			ErrAlreadyExists,
+			fmt.Errorf("file %s already exists in directory %s", fileName, s.d.path))
+	}
+
+	uploadedEvt := NewFileUploadEvent(s.d, localPath)
+
+	return uploadedEvt, nil
 }
 
 func (s *loadedState) Rename(newName string) (RenameEvent, error) {
@@ -101,7 +111,7 @@ func (s *loadedState) Notify(evt event.Event) error {
 	case CreatedSuccessEvent:
 		s.subDirs = append(s.subDirs, e.Directory())
 
-	case ContentUploadedSuccessEvent:
+	case FileUploadSuccessEvent:
 		f := e.File()
 		if !s.updateFile(f) {
 			s.files = append(s.files, f)

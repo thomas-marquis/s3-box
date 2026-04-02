@@ -230,7 +230,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		uploadFileEvt, err := dir.UploadFile("project/src/main.go", false)
 		assert.NoError(t, err)
 
-		uploadedSuccessFileEvt := directory.NewContentUploadedSuccessEvent(dir, uploadFileEvt.Content().File())
+		uploadedSuccessFileEvt := directory.NewFileUploadSuccessEvent(dir, uploadFileEvt.Content().File())
 		assert.NoError(t, dir.Notify(uploadedSuccessFileEvt))
 
 		assert.Len(t, dir.Files(), 1)
@@ -373,12 +373,12 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.ContentUploadedEventType, evt.Type())
+		assert.Equal(t, directory.FileUploadEventType, evt.Type())
 		assert.Equal(t, dir, evt.Directory())
 		assert.Equal(t, "report.csv", evt.Content().File().Name().String())
 
 		file, _ := directory.NewFile("report.csv", dir)
-		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
+		successEvt := directory.NewFileUploadSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
 		files := dir.Files()
@@ -408,12 +408,12 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.ContentUploadedEventType, evt.Type())
+		assert.Equal(t, directory.FileUploadEventType, evt.Type())
 		assert.Equal(t, dir, evt.Directory())
 		assert.Equal(t, "report.csv", evt.Content().File().Name().String())
 
 		file, _ := directory.NewFile("report.csv", dir)
-		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
+		successEvt := directory.NewFileUploadSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
 		resFiles := dir.Files()
@@ -440,7 +440,7 @@ func TestDirectory_UploadFile(t *testing.T) {
 		assert.NoError(t, err)
 
 		file, _ := directory.NewFile("report.csv", dir, directory.WithFileSize(1337))
-		successEvt := directory.NewContentUploadedSuccessEvent(dir, file)
+		successEvt := directory.NewFileUploadSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
 		assert.Equal(t, "report.csv", evt.Content().File().Name().String())

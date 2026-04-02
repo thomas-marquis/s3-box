@@ -3,7 +3,6 @@ package directory
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
@@ -192,7 +191,7 @@ func (d *Directory) Rename(newName string) (RenameEvent, error) {
 	return d.currentState.Rename(newName)
 }
 
-func (d *Directory) UploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error) {
+func (d *Directory) UploadFile(localPath string, overwrite bool) (FileUploadEvent, error) {
 	return d.currentState.UploadFile(localPath, overwrite)
 }
 
@@ -298,19 +297,6 @@ func (d *Directory) Status() Status {
 
 func (d *Directory) setState(state state) {
 	d.currentState = state
-}
-
-func (d *Directory) uploadFile(localPath string, overwrite bool) (ContentUploadedEvent, error) {
-	fileName := filepath.Base(localPath)
-	newFileEvt, err := d.NewFile(fileName, overwrite)
-	if err != nil {
-		return ContentUploadedEvent{}, err
-	}
-	newFile := newFileEvt.File()
-
-	uploadedEvt := NewContentUploadedEvent(d, NewFileContent(newFile, FromLocalFile(localPath)))
-
-	return uploadedEvt, nil
 }
 
 func (d *Directory) updatePath(newParentPath Path) {

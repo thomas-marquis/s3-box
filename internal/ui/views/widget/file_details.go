@@ -34,7 +34,6 @@ type FileDetails struct {
 	fileIcon  *widget.FileIcon
 
 	downloadAction *ToolbarButton
-	previewAction  *ToolbarButton
 	deleteAction   *ToolbarButton
 	editAction     *ToolbarButton
 	renameAction   *ToolbarButton
@@ -61,7 +60,6 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		lastModifiedBinding: binding.NewString(),
 
 		downloadAction: NewToolbarButton("Download", theme.DownloadIcon(), func() {}),
-		previewAction:  NewToolbarButton("Preview", theme.VisibilityIcon(), func() {}),
 		deleteAction:   NewToolbarButton("Delete", theme.DeleteIcon(), func() {}),
 		editAction:     NewToolbarButton("Edit", theme.DocumentCreateIcon(), func() {}),
 		renameAction:   NewToolbarButton("Rename", theme.FileTextIcon(), func() {}),
@@ -71,7 +69,6 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 
 	w.actionToolbar = widget.NewToolbar(
 		w.downloadAction,
-		w.previewAction,
 		w.editAction,
 		w.renameAction,
 		w.deleteAction,
@@ -150,10 +147,8 @@ func (w *FileDetails) Select(file *directory.File) {
 
 	w.appCtx.SettingsViewModel().FileSizeLimitKB().AddListener(binding.NewDataListener(func() {
 		if file.SizeBytes() > w.appCtx.SettingsViewModel().CurrentFileSizeLimitBytes() {
-			w.previewAction.Disable()
 			w.editAction.Disable()
 		} else {
-			w.previewAction.Enable()
 			if w.appCtx.ConnectionViewModel().IsReadOnly() {
 				w.editAction.Disable()
 			} else {
@@ -161,17 +156,6 @@ func (w *FileDetails) Select(file *directory.File) {
 			}
 		}
 	}))
-
-	w.previewAction.SetOnTapped(func() {
-		viewerDialog := dialog.NewCustom(
-			file.Name().String(),
-			"Close",
-			NewFileViewer(w.appCtx, file),
-			w.appCtx.Window(),
-		)
-		viewerDialog.Resize(fyne.NewSize(700, 500))
-		viewerDialog.Show()
-	})
 
 	w.editAction.SetOnTapped(func() {
 		ctx, cancel := context.WithCancel(context.Background())
