@@ -27,11 +27,12 @@ type DirectoryDetails struct {
 
 	toolbar            *widget.Toolbar
 	newDirectoryAction *ToolbarButton
-	uploadAction       *ToolbarButton
 	createFileAction   *ToolbarButton
 	renameAction       *ToolbarButton
 	reloadAction       *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
+
+	dropZone *DropZone
 }
 
 func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
@@ -44,13 +45,11 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	reloadAction := NewToolbarButton("Reload", theme.ViewRefreshIcon(), func() {})
 	createDirAction := NewToolbarButton("New empty directory", theme.FolderNewIcon(), func() {})
 	createFileAction := NewToolbarButton("New empty file", theme.ContentAddIcon(), func() {})
-	uploadAction := NewToolbarButton("Upload file", theme.UploadIcon(), func() {})
 	renameAction := NewToolbarButton("Rename", theme.FileTextIcon(), func() {})
 	toolbar := widget.NewToolbar(
 		reloadAction,
 		createDirAction,
 		createFileAction,
-		uploadAction,
 		renameAction,
 	)
 	loadingBar := widget.NewProgressBarInfinite()
@@ -61,12 +60,12 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 		pathLabel:          pathLabel,
 		toolbar:            toolbar,
 		newDirectoryAction: createDirAction,
-		uploadAction:       uploadAction,
 		createFileAction:   createFileAction,
 		renameAction:       renameAction,
 		reloadAction:       reloadAction,
 		loadingBar:         loadingBar,
 		renameErrContent:   newRenameFailedPanel(appCtx.Window()),
+		dropZone:           NewDropZone("Drop files here to upload", appCtx.Window()),
 	}
 	w.ExtendBaseWidget(w)
 
@@ -95,32 +94,31 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 		fyne.CurrentApp().Clipboard().SetContent(sd.Path().String())
 	})
 
-	content := container.NewVBox(
-		w.renameErrContent,
-	)
-
-	return widget.NewSimpleRenderer(container.NewVBox(
-		w.loadingBar,
-		container.NewBorder(nil, nil,
-			container.NewHBox(
-				widget.NewIcon(theme.FolderIcon()),
-				w.pathLabel,
+	return widget.NewSimpleRenderer(
+		container.NewVBox(
+			w.loadingBar,
+			container.NewBorder(nil, nil,
+				container.NewHBox(
+					widget.NewIcon(theme.FolderIcon()),
+					w.pathLabel,
+				),
+				copyPath),
+			container.New(
+				layout.NewCustomPaddedLayout(10, 20, 0, 0),
+				widget.NewSeparator(),
 			),
-			copyPath),
-		container.New(
-			layout.NewCustomPaddedLayout(10, 20, 0, 0),
-			widget.NewSeparator(),
+			container.New(
+				layout.NewCustomPaddedLayout(0, 0, 5, 5),
+				w.toolbar,
+			),
+			container.New(
+				layout.NewCustomPaddedLayout(10, 20, 0, 0),
+				widget.NewSeparator(),
+			),
+			w.renameErrContent,
+			w.dropZone,
 		),
-		container.New(
-			layout.NewCustomPaddedLayout(0, 0, 5, 5),
-			w.toolbar,
-		),
-		container.New(
-			layout.NewCustomPaddedLayout(10, 20, 0, 0),
-			widget.NewSeparator(),
-		),
-		content,
-	))
+	)
 }
 
 func (w *DirectoryDetails) Select(dir *directory.Directory) {
@@ -147,7 +145,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	}
 	w.pathLabel.SetText(path)
 
-	w.uploadAction.SetOnTapped(w.makeOnUpload(vm, dir))
 	w.newDirectoryAction.SetOnTapped(w.makeOnCreateDirectory(vm, dir))
 	w.createFileAction.SetOnTapped(w.makeOnCreateFile(vm, dir))
 	w.renameAction.SetOnTapped(w.makeOnRename(vm, dir))
@@ -186,19 +183,31 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 
 	if w.appCtx.ConnectionViewModel().IsReadOnly() || !dir.IsLoaded() || dir.HasError() {
 		w.newDirectoryAction.Disable()
-		w.uploadAction.Disable()
 		w.createFileAction.Disable()
 		w.renameAction.Disable()
 		w.reloadAction.Disable()
+		w.dropZone.Hide()
 	} else {
 		w.newDirectoryAction.Enable()
-		w.uploadAction.Enable()
 		w.createFileAction.Enable()
+		w.dropZone.Show()
 	}
+
+	w.dropZone.Reset()
+	w.dropZone.OnFilesDropped = func(uris []fyne.URI) {
+		w.dropZone.Text = fmt.Sprintf("Uploading %d files...", len(uris))
+		dialog.ShowInformation("Drop files",
+			fmt.Sprintf("Dropped %d files in directory %s", len(uris), dir.Name()),
+			w.appCtx.Window())
+	}
+	w.dropZone.OnClick = w.makeOnUpload(vm, dir)
 }
 
-func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
-	return func() {
+func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func(bool) {
+	return func(dropped bool) {
+		if dropped {
+			return
+		}
 		selectDialog := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 			if err != nil {
 				dialog.ShowError(err, w.appCtx.Window())

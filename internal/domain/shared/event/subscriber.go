@@ -1,6 +1,10 @@
 package event
 
+import "sync"
+
 type Subscriber struct {
+	sync.RWMutex
+
 	registered map[Matcher]func(Event)
 	events     <-chan Event
 	started    bool
@@ -15,6 +19,8 @@ func (s *Subscriber) On(matcher Matcher, callback func(Event)) *Subscriber {
 		panic("cannot register callback after listening started")
 	}
 
+	s.Lock()
+	defer s.Unlock()
 	if _, exists := s.registered[matcher]; exists {
 		return s
 	}
@@ -25,11 +31,15 @@ func (s *Subscriber) On(matcher Matcher, callback func(Event)) *Subscriber {
 
 func (s *Subscriber) listen() {
 	for event := range s.events {
+		s.RLock()
 		for matcher, callback := range s.registered {
+			s.RUnlock()
 			if matcher.Match(event) {
 				callback(event)
 			}
+			s.RLock()
 		}
+		s.RUnlock()
 	}
 }
 
@@ -44,16 +54,22 @@ func (s *Subscriber) ListenNonBlocking() {
 	s.started = true
 	go func() {
 		for event := range s.events {
+			s.RLock()
 			for matcher, callback := range s.registered {
+				s.RUnlock()
 				if matcher.Match(event) {
 					go callback(event)
 				}
+				s.RLock()
 			}
+			s.RUnlock()
 		}
 	}()
 }
 
 func (s *Subscriber) Accept(event Event) bool {
+	s.RLock()
+	defer s.RUnlock()
 	for matcher := range s.registered {
 		if matcher.Match(event) {
 			return true
