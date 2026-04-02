@@ -50,8 +50,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		mydir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
 		file, err := directory.NewFile("file_in_dir.txt", mydir)
@@ -96,8 +95,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 			})).
 			Times(1)
 
-		_, err := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
-		require.NoError(t, err)
+		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		mydir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
 		file, err := directory.NewFile("missing.txt", mydir)

@@ -41,7 +41,7 @@ func (s *loadedState) Load() (LoadEvent, error) {
 
 func (s *loadedState) UploadFile(localPath string, overwrite bool) (FileUploadEvent, error) {
 	fileName := filepath.Base(localPath)
-	if s.d.IsFileExists(FileName(fileName)) {
+	if !overwrite && s.d.IsFileExists(FileName(fileName)) {
 		return FileUploadEvent{}, errors.Join(
 			ErrAlreadyExists,
 			fmt.Errorf("file %s already exists in directory %s", fileName, s.d.path))
