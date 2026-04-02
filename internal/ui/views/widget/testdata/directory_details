@@ -1,8 +1,8 @@
-<canvas padded size="667x158">
+<canvas padded size="548x154">
 	<content>
-		<widget pos="4,4" size="659x150" type="*widget.DirectoryDetails">
-			<container size="659x150">
-				<container size="659x36">
+		<widget pos="4,4" size="540x146" type="*widget.DirectoryDetails">
+			<container size="540x146">
+				<container size="540x36">
 					<container size="45x36">
 						<widget size="20x36" type="*widget.Icon">
 							<image fillMode="contain" rsc="folderIcon" size="20x36" themed="foreground"/>
@@ -15,19 +15,19 @@
 							</widget>
 						</widget>
 					</container>
-					<widget pos="623,0" size="36x36" type="*widget.Button">
+					<widget pos="504,0" size="36x36" type="*widget.Button">
 						<rectangle fillColor="button" radius="4" size="36x36"/>
 						<rectangle size="36x36"/>
 						<image fillMode="contain" pos="8,8" rsc="contentCopyIcon" size="iconInlineSize" themed="foreground"/>
 					</widget>
 				</container>
-				<container pos="0,40" size="659x31">
-					<widget pos="0,10" size="659x1" type="*widget.Separator">
-						<rectangle fillColor="separator" size="659x1"/>
+				<container pos="0,40" size="540x31">
+					<widget pos="0,10" size="540x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="540x1"/>
 					</widget>
 				</container>
-				<container pos="0,75" size="659x36">
-					<widget pos="5,0" size="649x36" type="*widget.Toolbar">
+				<container pos="0,75" size="540x36">
+					<widget pos="5,0" size="530x36" type="*widget.Toolbar">
 						<widget size="87x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="87x36"/>
 							<rectangle size="87x36"/>
@@ -52,15 +52,7 @@
 							</widget>
 							<image fillMode="contain" pos="8,8" rsc="contentAddIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
-						<widget pos="432,0" size="115x36" type="*widget.Button">
-							<rectangle fillColor="disabled button" radius="4" size="115x36"/>
-							<rectangle size="115x36"/>
-							<widget pos="32,8" size="75x20" type="*widget.RichText">
-								<text alignment="center" bold color="disabled" size="75x19">Upload file</text>
-							</widget>
-							<image fillMode="contain" pos="8,8" rsc="upload.svg" size="iconInlineSize" themed="disabled"/>
-						</widget>
-						<widget pos="552,0" size="97x36" type="*widget.Button">
+						<widget pos="432,0" size="97x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="97x36"/>
 							<rectangle size="97x36"/>
 							<widget pos="32,8" size="57x20" type="*widget.RichText">
@@ -70,12 +62,10 @@
 						</widget>
 					</widget>
 				</container>
-				<container pos="0,115" size="659x31">
-					<widget pos="0,10" size="659x1" type="*widget.Separator">
-						<rectangle fillColor="separator" size="659x1"/>
+				<container pos="0,115" size="540x31">
+					<widget pos="0,10" size="540x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="540x1"/>
 					</widget>
-				</container>
-				<container pos="0,150" size="659x0">
 				</container>
 			</container>
 		</widget>
