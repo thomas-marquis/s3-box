@@ -199,6 +199,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		dialog.ShowInformation("Drop files",
 			fmt.Sprintf("Dropped %d files in directory %s", len(uris), dir.Name()),
 			w.appCtx.Window())
+		// TODO: implement uploading here
 	}
 	w.dropZone.OnClick = w.makeOnUpload(vm, dir)
 }
