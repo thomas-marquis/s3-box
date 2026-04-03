@@ -16,284 +16,222 @@ const (
 	UserValidationRefusedEventType  event.Type = "event.directory.user.validation.refused"
 )
 
-type withDirectory struct {
-	directory *Directory
-}
-
-func (e withDirectory) Directory() *Directory {
-	return e.directory
-}
-
-type withParentDirectory struct {
-	parent *Directory
-}
-
-func (e withParentDirectory) Parent() *Directory {
-	return e.parent
-}
-
 type CreatedEvent struct {
 	event.BaseEvent
-	withParentDirectory
-	withDirectory
-}
-
-func NewCreatedEvent(parent *Directory, newDir *Directory, opts ...event.Option) CreatedEvent {
-	return CreatedEvent{
-		event.NewBaseEvent(CreatedEventType, opts...),
-		withParentDirectory{parent},
-		withDirectory{newDir},
-	}
+	ParentDirectory *Directory
+	Directory       *Directory
 }
 
 // CreatedSuccessEvent represents an event triggered when a directory creation process completes successfully.
 // It contains the reference of the new directory created
 type CreatedSuccessEvent struct {
 	event.BaseEvent
-	withParentDirectory
-	withDirectory
-}
-
-func NewCreatedSuccessEvent(parent *Directory, newDire *Directory, opts ...event.Option) CreatedSuccessEvent {
-	return CreatedSuccessEvent{
-		event.NewBaseEvent(CreatedEventType.AsSuccess(), opts...),
-		withParentDirectory{parent},
-		withDirectory{newDire},
-	}
+	ParentDirectory *Directory
+	Directory       *Directory
 }
 
 type CreatedFailureEvent struct {
-	event.BaseErrorEvent
-	withParentDirectory
+	event.BaseFailureEvent
+	ParentDirectory *Directory
 }
 
-func NewCreatedFailureEvent(err error, parent *Directory) CreatedFailureEvent {
+func NewCreatedEvent(parent *Directory, newDir *Directory, opts ...event.Option) CreatedEvent {
+	return CreatedEvent{
+		event.NewBaseEvent(CreatedEventType, opts...),
+		parent,
+		newDir,
+	}
+}
+
+func (e CreatedEvent) NewSuccessEvent(opts ...event.Option) CreatedSuccessEvent {
+	return CreatedSuccessEvent{
+		e.NewBaseSuccess(opts...),
+		e.ParentDirectory,
+		e.Directory,
+	}
+}
+
+func (e CreatedEvent) NewFailureEvent(err error) CreatedFailureEvent {
 	return CreatedFailureEvent{
-		event.NewBaseErrorEvent(CreatedEventType.AsFailure(), err),
-		withParentDirectory{parent},
+		e.NewBaseFailure(err),
+		e.ParentDirectory,
 	}
 }
 
 type DeletedEvent struct {
 	event.BaseEvent
-	withDirectory
-	deletedDirPath Path
+	Directory      *Directory
+	DeletedDirPath Path
+}
+
+type DeletedSuccessEvent struct {
+	event.BaseEvent
+	Directory *Directory
+}
+
+type DeletedFailureEvent struct {
+	event.BaseFailureEvent
 }
 
 func NewDeletedEvent(directory *Directory, deletedDirPath Path, opts ...event.Option) DeletedEvent {
 	return DeletedEvent{
 		event.NewBaseEvent(DeletedEventType, opts...),
-		withDirectory{directory},
+		directory,
 		deletedDirPath,
 	}
-}
-
-func (e DeletedEvent) DeletedDirPath() Path {
-	return e.deletedDirPath
-}
-
-type DeletedSuccessEvent struct {
-	event.BaseEvent
-	withDirectory
 }
 
 func NewDeletedSuccessEvent(directory *Directory, opts ...event.Option) DeletedSuccessEvent {
 	return DeletedSuccessEvent{
 		event.NewBaseEvent(DeletedEventType.AsSuccess(), opts...),
-		withDirectory{directory},
+		directory,
 	}
-}
-
-type DeletedFailureEvent struct {
-	event.BaseErrorEvent
 }
 
 func NewDeletedFailureEvent(err error) DeletedFailureEvent {
 	return DeletedFailureEvent{
-		event.NewBaseErrorEvent(DeletedEventType.AsFailure(), err),
+		event.NewBaseFailureEvent(DeletedEventType.AsFailure(), err),
 	}
 }
 
 type LoadEvent struct {
 	event.BaseEvent
-	withDirectory
+	Directory *Directory
 }
 
 func NewLoadEvent(directory *Directory, opts ...event.Option) LoadEvent {
 	return LoadEvent{
 		event.NewBaseEvent(LoadEventType, opts...),
-		withDirectory{directory},
+		directory,
 	}
-}
-
-type withDirContent struct {
-	files   []*File
-	subDirs []*Directory
-}
-
-func (e withDirContent) Files() []*File {
-	return e.files
-}
-
-func (e withDirContent) SubDirectories() []*Directory {
-	return e.subDirs
 }
 
 type LoadSuccessEvent struct {
 	event.BaseEvent
-	withDirectory
-	withDirContent
+	Directory      *Directory
+	Files          []*File
+	SubDirectories []*Directory
 }
 
 func NewLoadSuccessEvent(directory *Directory, subDirs []*Directory, files []*File) LoadSuccessEvent {
 	return LoadSuccessEvent{
 		event.NewBaseEvent(LoadEventType.AsSuccess()),
-		withDirectory{directory},
-		withDirContent{
-			files,
-			subDirs,
-		},
+		directory,
+		files,
+		subDirs,
 	}
 }
 
 type LoadFailureEvent struct {
-	event.BaseErrorEvent
-	withDirectory
+	event.BaseFailureEvent
+	Directory *Directory
 }
 
 func NewLoadFailureEvent(err error, dir *Directory) LoadFailureEvent {
 	return LoadFailureEvent{
-		event.NewBaseErrorEvent(LoadEventType.AsFailure(), err),
-		withDirectory{dir},
+		event.NewBaseFailureEvent(LoadEventType.AsFailure(), err),
+		dir,
 	}
-}
-
-type withNewName struct {
-	newName string
-}
-
-func (e withNewName) NewName() string {
-	return e.newName
 }
 
 type RenameEvent struct {
 	event.BaseEvent
-	withDirectory
-	withNewName
+	Directory *Directory
+	NewName   string
 }
 
 func NewRenameEvent(directory *Directory, newName string, opts ...event.Option) RenameEvent {
 	return RenameEvent{
 		event.NewBaseEvent(RenameEventType, opts...),
-		withDirectory{directory},
-		withNewName{newName},
+		directory,
+		newName,
 	}
 }
 
 type RenameSuccessEvent struct {
 	event.BaseEvent
-	withDirectory
-	withNewName
+	Directory *Directory
+	NewName   string
 }
 
 func NewRenameSuccessEvent(directory *Directory, newName string, opts ...event.Option) RenameSuccessEvent {
 	return RenameSuccessEvent{
 		event.NewBaseEvent(RenameEventType.AsSuccess(), opts...),
-		withDirectory{directory},
-		withNewName{newName},
+		directory,
+		newName,
 	}
 }
 
 type RenameFailureEvent struct {
-	event.BaseErrorEvent
-	withDirectory
-	withNewName
+	event.BaseFailureEvent
+	Directory *Directory
+	NewName   string
 }
 
 func NewRenameFailureEvent(err error, directory *Directory, newName string) RenameFailureEvent {
 	return RenameFailureEvent{
-		event.NewBaseErrorEvent(RenameEventType.AsFailure(), err),
-		withDirectory{directory},
-		withNewName{newName},
+		event.NewBaseFailureEvent(RenameEventType.AsFailure(), err),
+		directory,
+		newName,
 	}
-}
-
-type withReason struct {
-	reason event.Event
-}
-
-func (e withReason) Reason() event.Event {
-	return e.reason
 }
 
 type RenameRecoverEvent struct {
 	event.BaseEvent
-	withDirectory
-	dstDir *Directory
-	choice RecoveryChoice
+	Directory *Directory
+	DstDir    *Directory
+	Choice    RecoveryChoice
 }
 
 func NewRenameRecoverEvent(srcDir *Directory, dstDir *Directory, choice RecoveryChoice, opts ...event.Option) RenameRecoverEvent {
 	return RenameRecoverEvent{
 		event.NewBaseEvent(RenameRecoverEventType, opts...),
-		withDirectory{srcDir},
+		srcDir,
 		dstDir,
 		choice,
 	}
 }
 
-func (e RenameRecoverEvent) DstDir() *Directory {
-	return e.dstDir
-}
-
-func (e RenameRecoverEvent) Choice() RecoveryChoice {
-	return e.choice
-}
-
 type UserValidationEvent struct {
 	event.BaseEvent
-	withDirectory
-	withReason
-	message string
+	Directory *Directory
+	Reason    event.Event
+	Message   string
 }
 
 func NewUserValidationEvent(directory *Directory, reason event.Event, msg string, opts ...event.Option) UserValidationEvent {
 	return UserValidationEvent{
 		event.NewBaseEvent(UserValidationEventType, opts...),
-		withDirectory{directory},
-		withReason{reason},
+		directory,
+		reason,
 		msg,
 	}
 }
 
-func (e UserValidationEvent) Message() string {
-	return e.message
-}
-
 type UserValidationAcceptedEvent struct {
 	event.BaseEvent
-	withDirectory
-	withReason
+	Directory *Directory
+	Reason    event.Event
 }
 
 func NewUserValidationAcceptedEvent(directory *Directory, reason event.Event, opts ...event.Option) UserValidationAcceptedEvent {
 	return UserValidationAcceptedEvent{
 		event.NewBaseEvent(UserValidationAcceptedEventType, opts...),
-		withDirectory{directory},
-		withReason{reason},
+		directory,
+		reason,
 	}
 }
 
 type UserValidationRefusedEvent struct {
 	event.BaseEvent
-	withDirectory
-	withReason
+	Directory *Directory
+	Reason    event.Event
 }
 
 func NewUserValidationRefusedEvent(directory *Directory, reason event.Event, opts ...event.Option) UserValidationRefusedEvent {
 	return UserValidationRefusedEvent{
 		event.NewBaseEvent(UserValidationRefusedEventType, opts...),
-		withDirectory{directory},
-		withReason{reason},
+		directory,
+		reason,
 	}
 }

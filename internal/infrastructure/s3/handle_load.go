@@ -15,7 +15,7 @@ import (
 func (h *EventHandler) handleLoadDirectory(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.LoadEvent)
-	dir := evt.Directory()
+	dir := evt.Directory
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed loading directory: %w", err))
@@ -85,13 +85,13 @@ func (h *EventHandler) loadDirectory(ctx context.Context, client s3client.Client
 func (h *EventHandler) handleLoadFile(e event.Event) {
 	ctx := e.Context()
 	evt := e.(directory.FileLoadEvent)
-	obj, err := h.loadFile(ctx, evt.File(), evt.ConnectionID())
+	obj, err := h.loadFile(ctx, evt.File, evt.ConnectionID)
 	if err != nil {
 		h.notifier.NotifyError(fmt.Errorf("failed loading file: %w", err))
-		h.bus.Publish(directory.NewFileLoadFailureEvent(err, evt.File()))
+		h.bus.Publish(directory.NewFileLoadFailureEvent(err, evt.File))
 		return
 	}
-	h.bus.Publish(directory.NewFileLoadSuccessEvent(evt.File(), obj))
+	h.bus.Publish(directory.NewFileLoadSuccessEvent(evt.File, obj))
 }
 
 func (h *EventHandler) loadFile(ctx context.Context, file *directory.File, connID connection_deck.ConnectionID) (directory.FileContent, error) {

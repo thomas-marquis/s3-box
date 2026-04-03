@@ -51,10 +51,10 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 				// Then
 				e, ok := evt.(directory.LoadSuccessEvent)
 				res := assert.True(t, ok) &&
-					assert.Len(t, e.SubDirectories(), 1) &&
-					assert.Equal(t, "/mydir/", e.SubDirectories()[0].Path().String()) &&
-					assert.Len(t, e.Files(), 1) &&
-					assert.Equal(t, "root_file.txt", e.Files()[0].Name().String())
+					assert.Len(t, e.SubDirectories, 1) &&
+					assert.Equal(t, "/mydir/", e.SubDirectories[0].Path().String()) &&
+					assert.Len(t, e.Files, 1) &&
+					assert.Equal(t, "root_file.txt", e.Files[0].Name().String())
 				close(done)
 				return res
 			})).
@@ -95,9 +95,9 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 				// Then
 				e, ok := evt.(directory.LoadSuccessEvent)
 				res := assert.True(t, ok) &&
-					assert.Len(t, e.SubDirectories(), 2) &&
-					assert.Len(t, e.Files(), 1) &&
-					assert.Equal(t, "file_in_dir.txt", e.Files()[0].Name().String())
+					assert.Len(t, e.SubDirectories, 2) &&
+					assert.Len(t, e.Files, 1) &&
+					assert.Equal(t, "file_in_dir.txt", e.Files[0].Name().String())
 				close(done)
 				return res
 			})).

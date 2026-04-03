@@ -15,16 +15,16 @@ func (h *EventHandler) handleUploadFile(e event.Event) {
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
-		h.bus.Publish(directory.NewFileUploadFailureEvent(err, evt.Directory()))
+		h.bus.Publish(directory.NewFileUploadFailureEvent(err, evt.Directory))
 	}
 
-	client, err := h.clientFactory.Get(ctx, evt.Directory().ConnectionID())
+	client, err := h.clientFactory.Get(ctx, evt.Directory.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	localFile, err := os.Open(evt.SrcPath())
+	localFile, err := os.Open(evt.SrcPath)
 	if err != nil {
 		handleError(err)
 		return
@@ -41,8 +41,8 @@ func (h *EventHandler) handleUploadFile(e event.Event) {
 		return
 	}
 
-	fileName := filepath.Base(evt.SrcPath())
-	newFile, err := directory.NewFile(fileName, evt.Directory(),
+	fileName := filepath.Base(evt.SrcPath)
+	newFile, err := directory.NewFile(fileName, evt.Directory,
 		directory.WithFileSize(int(info.Size())),
 		directory.WithFileLastModified(info.ModTime()))
 	if err != nil {
@@ -55,5 +55,5 @@ func (h *EventHandler) handleUploadFile(e event.Event) {
 		return
 	}
 
-	h.bus.Publish(directory.NewFileUploadSuccessEvent(evt.Directory(), newFile))
+	h.bus.Publish(directory.NewFileUploadSuccessEvent(evt.Directory, newFile))
 }

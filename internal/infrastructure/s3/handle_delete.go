@@ -13,16 +13,16 @@ func (h *EventHandler) handleDeleteFile(evt event.Event) {
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
-		h.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.Parent()))
+		h.bus.Publish(e.NewFailureEvent(err))
 	}
 
-	client, err := h.clientFactory.Get(ctx, e.ConnectionID())
+	client, err := h.clientFactory.Get(ctx, e.ConnectionID)
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	file := e.File()
+	file := e.File
 	if file == nil {
 		err := fmt.Errorf("file is nil for deletion event")
 		handleError(err)
@@ -35,11 +35,12 @@ func (h *EventHandler) handleDeleteFile(evt event.Event) {
 		return
 	}
 
-	h.bus.Publish(directory.NewFileDeletedSuccessEvent(e.Parent(), e.File()))
+	h.bus.Publish(e.NewSuccessEvent(e.File))
 }
 
-func (h *EventHandler) handleDeleteDirectory(_ event.Event) {
+func (h *EventHandler) handleDeleteDirectory(evt event.Event) {
+	e := evt.(directory.DeletedEvent)
 	err := fmt.Errorf("deleting directories is not yet implemented")
 	h.notifier.NotifyError(err)
-	h.bus.Publish(directory.NewDeletedFailureEvent(err))
+	h.bus.Publish(e.NewFailureEvent(err))
 }

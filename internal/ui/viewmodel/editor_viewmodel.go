@@ -111,7 +111,7 @@ func (v *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (*
 func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
 	e := evt.(directory.FileLoadSuccessEvent)
 	content := e.Content
-	oe, ok := v.openedEditors[e.File().FullPath()]
+	oe, ok := v.openedEditors[e.File.FullPath()]
 	if !ok {
 		// The editor has been closed before the file was loaded. And it's okay
 		return
@@ -141,7 +141,7 @@ func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
 func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
 	e := evt.(directory.FileLoadFailureEvent)
 	v.notifier.NotifyError(e.Error())
-	oe, ok := v.openedEditors[e.File().FullPath()]
+	oe, ok := v.openedEditors[e.File.FullPath()]
 	if !ok {
 		// The editor has been closed before the file was loaded. And it's okay
 		return

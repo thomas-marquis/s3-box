@@ -38,13 +38,13 @@ func NewSaveSuccessEvent(file *directory.File, content string, options ...event.
 }
 
 type SaveFailureEvent struct {
-	event.BaseErrorEvent
+	event.BaseFailureEvent
 	File *directory.File
 }
 
 func NewSaveFailureEvent(file *directory.File, err error) SaveFailureEvent {
 	return SaveFailureEvent{
-		BaseErrorEvent: event.NewBaseErrorEvent(SaveEventType.AsFailure(), err),
-		File:           file,
+		BaseFailureEvent: event.NewBaseFailureEvent(SaveEventType.AsFailure(), err),
+		File:             file,
 	}
 }

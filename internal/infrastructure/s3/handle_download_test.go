@@ -44,7 +44,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 				// Then
 				e, ok := evt.(directory.FileDownloadSuccessEvent)
 				res := assert.True(t, ok) &&
-					assert.Equal(t, "file_in_dir.txt", e.File().Name().String())
+					assert.Equal(t, "file_in_dir.txt", e.File.Name().String())
 				close(done)
 				return res
 			})).

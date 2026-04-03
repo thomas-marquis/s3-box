@@ -43,7 +43,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 				// Then
 				e, ok := evt.(directory.FileCreatedSuccessEvent)
 				res := assert.True(t, ok) &&
-					assert.Equal(t, "new_file.txt", e.File().Name().String())
+					assert.Equal(t, "new_file.txt", e.File.Name().String())
 				close(done)
 				return res
 			})).

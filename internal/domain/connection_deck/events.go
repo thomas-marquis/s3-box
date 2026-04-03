@@ -65,13 +65,13 @@ func NewSelectSuccessEvent(deck *Deck, connection *Connection) SelectSuccessEven
 }
 
 type SelectFailureEvent struct {
-	event.BaseErrorEvent
+	event.BaseFailureEvent
 	withConnection
 }
 
 func NewSelectFailureEvent(err error, conn *Connection) SelectFailureEvent {
 	return SelectFailureEvent{
-		event.NewBaseErrorEvent(SelectEventType.AsFailure(), err),
+		event.NewBaseFailureEvent(SelectEventType.AsFailure(), err),
 		withConnection{conn},
 	}
 }
@@ -117,7 +117,7 @@ func NewRemoveSuccessEvent(deck *Deck, connection *Connection) RemoveSuccessEven
 }
 
 type RemoveFailureEvent struct {
-	event.BaseErrorEvent
+	event.BaseFailureEvent
 	withConnection
 	removedIndex int
 	wasSelected  bool
@@ -125,7 +125,7 @@ type RemoveFailureEvent struct {
 
 func NewRemoveFailureEvent(err error, index int, wasSelected bool, conn *Connection) RemoveFailureEvent {
 	return RemoveFailureEvent{
-		event.NewBaseErrorEvent(RemoveEventType.AsFailure(), err),
+		event.NewBaseFailureEvent(RemoveEventType.AsFailure(), err),
 		withConnection{conn},
 		index,
 		wasSelected,
@@ -169,13 +169,13 @@ func NewCreateSuccessEvent(deck *Deck, connection *Connection) CreateSuccessEven
 }
 
 type CreateFailureEvent struct {
-	event.BaseErrorEvent
+	event.BaseFailureEvent
 	withConnection
 }
 
 func NewCreateFailureEvent(err error, conn *Connection) CreateFailureEvent {
 	return CreateFailureEvent{
-		event.NewBaseErrorEvent(CreateEventType.AsFailure(), err),
+		event.NewBaseFailureEvent(CreateEventType.AsFailure(), err),
 		withConnection{conn},
 	}
 }
@@ -215,22 +215,22 @@ func NewUpdateSuccessEvent(deck *Deck, newConnection *Connection) UpdateSuccessE
 }
 
 type UpdateFailureEvent struct {
-	event.BaseErrorEvent
+	event.BaseFailureEvent
 	withConnection
 }
 
 func NewUpdateFailureEvent(err error, previous *Connection) UpdateFailureEvent {
 	return UpdateFailureEvent{
-		event.NewBaseErrorEvent(UpdateEventType.AsFailure(), err),
+		event.NewBaseFailureEvent(UpdateEventType.AsFailure(), err),
 		withConnection{previous},
 	}
 }
 
 var (
-	_ event.ErrorEvent = (*SelectFailureEvent)(nil)
-	_ event.ErrorEvent = (*RemoveFailureEvent)(nil)
-	_ event.ErrorEvent = (*UpdateFailureEvent)(nil)
-	_ event.ErrorEvent = (*CreateFailureEvent)(nil)
+	_ event.FailureEvent = (*SelectFailureEvent)(nil)
+	_ event.FailureEvent = (*RemoveFailureEvent)(nil)
+	_ event.FailureEvent = (*UpdateFailureEvent)(nil)
+	_ event.FailureEvent = (*CreateFailureEvent)(nil)
 
 	_ ConnectionEvent = (*SelectEvent)(nil)
 	_ ConnectionEvent = (*RemoveEvent)(nil)

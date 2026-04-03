@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
 )
 
@@ -26,7 +27,7 @@ func TestDirectory(t *testing.T) {
 		evt, err := dir.Load()
 		assert.NoError(t, err)
 		assert.Equal(t, directory.LoadEventType, evt.Type())
-		assert.Equal(t, dir, evt.Directory())
+		assert.Equal(t, dir, evt.Directory)
 		assert.True(t, dir.IsLoading())
 		assert.False(t, dir.IsLoaded())
 		assert.False(t, dir.IsOpened())
@@ -130,7 +131,7 @@ func TestDirectory_Load(t *testing.T) {
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, directory.LoadEventType, res.Type())
-		assert.Equal(t, dir, res.Directory())
+		assert.Equal(t, dir, res.Directory)
 	})
 }
 
@@ -145,13 +146,13 @@ func TestDirectory_NewFile(t *testing.T) {
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, directory.FileCreatedEventType, evt.Type())
-		assert.Equal(t, dir, evt.Directory())
-		assert.Equal(t, "report.csv", evt.File().Name().String())
+		assert.Equal(t, dir, evt.Directory)
+		assert.Equal(t, "report.csv", evt.File.Name().String())
 		files := dir.Files()
 		require.Len(t, files, 0)
 
 		// Then, when notified of the success
-		successEvt := directory.NewFileCreatedSuccessEvent(dir, evt.File())
+		successEvt := directory.NewFileCreatedSuccessEvent(dir, evt.File)
 		assert.NoError(t, dir.Notify(successEvt))
 
 		files = dir.Files()
@@ -181,8 +182,8 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, directory.FileDeletedEventType, evt.Type())
-		assert.Equal(t, dir, evt.Parent())
-		assert.Equal(t, f1, evt.File())
+		assert.Equal(t, dir, evt.ParentDirectory)
+		assert.Equal(t, f1, evt.File)
 
 		assert.NoError(t, dir.Notify(successEvt))
 		resFiles := dir.Files()
@@ -192,7 +193,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		newFileEvt, err := dir.NewFile("main.go", false)
 		assert.NoError(t, err)
 
-		newFileSuccessEvt := directory.NewFileCreatedSuccessEvent(dir, newFileEvt.File())
+		newFileSuccessEvt := directory.NewFileCreatedSuccessEvent(dir, newFileEvt.File)
 		assert.NoError(t, dir.Notify(newFileSuccessEvt))
 
 		resFiles = dir.Files()
@@ -219,8 +220,8 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, directory.FileDeletedEventType, evt.Type())
-		assert.Equal(t, dir, evt.Parent())
-		assert.Equal(t, f1, evt.File())
+		assert.Equal(t, dir, evt.ParentDirectory)
+		assert.Equal(t, f1, evt.File)
 
 		assert.NoError(t, dir.Notify(successEvt))
 		resFiles := dir.Files()
@@ -273,7 +274,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, directory.FileDeletedEventType, evt.Type())
-		assert.Equal(t, dir, evt.Parent())
+		assert.Equal(t, dir, evt.ParentDirectory)
 
 		assert.NoError(t, dir.Notify(failureEvt))
 		resFiles := dir.Files()
@@ -295,7 +296,10 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
-		successEvt := directory.NewDeletedSuccessEvent(subDir1)
+		successEvt := directory.DeletedSuccessEvent{
+			event.NewBaseEvent(directory.FileDeletedEventType.AsSuccess()),
+			subDir1,
+		}
 
 		// When
 		evt, err := dir.RemoveSubDirectory("sub1")
@@ -303,8 +307,8 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, directory.DeletedEventType, evt.Type())
-		assert.Equal(t, dir, evt.Directory())
-		assert.Equal(t, subDir1.Path(), evt.DeletedDirPath())
+		assert.Equal(t, dir, evt.Directory)
+		assert.Equal(t, subDir1.Path(), evt.DeletedDirPath)
 
 		assert.NoError(t, dir.Notify(successEvt))
 		resSubDirs := dir.SubDirectories()
@@ -348,7 +352,7 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, directory.DeletedEventType, evt.Type())
-		assert.Equal(t, dir, evt.Directory())
+		assert.Equal(t, dir, evt.Directory)
 
 		assert.NoError(t, dir.Notify(failureEvt))
 		resSubDirs := dir.SubDirectories()
@@ -372,8 +376,8 @@ func TestDirectory_UploadFile(t *testing.T) {
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, directory.FileUploadEventType, evt.Type())
-		assert.Equal(t, dir, evt.Directory())
-		assert.Equal(t, "local/report.csv", evt.SrcPath())
+		assert.Equal(t, dir, evt.Directory)
+		assert.Equal(t, "local/report.csv", evt.SrcPath)
 
 		file, _ := directory.NewFile("report.csv", dir)
 		successEvt := directory.NewFileUploadSuccessEvent(dir, file)
@@ -407,8 +411,8 @@ func TestDirectory_UploadFile(t *testing.T) {
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, directory.FileUploadEventType, evt.Type())
-		assert.Equal(t, dir, evt.Directory())
-		assert.Equal(t, "local/report.csv", evt.SrcPath())
+		assert.Equal(t, dir, evt.Directory)
+		assert.Equal(t, "local/report.csv", evt.SrcPath)
 
 		file, _ := directory.NewFile("report.csv", dir)
 		successEvt := directory.NewFileUploadSuccessEvent(dir, file)
@@ -441,7 +445,7 @@ func TestDirectory_UploadFile(t *testing.T) {
 		successEvt := directory.NewFileUploadSuccessEvent(dir, file)
 		assert.NoError(t, dir.Notify(successEvt))
 
-		assert.Equal(t, "tmp/report.csv", evt.SrcPath())
+		assert.Equal(t, "tmp/report.csv", evt.SrcPath)
 
 		files := dir.Files()
 		require.Len(t, files, 1)
@@ -499,7 +503,7 @@ func TestDirectory_Rename(t *testing.T) {
 		assert.Equal(t, directory.RenameEventType, evt.Type())
 		assert.Equal(t, "oldname", dir.Name())
 		assert.Equal(t, directory.Path("/parent/oldname/"), dir.Path())
-		assert.Equal(t, "newname", evt.NewName())
+		assert.Equal(t, "newname", evt.NewName)
 	})
 
 	t.Run("should return error when directory is not loaded", func(t *testing.T) {
@@ -653,9 +657,9 @@ func TestDirectory_Resume(t *testing.T) {
 		assert.Equal(t, directory.RenameRecoverEventType, evt.Type())
 
 		res := evt.(directory.RenameRecoverEvent)
-		assert.Equal(t, newDir, res.DstDir())
-		assert.Equal(t, oldDir, res.Directory())
-		assert.Equal(t, directory.RecoveryChoiceRenameResume, res.Choice())
+		assert.Equal(t, newDir, res.DstDir)
+		assert.Equal(t, oldDir, res.Directory)
+		assert.Equal(t, directory.RecoveryChoiceRenameResume, res.Choice)
 
 		assert.True(t, oldDir.IsLoading())
 		assert.True(t, newDir.IsLoading())
@@ -689,7 +693,7 @@ func TestDirectory_Resume(t *testing.T) {
 		assert.Equal(t, directory.RenameRecoverEventType, evt.Type())
 
 		res := evt.(directory.RenameRecoverEvent)
-		assert.Equal(t, newDir, res.DstDir())
-		assert.Equal(t, oldDir, res.Directory())
+		assert.Equal(t, newDir, res.DstDir)
+		assert.Equal(t, oldDir, res.Directory)
 	})
 }

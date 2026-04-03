@@ -17,23 +17,23 @@ func (h *EventHandler) handleDownloadFile(e event.Event) {
 		h.bus.Publish(directory.NewFileDownloadFailureEvent(err))
 	}
 
-	client, err := h.clientFactory.Get(ctx, evt.ConnectionID())
+	client, err := h.clientFactory.Get(ctx, evt.ConnectionID)
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	localFile, err := os.OpenFile(evt.DstPath(), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	localFile, err := os.OpenFile(evt.DstPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		handleError(fmt.Errorf("failed opening the file to download: %w", err))
 		return
 	}
 	defer localFile.Close() //nolint:errcheck
 
-	if err := client.Download(ctx, mapFileToKey(evt.File()), localFile); err != nil {
+	if err := client.Download(ctx, mapFileToKey(evt.File), localFile); err != nil {
 		handleError(fmt.Errorf("failed downloading file: %w", err))
 		return
 	}
 
-	h.bus.Publish(directory.NewFileDownloadSuccessEvent(evt.File()))
+	h.bus.Publish(directory.NewFileDownloadSuccessEvent(evt.File))
 }

@@ -2,6 +2,8 @@ package event
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Type string
@@ -21,6 +23,7 @@ func (t Type) AsSuccess() Type {
 type Event interface {
 	Type() Type
 	Context() context.Context
+	Ref() string
 }
 
 type withContext struct {
@@ -34,12 +37,14 @@ func (e withContext) Context() context.Context {
 type BaseEvent struct {
 	withContext
 	eventType Type
+	ref       string
 }
 
 func NewBaseEvent(eventType Type, opts ...Option) BaseEvent {
 	e := BaseEvent{
 		eventType:   eventType,
 		withContext: withContext{ctx: nil},
+		ref:         uuid.New().String(),
 	}
 
 	for _, opt := range opts {
@@ -55,4 +60,20 @@ func NewBaseEvent(eventType Type, opts ...Option) BaseEvent {
 
 func (e BaseEvent) Type() Type {
 	return e.eventType
+}
+
+func (e BaseEvent) Ref() string {
+	return e.ref
+}
+
+func (e BaseEvent) NewBaseFailure(err error) BaseFailureEvent {
+	be := NewBaseFailureEvent(e.Type().AsFailure(), err)
+	be.ref = e.ref
+	return be
+}
+
+func (e BaseEvent) NewBaseSuccess(opts ...Option) BaseEvent {
+	bfe := NewBaseEvent(e.Type().AsSuccess(), opts...)
+	bfe.ref = e.ref
+	return bfe
 }

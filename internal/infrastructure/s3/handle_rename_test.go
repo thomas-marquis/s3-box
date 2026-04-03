@@ -52,7 +52,7 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				e, ok := evt.(directory.FileRenameSuccessEvent)
 				res := assert.True(t, ok) &&
-					assert.Equal(t, "renamed.txt", e.NewName())
+					assert.Equal(t, "renamed.txt", e.NewName)
 				close(done)
 				return res
 			})).
@@ -110,7 +110,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			Do(func(evt event.Event) {
 				e, ok := evt.(directory.UserValidationEvent)
 				assert.True(t, ok)
-				assert.Equal(t, inputEvt, e.Reason())
+				assert.Equal(t, inputEvt, e.Reason)
 				close(done)
 			}).
 			Times(1)
@@ -167,8 +167,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			Do(func(evt event.Event) {
 				e, ok := evt.(directory.RenameSuccessEvent)
 				assert.True(t, ok)
-				assert.Equal(t, originalDir, e.Directory())
-				assert.Equal(t, "newname", e.NewName())
+				assert.Equal(t, originalDir, e.Directory)
+				assert.Equal(t, "newname", e.NewName)
 				close(done)
 			}).
 			Times(1)
@@ -231,8 +231,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			Do(func(evt event.Event) {
 				e, ok := evt.(directory.RenameSuccessEvent)
 				assert.True(t, ok)
-				assert.Equal(t, subdir, e.Directory())
-				assert.Equal(t, "newname", e.NewName())
+				assert.Equal(t, subdir, e.Directory)
+				assert.Equal(t, "newname", e.NewName)
 				close(done)
 			}).
 			Times(1)
@@ -289,8 +289,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			Do(func(evt event.Event) {
 				e, ok := evt.(directory.RenameSuccessEvent)
 				assert.True(t, ok)
-				assert.Equal(t, dir, e.Directory())
-				assert.Equal(t, "newname", e.NewName())
+				assert.Equal(t, dir, e.Directory)
+				assert.Equal(t, "newname", e.NewName)
 				close(done)
 			}).
 			Times(1)
@@ -499,8 +499,8 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			Do(func(evt event.Event) {
 				e, ok := evt.(directory.RenameSuccessEvent)
 				assert.True(t, ok)
-				assert.Equal(t, dir, e.Directory())
-				assert.Equal(t, "newname", e.NewName())
+				assert.Equal(t, dir, e.Directory)
+				assert.Equal(t, "newname", e.NewName)
 				close(done)
 			}).
 			Times(1)
@@ -569,7 +569,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 				defer close(done)
 				e, ok := evt.(directory.RenameSuccessEvent)
 				if ok {
-					assert.Equal(t, "newname", e.NewName())
+					assert.Equal(t, "newname", e.NewName)
 				}
 				return ok
 			})).
@@ -641,7 +641,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 				defer close(done)
 				e, ok := evt.(directory.RenameSuccessEvent)
 				if ok {
-					assert.Equal(t, "oldname", e.NewName())
+					assert.Equal(t, "oldname", e.NewName)
 				}
 				return ok
 			})).
@@ -717,18 +717,18 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 				if !ok {
 					return ok
 				}
-				if e.Directory().Name() == "oldname" {
-					assert.Len(t, e.Files(), 2)
-					assert.Len(t, e.SubDirectories(), 1)
-					assert.Equal(t, "file1.txt", e.Files()[0].Name().String())
-					assert.Equal(t, "file3.txt", e.Files()[1].Name().String())
-					assert.Equal(t, "subdir", e.SubDirectories()[0].Name())
-				} else if e.Directory().Name() == "newname" {
-					assert.Len(t, e.Files(), 2)
-					assert.Len(t, e.SubDirectories(), 1)
-					assert.Equal(t, "file1.txt", e.Files()[0].Name().String())
-					assert.Equal(t, "file2.txt", e.Files()[1].Name().String())
-					assert.Equal(t, "subdir", e.SubDirectories()[0].Name())
+				if e.Directory.Name() == "oldname" {
+					assert.Len(t, e.Files, 2)
+					assert.Len(t, e.SubDirectories, 1)
+					assert.Equal(t, "file1.txt", e.Files[0].Name().String())
+					assert.Equal(t, "file3.txt", e.Files[1].Name().String())
+					assert.Equal(t, "subdir", e.SubDirectories[0].Name())
+				} else if e.Directory.Name() == "newname" {
+					assert.Len(t, e.Files, 2)
+					assert.Len(t, e.SubDirectories, 1)
+					assert.Equal(t, "file1.txt", e.Files[0].Name().String())
+					assert.Equal(t, "file2.txt", e.Files[1].Name().String())
+					assert.Equal(t, "subdir", e.SubDirectories[0].Name())
 				} else {
 					assert.Fail(t, "unexpected directory")
 				}

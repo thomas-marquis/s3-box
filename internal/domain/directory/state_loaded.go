@@ -77,7 +77,7 @@ func (s *loadedState) Notify(evt event.Event) error {
 	switch e := evt.(type) {
 	case DeletedSuccessEvent:
 		for i, subDirPath := range s.subDirs {
-			if subDirPath.Is(e.Directory()) {
+			if subDirPath.Is(e.Directory) {
 				s.subDirs = append(s.subDirs[:i], s.subDirs[i+1:]...)
 				return nil
 			}
@@ -85,7 +85,7 @@ func (s *loadedState) Notify(evt event.Event) error {
 
 	case FileDeletedSuccessEvent:
 		for i, file := range s.files {
-			if file.Is(e.File()) {
+			if file.Is(e.File) {
 				newFiles := append(s.files[:i], s.files[i+1:]...)
 				s.files = newFiles
 				return nil
@@ -93,12 +93,12 @@ func (s *loadedState) Notify(evt event.Event) error {
 		}
 
 	case FileCreatedSuccessEvent:
-		s.files = append(s.files, e.File())
+		s.files = append(s.files, e.File)
 
 	case FileRenameSuccessEvent:
 		for _, f := range s.files {
-			if f.Is(e.File()) {
-				n, err := NewFileName(e.NewName())
+			if f.Is(e.File) {
+				n, err := NewFileName(e.NewName)
 				if err != nil {
 					return err
 				}
@@ -106,13 +106,13 @@ func (s *loadedState) Notify(evt event.Event) error {
 				return nil
 			}
 		}
-		return fmt.Errorf("file %s not found in directory", e.File().Name())
+		return fmt.Errorf("file %s not found in directory", e.File.Name())
 
 	case CreatedSuccessEvent:
-		s.subDirs = append(s.subDirs, e.Directory())
+		s.subDirs = append(s.subDirs, e.Directory)
 
 	case FileUploadSuccessEvent:
-		f := e.File()
+		f := e.File
 		if !s.updateFile(f) {
 			s.files = append(s.files, f)
 		}

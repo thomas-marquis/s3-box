@@ -281,7 +281,7 @@ func (v *connectionViewModelImpl) handleOnLoading(_ event.Event) {
 }
 
 func (v *connectionViewModelImpl) handleFailure(evt event.Event) {
-	e := evt.(event.ErrorEvent)
+	e := evt.(event.FailureEvent)
 	v.errorMessage.Set(e.Error().Error()) //nolint:errcheck
 	v.deck.Notify(evt)
 	v.loading.Set(false) //nolint:errcheck

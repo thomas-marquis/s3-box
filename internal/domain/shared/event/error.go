@@ -1,20 +1,21 @@
 package event
 
-type ErrorEvent interface {
+type FailureEvent interface {
 	Error() error
 }
 
-type BaseErrorEvent struct {
+type BaseFailureEvent struct {
 	BaseEvent
 	err error
 }
 
-var _ ErrorEvent = (*BaseErrorEvent)(nil)
-
-func NewBaseErrorEvent(eventType Type, err error) BaseErrorEvent {
-	return BaseErrorEvent{BaseEvent: BaseEvent{eventType: eventType}, err: err}
+func NewBaseFailureEvent(eventType Type, err error) BaseFailureEvent {
+	return BaseFailureEvent{
+		BaseEvent: BaseEvent{eventType: eventType},
+		err:       err,
+	}
 }
 
-func (e BaseErrorEvent) Error() error {
+func (e BaseFailureEvent) Error() error {
 	return e.err
 }

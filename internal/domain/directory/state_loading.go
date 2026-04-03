@@ -27,7 +27,7 @@ func (s *loadingState) Load() (LoadEvent, error) {
 func (s *loadingState) Notify(evt event.Event) error {
 	switch e := evt.(type) {
 	case LoadSuccessEvent:
-		s.d.setState(newLoadedState(s.baseState, e.SubDirectories(), e.Files()))
+		s.d.setState(newLoadedState(s.baseState, e.SubDirectories, e.Files))
 
 	case LoadFailureEvent:
 		var urErr UncompletedRename
@@ -63,8 +63,8 @@ func (s *loadingState) Notify(evt event.Event) error {
 		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: e.Error()}))
 
 	case RenameSuccessEvent:
-		s.d.name = e.NewName()
-		s.d.path = s.d.parent.Path().NewSubPath(e.NewName())
+		s.d.name = e.NewName
+		s.d.path = s.d.parent.Path().NewSubPath(e.NewName)
 		for _, subDir := range s.subDirs {
 			subDir.updatePath(s.d.path)
 		}
@@ -76,7 +76,7 @@ func (s *loadingState) Notify(evt event.Event) error {
 			status := RenameFailedStatus{
 				CurrentDirectory: s.d,
 				IsSourceDir:      true,
-				OtherDirPath:     s.d.ParentPath().NewSubPath(e.NewName()),
+				OtherDirPath:     s.d.ParentPath().NewSubPath(e.NewName),
 			}
 			s.d.setState(newErrorState(s.baseState, status))
 		}
