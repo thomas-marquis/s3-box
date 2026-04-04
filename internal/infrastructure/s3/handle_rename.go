@@ -95,7 +95,7 @@ func (h *EventHandler) handleRenameRequest(e event.Event) {
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed handling rename request: %w", err))
-		h.bus.Publish(directory.NewRenameFailureEvent(err, dir, evt.NewName))
+		h.bus.Publish(evt.NewFailureEvent(err))
 	}
 
 	client, err := h.clientFactory.Get(ctx, dir.ConnectionID())
@@ -128,7 +128,7 @@ func (h *EventHandler) handleRenameRequest(e event.Event) {
 			handleError(err)
 			return
 		}
-		h.bus.Publish(directory.NewRenameSuccessEvent(dir, evt.NewName))
+		h.bus.Publish(evt.NewSuccessEvent())
 	} else {
 		for _, key := range lsSrc.Keys {
 			if isRenameMarkerFile(key) {
@@ -157,7 +157,7 @@ func (h *EventHandler) handleRenameDirectory(e event.Event) {
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
-		h.bus.Publish(directory.NewRenameFailureEvent(err, dir, re.NewName))
+		h.bus.Publish(re.NewFailureEvent(err))
 	}
 
 	client, err := h.clientFactory.Get(ctx, dir.ConnectionID())
@@ -185,26 +185,29 @@ func (h *EventHandler) handleRenameDirectory(e event.Event) {
 		return
 	}
 
-	h.bus.Publish(directory.NewRenameSuccessEvent(dir, newName))
+	h.bus.Publish(re.NewSuccessEvent())
 }
 
 func (h *EventHandler) handleRenameRecovery(evt event.Event) {
 	e := evt.(directory.RenameRecoverEvent)
-	ctx := e.Context()
 
 	switch e.Choice {
 	case directory.RecoveryChoiceRenameResume:
-		h.handleRenameResuming(ctx, e.Directory, e.DstDir, false)
+		h.handleRenameResuming(e, false)
 	case directory.RecoveryChoiceRenameRollback:
-		h.handleRenameResuming(ctx, e.DstDir, e.Directory, true)
+		h.handleRenameResuming(e.InvertDirs(), true)
 	case directory.RecoveryChoiceRenameAbort:
-		h.handleRenameAbort(ctx, e.Directory, e.DstDir)
+		h.handleRenameAbort(e)
 	default:
 		return
 	}
 }
 
-func (h *EventHandler) handleRenameResuming(ctx context.Context, srcDir, dstDir *directory.Directory, isRollback bool) {
+func (h *EventHandler) handleRenameResuming(evt directory.RenameRecoverEvent, isRollback bool) {
+	srcDir := evt.Directory
+	dstDir := evt.DstDir
+	ctx := evt.Context()
+
 	srcPath := srcDir.Path()
 	dstPath := dstDir.Path()
 
@@ -212,7 +215,7 @@ func (h *EventHandler) handleRenameResuming(ctx context.Context, srcDir, dstDir 
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed handling rename: %w", err))
-		h.bus.Publish(directory.NewRenameFailureEvent(err, srcDir, newName))
+		h.bus.Publish(evt.NewRenameFailureEvent(err))
 	}
 
 	client, err := h.clientFactory.Get(ctx, srcDir.ConnectionID())
@@ -261,13 +264,17 @@ func (h *EventHandler) handleRenameResuming(ctx context.Context, srcDir, dstDir 
 		return
 	}
 
-	h.bus.Publish(directory.NewRenameSuccessEvent(srcDir, newName))
+	h.bus.Publish(evt.NewRenameSuccessEvent())
 }
 
-func (h *EventHandler) handleRenameAbort(ctx context.Context, srcDir, dstDir *directory.Directory) {
+func (h *EventHandler) handleRenameAbort(e directory.RenameRecoverEvent) {
+	ctx := e.Context()
+	srcDir := e.Directory
+	dstDir := e.DstDir
+
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed aborting rename: %w", err))
-		h.bus.Publish(directory.NewRenameFailureEvent(err, srcDir, dstDir.Name()))
+		h.bus.Publish(e.NewRenameFailureEvent(err))
 	}
 
 	// meh...
@@ -304,14 +311,14 @@ func (h *EventHandler) handleRenameAbort(ctx context.Context, srcDir, dstDir *di
 
 	if srcDir != nil {
 		go func() {
-			if err := h.loadDirectory(ctx, client, srcDir); err != nil {
+			if err := h.loadDirectory(ctx, client, srcDir, e.Ref()); err != nil {
 				handleError(err)
 			}
 		}()
 	}
 	if dstDir != nil {
 		go func() {
-			if err := h.loadDirectory(ctx, client, dstDir); err != nil {
+			if err := h.loadDirectory(ctx, client, dstDir, e.Ref()); err != nil {
 				handleError(err)
 			}
 		}()

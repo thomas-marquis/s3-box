@@ -75,7 +75,7 @@ func (s *loadedState) Rename(newName string) (RenameEvent, error) {
 
 func (s *loadedState) Notify(evt event.Event) error {
 	switch e := evt.(type) {
-	case DeletedSuccessEvent:
+	case DeleteSuccessEvent:
 		for i, subDirPath := range s.subDirs {
 			if subDirPath.Is(e.Directory) {
 				s.subDirs = append(s.subDirs[:i], s.subDirs[i+1:]...)
@@ -83,7 +83,7 @@ func (s *loadedState) Notify(evt event.Event) error {
 			}
 		}
 
-	case FileDeletedSuccessEvent:
+	case DeleteFileSucceeded:
 		for i, file := range s.files {
 			if file.Is(e.File) {
 				newFiles := append(s.files[:i], s.files[i+1:]...)
@@ -92,7 +92,7 @@ func (s *loadedState) Notify(evt event.Event) error {
 			}
 		}
 
-	case FileCreatedSuccessEvent:
+	case CreateFileSucceeded:
 		s.files = append(s.files, e.File)
 
 	case FileRenameSuccessEvent:
@@ -108,7 +108,7 @@ func (s *loadedState) Notify(evt event.Event) error {
 		}
 		return fmt.Errorf("file %s not found in directory", e.File.Name())
 
-	case CreatedSuccessEvent:
+	case CreateSuccessEvent:
 		s.subDirs = append(s.subDirs, e.Directory)
 
 	case FileUploadSuccessEvent:

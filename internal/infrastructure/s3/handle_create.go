@@ -11,11 +11,11 @@ import (
 func (h *EventHandler) handleCreateFile(evt event.Event) {
 	ctx := evt.Context()
 
-	e := evt.(directory.FileCreatedEvent)
+	e := evt.(directory.CreateFileTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed creating file: %w", err))
-		h.bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory))
+		h.bus.Publish(e.NewFailureEvent(err))
 	}
 
 	obj, err := h.loadFile(ctx, e.File, e.ConnectionID)
@@ -28,12 +28,12 @@ func (h *EventHandler) handleCreateFile(evt event.Event) {
 		return
 	}
 
-	h.bus.Publish(directory.NewFileCreatedSuccessEvent(e.Directory, e.File))
+	h.bus.Publish(e.NewSuccessEvent())
 }
 
 func (h *EventHandler) handleCreateDirectory(e event.Event) {
 	ctx := e.Context()
-	evt := e.(directory.CreatedEvent)
+	evt := e.(directory.CreateEvent)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))

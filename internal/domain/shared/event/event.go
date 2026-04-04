@@ -26,25 +26,15 @@ type Event interface {
 	Ref() string
 }
 
-type withContext struct {
-	ctx context.Context
-}
-
-func (e withContext) Context() context.Context {
-	return e.ctx
-}
-
 type BaseEvent struct {
-	withContext
-	eventType Type
-	ref       string
+	ctx context.Context
+	ref string
 }
 
-func NewBaseEvent(eventType Type, opts ...Option) BaseEvent {
+func NewBaseEvent(opts ...Option) BaseEvent {
 	e := BaseEvent{
-		eventType:   eventType,
-		withContext: withContext{ctx: nil},
-		ref:         uuid.New().String(),
+		ctx: nil,
+		ref: uuid.New().String(),
 	}
 
 	for _, opt := range opts {
@@ -58,12 +48,12 @@ func NewBaseEvent(eventType Type, opts ...Option) BaseEvent {
 	return e
 }
 
-func (e BaseEvent) Type() Type {
-	return e.eventType
-}
-
 func (e BaseEvent) Ref() string {
 	return e.ref
+}
+
+func (e BaseEvent) Context() context.Context {
+	return e.ctx
 }
 
 func (e BaseEvent) NewBaseFailure(err error) BaseFailureEvent {

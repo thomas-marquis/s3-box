@@ -100,7 +100,7 @@ func (f *File) Download(connID connection_deck.ConnectionID, toPath string) File
 	return NewFileDownloadEvent(connID, f, toPath)
 }
 
-func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) FileLoadEvent {
+func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) LoadFileTriggered {
 	return NewFileLoadEvent(connId, f, opts...)
 }
 

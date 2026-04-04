@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
 )
 
@@ -33,7 +32,7 @@ func TestDirectory(t *testing.T) {
 		assert.False(t, dir.IsOpened())
 
 		// loading ended sucssesffuly
-		require.NoError(t, dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil)))
+		require.NoError(t, dir.Notify(directory.LoadSuccessEvent{Directory: dir}))
 		assert.True(t, dir.IsLoaded())
 		assert.False(t, dir.IsLoading())
 		assert.False(t, dir.IsOpened())
@@ -145,7 +144,7 @@ func TestDirectory_NewFile(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.FileCreatedEventType, evt.Type())
+		assert.Equal(t, directory.CreateFileTriggeredEventType, evt.Type())
 		assert.Equal(t, dir, evt.Directory)
 		assert.Equal(t, "report.csv", evt.File.Name().String())
 		files := dir.Files()
@@ -181,7 +180,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.FileDeletedEventType, evt.Type())
+		assert.Equal(t, directory.DeleteFileTriggeredEventType, evt.Type())
 		assert.Equal(t, dir, evt.ParentDirectory)
 		assert.Equal(t, f1, evt.File)
 
@@ -219,7 +218,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.FileDeletedEventType, evt.Type())
+		assert.Equal(t, directory.DeleteFileTriggeredEventType, evt.Type())
 		assert.Equal(t, dir, evt.ParentDirectory)
 		assert.Equal(t, f1, evt.File)
 
@@ -273,7 +272,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.FileDeletedEventType, evt.Type())
+		assert.Equal(t, directory.DeleteFileTriggeredEventType, evt.Type())
 		assert.Equal(t, dir, evt.ParentDirectory)
 
 		assert.NoError(t, dir.Notify(failureEvt))
@@ -296,9 +295,8 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, dir.Notify(loadEvt))
 
-		successEvt := directory.DeletedSuccessEvent{
-			event.NewBaseEvent(directory.FileDeletedEventType.AsSuccess()),
-			subDir1,
+		successEvt := directory.DeleteSuccessEvent{
+			Directory: subDir1,
 		}
 
 		// When
@@ -306,7 +304,7 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.DeletedEventType, evt.Type())
+		assert.Equal(t, directory.DeleteEventType, evt.Type())
 		assert.Equal(t, dir, evt.Directory)
 		assert.Equal(t, subDir1.Path(), evt.DeletedDirPath)
 
@@ -351,7 +349,7 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.DeletedEventType, evt.Type())
+		assert.Equal(t, directory.DeleteEventType, evt.Type())
 		assert.Equal(t, dir, evt.Directory)
 
 		assert.NoError(t, dir.Notify(failureEvt))

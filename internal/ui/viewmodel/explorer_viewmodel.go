@@ -92,7 +92,7 @@ type ExplorerViewModel interface {
 	// RenameFile renames a file
 	RenameFile(file *directory.File, newName string)
 
-	Validate(dir *directory.Directory, reason event.Event, validated bool)
+	Validate(event directory.UserValidationEvent, validated bool)
 
 	ResumeRename(dir *directory.Directory) error
 	RollbackRename(dir *directory.Directory) error
@@ -161,12 +161,12 @@ func NewExplorerViewModel(
 		On(event.IsOneOf(connection_deck.RemoveEventType.AsSuccess()), v.handleConnectionRemoved).
 		On(event.Is(directory.FileUploadEventType.AsSuccess()), v.handleFileUploadSuccess).
 		On(event.Is(directory.FileUploadEventType.AsFailure()), v.handleFileUploadFailure).
-		On(event.Is(directory.FileCreatedEventType.AsSuccess()), v.handleCreateFileSuccess).
-		On(event.Is(directory.FileCreatedEventType.AsFailure()), v.handleCreateFileFailure).
-		On(event.Is(directory.CreatedEventType.AsSuccess()), v.handleCreateDirSuccess).
-		On(event.Is(directory.CreatedEventType.AsFailure()), v.handleCreateDirFailure).
-		On(event.Is(directory.FileDeletedEventType.AsSuccess()), v.handleDeleteFileSuccess).
-		On(event.Is(directory.FileDeletedEventType.AsFailure()), v.handleDeleteFileFailure).
+		On(event.Is(directory.CreateFileSucceededEventType), v.handleCreateFileSuccess).
+		On(event.Is(directory.CreateFileFailedEventType), v.handleCreateFileFailure).
+		On(event.Is(directory.CreateEventType.AsSuccess()), v.handleCreateDirSuccess).
+		On(event.Is(directory.CreateEventType.AsFailure()), v.handleCreateDirFailure).
+		On(event.Is(directory.DeleteFileSucceededEventType), v.handleDeleteFileSuccess).
+		On(event.Is(directory.DeleteFileFailedEventType), v.handleDeleteFileFailure).
 		On(event.Is(directory.FileDownloadEventType.AsSuccess()), v.handleDownloadFileSuccess).
 		On(event.Is(directory.FileDownloadEventType.AsFailure()), v.handleDownloadFileFailure).
 		On(event.Is(directory.LoadEventType.AsSuccess()), v.handleLoadDirSuccess).
@@ -194,11 +194,11 @@ func (v *explorerViewModelImpl) triggerStateListeners() {
 	})
 }
 
-func (v *explorerViewModelImpl) Validate(dir *directory.Directory, reason event.Event, accepted bool) {
+func (v *explorerViewModelImpl) Validate(event directory.UserValidationEvent, accepted bool) {
 	if accepted {
-		v.bus.Publish(directory.NewUserValidationAcceptedEvent(dir, reason))
+		v.bus.Publish(event.NewAcceptedEvent())
 	} else {
-		v.bus.Publish(directory.NewUserValidationRefusedEvent(dir, reason))
+		v.bus.Publish(event.NewRefusedEvent())
 	}
 }
 
@@ -423,15 +423,13 @@ func (v *explorerViewModelImpl) DeleteFile(file *directory.File) {
 	parent := dirNode.Directory()
 	evt, err := parent.RemoveFile(file.Name())
 	if err != nil {
-		v.bus.Publish(directory.NewFileDeletedFailureEvent(
-			fmt.Errorf("error removing file from the directory %s: %w", parent.Path(), err), parent))
 		return
 	}
 	v.bus.Publish(evt)
 }
 
 func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
-	e := evt.(directory.FileDeletedSuccessEvent)
+	e := evt.(directory.DeleteFileSucceeded)
 
 	if err := e.ParentDirectory.Notify(e); err != nil {
 		v.notifier.NotifyError(err)
@@ -439,7 +437,7 @@ func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
 	}
 
 	if err := v.tree.Remove(e.File.FullPath()); err != nil {
-		v.bus.Publish(directory.NewFileDeletedFailureEvent(err, e.ParentDirectory))
+		v.bus.Publish(e.NewFailureEvent(err))
 		return
 	}
 
@@ -449,7 +447,7 @@ func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleDeleteFileFailure(evt event.Event) {
-	e := evt.(directory.FileDeletedFailureEvent)
+	e := evt.(directory.DeleteFileFailed)
 	if err := e.ParentDirectory.Notify(e); err != nil {
 		v.notifier.NotifyError(err)
 		return
@@ -510,7 +508,7 @@ func (v *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory
 }
 
 func (v *explorerViewModelImpl) handleCreateDirSuccess(evt event.Event) {
-	e := evt.(directory.CreatedSuccessEvent)
+	e := evt.(directory.CreateSuccessEvent)
 	if err := v.addNewDirectoryToTree(e.Directory); err != nil {
 		v.bus.Publish(e.NewFailureEvent(err))
 		return
@@ -537,7 +535,6 @@ func (v *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, nam
 	if v.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
-		v.bus.Publish(directory.NewCreatedFailureEvent(err, parent))
 		return
 	}
 
@@ -545,7 +542,6 @@ func (v *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, nam
 	if err != nil {
 		wErr := fmt.Errorf("error creating file: %w", err)
 		v.notifier.NotifyError(wErr)
-		v.bus.Publish(directory.NewCreatedFailureEvent(wErr, parent))
 		return
 	}
 
@@ -553,9 +549,9 @@ func (v *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, nam
 }
 
 func (v *explorerViewModelImpl) handleCreateFileSuccess(evt event.Event) {
-	e := evt.(directory.FileCreatedSuccessEvent)
+	e := evt.(directory.CreateFileSucceeded)
 	if err := v.addNewFileToTree(e.File); err != nil {
-		v.bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory))
+		v.bus.Publish(e.NewFailureEvent(err))
 		return
 	}
 	if err := e.Directory.Notify(e); err != nil {
@@ -566,7 +562,7 @@ func (v *explorerViewModelImpl) handleCreateFileSuccess(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleCreateFileFailure(evt event.Event) {
-	e := evt.(directory.FileCreatedFailureEvent)
+	e := evt.(directory.CreateFileFailed)
 	err := fmt.Errorf("error creating file: %w", e.Error())
 	if notifErr := e.Directory.Notify(e); notifErr != nil {
 		err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
@@ -580,7 +576,6 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 	if v.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
-		v.bus.Publish(directory.NewRenameFailureEvent(err, dir, newName))
 		return
 	}
 
@@ -588,7 +583,6 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 	if err != nil {
 		wErr := fmt.Errorf("error renaming directory: %w", err)
 		v.notifier.NotifyError(wErr)
-		v.bus.Publish(directory.NewRenameFailureEvent(wErr, dir, newName))
 		return
 	}
 

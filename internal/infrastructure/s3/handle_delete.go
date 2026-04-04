@@ -9,7 +9,7 @@ import (
 
 func (h *EventHandler) handleDeleteFile(evt event.Event) {
 	ctx := evt.Context()
-	e := evt.(directory.FileDeletedEvent)
+	e := evt.(directory.DeleteFileTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
@@ -39,7 +39,7 @@ func (h *EventHandler) handleDeleteFile(evt event.Event) {
 }
 
 func (h *EventHandler) handleDeleteDirectory(evt event.Event) {
-	e := evt.(directory.DeletedEvent)
+	e := evt.(directory.DeleteEvent)
 	err := fmt.Errorf("deleting directories is not yet implemented")
 	h.notifier.NotifyError(err)
 	h.bus.Publish(e.NewFailureEvent(err))

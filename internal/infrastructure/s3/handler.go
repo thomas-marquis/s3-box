@@ -43,14 +43,14 @@ func NewS3EventHandler(
 
 func (h *EventHandler) Listen() {
 	h.bus.Subscribe().
-		On(event.Is(directory.CreatedEventType), h.handleCreateDirectory).
-		On(event.Is(directory.DeletedEventType), h.handleDeleteDirectory).
-		On(event.Is(directory.FileCreatedEventType), h.handleCreateFile).
-		On(event.Is(directory.FileDeletedEventType), h.handleDeleteFile).
+		On(event.Is(directory.CreateEventType), h.handleCreateDirectory).
+		On(event.Is(directory.DeleteEventType), h.handleDeleteDirectory).
+		On(event.Is(directory.CreateFileTriggeredEventType), h.handleCreateFile).
+		On(event.Is(directory.DeleteFileTriggeredEventType), h.handleDeleteFile).
 		On(event.Is(directory.FileUploadEventType), h.handleUploadFile).
 		On(event.Is(directory.FileDownloadEventType), h.handleDownloadFile).
 		On(event.Is(directory.LoadEventType), h.handleLoadDirectory).
-		On(event.Is(directory.FileLoadEventType), h.handleLoadFile).
+		On(event.Is(directory.LoadFileTriggeredEventType), h.handleLoadFile).
 		On(event.Is(directory.UserValidationAcceptedEventType), h.handleRenameDirectory).
 		On(event.Is(directory.FileRenameEventType), h.handleRenameFile).
 		On(event.Is(directory.RenameEventType), h.handleRenameRequest).

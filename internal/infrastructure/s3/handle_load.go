@@ -19,7 +19,7 @@ func (h *EventHandler) handleLoadDirectory(e event.Event) {
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed loading directory: %w", err))
-		h.bus.Publish(directory.NewLoadFailureEvent(err, dir))
+		h.bus.Publish(evt.NewFailureEvent(err))
 	}
 
 	client, err := h.clientFactory.Get(ctx, dir.ConnectionID())
@@ -28,12 +28,12 @@ func (h *EventHandler) handleLoadDirectory(e event.Event) {
 		return
 	}
 
-	if err := h.loadDirectory(ctx, client, dir); err != nil {
+	if err := h.loadDirectory(ctx, client, dir, evt.Ref()); err != nil {
 		handleError(err)
 	}
 }
 
-func (h *EventHandler) loadDirectory(ctx context.Context, client s3client.Client, dir *directory.Directory) error {
+func (h *EventHandler) loadDirectory(ctx context.Context, client s3client.Client, dir *directory.Directory, eventRef string) error {
 	searchKey := mapPathToSearchKey(dir.Path())
 
 	files := make([]*directory.File, 0)
@@ -78,13 +78,19 @@ func (h *EventHandler) loadDirectory(ctx context.Context, client s3client.Client
 		return err
 	}
 
-	h.bus.Publish(directory.NewLoadSuccessEvent(dir, subDirectories, files))
+	h.bus.Publish(directory.LoadSuccessEvent{
+		BaseEvent: event.NewBaseEvent(directory.LoadEventType.AsSuccess(),
+			event.WithContext(ctx), event.WithRef(eventRef)),
+		Directory:      dir,
+		Files:          files,
+		SubDirectories: subDirectories,
+	})
 	return nil
 }
 
 func (h *EventHandler) handleLoadFile(e event.Event) {
 	ctx := e.Context()
-	evt := e.(directory.FileLoadEvent)
+	evt := e.(directory.LoadFileTriggered)
 	obj, err := h.loadFile(ctx, evt.File, evt.ConnectionID)
 	if err != nil {
 		h.notifier.NotifyError(fmt.Errorf("failed loading file: %w", err))

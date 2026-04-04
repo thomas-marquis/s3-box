@@ -61,8 +61,8 @@ func NewEditorViewModel(
 	}
 
 	bus.Subscribe().
-		On(event.Is(directory.FileLoadEventType.AsSuccess()), vm.handleFileLoadingSuccess).
-		On(event.Is(directory.FileLoadEventType.AsFailure()), vm.handleFileLoadingFailure).
+		On(event.Is(directory.LoadFileSucceededEventType), vm.handleFileLoadingSuccess).
+		On(event.Is(directory.LoadFileFailedEventType), vm.handleFileLoadingFailure).
 		On(event.IsOneOf(
 			connection_deck.SelectEventType.AsSuccess(),
 			connection_deck.UpdateEventType.AsSuccess(),
@@ -109,7 +109,7 @@ func (v *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (*
 }
 
 func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
-	e := evt.(directory.FileLoadSuccessEvent)
+	e := evt.(directory.LoadFileSucceeded)
 	content := e.Content
 	oe, ok := v.openedEditors[e.File.FullPath()]
 	if !ok {
@@ -139,7 +139,7 @@ func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
 }
 
 func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
-	e := evt.(directory.FileLoadFailureEvent)
+	e := evt.(directory.LoadFileFailed)
 	v.notifier.NotifyError(e.Error())
 	oe, ok := v.openedEditors[e.File.FullPath()]
 	if !ok {
