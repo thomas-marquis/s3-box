@@ -29,10 +29,9 @@ func FakeLoadedRootDirectory(t *testing.T) *directory.Directory {
 	_, err = dir.Load()
 	require.NoError(t, err)
 
-	err = dir.Notify(directory.LoadSuccessEvent{
-		BaseEvent: event.NewBaseEvent(directory.LoadEventType.AsSuccess()),
+	err = dir.Notify(event.New(directory.LoadSucceeded{
 		Directory: dir,
-	})
+	}))
 	require.NoError(t, err)
 
 	return dir
@@ -53,10 +52,9 @@ func NewLoadedDirectoryWithConn(t *testing.T, connID connection_deck.ConnectionI
 			_, err = dir.Load()
 			require.NoError(t, err)
 
-			err = dir.Notify(directory.LoadSuccessEvent{
-				BaseEvent: event.NewBaseEvent(directory.LoadEventType.AsSuccess()),
+			err = dir.Notify(event.New(directory.LoadSucceeded{
 				Directory: dir,
-			})
+			}))
 			require.NoError(t, err)
 			parent = dir
 		}
@@ -68,10 +66,9 @@ func NewLoadedDirectoryWithConn(t *testing.T, connID connection_deck.ConnectionI
 	_, err = dir.Load()
 	require.NoError(t, err)
 
-	err = dir.Notify(directory.LoadSuccessEvent{
-		BaseEvent: event.NewBaseEvent(directory.LoadEventType.AsSuccess()),
+	err = dir.Notify(event.New(directory.LoadSucceeded{
 		Directory: dir,
-	})
+	}))
 	require.NoError(t, err)
 
 	return dir
@@ -98,10 +95,9 @@ func NewNotLoadedDirectoryWithConn(t *testing.T, connID connection_deck.Connecti
 			_, err = dir.Load()
 			require.NoError(t, err)
 
-			err = dir.Notify(directory.LoadSuccessEvent{
-				BaseEvent: event.NewBaseEvent(directory.LoadEventType.AsSuccess()),
+			err = dir.Notify(event.New(directory.LoadSucceeded{
 				Directory: dir,
-			})
+			}))
 			require.NoError(t, err)
 			parent = dir
 		}
@@ -148,11 +144,10 @@ func AddSubDirectoryToDirectory(t *testing.T, dir *directory.Directory, name str
 
 	nd := NewLoadedDirectory(t, name, dir.Path())
 
-	err = dir.Notify(directory.CreateSuccessEvent{
-		BaseEvent:       event.NewBaseEvent(directory.CreateEventType.AsSuccess()),
+	err = dir.Notify(event.New(directory.CreateSucceeded{
 		ParentDirectory: dir,
 		Directory:       nd,
-	})
+	}))
 	require.NoError(t, err)
 
 	return nd
@@ -166,11 +161,10 @@ func AddSubNotLoadedDirectoryToDirectory(t *testing.T, dir *directory.Directory,
 
 	nd := newEvt.Directory
 
-	err = dir.Notify(directory.CreateSuccessEvent{
-		BaseEvent:       event.NewBaseEvent(directory.CreateEventType.AsSuccess()),
+	err = dir.Notify(event.New(directory.CreateSucceeded{
 		ParentDirectory: dir,
 		Directory:       nd,
-	})
+	}))
 	require.NoError(t, err)
 
 	return nd

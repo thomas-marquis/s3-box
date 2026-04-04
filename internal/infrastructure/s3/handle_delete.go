@@ -8,21 +8,22 @@ import (
 )
 
 func (h *EventHandler) handleDeleteFile(evt event.Event) {
-	ctx := evt.Context()
-	e := evt.(directory.DeleteFileTriggered)
+	ctx := evt.Context
+	pl := evt.Payload.(directory.DeleteFileTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
-		h.bus.Publish(e.NewFailureEvent(err))
+		h.bus.Publish(event.NewFollowup(evt,
+			directory.DeleteFileFailed{Err: err, ParentDirectory: pl.ParentDirectory}))
 	}
 
-	client, err := h.clientFactory.Get(ctx, e.ConnectionID)
+	client, err := h.clientFactory.Get(ctx, pl.ConnectionID)
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	file := e.File
+	file := pl.File
 	if file == nil {
 		err := fmt.Errorf("file is nil for deletion event")
 		handleError(err)
@@ -35,12 +36,14 @@ func (h *EventHandler) handleDeleteFile(evt event.Event) {
 		return
 	}
 
-	h.bus.Publish(e.NewSuccessEvent(e.File))
+	h.bus.Publish(
+		event.NewFollowup(evt, directory.DeleteFileSucceeded{File: pl.File, ParentDirectory: pl.ParentDirectory}))
 }
 
 func (h *EventHandler) handleDeleteDirectory(evt event.Event) {
-	e := evt.(directory.DeleteEvent)
 	err := fmt.Errorf("deleting directories is not yet implemented")
 	h.notifier.NotifyError(err)
-	h.bus.Publish(e.NewFailureEvent(err))
+	h.bus.Publish(event.NewFollowup(evt, directory.DeleteFailed{
+		Err: err,
+	}))
 }

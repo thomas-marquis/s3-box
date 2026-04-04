@@ -9,13 +9,14 @@ import (
 )
 
 func (h *EventHandler) handleCreateFile(evt event.Event) {
-	ctx := evt.Context()
+	ctx := evt.Context
 
-	e := evt.(directory.CreateFileTriggered)
+	e := evt.Payload.(directory.CreateFileTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed creating file: %w", err))
-		h.bus.Publish(e.NewFailureEvent(err))
+		h.bus.Publish(
+			event.NewFollowup(evt, directory.CreateFileFailed{Err: err, Directory: e.Directory}))
 	}
 
 	obj, err := h.loadFile(ctx, e.File, e.ConnectionID)
@@ -28,25 +29,27 @@ func (h *EventHandler) handleCreateFile(evt event.Event) {
 		return
 	}
 
-	h.bus.Publish(e.NewSuccessEvent())
+	h.bus.Publish(
+		event.NewFollowup(evt, directory.CreateFileSucceeded{File: e.File, Directory: e.Directory}))
 }
 
 func (h *EventHandler) handleCreateDirectory(e event.Event) {
-	ctx := e.Context()
-	evt := e.(directory.CreateEvent)
+	ctx := e.Context
+	pl := e.Payload.(directory.CreateTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
-		h.bus.Publish(evt.NewFailureEvent(err))
+		h.bus.Publish(
+			event.NewFollowup(e, directory.CreateFailed{Err: err, ParentDirectory: pl.ParentDirectory}))
 	}
 
-	client, err := h.clientFactory.Get(ctx, evt.ParentDirectory.ConnectionID())
+	client, err := h.clientFactory.Get(ctx, pl.ParentDirectory.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	newDir := evt.Directory
+	newDir := pl.Directory
 	if newDir == nil {
 		handleError(fmt.Errorf("directory path is empty for created event"))
 		return
@@ -58,5 +61,6 @@ func (h *EventHandler) handleCreateDirectory(e event.Event) {
 		return
 	}
 
-	h.bus.Publish(evt.NewSuccessEvent())
+	h.bus.Publish(
+		event.NewFollowup(e, directory.CreateSucceeded{ParentDirectory: pl.ParentDirectory, Directory: newDir}))
 }

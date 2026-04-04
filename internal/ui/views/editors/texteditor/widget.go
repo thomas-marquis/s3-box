@@ -101,21 +101,21 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 	}))
 
 	w.state.Bus.Subscribe().
-		On(event.Is(fileeditor.SaveEventType), func(e event.Event) {
-			evt := e.(fileeditor.SaveEvent)
-			if !evt.File.Is(state.File) {
+		On(event.Is(fileeditor.SaveTriggeredType), func(e event.Event) {
+			pl := e.Payload.(fileeditor.SaveTriggered)
+			if !pl.File.Is(state.File) {
 				return
 			}
 
 			state.IsLoaded.Set(false)      // nolint:errcheck
 			w.stateLabel.Set("!Saving...") // nolint:errcheck
 		}).
-		On(event.Is(fileeditor.SaveEventType.AsSuccess()), func(e event.Event) {
-			evt := e.(fileeditor.SaveSuccessEvent)
-			if !evt.File.Is(state.File) {
+		On(event.Is(fileeditor.SaveSucceededType), func(e event.Event) {
+			pl := e.Payload.(fileeditor.SaveSucceeded)
+			if !pl.File.Is(state.File) {
 				return
 			}
-			w.contentHash = sha256Hex(evt.Content)
+			w.contentHash = sha256Hex(pl.Content)
 			w.stateLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
 			state.IsLoaded.Set(true)                                                 // nolint:errcheck
 			if w.cancelFunc != nil {
@@ -128,14 +128,14 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 				})
 			}
 		}).
-		On(event.Is(fileeditor.SaveEventType.AsFailure()), func(e event.Event) {
-			evt := e.(fileeditor.SaveFailureEvent)
-			if !evt.File.Is(state.File) {
+		On(event.Is(fileeditor.SaveFailedType), func(e event.Event) {
+			pl := e.Payload.(fileeditor.SaveFailed)
+			if !pl.File.Is(state.File) {
 				return
 			}
 			state.IsLoaded.Set(true)            // nolint:errcheck
 			w.stateLabel.Set("error (unsaved)") // nolint:errcheck
-			dialog.ShowError(evt.Error(), w.state.Window)
+			dialog.ShowError(pl.Err, w.state.Window)
 			w.shouldCloseWhenSaved = false
 			if w.cancelFunc != nil {
 				w.cancelFunc()
@@ -206,7 +206,10 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 func (w *TextEditor) save(content string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	w.cancelFunc = cancel
-	w.state.Bus.Publish(fileeditor.NewSaveEvent(w.state.File, content, event.WithContext(ctx)))
+	w.state.Bus.Publish(event.New(fileeditor.SaveTriggered{
+		File:    w.state.File,
+		Content: content,
+	}, event.WithContext(ctx)))
 }
 
 func (w *TextEditor) close() {

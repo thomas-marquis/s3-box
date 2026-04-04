@@ -246,10 +246,10 @@ func (mr *MockExplorerViewModelMockRecorder) Loading() *gomock.Call {
 }
 
 // PendingUserValidations mocks base method.
-func (m *MockExplorerViewModel) PendingUserValidations() <-chan directory.UserValidationEvent {
+func (m *MockExplorerViewModel) PendingUserValidations() <-chan directory.UserValidationAsked {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PendingUserValidations")
-	ret0, _ := ret[0].(<-chan directory.UserValidationEvent)
+	ret0, _ := ret[0].(<-chan directory.UserValidationAsked)
 	return ret0
 }
 

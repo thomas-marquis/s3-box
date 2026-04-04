@@ -1,9 +1,5 @@
 package event
 
-type FailureEvent interface {
-	Error() error
-}
-
 type BaseFailureEvent struct {
 	BaseEvent
 	err error

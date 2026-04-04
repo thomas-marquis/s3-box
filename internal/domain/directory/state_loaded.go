@@ -33,51 +33,57 @@ func (s *loadedState) Files() []*File {
 	return s.files
 }
 
-func (s *loadedState) Load() (LoadEvent, error) {
+func (s *loadedState) Load() (event.Event, error) {
 	// reload
 	s.d.setState(newLoadingState(s.baseState))
-	return NewLoadEvent(s.d), nil
+	return event.New(LoadTriggered{Directory: s.d}), nil
 }
 
-func (s *loadedState) UploadFile(localPath string, overwrite bool) (FileUploadEvent, error) {
+func (s *loadedState) UploadFile(localPath string, overwrite bool) (event.Event, error) {
 	fileName := filepath.Base(localPath)
 	if !overwrite && s.d.IsFileExists(FileName(fileName)) {
-		return FileUploadEvent{}, errors.Join(
+		return event.Event{}, errors.Join(
 			ErrAlreadyExists,
 			fmt.Errorf("file %s already exists in directory %s", fileName, s.d.path))
 	}
 
-	uploadedEvt := NewFileUploadEvent(s.d, localPath)
+	uploadedEvt := event.New(UploadFileTriggered{
+		Directory: s.d,
+		SrcPath:   localPath,
+	})
 
 	return uploadedEvt, nil
 }
 
-func (s *loadedState) Rename(newName string) (RenameEvent, error) {
+func (s *loadedState) Rename(newName string) (event.Event, error) {
 	if s.d.name == RootDirName {
-		return RenameEvent{}, errors.New("cannot rename root directory")
+		return event.Event{}, errors.New("cannot rename root directory")
 	}
 
 	if err := validateName(newName, s.d.parent.Path()); err != nil {
-		return RenameEvent{}, err
+		return event.Event{}, err
 	}
 
 	if newName == s.d.name {
-		return RenameEvent{}, fmt.Errorf("new name must be different from current name %s", s.d.name)
+		return event.Event{}, fmt.Errorf("new name must be different from current name %s", s.d.name)
 	}
 
 	if _, err := s.d.parent.GetSubDirectoryByName(newName); !errors.Is(err, ErrNotFound) {
-		return RenameEvent{}, fmt.Errorf("a directory with name %s already exists in %s", newName, s.d.parent.Path())
+		return event.Event{}, fmt.Errorf("a directory with name %s already exists in %s", newName, s.d.parent.Path())
 	}
 
 	s.d.setState(newLoadingState(s.baseState))
-	return NewRenameEvent(s.d, newName), nil
+	return event.New(RenameTriggered{
+		Directory: s.d,
+		NewName:   newName,
+	}), nil
 }
 
 func (s *loadedState) Notify(evt event.Event) error {
-	switch e := evt.(type) {
-	case DeleteSuccessEvent:
+	switch pl := evt.Payload.(type) {
+	case DeleteSucceeded:
 		for i, subDirPath := range s.subDirs {
-			if subDirPath.Is(e.Directory) {
+			if subDirPath.Is(pl.Directory) {
 				s.subDirs = append(s.subDirs[:i], s.subDirs[i+1:]...)
 				return nil
 			}
@@ -85,7 +91,7 @@ func (s *loadedState) Notify(evt event.Event) error {
 
 	case DeleteFileSucceeded:
 		for i, file := range s.files {
-			if file.Is(e.File) {
+			if file.Is(pl.File) {
 				newFiles := append(s.files[:i], s.files[i+1:]...)
 				s.files = newFiles
 				return nil
@@ -93,12 +99,12 @@ func (s *loadedState) Notify(evt event.Event) error {
 		}
 
 	case CreateFileSucceeded:
-		s.files = append(s.files, e.File)
+		s.files = append(s.files, pl.File)
 
-	case FileRenameSuccessEvent:
+	case RenameFileSucceeded:
 		for _, f := range s.files {
-			if f.Is(e.File) {
-				n, err := NewFileName(e.NewName)
+			if f.Is(pl.File) {
+				n, err := NewFileName(pl.NewName)
 				if err != nil {
 					return err
 				}
@@ -106,13 +112,13 @@ func (s *loadedState) Notify(evt event.Event) error {
 				return nil
 			}
 		}
-		return fmt.Errorf("file %s not found in directory", e.File.Name())
+		return fmt.Errorf("file %s not found in directory", pl.File.Name())
 
-	case CreateSuccessEvent:
-		s.subDirs = append(s.subDirs, e.Directory)
+	case CreateSucceeded:
+		s.subDirs = append(s.subDirs, pl.Directory)
 
-	case FileUploadSuccessEvent:
-		f := e.File
+	case UploadFileSucceeded:
+		f := pl.File
 		if !s.updateFile(f) {
 			s.files = append(s.files, f)
 		}

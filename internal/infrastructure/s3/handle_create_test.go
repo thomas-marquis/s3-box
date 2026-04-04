@@ -52,7 +52,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
-		fakeEventChan <- directory.NewFileCreatedEvent(testutil.FakeAwsConnectionId, dir, newFile)
+		fakeEventChan <- directory.CreateFileTriggered{ConnectionID: testutil.FakeAwsConnectionId, Directory: dir, File: newFile}
 		testutil.AssertEventually(t, done)
 
 		testutil.AssertObjectContent(t, client, bucket, "mydir/new_file.txt", "")

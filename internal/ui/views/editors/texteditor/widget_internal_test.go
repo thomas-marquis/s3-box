@@ -63,7 +63,10 @@ func TestFileEditor_saving(t *testing.T) {
 		fyne_test.Tap(res.saveBtn.ToolbarObject().(*fyne_widget.Button))
 		testutil.AssertImageMatches(t, "images/updated-and-saving.png", canvas.Capture())
 
-		events <- fileeditor.NewSaveSuccessEvent(file, "my new content")
+		events <- event.New(fileeditor.SaveSucceeded{
+			File:    file,
+			Content: "my new content",
+		})
 		testutil.AssertImageMatches(t, "images/updated-and-saved.png", canvas.Capture())
 	})
 
@@ -95,7 +98,10 @@ func TestFileEditor_saving(t *testing.T) {
 		fyne_test.Type(res.textEditor, "my new content")
 		fyne_test.Tap(res.saveBtn.ToolbarObject().(*fyne_widget.Button))
 
-		events <- fileeditor.NewSaveFailureEvent(file, errors.New("failed to save"))
+		events <- event.New(fileeditor.SaveFailed{
+			Err:  errors.New("failed to save"),
+			File: file,
+		})
 		testutil.AssertImageMatches(t, "images/saving-error.png", canvas.Capture())
 	})
 }

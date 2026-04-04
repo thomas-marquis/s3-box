@@ -20,16 +20,16 @@ func (s *loadingState) Type() StateType {
 	return stateTypeLoading
 }
 
-func (s *loadingState) Load() (LoadEvent, error) {
-	return LoadEvent{}, NewError(s.d, "loading is still in progress")
+func (s *loadingState) Load() (LoadTriggered, error) {
+	return LoadTriggered{}, NewError(s.d, "loading is still in progress")
 }
 
 func (s *loadingState) Notify(evt event.Event) error {
 	switch e := evt.(type) {
-	case LoadSuccessEvent:
+	case LoadSucceeded:
 		s.d.setState(newLoadedState(s.baseState, e.SubDirectories, e.Files))
 
-	case LoadFailureEvent:
+	case LoadFailed:
 		var urErr UncompletedRename
 		if errors.As(e.Error(), &urErr) {
 			isSrc := s.d.Path() == urErr.SourceDirPath
@@ -62,7 +62,7 @@ func (s *loadingState) Notify(evt event.Event) error {
 
 		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: e.Error()}))
 
-	case RenameSuccessEvent:
+	case RenameSucceeded:
 		s.d.name = e.NewName
 		s.d.path = s.d.parent.Path().NewSubPath(e.NewName)
 		for _, subDir := range s.subDirs {
@@ -70,7 +70,7 @@ func (s *loadingState) Notify(evt event.Event) error {
 		}
 		s.d.setState(newLoadedState(s.Clone(), s.subDirs, s.files))
 
-	case RenameFailureEvent:
+	case RenameFailed:
 		var urErr UncompletedRename
 		if errors.As(e.Error(), &urErr) {
 			status := RenameFailedStatus{
@@ -82,7 +82,7 @@ func (s *loadingState) Notify(evt event.Event) error {
 		}
 		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: e.Error()}))
 
-	case UserValidationRefusedEvent:
+	case UserValidationRefused:
 		s.d.setState(newLoadedState(s.baseState, s.subDirs, s.files))
 	}
 

@@ -49,7 +49,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.(directory.LoadSuccessEvent)
+				e, ok := evt.(directory.LoadSucceeded)
 				res := assert.True(t, ok) &&
 					assert.Len(t, e.SubDirectories, 1) &&
 					assert.Equal(t, "/mydir/", e.SubDirectories[0].Path().String()) &&
@@ -63,7 +63,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
-		fakeEventChan <- directory.NewLoadEvent(rootDir)
+		fakeEventChan <- event.New(directory.LoadTriggered{Directory: rootDir})
 
 		// Then
 		testutil.AssertEventually(t, done)
@@ -93,7 +93,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.(directory.LoadSuccessEvent)
+				e, ok := evt.(directory.LoadSucceeded)
 				res := assert.True(t, ok) &&
 					assert.Len(t, e.SubDirectories, 2) &&
 					assert.Len(t, e.Files, 1) &&
@@ -106,7 +106,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
-		fakeEventChan <- directory.NewLoadEvent(dir)
+		fakeEventChan <- event.New(directory.LoadTriggered{Directory: dir})
 		testutil.AssertEventually(t, done)
 	})
 
@@ -136,7 +136,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.(directory.LoadFailureEvent)
+				e, ok := evt.(directory.LoadFailed)
 				res := assert.True(t, ok) &&
 					assert.Error(t, e.Error()) &&
 					assert.Contains(t, e.Error().Error(),
@@ -152,7 +152,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
-		fakeEventChan <- directory.NewLoadEvent(dir)
+		fakeEventChan <- event.New(directory.LoadTriggered{Directory: dir})
 
 		// Then
 		testutil.AssertEventually(t, done)
@@ -182,7 +182,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.(directory.LoadFailureEvent)
+				e, ok := evt.(directory.LoadFailed)
 				var expErr directory.UncompletedRename
 				res := assert.True(t, ok) &&
 					assert.ErrorAs(t, e.Error(), &expErr) &&
@@ -198,7 +198,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
-		fakeEventChan <- directory.NewLoadEvent(dir)
+		fakeEventChan <- event.New(directory.LoadTriggered{Directory: dir})
 		testutil.AssertEventually(t, done)
 	})
 }

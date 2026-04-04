@@ -31,10 +31,10 @@ func NewFyneConnectionsRepository(
 	r := &FyneConnectionsRepository{prefs: prefs, bus: bus}
 
 	bus.Subscribe().
-		On(event.Is(connection_deck.SelectEventType), r.handleSelect).
-		On(event.Is(connection_deck.CreateEventType), r.handleCreate).
-		On(event.Is(connection_deck.RemoveEventType), r.handleRemove).
-		On(event.Is(connection_deck.UpdateEventType), r.handleUpdate).
+		On(event.Is(connection_deck.SelectConnectionTriggeredType), r.handleSelect).
+		On(event.Is(connection_deck.CreateConnectionTriggeredType), r.handleCreate).
+		On(event.Is(connection_deck.RemoveConnectionTriggeredType), r.handleRemove).
+		On(event.Is(connection_deck.UpdateConnectionTriggeredType), r.handleUpdate).
 		ListenWithWorkers(1)
 
 	return r
@@ -87,37 +87,63 @@ func (r *FyneConnectionsRepository) loadConnectionsDTO() (*dto.ConnectionsDTO, e
 }
 
 func (r *FyneConnectionsRepository) handleSelect(evt event.Event) {
-	ctx := evt.Context()
-	e := evt.(connection_deck.SelectEvent)
-	if err := r.saveDeck(ctx, e.Deck()); err != nil {
-		r.bus.Publish(connection_deck.NewSelectFailureEvent(err, e.Connection()))
+	ctx := evt.Context
+	pl := evt.Payload.(connection_deck.SelectConnectionTriggered)
+	if err := r.saveDeck(ctx, pl.Deck); err != nil {
+		r.bus.Publish(event.NewFollowup(evt, connection_deck.SelectConnectionFailed{
+			Err:               err,
+			ConnectionPayload: pl.ConnectionPayload,
+		}))
 	}
-	r.bus.Publish(connection_deck.NewSelectSuccessEvent(e.Deck(), e.Connection()))
+	r.bus.Publish(event.NewFollowup(evt, connection_deck.SelectConnectionSucceeded{
+		ConnectionPayload: pl.ConnectionPayload,
+		Deck:              pl.Deck,
+	}))
 }
 
 func (r *FyneConnectionsRepository) handleCreate(evt event.Event) {
-	ctx := evt.Context()
-	e := evt.(connection_deck.CreateEvent)
-	if err := r.saveDeck(ctx, e.Deck()); err != nil {
-		r.bus.Publish(connection_deck.NewCreateFailureEvent(err, e.Connection()))
+	ctx := evt.Context
+	pl := evt.Payload.(connection_deck.CreateConnectionTriggered)
+	if err := r.saveDeck(ctx, pl.Deck); err != nil {
+		r.bus.Publish(event.NewFollowup(evt, connection_deck.CreateConnectionFailed{
+			Err:               err,
+			ConnectionPayload: pl.ConnectionPayload,
+		}))
 	}
-	r.bus.Publish(connection_deck.NewCreateSuccessEvent(e.Deck(), e.Connection()))
+	r.bus.Publish(event.NewFollowup(evt, connection_deck.CreateConnectionSucceeded{
+		ConnectionPayload: pl.ConnectionPayload,
+		Deck:              pl.Deck,
+	}))
 }
 
 func (r *FyneConnectionsRepository) handleRemove(evt event.Event) {
-	ctx := evt.Context()
-	e := evt.(connection_deck.RemoveEvent)
-	if err := r.saveDeck(ctx, e.Deck()); err != nil {
-		r.bus.Publish(connection_deck.NewRemoveFailureEvent(err, e.RemovedIndex(), e.WasSelected(), e.Connection()))
+	ctx := evt.Context
+	pl := evt.Payload.(connection_deck.RemoveConnectionTriggered)
+	if err := r.saveDeck(ctx, pl.Deck); err != nil {
+		r.bus.Publish(event.NewFollowup(evt, connection_deck.RemoveConnectionFailed{
+			ConnectionPayload: pl.ConnectionPayload,
+			Err:               err,
+			RemovedIndex:      pl.RemovedIndex,
+			WasSelected:       pl.WasSelected,
+		}))
 	}
-	r.bus.Publish(connection_deck.NewRemoveSuccessEvent(e.Deck(), e.Connection()))
+	r.bus.Publish(event.NewFollowup(evt, connection_deck.RemoveConnectionSucceeded{
+		ConnectionPayload: pl.ConnectionPayload,
+		Deck:              pl.Deck,
+	}))
 }
 
 func (r *FyneConnectionsRepository) handleUpdate(evt event.Event) {
-	ctx := evt.Context()
-	e := evt.(connection_deck.UpdateEvent)
-	if err := r.saveDeck(ctx, e.Deck()); err != nil {
-		r.bus.Publish(connection_deck.NewUpdateFailureEvent(err, e.Previous()))
+	ctx := evt.Context
+	pl := evt.Payload.(connection_deck.UpdateConnectionTriggered)
+	if err := r.saveDeck(ctx, pl.Deck); err != nil {
+		r.bus.Publish(event.NewFollowup(evt, connection_deck.UpdateConnectionFailed{
+			ConnectionPayload: pl.ConnectionPayload,
+			Err:               err,
+		}))
 	}
-	r.bus.Publish(connection_deck.NewUpdateSuccessEvent(e.Deck(), e.Connection()))
+	r.bus.Publish(event.NewFollowup(evt, connection_deck.UpdateConnectionSucceeded{
+		ConnectionPayload: pl.ConnectionPayload,
+		Deck:              pl.Deck,
+	}))
 }

@@ -128,7 +128,10 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		assert.Equal(t, "", errMsg)
 
 		// When, file loading fails
-		eventsChan <- directory.NewFileLoadFailureEvent(expectedErr, file)
+		eventsChan <- event.New(directory.LoadFileFailed{
+			Err:  expectedErr,
+			File: file,
+		})
 
 		// Then
 		assert.Eventually(t, func() bool {
@@ -169,7 +172,10 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		eventsChan <- connection_deck.NewRemoveSuccessEvent(fakeDeck, conn)
+		eventsChan <- event.New(connection_deck.SelectConnectionSucceeded{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
+			Deck:              fakeDeck,
+		})
 		require.Eventually(t, func() bool {
 			return vm.SelectedConnection() == nil
 		}, 5*time.Second, 100*time.Millisecond)
@@ -355,7 +361,10 @@ func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn1)
 
 		// When
-		eventsChan <- connection_deck.NewSelectSuccessEvent(fakeDeck, conn2)
+		eventsChan <- event.New(connection_deck.SelectConnectionSucceeded{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn2},
+			Deck:              fakeDeck,
+		})
 
 		// Then
 		assert.EventuallyWithT(t, func(t *assert.CollectT) {
@@ -384,7 +393,10 @@ func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn1)
 
 		// When
-		eventsChan <- connection_deck.NewUpdateSuccessEvent(fakeDeck, conn1updated)
+		eventsChan <- event.New(connection_deck.UpdateConnectionSucceeded{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn1updated},
+			Deck:              fakeDeck,
+		})
 
 		// Then
 		assert.EventuallyWithT(t, func(t *assert.CollectT) {
@@ -413,7 +425,10 @@ func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn1)
 
 		// When
-		eventsChan <- connection_deck.NewRemoveSuccessEvent(fakeDeck, conn2)
+		eventsChan <- event.New(connection_deck.RemoveConnectionSucceeded{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn2},
+			Deck:              fakeDeck,
+		})
 
 		// Then
 		assert.EventuallyWithT(t, func(t *assert.CollectT) {

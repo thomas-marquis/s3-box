@@ -6,45 +6,34 @@ import (
 )
 
 const (
-	SaveEventType event.Type = "event.fileeditor.save"
+	SaveTriggeredType event.Type = "event.fileeditor.save.triggered"
+	SaveSucceededType event.Type = "event.fileeditor.save.succeeded"
+	SaveFailedType    event.Type = "event.fileeditor.save.failed"
 )
 
-type SaveEvent struct {
-	event.BaseEvent
+type SaveTriggered struct {
 	File    *directory.File
 	Content string
 }
 
-func NewSaveEvent(file *directory.File, content string, options ...event.Option) SaveEvent {
-	return SaveEvent{
-		BaseEvent: event.NewBaseEvent(SaveEventType, options...),
-		File:      file,
-		Content:   content,
-	}
+func (e SaveTriggered) Type() event.Type {
+	return SaveTriggeredType
 }
 
-type SaveSuccessEvent struct {
-	event.BaseEvent
+type SaveSucceeded struct {
 	File    *directory.File
 	Content string
 }
 
-func NewSaveSuccessEvent(file *directory.File, content string, options ...event.Option) SaveSuccessEvent {
-	return SaveSuccessEvent{
-		BaseEvent: event.NewBaseEvent(SaveEventType.AsSuccess(), options...),
-		File:      file,
-		Content:   content,
-	}
+func (e SaveSucceeded) Type() event.Type {
+	return SaveSucceededType
 }
 
-type SaveFailureEvent struct {
-	event.BaseFailureEvent
+type SaveFailed struct {
+	Err  error
 	File *directory.File
 }
 
-func NewSaveFailureEvent(file *directory.File, err error) SaveFailureEvent {
-	return SaveFailureEvent{
-		BaseFailureEvent: event.NewBaseFailureEvent(SaveEventType.AsFailure(), err),
-		File:             file,
-	}
+func (e SaveFailed) Type() event.Type {
+	return SaveFailedType
 }

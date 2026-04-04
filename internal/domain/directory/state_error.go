@@ -21,33 +21,33 @@ func (s *errorState) Type() StateType {
 	return stateTypeError
 }
 
-func (s *errorState) Load() (LoadEvent, error) {
+func (s *errorState) Load() (event.Event, error) {
 	// reload
 	s.d.setState(newLoadingState(s.baseState))
-	return NewLoadEvent(s.d), nil
+	return event.New(LoadTriggered{Directory: s.d}), nil
 }
 
-func (s *errorState) UploadFile(localPtah string, overwrite bool) (FileUploadEvent, error) {
-	return FileUploadEvent{}, errors.New("you can't upload files to a resumable directory")
+func (s *errorState) UploadFile(localPtah string, overwrite bool) (UploadFileTriggered, error) {
+	return UploadFileTriggered{}, errors.New("you can't upload files to a resumable directory")
 }
 
 func (s *errorState) Notify(evt event.Event) error {
-	switch e := evt.(type) {
+	switch pl := evt.Payload.(type) {
 
-	case RenameSuccessEvent:
-		s.d.name = e.NewName
-		s.d.path = s.d.parent.Path().NewSubPath(e.NewName)
+	case RenameSucceeded:
+		s.d.name = pl.NewName
+		s.d.path = s.d.parent.Path().NewSubPath(pl.NewName)
 		for _, subDir := range s.subDirs {
 			subDir.updatePath(s.d.path)
 		}
 		s.d.setState(newLoadedState(s.baseState, s.subDirs, s.files))
 
-	case RenameFailureEvent:
-		if errors.Is(e.Error(), &UncompletedRename{}) {
+	case RenameFailed:
+		if errors.Is(pl.Err, &UncompletedRename{}) {
 			status := RenameFailedStatus{
 				CurrentDirectory: s.d,
 				IsSourceDir:      true,
-				OtherDirPath:     s.d.ParentPath().NewSubPath(e.NewName),
+				OtherDirPath:     s.d.ParentPath().NewSubPath(pl.NewName),
 			}
 			s.d.setState(newErrorState(s.baseState, status))
 		}
@@ -76,9 +76,13 @@ func (s *errorState) Recover(choice RecoveryChoice) (event.Event, error) {
 			if errors.Is(err, ErrNotFound) && choice == RecoveryChoiceRenameAbort {
 				// meh...
 				s.d.setState(newLoadingState(s.baseState))
-				return NewRenameRecoverEvent(srcDir, dstDir, choice), nil
+				return event.New(RenameRecoveryTriggered{
+					Directory: srcDir,
+					DstDir:    dstDir,
+					Choice:    choice,
+				}), nil
 			}
-			return nil, err
+			return event.Event{}, err
 		}
 
 		if status.IsSourceDir {
@@ -89,7 +93,11 @@ func (s *errorState) Recover(choice RecoveryChoice) (event.Event, error) {
 
 		s.d.setState(newLoadingState(s.baseState))
 		otherDir.setState(newLoadingState(baseState{d: otherDir}))
-		return NewRenameRecoverEvent(srcDir, dstDir, choice), nil
+		return event.New(RenameRecoveryTriggered{
+			Directory: srcDir,
+			DstDir:    dstDir,
+			Choice:    choice,
+		}), nil
 	}
-	return nil, errors.New("nothing to recover")
+	return event.Event{}, errors.New("nothing to recover")
 }
