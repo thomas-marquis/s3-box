@@ -90,11 +90,7 @@ func (h *EventHandler) handleRenameFile(e event.Event) {
 		return
 	}
 
-	h.bus.Publish(event.NewFollowup(e, directory.RenameFileSucceeded{
-		File:      pl.File,
-		NewName:   pl.NewName,
-		Directory: pl.Directory,
-	}))
+	h.bus.Publish(event.NewFollowup(e, directory.RenameFileSucceeded(pl)))
 }
 
 func (h *EventHandler) handleRenameRequest(e event.Event) {
@@ -141,10 +137,7 @@ func (h *EventHandler) handleRenameRequest(e event.Event) {
 			handleError(err)
 			return
 		}
-		h.bus.Publish(event.NewFollowup(e, directory.RenameSucceeded{
-			Directory: pl.Directory,
-			NewName:   pl.NewName,
-		}))
+		h.bus.Publish(event.NewFollowup(e, directory.RenameSucceeded(pl)))
 
 	} else {
 		for _, key := range lsSrc.Keys {
@@ -210,10 +203,7 @@ func (h *EventHandler) handleRenameDirectory(e event.Event) {
 		return
 	}
 
-	h.bus.Publish(event.NewFollowup(uve.Reason, directory.RenameSucceeded{
-		Directory: rePl.Directory,
-		NewName:   rePl.NewName,
-	}))
+	h.bus.Publish(event.NewFollowup(uve.Reason, directory.RenameSucceeded(rePl)))
 
 }
 
@@ -347,14 +337,14 @@ func (h *EventHandler) handleRenameAbort(evt event.Event, srcDir, dstDir *direct
 
 	if srcDir != nil {
 		go func() {
-			if err := h.loadDirectory(ctx, client, srcDir, e.Ref()); err != nil {
+			if err := h.loadDirectory(ctx, client, srcDir, evt); err != nil {
 				handleError(err)
 			}
 		}()
 	}
 	if dstDir != nil {
 		go func() {
-			if err := h.loadDirectory(ctx, client, dstDir, e.Ref()); err != nil {
+			if err := h.loadDirectory(ctx, client, dstDir, evt); err != nil {
 				handleError(err)
 			}
 		}()

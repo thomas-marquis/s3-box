@@ -122,13 +122,14 @@ func AddFileToDirectory(t *testing.T, dir *directory.Directory, name string) *di
 
 	fEvt, err := dir.NewFile(name, false)
 	require.NoError(t, err)
+	require.Equal(t, directory.CreateFileTriggeredType, fEvt.Type())
 
-	f := fEvt.File
+	f := fEvt.Payload.(directory.CreateFileTriggered).File
 
-	err = dir.Notify(directory.CreateFileSucceeded{
+	err = dir.Notify(event.New(directory.CreateFileSucceeded{
 		File:      f,
 		Directory: dir,
-	})
+	}))
 	require.NoError(t, err)
 
 	return f
@@ -158,8 +159,9 @@ func AddSubNotLoadedDirectoryToDirectory(t *testing.T, dir *directory.Directory,
 
 	newEvt, err := dir.NewSubDirectory(name)
 	require.NoError(t, err)
+	require.Equal(t, directory.CreateTriggeredType, newEvt.Type())
 
-	nd := newEvt.Directory
+	nd := newEvt.Payload.(directory.CreateTriggered).Directory
 
 	err = dir.Notify(event.New(directory.CreateSucceeded{
 		ParentDirectory: dir,

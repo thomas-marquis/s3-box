@@ -109,9 +109,9 @@ func (v *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (*
 }
 
 func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
-	e := evt.(directory.LoadFileSucceeded)
-	content := e.Content
-	oe, ok := v.openedEditors[e.File.FullPath()]
+	pl := evt.Payload.(directory.LoadFileSucceeded)
+	content := pl.Content
+	oe, ok := v.openedEditors[pl.File.FullPath()]
 	if !ok {
 		// The editor has been closed before the file was loaded. And it's okay
 		return
@@ -139,15 +139,15 @@ func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
 }
 
 func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
-	e := evt.(directory.LoadFileFailed)
-	v.notifier.NotifyError(e.Error())
-	oe, ok := v.openedEditors[e.File.FullPath()]
+	pl := evt.Payload.(directory.LoadFileFailed)
+	v.notifier.NotifyError(pl.Err)
+	oe, ok := v.openedEditors[pl.File.FullPath()]
 	if !ok {
 		// The editor has been closed before the file was loaded. And it's okay
 		return
 	}
-	oe.state.ErrorMsg.Set(e.Error().Error()) // nolint:errcheck
-	oe.state.IsLoaded.Set(true)              // nolint:errcheck
+	oe.state.ErrorMsg.Set(pl.Err.Error()) // nolint:errcheck
+	oe.state.IsLoaded.Set(true)           // nolint:errcheck
 }
 
 func (v *editorViewModelImpl) IsOpened(file *directory.File) bool {
@@ -185,10 +185,7 @@ func (v *editorViewModelImpl) handleFileSave(e event.Event) {
 			}))
 			return
 		}
-		v.bus.Publish(event.NewFollowup(e, fileeditor.SaveSucceeded{
-			File:    pl.File,
-			Content: pl.Content,
-		}))
+		v.bus.Publish(event.NewFollowup(e, fileeditor.SaveSucceeded(pl)))
 	}()
 
 	select {
@@ -199,22 +196,22 @@ func (v *editorViewModelImpl) handleFileSave(e event.Event) {
 }
 
 func (v *editorViewModelImpl) handleFileSaveFailure(evt event.Event) {
-	e := evt.(fileeditor.SaveFailed)
-	v.notifier.NotifyError(e.Error())
+	pl := evt.Payload.(fileeditor.SaveFailed)
+	v.notifier.NotifyError(pl.Err)
 }
 
 func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {
 	var hasChanged bool
 	var conn *connection_deck.Connection
-	if _, ok := evt.(connection_deck.RemoveConnectionSucceeded); ok {
+	if _, ok := evt.Payload.(connection_deck.RemoveConnectionSucceeded); ok {
 		hasChanged = true
 	} else {
-		e, ok := evt.(connection_deck.SelectConnectionSucceeded)
+		pl, ok := evt.Payload.(connection_deck.SelectConnectionSucceeded)
 		if ok {
-			conn = e.Connection()
+			conn = pl.Connection()
 		} else {
-			e := evt.(connection_deck.UpdateConnectionSucceeded)
-			conn = e.Connection()
+			pl := evt.Payload.(connection_deck.UpdateConnectionSucceeded)
+			conn = pl.Connection()
 			if conn.ID() != v.selectedConnection.ID() {
 				return
 			}

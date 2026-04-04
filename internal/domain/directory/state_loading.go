@@ -20,18 +20,18 @@ func (s *loadingState) Type() StateType {
 	return stateTypeLoading
 }
 
-func (s *loadingState) Load() (LoadTriggered, error) {
-	return LoadTriggered{}, NewError(s.d, "loading is still in progress")
+func (s *loadingState) Load() (event.Event, error) {
+	return event.Event{}, NewError(s.d, "loading is still in progress")
 }
 
 func (s *loadingState) Notify(evt event.Event) error {
-	switch e := evt.(type) {
+	switch pl := evt.Payload.(type) {
 	case LoadSucceeded:
-		s.d.setState(newLoadedState(s.baseState, e.SubDirectories, e.Files))
+		s.d.setState(newLoadedState(s.baseState, pl.SubDirectories, pl.Files))
 
 	case LoadFailed:
 		var urErr UncompletedRename
-		if errors.As(e.Error(), &urErr) {
+		if errors.As(pl.Err, &urErr) {
 			isSrc := s.d.Path() == urErr.SourceDirPath
 			var otherPath Path
 			if isSrc {
@@ -60,11 +60,11 @@ func (s *loadingState) Notify(evt event.Event) error {
 			return nil
 		}
 
-		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: e.Error()}))
+		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: pl.Err}))
 
 	case RenameSucceeded:
-		s.d.name = e.NewName
-		s.d.path = s.d.parent.Path().NewSubPath(e.NewName)
+		s.d.name = pl.NewName
+		s.d.path = s.d.parent.Path().NewSubPath(pl.NewName)
 		for _, subDir := range s.subDirs {
 			subDir.updatePath(s.d.path)
 		}
@@ -72,15 +72,15 @@ func (s *loadingState) Notify(evt event.Event) error {
 
 	case RenameFailed:
 		var urErr UncompletedRename
-		if errors.As(e.Error(), &urErr) {
+		if errors.As(pl.Err, &urErr) {
 			status := RenameFailedStatus{
 				CurrentDirectory: s.d,
 				IsSourceDir:      true,
-				OtherDirPath:     s.d.ParentPath().NewSubPath(e.NewName),
+				OtherDirPath:     s.d.ParentPath().NewSubPath(pl.NewName),
 			}
 			s.d.setState(newErrorState(s.baseState, status))
 		}
-		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: e.Error()}))
+		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: pl.Err}))
 
 	case UserValidationRefused:
 		s.d.setState(newLoadedState(s.baseState, s.subDirs, s.files))

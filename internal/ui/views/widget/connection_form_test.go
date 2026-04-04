@@ -19,7 +19,8 @@ func TestConnectionForm(t *testing.T) {
 	mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
 
 	deck := connection_deck.New()
-	conn := deck.New("Test", "ak", "sk", "bucket").Connection()
+	conn := deck.New("Test", "ak", "sk", "bucket").
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 	t.Run("should display AWS form by default", func(t *testing.T) {
 		// When

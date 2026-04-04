@@ -50,9 +50,9 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
-				e, ok := evt.(directory.RenameFileSucceeded)
+				pl, ok := evt.Payload.(directory.RenameFileSucceeded)
 				res := assert.True(t, ok) &&
-					assert.Equal(t, "renamed.txt", e.NewName)
+					assert.Equal(t, "renamed.txt", pl.NewName)
 				close(done)
 				return res
 			})).
@@ -115,9 +115,9 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				e, ok := evt.(directory.UserValidationAsked)
+				pl, ok := evt.Payload.(directory.UserValidationAsked)
 				assert.True(t, ok)
-				assert.Equal(t, inputEvt, e.Reason)
+				assert.Equal(t, inputEvt, pl.Reason)
 				close(done)
 			}).
 			Times(1)
@@ -172,10 +172,10 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				e, ok := evt.(directory.RenameSucceeded)
+				pl, ok := evt.Payload.(directory.RenameSucceeded)
 				assert.True(t, ok)
-				assert.Equal(t, originalDir, e.Directory)
-				assert.Equal(t, "newname", e.NewName)
+				assert.Equal(t, originalDir, pl.Directory)
+				assert.Equal(t, "newname", pl.NewName)
 				close(done)
 			}).
 			Times(1)
@@ -187,7 +187,10 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 			Directory: originalDir,
 			NewName:   "newname",
 		})
-		fakeEventChan <- directory.NewUserValidationAcceptedEvent(originalDir, originalEvt)
+		fakeEventChan <- event.New(directory.UserValidationAccepted{
+			Directory: originalDir,
+			Reason:    originalEvt,
+		})
 
 		// Then
 		testutil.AssertEventually(t, done)
@@ -239,10 +242,10 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				e, ok := evt.(directory.RenameSucceeded)
+				pl, ok := evt.Payload.(directory.RenameSucceeded)
 				assert.True(t, ok)
-				assert.Equal(t, subdir, e.Directory)
-				assert.Equal(t, "newname", e.NewName)
+				assert.Equal(t, subdir, pl.Directory)
+				assert.Equal(t, "newname", pl.NewName)
 				close(done)
 			}).
 			Times(1)
@@ -251,10 +254,13 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 
 		// When
 		originalEvt := event.New(directory.RenameTriggered{
-			Directory: originalDir,
+			Directory: subdir,
 			NewName:   "newname",
 		})
-		fakeEventChan <- directory.NewUserValidationAcceptedEvent(subdir, originalEvt)
+		fakeEventChan <- event.New(directory.UserValidationAccepted{
+			Directory: subdir,
+			Reason:    originalEvt,
+		})
 
 		// Then
 		testutil.AssertEventually(t, done)
@@ -300,10 +306,10 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				e, ok := evt.(directory.RenameSucceeded)
+				pl, ok := evt.Payload.(directory.RenameSucceeded)
 				assert.True(t, ok)
-				assert.Equal(t, dir, e.Directory)
-				assert.Equal(t, "newname", e.NewName)
+				assert.Equal(t, dir, pl.Directory)
+				assert.Equal(t, "newname", pl.NewName)
 				close(done)
 			}).
 			Times(1)
@@ -351,15 +357,15 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				defer close(done)
-				errEvt, ok := evt.(directory.RenameFailed)
+				errPl, ok := evt.Payload.(directory.RenameFailed)
 				if !assert.True(t, ok) {
 					return false
 				}
 				var expErr directory.UncompletedRename
-				return assert.ErrorAs(t, errEvt.Error(), &expErr) &&
+				return assert.ErrorAs(t, errPl.Err, &expErr) &&
 					assert.Equal(t, directory.Path("/originaldir/"), expErr.SourceDirPath) &&
 					assert.Equal(t, directory.Path("/newname/"), expErr.DestinationDirPath) &&
-					assert.Contains(t, errEvt.Error().Error(), "3 error(s) occurred while renaming objects")
+					assert.Contains(t, errPl.Err.Error(), "3 error(s) occurred while renaming objects")
 			})).
 			Times(1)
 
@@ -374,11 +380,13 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 				})
 			}).Listen()
 
-		fakeEventChan <- directory.NewUserValidationAcceptedEvent(originalDir,
-			event.New(directory.RenameTriggered{
+		fakeEventChan <- event.New(directory.UserValidationAccepted{
+			Directory: originalDir,
+			Reason: event.New(directory.RenameTriggered{
 				Directory: originalDir,
 				NewName:   "newname",
-			}))
+			}),
+		})
 		testutil.AssertEventually(t, done)
 
 		// copy errors results
@@ -432,9 +440,9 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		done := make(chan struct{})
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
-				errEvt, ok := evt.(directory.RenameFailed)
+				errPl, ok := evt.Payload.(directory.RenameFailed)
 				if ok {
-					assert.Contains(t, errEvt.Error().Error(), "destination directory already exists")
+					assert.Contains(t, errPl.Err.Error(), "destination directory already exists")
 					close(done)
 				}
 				return ok
@@ -595,9 +603,9 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				defer close(done)
-				e, ok := evt.(directory.RenameSucceeded)
+				pl, ok := evt.Payload.(directory.RenameSucceeded)
 				if ok {
-					assert.Equal(t, "newname", e.NewName)
+					assert.Equal(t, "newname", pl.NewName)
 				}
 				return ok
 			})).
@@ -671,9 +679,9 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				defer close(done)
-				e, ok := evt.(directory.RenameSucceeded)
+				pl, ok := evt.Payload.(directory.RenameSucceeded)
 				if ok {
-					assert.Equal(t, "oldname", e.NewName)
+					assert.Equal(t, "oldname", pl.NewName)
 				}
 				return ok
 			})).
@@ -749,22 +757,22 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				defer wg.Done()
-				e, ok := evt.(directory.LoadSucceeded)
+				pl, ok := evt.Payload.(directory.LoadSucceeded)
 				if !ok {
 					return ok
 				}
-				if e.Directory.Name() == "oldname" {
-					assert.Len(t, e.Files, 2)
-					assert.Len(t, e.SubDirectories, 1)
-					assert.Equal(t, "file1.txt", e.Files[0].Name().String())
-					assert.Equal(t, "file3.txt", e.Files[1].Name().String())
-					assert.Equal(t, "subdir", e.SubDirectories[0].Name())
-				} else if e.Directory.Name() == "newname" {
-					assert.Len(t, e.Files, 2)
-					assert.Len(t, e.SubDirectories, 1)
-					assert.Equal(t, "file1.txt", e.Files[0].Name().String())
-					assert.Equal(t, "file2.txt", e.Files[1].Name().String())
-					assert.Equal(t, "subdir", e.SubDirectories[0].Name())
+				if pl.Directory.Name() == "oldname" {
+					assert.Len(t, pl.Files, 2)
+					assert.Len(t, pl.SubDirectories, 1)
+					assert.Equal(t, "file1.txt", pl.Files[0].Name().String())
+					assert.Equal(t, "file3.txt", pl.Files[1].Name().String())
+					assert.Equal(t, "subdir", pl.SubDirectories[0].Name())
+				} else if pl.Directory.Name() == "newname" {
+					assert.Len(t, pl.Files, 2)
+					assert.Len(t, pl.SubDirectories, 1)
+					assert.Equal(t, "file1.txt", pl.Files[0].Name().String())
+					assert.Equal(t, "file2.txt", pl.Files[1].Name().String())
+					assert.Equal(t, "subdir", pl.SubDirectories[0].Name())
 				} else {
 					assert.Fail(t, "unexpected directory")
 				}

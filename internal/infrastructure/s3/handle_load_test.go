@@ -49,12 +49,12 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.(directory.LoadSucceeded)
+				pl, ok := evt.Payload.(directory.LoadSucceeded)
 				res := assert.True(t, ok) &&
-					assert.Len(t, e.SubDirectories, 1) &&
-					assert.Equal(t, "/mydir/", e.SubDirectories[0].Path().String()) &&
-					assert.Len(t, e.Files, 1) &&
-					assert.Equal(t, "root_file.txt", e.Files[0].Name().String())
+					assert.Len(t, pl.SubDirectories, 1) &&
+					assert.Equal(t, "/mydir/", pl.SubDirectories[0].Path().String()) &&
+					assert.Len(t, pl.Files, 1) &&
+					assert.Equal(t, "root_file.txt", pl.Files[0].Name().String())
 				close(done)
 				return res
 			})).
@@ -93,11 +93,11 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.(directory.LoadSucceeded)
+				pl, ok := evt.Payload.(directory.LoadSucceeded)
 				res := assert.True(t, ok) &&
-					assert.Len(t, e.SubDirectories, 2) &&
-					assert.Len(t, e.Files, 1) &&
-					assert.Equal(t, "file_in_dir.txt", e.Files[0].Name().String())
+					assert.Len(t, pl.SubDirectories, 2) &&
+					assert.Len(t, pl.Files, 1) &&
+					assert.Equal(t, "file_in_dir.txt", pl.Files[0].Name().String())
 				close(done)
 				return res
 			})).
@@ -136,10 +136,10 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.(directory.LoadFailed)
+				pl, ok := evt.Payload.(directory.LoadFailed)
 				res := assert.True(t, ok) &&
-					assert.Error(t, e.Error()) &&
-					assert.Contains(t, e.Error().Error(),
+					assert.Error(t, pl.Err) &&
+					assert.Contains(t, pl.Err.Error(),
 						"InvalidAccessKeyId: The AWS Access Key Id you provided does not exist in our records")
 				close(done)
 				return res
@@ -182,10 +182,10 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.(directory.LoadFailed)
+				pl, ok := evt.Payload.(directory.LoadFailed)
 				var expErr directory.UncompletedRename
 				res := assert.True(t, ok) &&
-					assert.ErrorAs(t, e.Error(), &expErr) &&
+					assert.ErrorAs(t, pl.Err, &expErr) &&
 					assert.Equal(t, directory.Path("/mydir/oldname/"), expErr.SourceDirPath) &&
 					assert.Equal(t, directory.Path("/mydir/newname/"), expErr.DestinationDirPath)
 				close(done)

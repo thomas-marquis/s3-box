@@ -213,15 +213,15 @@ func (v *explorerViewModelImpl) PendingUserValidations() <-chan directory.UserVa
 }
 
 func (v *explorerViewModelImpl) handleUserValidationRequest(evt event.Event) {
-	e := evt.(directory.UserValidationAsked)
-	v.pendingUserValidations <- e
+	pl := evt.Payload.(directory.UserValidationAsked)
+	v.pendingUserValidations <- pl
 }
 
 func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
-	e := evt.(directory.UserValidationRefused)
-	dir := e.Directory
+	pl := evt.Payload.(directory.UserValidationRefused)
+	dir := pl.Directory
 
-	if err := dir.Notify(e); err != nil {
+	if err := dir.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}
@@ -314,9 +314,9 @@ func (v *explorerViewModelImpl) ReloadDirectory(dir *directory.Directory) error 
 }
 
 func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
-	e := evt.(directory.LoadSucceeded)
-	dir := e.Directory
-	if err := dir.Notify(e); err != nil {
+	pl := evt.Payload.(directory.LoadSucceeded)
+	dir := pl.Directory
+	if err := dir.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}
@@ -333,13 +333,13 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
-	e := evt.(directory.LoadFailed)
-	dir := e.Directory
-	if err := dir.Notify(e); err != nil {
+	pl := evt.Payload.(directory.LoadFailed)
+	dir := pl.Directory
+	if err := dir.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}
-	v.infoMessage.Set(e.Error().Error()) //nolint:errcheck
+	v.infoMessage.Set(pl.Err.Error()) //nolint:errcheck
 
 	if dir.Is(v.selectedDirectory) {
 		v.isSelectedDirLoading.Set(false) // nolint:errcheck
@@ -354,9 +354,9 @@ func (v *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
 }
 
 func (v *explorerViewModelImpl) handleDownloadFileSuccess(evt event.Event) {
-	e := evt.(directory.DownloadFileSucceeded)
+	pl := evt.Payload.(directory.DownloadFileSucceeded)
 	v.infoMessage.Set( //nolint:errcheck
-		fmt.Sprintf("File %s downloaded", e.File.Name()))
+		fmt.Sprintf("File %s downloaded", pl.File.Name()))
 }
 
 func (v *explorerViewModelImpl) handleDownloadFileFailure(evt event.Event) {
@@ -406,7 +406,7 @@ func (v *explorerViewModelImpl) handleFileUploadSuccess(evt event.Event) {
 func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
 	pl := evt.Payload.(directory.UploadFileFailed)
 	err := fmt.Errorf("error uploading file: %w", pl.Err)
-	if notifErr := pl.Directory.Notify(pl); notifErr != nil {
+	if notifErr := pl.Directory.Notify(evt); notifErr != nil {
 		err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
 	}
 	v.notifier.NotifyError(err)
@@ -458,7 +458,7 @@ func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
 
 func (v *explorerViewModelImpl) handleDeleteFileFailure(evt event.Event) {
 	pl := evt.Payload.(directory.DeleteFileFailed)
-	if err := pl.ParentDirectory.Notify(pl); err != nil {
+	if err := pl.ParentDirectory.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}
@@ -728,7 +728,7 @@ func (v *explorerViewModelImpl) handleRenameFileSuccess(evt event.Event) {
 	oldFullPath := file.FullPath()
 
 	// Update the parent directory's state
-	if err := parentDir.Notify(pl); err != nil {
+	if err := parentDir.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}
@@ -880,8 +880,8 @@ func (v *explorerViewModelImpl) handleConnectionChange(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleConnectionRemoved(evt event.Event) {
-	e := evt.(connection_deck.RemoveConnectionSucceeded)
-	conn := e.Connection()
+	pl := evt.Payload.(connection_deck.RemoveConnectionSucceeded)
+	conn := pl.Connection()
 	if v.selectedConnectionVal != nil && v.selectedConnectionVal.Is(conn) {
 		v.selectedConnectionVal = nil
 		v.selectedConnection.Set(nil) //nolint:errcheck

@@ -24,8 +24,9 @@ func TestFile_Rename(t *testing.T) {
 		// Then
 		require.NoError(t, err)
 		assert.Equal(t, directory.RenameFileTriggeredType, evt.Type())
+		pl := evt.Payload.(directory.RenameFileTriggered)
 		assert.Equal(t, directory.FileName("oldname.txt"), file.Name())
-		assert.Equal(t, "newname.txt", evt.NewName)
+		assert.Equal(t, "newname.txt", pl.NewName)
 	})
 
 	t.Run("should return error when new name is invalid", func(t *testing.T) {

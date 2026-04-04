@@ -49,7 +49,7 @@ func FakeAwsConnectionWithEndpoint(t *testing.T, endpoint, bucket string) *conne
 		New(FakeAwsConnectionName, FakeAwsAccessKeyId, FakeAwsSecretAccessKey, bucket,
 			connection_deck.AsAWS(FakeAwsRegion),
 			connection_deck.WithID(FakeAwsConnectionId)).
-		Connection()
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 	if endpoint != "" {
 		conn.UpdateServer(endpoint)
@@ -65,7 +65,7 @@ func FakeAwsConnectionWithCustomID(t *testing.T, id connection_deck.ConnectionID
 		New(FakeAwsConnectionName, FakeAwsAccessKeyId, FakeAwsSecretAccessKey, bucket,
 			connection_deck.AsAWS(FakeAwsRegion),
 			connection_deck.WithID(id)).
-		Connection()
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 	if endpoint != "" {
 		conn.UpdateServer(endpoint)
@@ -80,7 +80,7 @@ func FakeS3LikeConnection(t *testing.T, endpoint, bucket string) *connection_dec
 		New(FakeS3LikeConnectionName, FakeS3LikeAccessKeyId, FakeS3LikeSecretKey, bucket,
 			connection_deck.AsS3Like(endpoint, false),
 			connection_deck.WithID(FakeS3LikeConnectionId)).
-		Connection()
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
 }
 
 func FakeDeckWithS3LikeConnection(t *testing.T, endpoint, bucket string) *connection_deck.Deck {

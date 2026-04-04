@@ -110,10 +110,7 @@ func (r *FyneConnectionsRepository) handleCreate(evt event.Event) {
 			ConnectionPayload: pl.ConnectionPayload,
 		}))
 	}
-	r.bus.Publish(event.NewFollowup(evt, connection_deck.CreateConnectionSucceeded{
-		ConnectionPayload: pl.ConnectionPayload,
-		Deck:              pl.Deck,
-	}))
+	r.bus.Publish(event.NewFollowup(evt, connection_deck.CreateConnectionSucceeded(pl)))
 }
 
 func (r *FyneConnectionsRepository) handleRemove(evt event.Event) {

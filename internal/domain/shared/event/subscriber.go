@@ -31,11 +31,11 @@ func (s *Subscriber) On(matcher Matcher, callback func(Event)) *Subscriber {
 
 func (s *Subscriber) listen() {
 	for event := range s.events {
-		if event.Type().IsCarrier() {
-			c := event.(Carrier)
-			c.Dispatch(s.events)
-			continue
-		}
+		//if event.Type().IsCarrier() {
+		//	c := event.(Carrier)
+		//	c.Dispatch(s.events)
+		//	continue
+		//}
 		s.RLock()
 		for matcher, callback := range s.registered {
 			s.RUnlock()

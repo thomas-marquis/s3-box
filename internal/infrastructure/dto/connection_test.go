@@ -30,8 +30,10 @@ func TestNewConnectionsDTO(t *testing.T) {
 	t.Run("should create DTO with multiple connections and selection", func(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
-		c1 := deck.New("conn 1", "ak1", "sk1", "b1", connection_deck.AsAWS("us-east-1")).Connection()
-		c2 := deck.New("conn 2", "ak2", "sk2", "b2", connection_deck.AsS3Like("http://localhost:9000", true)).Connection()
+		c1 := deck.New("conn 1", "ak1", "sk1", "b1", connection_deck.AsAWS("us-east-1")).
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		c2 := deck.New("conn 2", "ak2", "sk2", "b2", connection_deck.AsS3Like("http://localhost:9000", true)).
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 		_, _ = deck.Select(c2.ID())
 
 		// When
@@ -188,7 +190,8 @@ func TestConnectionsDTO_MarshalJSON(t *testing.T) {
 	t.Run("should marshal connections correctly", func(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
-		c1 := deck.New("conn 1", "ak1", "sk1", "b1", connection_deck.AsAWS("us-east-1")).Connection()
+		c1 := deck.New("conn 1", "ak1", "sk1", "b1", connection_deck.AsAWS("us-east-1")).
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 		d := dto.NewConnectionsDTO(deck)
 
 		// When

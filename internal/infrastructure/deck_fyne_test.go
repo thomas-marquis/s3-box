@@ -119,7 +119,8 @@ func TestFyneConnectionsRepository_select(t *testing.T) {
 		defer close(events)
 
 		deck := connection_deck.New()
-		c1 := deck.New("conn 1", "ak", "sk", "bucket").Connection()
+		c1 := deck.New("conn 1", "ak", "sk", "bucket").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 		evt, err := deck.Select(c1.ID())
 		require.NoError(t, err)
 
@@ -202,7 +203,8 @@ func TestFyneConnectionsRepository_remove(t *testing.T) {
 		defer close(events)
 
 		deck := connection_deck.New()
-		c1 := deck.New("conn 1", "ak", "sk", "bucket").Connection()
+		c1 := deck.New("conn 1", "ak", "sk", "bucket").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 		evt, err := deck.RemoveAConnection(c1.ID())
 		require.NoError(t, err)
 
