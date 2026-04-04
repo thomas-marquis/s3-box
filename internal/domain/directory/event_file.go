@@ -10,7 +10,6 @@ const (
 	CreateFileSucceededEventType = "event.file.create.succeeded"
 	CreateFileFailedEventType    = "event.file.create.failed"
 
-	FileRenameEventType   event.Type = "event.file.rename"
 	FileUploadEventType   event.Type = "event.file.upload"
 	FileDownloadEventType event.Type = "event.file.download"
 )
@@ -144,8 +143,6 @@ func (e DeleteFileSucceeded) NewFailureEvent(err error) DeleteFileFailed {
 }
 
 const (
-	FileLoadEventType event.Type = "event.file.load"
-
 	LoadFileTriggeredEventType event.Type = "event.file.load"
 	LoadFileSucceededEventType event.Type = "event.file.load.succeeded"
 	LoadFileFailedEventType    event.Type = "event.file.load.failed"
@@ -202,6 +199,10 @@ func NewFileLoadFailureEvent(err error, file *File) LoadFileFailed {
 		file,
 	}
 }
+
+const (
+	FileRenameEventType event.Type = "event.file.rename"
+)
 
 type FileRenameEvent struct {
 	event.BaseEvent
