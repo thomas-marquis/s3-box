@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	CreateFileTriggeredType = "event.file.create.triggered"
-	CreateFileSucceededType = "event.file.create.succeeded"
-	CreateFileFailedType    = "event.file.create.failed"
+	CreateFileTriggeredType event.Type = "event.file.create.triggered"
+	CreateFileSucceededType event.Type = "event.file.create.succeeded"
+	CreateFileFailedType    event.Type = "event.file.create.failed"
 )
 
 type CreateFileTriggered struct {

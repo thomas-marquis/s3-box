@@ -309,9 +309,9 @@ func TestDeck_Notify(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
 			conn1 := deck.New("conn 1", "ak", "sk", "b1").
-				Payload.(connection_deck.SelectConnectionTriggered).Connection()
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 			conn2 := deck.New("conn 2", "ak", "sk", "b2").
-				Payload.(connection_deck.SelectConnectionTriggered).Connection()
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 			_, _ = deck.Select(conn1.ID())
 			_, _ = deck.Select(conn2.ID())
 			require.Equal(t, conn2, deck.SelectedConnection())
@@ -330,7 +330,7 @@ func TestDeck_Notify(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
 			conn1 := deck.New("conn 1", "ak", "sk", "b1").
-				Payload.(connection_deck.SelectConnectionTriggered).Connection()
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 			_, _ = deck.Select(conn1.ID())
 			require.Equal(t, conn1, deck.SelectedConnection())
 
@@ -350,9 +350,9 @@ func TestDeck_Notify(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
 			conn1 := deck.New("conn 1", "ak", "sk", "b1").
-				Payload.(connection_deck.RemoveConnectionTriggered).Connection()
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 			conn2 := deck.New("conn 2", "ak", "sk", "b2").
-				Payload.(connection_deck.RemoveConnectionTriggered).Connection()
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 			_, _ = deck.Select(conn1.ID())
 
 			removeEvent, _ := deck.RemoveAConnection(conn1.ID())
@@ -393,7 +393,7 @@ func TestDeck_Notify(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
 			conn := connection_deck.New().New("conn 1", "ak", "sk", "b1").
-				Payload.(connection_deck.RemoveConnectionTriggered).Connection()
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 			// When
 			deck.Notify(event.New(connection_deck.RemoveConnectionFailed{
@@ -411,7 +411,7 @@ func TestDeck_Notify(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
 			conn := connection_deck.New().New("conn 1", "ak", "sk", "b1").
-				Payload.(connection_deck.RemoveConnectionTriggered).Connection()
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 			// When
 			deck.Notify(event.New(connection_deck.RemoveConnectionFailed{
@@ -444,7 +444,7 @@ func TestDeck_Notify(t *testing.T) {
 
 			// Then
 			assert.Equal(t, "conn 1", deck.Get()[0].Name())
-			assert.Equal(t, updateEventPl.Previous.Revision, deck.Get()[0].Revision())
+			assert.Equal(t, updateEventPl.Previous.Revision(), deck.Get()[0].Revision())
 		})
 
 		t.Run("should do nothing if connection is not in the deck", func(t *testing.T) {

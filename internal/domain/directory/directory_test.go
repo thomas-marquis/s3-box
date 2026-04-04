@@ -211,7 +211,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 		// Then, we recreate the deleted file
 		newFileEvt, err := dir.NewFile("main.go", false)
 		assert.NoError(t, err)
-		assert.Equal(t, directory.CreateFileTriggeredType, evt.Type())
+		assert.Equal(t, directory.CreateFileTriggeredType, newFileEvt.Type())
 		newFileEvtPl := newFileEvt.Payload.(directory.CreateFileTriggered)
 
 		newFileSuccessEvt := event.New(directory.CreateFileSucceeded{

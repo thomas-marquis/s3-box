@@ -177,7 +177,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 
 		// When
 		eventsChan <- event.New(connection_deck.SelectConnectionSucceeded{
-			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: nil},
 			Deck:              fakeDeck,
 		})
 		require.Eventually(t, func() bool {
