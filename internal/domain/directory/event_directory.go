@@ -149,14 +149,6 @@ func (e RenameRecoveryTriggered) Type() event.Type {
 	return RenameRecoveryTriggeredType
 }
 
-func (e RenameRecoveryTriggered) InvertDirs() RenameRecoveryTriggered {
-	return RenameRecoveryTriggered{
-		e.DstDir,
-		e.Directory,
-		e.Choice,
-	}
-}
-
 const (
 	UserValidationAskedType    event.Type = "event.directory.user.validation.asked"
 	UserValidationAcceptedType event.Type = "event.directory.user.validation.accepted"

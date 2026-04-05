@@ -518,28 +518,28 @@ func (v *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory
 }
 
 func (v *explorerViewModelImpl) handleCreateDirSuccess(evt event.Event) {
-	e := evt.Payload.(directory.CreateSucceeded)
-	if err := v.addNewDirectoryToTree(e.Directory); err != nil {
+	pl := evt.Payload.(directory.CreateSucceeded)
+	if err := v.addNewDirectoryToTree(pl.Directory); err != nil {
 		v.bus.Publish(
 			event.NewFollowup(evt, directory.CreateFailed{
 				Err:             err,
-				ParentDirectory: e.ParentDirectory,
+				ParentDirectory: pl.ParentDirectory,
 			}))
 		return
 	}
-	if err := e.ParentDirectory.Notify(evt); err != nil {
+	if err := pl.ParentDirectory.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 	}
 	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleCreateDirFailure(evt event.Event) {
-	e := evt.Payload.(directory.CreateFailed)
-	if err := e.ParentDirectory.Notify(evt); err != nil {
+	pl := evt.Payload.(directory.CreateFailed)
+	if err := pl.ParentDirectory.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}
-	err := fmt.Errorf("error creating directory: %w", e.Err)
+	err := fmt.Errorf("error creating directory: %w", pl.Err)
 	v.notifier.NotifyError(err)
 	v.errorMessage.Set(err.Error()) //nolint:errcheck
 	v.triggerStateListeners()

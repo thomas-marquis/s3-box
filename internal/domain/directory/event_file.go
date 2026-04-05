@@ -88,13 +88,6 @@ func (e LoadFileTriggered) Type() event.Type {
 	return LoadFileTriggeredType
 }
 
-func NewFileLoadEvent(connectionID connection_deck.ConnectionID, file *File, opts ...event.Option) LoadFileTriggered {
-	return LoadFileTriggered{
-		file,
-		connectionID,
-	}
-}
-
 type LoadFileSucceeded struct {
 	File    *File
 	Content FileContent
@@ -102,13 +95,6 @@ type LoadFileSucceeded struct {
 
 func (e LoadFileSucceeded) Type() event.Type {
 	return LoadFileSucceededType
-}
-
-func NewFileLoadSuccessEvent(file *File, content FileContent) LoadFileSucceeded {
-	return LoadFileSucceeded{
-		file,
-		content,
-	}
 }
 
 type LoadFileFailed struct {

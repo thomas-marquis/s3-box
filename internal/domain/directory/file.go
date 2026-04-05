@@ -112,7 +112,6 @@ func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) e
 }
 
 // Rename changes the name of the file.
-// Returns a RenameFileTriggered.
 // Returns an error if the new name is invalid.
 func (f *File) Rename(newName string) (event.Event, error) {
 	_, err := NewFileName(newName)

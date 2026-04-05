@@ -102,7 +102,6 @@ func NewConnectionViewModel(
 
 	vm.initConnections(deck)
 
-	//bus.Publish(connection_deck.NewSelectEvent(deck, deck.SelectedConnection(), nil))
 	bus.Publish(event.New(connection_deck.SelectConnectionTriggered{
 		ConnectionPayload: connection_deck.ConnectionPayload{Conn: deck.SelectedConnection()},
 		Deck:              deck,
@@ -147,6 +146,10 @@ func (v *connectionViewModelImpl) Update(
 	evt, err := v.deck.Update(connID, options...)
 	if err != nil {
 		v.notifier.NotifyError(err)
+		v.bus.Publish(event.New(connection_deck.UpdateConnectionFailed{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: v.findConnectionInBinding(connID)},
+			Err:               fmt.Errorf("impossible to update connection %s in user's deck: %w", connID, err),
+		}))
 		return
 	}
 	v.bus.Publish(evt)
@@ -156,6 +159,10 @@ func (v *connectionViewModelImpl) Select(conn *connection_deck.Connection) {
 	evt, err := v.deck.Select(conn.ID())
 	if err != nil {
 		v.notifier.NotifyError(err)
+		v.bus.Publish(event.New(connection_deck.SelectConnectionFailed{
+			Err:               err,
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
+		}))
 		return
 	}
 	v.bus.Publish(evt)
@@ -172,6 +179,10 @@ func (v *connectionViewModelImpl) Delete(conn *connection_deck.Connection) {
 	evt, err := v.deck.RemoveAConnection(conn.ID())
 	if err != nil {
 		v.notifier.NotifyError(err)
+		v.bus.Publish(event.New(connection_deck.RemoveConnectionFailed{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
+			Err:               err,
+		}))
 		return
 	}
 	v.bus.Publish(evt)

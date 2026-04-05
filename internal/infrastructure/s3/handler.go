@@ -57,7 +57,7 @@ func (h *EventHandler) Listen() {
 		On(event.Is(directory.RenameRecoveryTriggeredType), h.handleRenameRecovery).
 		On(event.IsOneOf(
 			connection_deck.RemoveConnectionSucceededType,
-			connection_deck.RemoveConnectionFailedType,
+			connection_deck.UpdateConnectionSucceededType,
 		), h.handleConnectionChanged).
 		ListenNonBlocking() // TODO: set a limit of simultaneous tasks
 }
