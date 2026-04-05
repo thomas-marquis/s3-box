@@ -15,9 +15,9 @@ func newNotLoadedState(d *Directory, status Status) *notLoadedState {
 
 func (s *notLoadedState) Type() StateType { return stateTypeNotLoaded }
 
-func (s *notLoadedState) Load() (LoadEvent, error) {
+func (s *notLoadedState) Load() (event.Event, error) {
 	s.d.setState(newLoadingState(s.baseState))
-	return NewLoadEvent(s.d), nil
+	return event.New(LoadTriggered{Directory: s.d}), nil
 }
 
 func (s *notLoadedState) Notify(event.Event) error {

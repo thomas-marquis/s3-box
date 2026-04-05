@@ -25,10 +25,13 @@ func New(opts ...Option) *Deck {
 func (d *Deck) New(
 	name, accessKey, secretKey, bucket string,
 	options ...ConnectionOption,
-) CreateEvent {
+) event.Event {
 	conn := newConnection(name, accessKey, secretKey, bucket, options...)
 	d.connections = append(d.connections, conn)
-	return NewCreateEvent(d, conn)
+	return event.New(CreateConnectionTriggered{
+		ConnectionPayload: ConnectionPayload{Conn: conn},
+		Deck:              d,
+	})
 }
 
 // Get returns all the connections currently stored in the deck.
@@ -49,22 +52,26 @@ func (d *Deck) GetByID(id ConnectionID) (*Connection, error) {
 
 // Select sets the provided connection ID as the selected connection in the deck.
 // Returns ErrNotFound if the connection ID does not exist in the deck.
-func (d *Deck) Select(connID ConnectionID) (SelectEvent, error) {
+func (d *Deck) Select(connID ConnectionID) (event.Event, error) {
 	for i, conn := range d.connections {
 		if connID.Is(conn) {
 			previous, _ := d.GetByID(d.selectedID)
 			d.selectedID = d.connections[i].ID()
-			return NewSelectEvent(d, conn, previous), nil
+			return event.New(SelectConnectionTriggered{
+				ConnectionPayload: ConnectionPayload{conn},
+				Deck:              d,
+				Previous:          previous,
+			}), nil
 		}
 	}
 
-	return SelectEvent{}, ErrNotFound
+	return event.Event{}, ErrNotFound
 }
 
 // RemoveAConnection removes a connection with the given ID from the deck.
 // If the connection is the currently selected one, the selection is reset.
 // Returns ErrNotFound if the connection ID does not exist in the deck.
-func (d *Deck) RemoveAConnection(connID ConnectionID) (RemoveEvent, error) {
+func (d *Deck) RemoveAConnection(connID ConnectionID) (event.Event, error) {
 	for i, conn := range d.connections {
 		if connID.Is(conn) {
 			d.connections = append(d.connections[:i], d.connections[i+1:]...)
@@ -72,11 +79,16 @@ func (d *Deck) RemoveAConnection(connID ConnectionID) (RemoveEvent, error) {
 			if isSelected {
 				d.selectedID = nilConnectionID // Reset selected ID if removed
 			}
-			return NewRemoveEvent(d, conn, i, isSelected), nil
+			return event.New(RemoveConnectionTriggered{
+				ConnectionPayload: ConnectionPayload{Conn: conn},
+				Deck:              d,
+				RemovedIndex:      i,
+				WasSelected:       isSelected,
+			}), nil
 		}
 	}
 
-	return RemoveEvent{}, ErrNotFound
+	return event.Event{}, ErrNotFound
 }
 
 // SelectedConnection returns the currently selected connection or nil if no connection is selected.
@@ -92,7 +104,7 @@ func (d *Deck) SelectedConnection() *Connection {
 	return nil
 }
 
-func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (UpdateEvent, error) {
+func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (event.Event, error) {
 	found := false
 	var connIdx int
 	var previous Connection
@@ -105,7 +117,7 @@ func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (UpdateE
 		}
 	}
 	if !found {
-		return UpdateEvent{}, ErrNotFound
+		return event.Event{}, ErrNotFound
 	}
 
 	for _, opt := range options {
@@ -113,32 +125,33 @@ func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (UpdateE
 		d.connections[connIdx].revision++
 	}
 
-	return NewUpdateEvent(d, &previous, d.connections[connIdx]), nil
+	return event.New(UpdateConnectionTriggered{
+		ConnectionPayload: ConnectionPayload{Conn: d.connections[connIdx]},
+		Deck:              d,
+		Previous:          &previous,
+	}), nil
 }
 
 func (d *Deck) Notify(evt event.Event) {
-	switch evt.Type() {
-	case CreateEventType.AsFailure():
-		e := evt.(CreateFailureEvent)
+	switch pl := evt.Payload.(type) {
+	case CreateConnectionFailed:
 		for i, c := range d.connections {
-			if c.Is(e.Connection()) {
+			if c.Is(pl.Connection()) {
 				d.connections = append(d.connections[:i], d.connections[i+1:]...)
 				return
 			}
 		}
 
-	case SelectEventType.AsFailure():
-		e := evt.(SelectFailureEvent)
-		prev := e.Connection()
+	case SelectConnectionFailed:
+		prev := pl.Connection()
 		if prev != nil {
 			d.selectedID = prev.ID()
 		}
 
-	case RemoveEventType.AsFailure():
-		e := evt.(RemoveFailureEvent)
-		conn := e.Connection()
+	case RemoveConnectionFailed:
+		conn := pl.Connection()
 		if conn != nil {
-			index := e.RemovedIndex()
+			index := pl.RemovedIndex
 			if index < 0 {
 				index = 0
 			}
@@ -152,14 +165,13 @@ func (d *Deck) Notify(evt event.Event) {
 					d.connections[index:]...,
 				)...,
 			)
-			if e.WasSelected() {
+			if pl.WasSelected {
 				d.selectedID = conn.ID()
 			}
 		}
 
-	case UpdateEventType.AsFailure():
-		e := evt.(UpdateFailureEvent)
-		previous := e.Connection()
+	case UpdateConnectionFailed:
+		previous := pl.Connection()
 		if previous == nil {
 			return
 		}

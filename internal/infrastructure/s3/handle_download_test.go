@@ -42,9 +42,9 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.(directory.FileDownloadSuccessEvent)
+				e, ok := evt.Payload.(directory.DownloadFileSucceeded)
 				res := assert.True(t, ok) &&
-					assert.Equal(t, "file_in_dir.txt", e.File().Name().String())
+					assert.Equal(t, "file_in_dir.txt", e.File.Name().String())
 				close(done)
 				return res
 			})).
@@ -59,7 +59,11 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		destPath := filepath.Join(t.TempDir(), "file_in_dir.txt")
 
 		// When
-		fakeEventChan <- directory.NewFileDownloadEvent(testutil.FakeAwsConnectionId, file, destPath)
+		fakeEventChan <- event.New(directory.DownloadFileTriggered{
+			ConnectionID: testutil.FakeAwsConnectionId,
+			DstPath:      destPath,
+			File:         file,
+		})
 
 		// Then
 		testutil.AssertEventually(t, done)
@@ -86,10 +90,10 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.(directory.FileDownloadFailureEvent)
+				e, ok := evt.Payload.(directory.DownloadFileFailed)
 				res := assert.True(t, ok) &&
-					assert.Error(t, e.Error()) &&
-					assert.ErrorIs(t, e.Error(), directory.ErrNotFound)
+					assert.Error(t, e.Err) &&
+					assert.ErrorIs(t, e.Err, directory.ErrNotFound)
 				close(done)
 				return res
 			})).
@@ -104,7 +108,11 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		destPath := filepath.Join(t.TempDir(), "missing.txt")
 
 		// When & Then
-		fakeEventChan <- directory.NewFileDownloadEvent(testutil.FakeAwsConnectionId, file, destPath)
+		fakeEventChan <- event.New(directory.DownloadFileTriggered{
+			ConnectionID: testutil.FakeAwsConnectionId,
+			DstPath:      destPath,
+			File:         file,
+		})
 		testutil.AssertEventually(t, done)
 	})
 }

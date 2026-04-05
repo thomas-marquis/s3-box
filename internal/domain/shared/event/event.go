@@ -2,6 +2,8 @@ package event
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Type string
@@ -10,49 +12,45 @@ func (t Type) String() string {
 	return string(t)
 }
 
-func (t Type) AsFailure() Type {
-	return Type(t.String() + ".failure")
-}
-
-func (t Type) AsSuccess() Type {
-	return Type(t.String() + ".success")
-}
-
-type Event interface {
+type Payload interface {
 	Type() Type
-	Context() context.Context
 }
 
-type withContext struct {
-	ctx context.Context
-}
-
-func (e withContext) Context() context.Context {
-	return e.ctx
-}
-
-type BaseEvent struct {
-	withContext
+type Event struct {
+	Payload   Payload
+	Context   context.Context
+	Ref       string
 	eventType Type
 }
 
-func NewBaseEvent(eventType Type, opts ...Option) BaseEvent {
-	e := BaseEvent{
-		eventType:   eventType,
-		withContext: withContext{ctx: nil},
+func (e Event) Type() Type {
+	return e.eventType
+}
+
+func New(payload Payload, opts ...Option) Event {
+	e := Event{
+		Ref:       uuid.New().String(),
+		Payload:   payload,
+		eventType: payload.Type(),
 	}
 
 	for _, opt := range opts {
 		e = opt(e)
 	}
 
-	if e.ctx == nil {
-		e.ctx = context.Background()
+	if e.Context == nil {
+		e.Context = context.Background()
 	}
 
 	return e
 }
 
-func (e BaseEvent) Type() Type {
-	return e.eventType
+func NewFollowup(previous Event, newPayload Payload, opts ...Option) Event {
+	prevRef := previous.Ref
+	if prevRef == "" {
+		prevRef = uuid.New().String()
+	}
+	ne := New(newPayload, opts...)
+	ne.Ref = prevRef
+	return ne
 }

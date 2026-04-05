@@ -41,9 +41,9 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.(directory.FileCreatedSuccessEvent)
+				pl, ok := evt.Payload.(directory.CreateFileSucceeded)
 				res := assert.True(t, ok) &&
-					assert.Equal(t, "new_file.txt", e.File().Name().String())
+					assert.Equal(t, "new_file.txt", pl.File.Name().String())
 				close(done)
 				return res
 			})).
@@ -52,7 +52,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
-		fakeEventChan <- directory.NewFileCreatedEvent(testutil.FakeAwsConnectionId, dir, newFile)
+		fakeEventChan <- event.New(directory.CreateFileTriggered{ConnectionID: testutil.FakeAwsConnectionId, Directory: dir, File: newFile})
 		testutil.AssertEventually(t, done)
 
 		testutil.AssertObjectContent(t, client, bucket, "mydir/new_file.txt", "")

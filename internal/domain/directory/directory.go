@@ -133,65 +133,79 @@ func (d *Directory) ConnectionID() connection_deck.ConnectionID {
 
 // NewSubDirectory reference a new subdirectory in the current one
 // returns an error when the subdirectory already exists
-func (d *Directory) NewSubDirectory(name string) (CreatedEvent, error) {
+func (d *Directory) NewSubDirectory(name string) (event.Event, error) {
 	path := d.path.NewSubPath(name)
 	for _, subDir := range d.currentState.SubDirectories() {
 		if subDir.Path() == path {
-			return CreatedEvent{}, fmt.Errorf("subdirectory %s already exists", path)
+			return event.Event{}, fmt.Errorf("subdirectory %s already exists", path)
 		}
 	}
 	newDir, err := New(d.connectionID, name, d)
 	if err != nil {
-		return CreatedEvent{}, fmt.Errorf("failed to create subdirectory: %w", err)
+		return event.Event{}, fmt.Errorf("failed to create subdirectory: %w", err)
 	}
 
-	return NewCreatedEvent(d, newDir), nil
+	return event.New(CreateTriggered{
+		ParentDirectory: d,
+		Directory:       newDir,
+	}), nil
 }
 
 // NewFile creates a new fileObj in the current directory
 // returns an error when the file name is not valid or if the file already exists if overwrite is false
-func (d *Directory) NewFile(name string, overwrite bool, opts ...FileOption) (FileCreatedEvent, error) {
+func (d *Directory) NewFile(name string, overwrite bool, opts ...FileOption) (event.Event, error) {
 	file, err := NewFile(name, d, opts...)
 	if err != nil {
-		return FileCreatedEvent{}, fmt.Errorf("failed to create file: %w", err)
+		return event.Event{}, fmt.Errorf("failed to create file: %w", err)
 	}
 
 	if !overwrite && d.IsFileExists(file.Name()) {
-		return FileCreatedEvent{}, errors.Join(
+		return event.Event{}, errors.Join(
 			ErrAlreadyExists,
 			fmt.Errorf("file %s already exists in directory %s", name, d.path))
 	}
 
-	return NewFileCreatedEvent(d.connectionID, d, file), nil
+	return event.New(CreateFileTriggered{
+		File:         file,
+		Directory:    d,
+		ConnectionID: d.ConnectionID(),
+	}), nil
 }
 
-func (d *Directory) RemoveFile(name FileName) (FileDeletedEvent, error) {
+func (d *Directory) RemoveFile(name FileName) (event.Event, error) {
 	files := d.currentState.Files()
 	for _, file := range files {
 		if file.Name() == name {
-			return NewFileDeletedEvent(d.connectionID, d, file), nil
+			return event.New(DeleteFileTriggered{
+				File:            file,
+				ConnectionID:    d.connectionID,
+				ParentDirectory: d,
+			}), nil
 		}
 	}
-	return FileDeletedEvent{}, ErrNotFound
+	return event.Event{}, ErrNotFound
 }
 
-func (d *Directory) RemoveSubDirectory(name string) (DeletedEvent, error) {
+func (d *Directory) RemoveSubDirectory(name string) (event.Event, error) {
 	path := d.parent.Path().NewSubPath(name)
 	subDirectories := d.currentState.SubDirectories()
 	for _, sd := range subDirectories {
 		if sd.Path() == path {
-			return NewDeletedEvent(d, path), nil
+			return event.New(DeleteTriggered{
+				Directory:      d,
+				DeletedDirPath: path,
+			}), nil
 		}
 	}
-	return DeletedEvent{}, ErrNotFound
+	return event.Event{}, ErrNotFound
 }
 
 // Rename triggers an event to change the name of the directory.
-func (d *Directory) Rename(newName string) (RenameEvent, error) {
+func (d *Directory) Rename(newName string) (event.Event, error) {
 	return d.currentState.Rename(newName)
 }
 
-func (d *Directory) UploadFile(localPath string, overwrite bool) (FileUploadEvent, error) {
+func (d *Directory) UploadFile(localPath string, overwrite bool) (event.Event, error) {
 	return d.currentState.UploadFile(localPath, overwrite)
 }
 
@@ -268,7 +282,7 @@ func (d *Directory) HasError() bool {
 	return d.currentState.Type() == stateTypeError
 }
 
-func (d *Directory) Load() (LoadEvent, error) {
+func (d *Directory) Load() (event.Event, error) {
 	return d.currentState.Load()
 }
 

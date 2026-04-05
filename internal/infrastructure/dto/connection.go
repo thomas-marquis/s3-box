@@ -80,7 +80,7 @@ func (c *ConnectionsDTO) ToConnections() *connection_deck.Deck {
 			connection_deck.WithID(connID),
 			connection_deck.WithReadOnlyOption(dto.ReadOnly),
 		)
-		newConn := evt.Connection()
+		newConn := evt.Payload.(connection_deck.CreateConnectionTriggered).Connection()
 		switch dto.Type {
 		case "aws":
 			connection_deck.AsAWS(dto.Region)(newConn)

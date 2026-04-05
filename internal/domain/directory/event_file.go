@@ -6,292 +6,204 @@ import (
 )
 
 const (
-	FileCreatedEventType  event.Type = "event.file.created"
-	FileDeletedEventType  event.Type = "event.file.deleted"
-	FileLoadEventType     event.Type = "event.file.load"
-	FileRenameEventType   event.Type = "event.file.rename"
-	FileUploadEventType   event.Type = "event.file.upload"
-	FileDownloadEventType event.Type = "event.file.download"
+	CreateFileTriggeredType event.Type = "event.file.create.triggered"
+	CreateFileSucceededType event.Type = "event.file.create.succeeded"
+	CreateFileFailedType    event.Type = "event.file.create.failed"
 )
 
-type withFile struct {
-	file *File
+type CreateFileTriggered struct {
+	File         *File
+	ConnectionID connection_deck.ConnectionID
+	Directory    *Directory
 }
 
-func (e withFile) File() *File {
-	return e.file
+func (e CreateFileTriggered) Type() event.Type {
+	return CreateFileTriggeredType
 }
 
-type withConnectionID struct {
-	connectionID connection_deck.ConnectionID
+type CreateFileSucceeded struct {
+	File      *File
+	Directory *Directory
 }
 
-func (e withConnectionID) ConnectionID() connection_deck.ConnectionID {
-	return e.connectionID
+func (e CreateFileSucceeded) Type() event.Type {
+	return CreateFileSucceededType
 }
 
-type withSrcPath struct {
-	srcPath string
+type CreateFileFailed struct {
+	Err       error
+	Directory *Directory
 }
 
-func (e withSrcPath) SrcPath() string {
-	return e.srcPath
+func (e CreateFileFailed) Type() event.Type {
+	return CreateFileFailedType
 }
 
-type withDstPath struct {
-	dstPath string
+const (
+	DeleteFileTriggeredType event.Type = "event.file.delete.triggered"
+	DeleteFileSucceededType event.Type = "event.file.delete.succeeded"
+	DeleteFileFailedType    event.Type = "event.file.delete.failed"
+)
+
+type DeleteFileTriggered struct {
+	File            *File
+	ConnectionID    connection_deck.ConnectionID
+	ParentDirectory *Directory
 }
 
-func (e withDstPath) DstPath() string {
-	return e.dstPath
+func (e DeleteFileTriggered) Type() event.Type {
+	return DeleteFileTriggeredType
 }
 
-type FileCreatedEvent struct {
-	event.BaseEvent
-	withFile
-	withConnectionID
-	withDirectory
+type DeleteFileSucceeded struct {
+	File            *File
+	ParentDirectory *Directory
 }
 
-func NewFileCreatedEvent(connectionID connection_deck.ConnectionID, dir *Directory, file *File, opts ...event.Option) FileCreatedEvent {
-	return FileCreatedEvent{
-		event.NewBaseEvent(FileCreatedEventType, opts...),
-		withFile{file},
-		withConnectionID{connectionID},
-		withDirectory{dir},
-	}
+func (e DeleteFileSucceeded) Type() event.Type {
+	return DeleteFileSucceededType
 }
 
-type FileCreatedSuccessEvent struct {
-	event.BaseEvent
-	withFile
-	withDirectory
+type DeleteFileFailed struct {
+	Err             error
+	ParentDirectory *Directory
 }
 
-func NewFileCreatedSuccessEvent(dir *Directory, file *File, opts ...event.Option) FileCreatedSuccessEvent {
-	return FileCreatedSuccessEvent{
-		event.NewBaseEvent(FileCreatedEventType.AsSuccess(), opts...),
-		withFile{file},
-		withDirectory{dir},
-	}
+func (e DeleteFileFailed) Type() event.Type {
+	return DeleteFileFailedType
 }
 
-type FileCreatedFailureEvent struct {
-	event.BaseErrorEvent
-	withDirectory
+const (
+	LoadFileTriggeredType event.Type = "event.file.load.triggered"
+	LoadFileSucceededType event.Type = "event.file.load.succeeded"
+	LoadFileFailedType    event.Type = "event.file.load.failed"
+)
+
+type LoadFileTriggered struct {
+	File         *File
+	ConnectionID connection_deck.ConnectionID
 }
 
-func NewFileCreatedFailureEvent(err error, dir *Directory) FileCreatedFailureEvent {
-	return FileCreatedFailureEvent{
-		event.NewBaseErrorEvent(FileCreatedEventType.AsFailure(), err),
-		withDirectory{dir},
-	}
+func (e LoadFileTriggered) Type() event.Type {
+	return LoadFileTriggeredType
 }
 
-type FileDeletedEvent struct {
-	event.BaseEvent
-	withFile
-	withConnectionID
-	withParentDirectory
-}
-
-func NewFileDeletedEvent(connectionID connection_deck.ConnectionID, parent *Directory, file *File, opts ...event.Option) FileDeletedEvent {
-	return FileDeletedEvent{
-		event.NewBaseEvent(FileDeletedEventType, opts...),
-		withFile{file},
-		withConnectionID{connectionID},
-		withParentDirectory{parent},
-	}
-}
-
-type FileDeletedSuccessEvent struct {
-	event.BaseEvent
-	withFile
-	withParentDirectory
-}
-
-func NewFileDeletedSuccessEvent(parent *Directory, file *File, opts ...event.Option) FileDeletedSuccessEvent {
-	return FileDeletedSuccessEvent{
-		event.NewBaseEvent(FileDeletedEventType.AsSuccess(), opts...),
-		withFile{file},
-		withParentDirectory{parent},
-	}
-}
-
-type FileDeletedFailureEvent struct {
-	event.BaseErrorEvent
-	withParentDirectory
-}
-
-func NewFileDeletedFailureEvent(err error, parent *Directory) FileDeletedFailureEvent {
-	return FileDeletedFailureEvent{
-		event.NewBaseErrorEvent(FileDeletedEventType.AsFailure(), err),
-		withParentDirectory{parent},
-	}
-}
-
-type FileLoadEvent struct {
-	event.BaseEvent
-	withFile
-	withConnectionID
-}
-
-func NewFileLoadEvent(connectionID connection_deck.ConnectionID, file *File, opts ...event.Option) FileLoadEvent {
-	return FileLoadEvent{
-		event.NewBaseEvent(FileLoadEventType, opts...),
-		withFile{file},
-		withConnectionID{connectionID},
-	}
-}
-
-type FileLoadSuccessEvent struct {
-	event.BaseEvent
-	withFile
+type LoadFileSucceeded struct {
+	File    *File
 	Content FileContent
 }
 
-func NewFileLoadSuccessEvent(file *File, content FileContent) FileLoadSuccessEvent {
-	return FileLoadSuccessEvent{
-		event.NewBaseEvent(FileLoadEventType.AsSuccess()),
-		withFile{file},
-		content,
-	}
+func (e LoadFileSucceeded) Type() event.Type {
+	return LoadFileSucceededType
 }
 
-type FileLoadFailureEvent struct {
-	event.BaseErrorEvent
-	withFile
+type LoadFileFailed struct {
+	Err  error
+	File *File
 }
 
-func NewFileLoadFailureEvent(err error, file *File) FileLoadFailureEvent {
-	return FileLoadFailureEvent{
-		event.NewBaseErrorEvent(FileLoadEventType.AsFailure(), err),
-		withFile{file},
-	}
+func (e LoadFileFailed) Type() event.Type {
+	return LoadFileFailedType
 }
 
-type FileRenameEvent struct {
-	event.BaseEvent
-	withFile
-	withNewName
-	withDirectory
+const (
+	RenameFileTriggeredType event.Type = "event.file.rename.triggered"
+	RenameFileSucceededType event.Type = "event.file.rename.succeeded"
+	RenameFileFailedType    event.Type = "event.file.rename.failed"
+)
+
+type RenameFileTriggered struct {
+	File      *File
+	NewName   string
+	Directory *Directory
 }
 
-func NewFileRenameEvent(dir *Directory, file *File, newName string, opts ...event.Option) FileRenameEvent {
-	return FileRenameEvent{
-		event.NewBaseEvent(FileRenameEventType, opts...),
-		withFile{file},
-		withNewName{newName},
-		withDirectory{dir},
-	}
+func (e RenameFileTriggered) Type() event.Type {
+	return RenameFileTriggeredType
 }
 
-type FileRenameSuccessEvent struct {
-	event.BaseEvent
-	withFile
-	withNewName
-	withDirectory
+type RenameFileSucceeded struct {
+	File      *File
+	NewName   string
+	Directory *Directory
 }
 
-func NewFileRenameSuccessEvent(dir *Directory, file *File, newName string, opts ...event.Option) FileRenameSuccessEvent {
-	return FileRenameSuccessEvent{
-		event.NewBaseEvent(FileRenameEventType.AsSuccess(), opts...),
-		withFile{file},
-		withNewName{newName},
-		withDirectory{dir},
-	}
+func (e RenameFileSucceeded) Type() event.Type {
+	return RenameFileSucceededType
 }
 
-type FileRenameFailureEvent struct {
-	event.BaseErrorEvent
-	withFile
-	withNewName
-	withDirectory
+type RenameFileFailed struct {
+	Err       error
+	File      *File
+	NewName   string
+	Directory *Directory
 }
 
-func NewFileRenameFailureEvent(err error, dir *Directory, file *File, newName string) FileRenameFailureEvent {
-	return FileRenameFailureEvent{
-		event.NewBaseErrorEvent(FileRenameEventType.AsFailure(), err),
-		withFile{file},
-		withNewName{newName},
-		withDirectory{dir},
-	}
+func (e RenameFileFailed) Type() event.Type {
+	return RenameFileFailedType
 }
 
-type FileUploadEvent struct {
-	event.BaseEvent
-	withDirectory
-	withSrcPath
+const (
+	UploadFileTriggeredType event.Type = "event.file.upload.triggered"
+	UploadFileSucceededType event.Type = "event.file.upload.succeeded"
+	UploadFileFailedType    event.Type = "event.file.upload.failed"
+)
+
+type UploadFileTriggered struct {
+	Directory *Directory
+	SrcPath   string
 }
 
-func NewFileUploadEvent(directory *Directory, localFilePath string, opts ...event.Option) FileUploadEvent {
-	return FileUploadEvent{
-		event.NewBaseEvent(FileUploadEventType, opts...),
-		withDirectory{directory},
-		withSrcPath{localFilePath},
-	}
+func (e UploadFileTriggered) Type() event.Type {
+	return UploadFileTriggeredType
 }
 
-type FileUploadSuccessEvent struct {
-	event.BaseEvent
-	withFile
-	withDirectory
+type UploadFileSucceeded struct {
+	File      *File
+	Directory *Directory
 }
 
-func NewFileUploadSuccessEvent(directory *Directory, file *File, opts ...event.Option) FileUploadSuccessEvent {
-	return FileUploadSuccessEvent{
-		event.NewBaseEvent(FileUploadEventType.AsSuccess(), opts...),
-		withFile{file},
-		withDirectory{directory},
-	}
+func (e UploadFileSucceeded) Type() event.Type {
+	return UploadFileSucceededType
 }
 
-type FileUploadFailureEvent struct {
-	event.BaseErrorEvent
-	withDirectory
+type UploadFileFailed struct {
+	Err       error
+	Directory *Directory
 }
 
-func NewFileUploadFailureEvent(err error, dir *Directory) FileUploadFailureEvent {
-	return FileUploadFailureEvent{
-		event.NewBaseErrorEvent(FileUploadEventType.AsFailure(), err),
-		withDirectory{dir},
-	}
+func (e UploadFileFailed) Type() event.Type {
+	return UploadFileFailedType
 }
 
-type FileDownloadEvent struct {
-	event.BaseEvent
-	withConnectionID
-	withDstPath
-	withFile
+const (
+	DownloadFileTriggeredType event.Type = "event.file.download.triggered"
+	DownloadFileSucceededType event.Type = "event.file.download.succeeded"
+	DownloadFileFailedType    event.Type = "event.file.download.failed"
+)
+
+type DownloadFileTriggered struct {
+	ConnectionID connection_deck.ConnectionID
+	DstPath      string
+	File         *File
 }
 
-func NewFileDownloadEvent(connectionID connection_deck.ConnectionID, file *File, dstLocalPtah string, opts ...event.Option) FileDownloadEvent {
-	return FileDownloadEvent{
-		event.NewBaseEvent(FileDownloadEventType, opts...),
-		withConnectionID{connectionID},
-		withDstPath{dstLocalPtah},
-		withFile{file},
-	}
+func (e DownloadFileTriggered) Type() event.Type {
+	return DownloadFileTriggeredType
 }
 
-type FileDownloadSuccessEvent struct {
-	event.BaseEvent
-	withFile
+type DownloadFileSucceeded struct {
+	File *File
 }
 
-func NewFileDownloadSuccessEvent(file *File, opts ...event.Option) FileDownloadSuccessEvent {
-	return FileDownloadSuccessEvent{
-		event.NewBaseEvent(FileDownloadEventType.AsSuccess(), opts...),
-		withFile{file},
-	}
+func (e DownloadFileSucceeded) Type() event.Type {
+	return DownloadFileSucceededType
 }
 
-type FileDownloadFailureEvent struct {
-	event.BaseErrorEvent
+type DownloadFileFailed struct {
+	Err error
 }
 
-func NewFileDownloadFailureEvent(err error) FileDownloadFailureEvent {
-	return FileDownloadFailureEvent{
-		event.NewBaseErrorEvent(FileDownloadEventType.AsFailure(), err),
-	}
+func (e DownloadFileFailed) Type() event.Type {
+	return DownloadFileFailedType
 }

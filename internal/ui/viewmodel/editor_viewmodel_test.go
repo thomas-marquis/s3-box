@@ -30,7 +30,8 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 	fakeDeck := connection_deck.New()
 	conn := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, false),
-		connection_deck.WithID(fakeConnID)).Connection()
+		connection_deck.WithID(fakeConnID)).
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 	t.Run("should open the editor and then load the file content", func(t *testing.T) {
 		// Given
@@ -71,7 +72,10 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 
 		// When the file is loaded
 		fo := &directory.InMemoryContent{Data: []byte("Hello world!")}
-		eventsChan <- directory.NewFileLoadSuccessEvent(file, fo)
+		eventsChan <- event.New(directory.LoadFileSucceeded{
+			File:    file,
+			Content: fo,
+		})
 
 		// Then
 		assert.Eventually(t, func() bool {
@@ -128,7 +132,10 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		assert.Equal(t, "", errMsg)
 
 		// When, file loading fails
-		eventsChan <- directory.NewFileLoadFailureEvent(expectedErr, file)
+		eventsChan <- event.New(directory.LoadFileFailed{
+			Err:  expectedErr,
+			File: file,
+		})
 
 		// Then
 		assert.Eventually(t, func() bool {
@@ -169,7 +176,10 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		eventsChan <- connection_deck.NewRemoveSuccessEvent(fakeDeck, conn)
+		eventsChan <- event.New(connection_deck.RemoveConnectionSucceeded{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
+			Deck:              fakeDeck,
+		})
 		require.Eventually(t, func() bool {
 			return vm.SelectedConnection() == nil
 		}, 5*time.Second, 100*time.Millisecond)
@@ -225,7 +235,8 @@ func TestEditorViewModelImpl_IsOpened(t *testing.T) {
 	fakeDeck := connection_deck.New()
 	conn := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, false),
-		connection_deck.WithID(fakeConnID)).Connection()
+		connection_deck.WithID(fakeConnID)).
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 	t.Run("should return true when the file is opened, false otherwise", func(t *testing.T) {
 		// Given
@@ -275,7 +286,8 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 	fakeDeck := connection_deck.New()
 	conn := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, false),
-		connection_deck.WithID(fakeConnID)).Connection()
+		connection_deck.WithID(fakeConnID)).
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 	t.Run("should close opened file", func(t *testing.T) {
 		// Given
@@ -324,16 +336,19 @@ func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
 	fakeConnID1 := connection_deck.NewConnectionID()
 	conn1 := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, false),
-		connection_deck.WithID(fakeConnID1)).Connection()
+		connection_deck.WithID(fakeConnID1)).
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 	conn1updated := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, false),
-		connection_deck.WithID(fakeConnID1)).Connection()
+		connection_deck.WithID(fakeConnID1)).
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 	fakeConnID2 := connection_deck.NewConnectionID()
 	conn2 := fakeDeck.New("New connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, true),
-		connection_deck.WithID(fakeConnID2)).Connection()
+		connection_deck.WithID(fakeConnID2)).
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 	t.Run("should set the new connection when selected", func(t *testing.T) {
 		// Given
@@ -355,7 +370,10 @@ func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn1)
 
 		// When
-		eventsChan <- connection_deck.NewSelectSuccessEvent(fakeDeck, conn2)
+		eventsChan <- event.New(connection_deck.SelectConnectionSucceeded{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn2},
+			Deck:              fakeDeck,
+		})
 
 		// Then
 		assert.EventuallyWithT(t, func(t *assert.CollectT) {
@@ -384,7 +402,10 @@ func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn1)
 
 		// When
-		eventsChan <- connection_deck.NewUpdateSuccessEvent(fakeDeck, conn1updated)
+		eventsChan <- event.New(connection_deck.UpdateConnectionSucceeded{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn1updated},
+			Deck:              fakeDeck,
+		})
 
 		// Then
 		assert.EventuallyWithT(t, func(t *assert.CollectT) {
@@ -413,7 +434,10 @@ func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn1)
 
 		// When
-		eventsChan <- connection_deck.NewRemoveSuccessEvent(fakeDeck, conn2)
+		eventsChan <- event.New(connection_deck.RemoveConnectionSucceeded{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn2},
+			Deck:              fakeDeck,
+		})
 
 		// Then
 		assert.EventuallyWithT(t, func(t *assert.CollectT) {

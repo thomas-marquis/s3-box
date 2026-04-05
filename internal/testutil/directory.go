@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 // FakeNotLoadedRootDirectory creates a new root directory (not loaded) with FakeS3LikeConnectionId
@@ -28,7 +29,9 @@ func FakeLoadedRootDirectory(t *testing.T) *directory.Directory {
 	_, err = dir.Load()
 	require.NoError(t, err)
 
-	err = dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil))
+	err = dir.Notify(event.New(directory.LoadSucceeded{
+		Directory: dir,
+	}))
 	require.NoError(t, err)
 
 	return dir
@@ -49,7 +52,9 @@ func NewLoadedDirectoryWithConn(t *testing.T, connID connection_deck.ConnectionI
 			_, err = dir.Load()
 			require.NoError(t, err)
 
-			err = dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil))
+			err = dir.Notify(event.New(directory.LoadSucceeded{
+				Directory: dir,
+			}))
 			require.NoError(t, err)
 			parent = dir
 		}
@@ -61,7 +66,9 @@ func NewLoadedDirectoryWithConn(t *testing.T, connID connection_deck.ConnectionI
 	_, err = dir.Load()
 	require.NoError(t, err)
 
-	err = dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil))
+	err = dir.Notify(event.New(directory.LoadSucceeded{
+		Directory: dir,
+	}))
 	require.NoError(t, err)
 
 	return dir
@@ -88,7 +95,9 @@ func NewNotLoadedDirectoryWithConn(t *testing.T, connID connection_deck.Connecti
 			_, err = dir.Load()
 			require.NoError(t, err)
 
-			err = dir.Notify(directory.NewLoadSuccessEvent(dir, nil, nil))
+			err = dir.Notify(event.New(directory.LoadSucceeded{
+				Directory: dir,
+			}))
 			require.NoError(t, err)
 			parent = dir
 		}
@@ -113,10 +122,14 @@ func AddFileToDirectory(t *testing.T, dir *directory.Directory, name string) *di
 
 	fEvt, err := dir.NewFile(name, false)
 	require.NoError(t, err)
+	require.Equal(t, directory.CreateFileTriggeredType, fEvt.Type())
 
-	f := fEvt.File()
+	f := fEvt.Payload.(directory.CreateFileTriggered).File
 
-	err = dir.Notify(directory.NewFileCreatedSuccessEvent(dir, f))
+	err = dir.Notify(event.New(directory.CreateFileSucceeded{
+		File:      f,
+		Directory: dir,
+	}))
 	require.NoError(t, err)
 
 	return f
@@ -132,7 +145,10 @@ func AddSubDirectoryToDirectory(t *testing.T, dir *directory.Directory, name str
 
 	nd := NewLoadedDirectory(t, name, dir.Path())
 
-	err = dir.Notify(directory.NewCreatedSuccessEvent(dir, nd))
+	err = dir.Notify(event.New(directory.CreateSucceeded{
+		ParentDirectory: dir,
+		Directory:       nd,
+	}))
 	require.NoError(t, err)
 
 	return nd
@@ -143,10 +159,14 @@ func AddSubNotLoadedDirectoryToDirectory(t *testing.T, dir *directory.Directory,
 
 	newEvt, err := dir.NewSubDirectory(name)
 	require.NoError(t, err)
+	require.Equal(t, directory.CreateTriggeredType, newEvt.Type())
 
-	nd := newEvt.Directory()
+	nd := newEvt.Payload.(directory.CreateTriggered).Directory
 
-	err = dir.Notify(directory.NewCreatedSuccessEvent(dir, nd))
+	err = dir.Notify(event.New(directory.CreateSucceeded{
+		ParentDirectory: dir,
+		Directory:       nd,
+	}))
 	require.NoError(t, err)
 
 	return nd

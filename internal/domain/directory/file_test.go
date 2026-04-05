@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
 )
 
@@ -22,9 +23,10 @@ func TestFile_Rename(t *testing.T) {
 
 		// Then
 		require.NoError(t, err)
-		assert.Equal(t, directory.FileRenameEventType, evt.Type())
+		assert.Equal(t, directory.RenameFileTriggeredType, evt.Type())
+		pl := evt.Payload.(directory.RenameFileTriggered)
 		assert.Equal(t, directory.FileName("oldname.txt"), file.Name())
-		assert.Equal(t, "newname.txt", evt.NewName())
+		assert.Equal(t, "newname.txt", pl.NewName)
 	})
 
 	t.Run("should return error when new name is invalid", func(t *testing.T) {
@@ -57,7 +59,7 @@ func TestFile_Rename(t *testing.T) {
 		file, err := directory.NewFile("oldname.txt", parentDir)
 		require.NoError(t, err)
 
-		loadEvt := directory.NewLoadSuccessEvent(parentDir, nil, []*directory.File{file})
+		loadEvt := event.New(directory.LoadSucceeded{Directory: parentDir, Files: []*directory.File{file}})
 		_, err = parentDir.Load()
 		require.NoError(t, err)
 		require.NoError(t, parentDir.Notify(loadEvt))
@@ -66,7 +68,7 @@ func TestFile_Rename(t *testing.T) {
 		require.NoError(t, err)
 
 		// When
-		successEvt := directory.NewFileRenameSuccessEvent(parentDir, file, "newname.txt")
+		successEvt := event.New(directory.RenameFileSucceeded{Directory: parentDir, File: file, NewName: "newname.txt"})
 		err = parentDir.Notify(successEvt)
 
 		// Then

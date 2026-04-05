@@ -9,16 +9,17 @@ import (
 )
 
 func (h *EventHandler) handleCreateFile(evt event.Event) {
-	ctx := evt.Context()
+	ctx := evt.Context
 
-	e := evt.(directory.FileCreatedEvent)
+	e := evt.Payload.(directory.CreateFileTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed creating file: %w", err))
-		h.bus.Publish(directory.NewFileCreatedFailureEvent(err, e.Directory()))
+		h.bus.Publish(
+			event.NewFollowup(evt, directory.CreateFileFailed{Err: err, Directory: e.Directory}))
 	}
 
-	obj, err := h.loadFile(ctx, e.File(), e.ConnectionID())
+	obj, err := h.loadFile(ctx, e.File, e.ConnectionID)
 	if err != nil {
 		handleError(err)
 		return
@@ -28,25 +29,27 @@ func (h *EventHandler) handleCreateFile(evt event.Event) {
 		return
 	}
 
-	h.bus.Publish(directory.NewFileCreatedSuccessEvent(e.Directory(), e.File()))
+	h.bus.Publish(
+		event.NewFollowup(evt, directory.CreateFileSucceeded{File: e.File, Directory: e.Directory}))
 }
 
 func (h *EventHandler) handleCreateDirectory(e event.Event) {
-	ctx := e.Context()
-	evt := e.(directory.CreatedEvent)
+	ctx := e.Context
+	pl := e.Payload.(directory.CreateTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
-		h.bus.Publish(directory.NewCreatedFailureEvent(err, evt.Parent()))
+		h.bus.Publish(
+			event.NewFollowup(e, directory.CreateFailed{Err: err, ParentDirectory: pl.ParentDirectory}))
 	}
 
-	client, err := h.clientFactory.Get(ctx, evt.Parent().ConnectionID())
+	client, err := h.clientFactory.Get(ctx, pl.ParentDirectory.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	newDir := evt.Directory()
+	newDir := pl.Directory
 	if newDir == nil {
 		handleError(fmt.Errorf("directory path is empty for created event"))
 		return
@@ -58,5 +61,6 @@ func (h *EventHandler) handleCreateDirectory(e event.Event) {
 		return
 	}
 
-	h.bus.Publish(directory.NewCreatedSuccessEvent(evt.Parent(), evt.Directory()))
+	h.bus.Publish(
+		event.NewFollowup(e, directory.CreateSucceeded{ParentDirectory: pl.ParentDirectory, Directory: newDir}))
 }

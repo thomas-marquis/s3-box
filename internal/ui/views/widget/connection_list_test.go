@@ -20,8 +20,10 @@ func TestConnectionList(t *testing.T) {
 	mockConnVM := mocks_viewmodel.NewMockConnectionViewModel(ctrl)
 
 	deck := connection_deck.New()
-	conn1 := deck.New("Conn 1", "ak1", "sk1", "b1").Connection()
-	conn2 := deck.New("Conn 2", "ak2", "sk2", "b2").Connection()
+	conn1 := deck.New("Conn 1", "ak1", "sk1", "b1").
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
+	conn2 := deck.New("Conn 2", "ak2", "sk2", "b2").
+		Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 	connections := binding.NewUntypedList()
 	_ = connections.Append(conn1)

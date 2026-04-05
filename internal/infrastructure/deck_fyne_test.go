@@ -119,8 +119,10 @@ func TestFyneConnectionsRepository_select(t *testing.T) {
 		defer close(events)
 
 		deck := connection_deck.New()
-		c1 := deck.New("conn 1", "ak", "sk", "bucket").Connection()
+		c1 := deck.New("conn 1", "ak", "sk", "bucket").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 		evt, err := deck.Select(c1.ID())
+		evt.Ref = "fakeEventRef"
 		require.NoError(t, err)
 
 		mockPrefs.EXPECT().
@@ -128,7 +130,10 @@ func TestFyneConnectionsRepository_select(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			Publish(gomock.Eq(connection_deck.NewSelectSuccessEvent(deck, c1))).
+			Publish(gomock.Eq(event.New(connection_deck.SelectConnectionSucceeded{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: c1},
+				Deck:              deck,
+			}, event.WithRef("fakeEventRef")))).
 			Do(func(e event.Event) {
 				close(done)
 			}).
@@ -160,14 +165,18 @@ func TestFyneConnectionsRepository_create(t *testing.T) {
 
 		deck := connection_deck.New()
 		evt := deck.New("conn 1", "ak", "sk", "bucket")
-		c1 := evt.Connection()
+		evt.Ref = "fakeEventRef"
+		c1 := evt.Payload.(connection_deck.CreateConnectionTriggered).Conn
 
 		mockPrefs.EXPECT().
 			SetString(gomock.Eq("allConnections"), gomock.Any()).
 			Times(1)
 
 		mockBus.EXPECT().
-			Publish(gomock.Eq(connection_deck.NewCreateSuccessEvent(deck, c1))).
+			Publish(gomock.Eq(event.New(connection_deck.CreateConnectionSucceeded{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: c1},
+				Deck:              deck,
+			}, event.WithRef("fakeEventRef")))).
 			Do(func(e event.Event) { close(done) }).
 			Times(1)
 
@@ -196,8 +205,10 @@ func TestFyneConnectionsRepository_remove(t *testing.T) {
 		defer close(events)
 
 		deck := connection_deck.New()
-		c1 := deck.New("conn 1", "ak", "sk", "bucket").Connection()
+		c1 := deck.New("conn 1", "ak", "sk", "bucket").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 		evt, err := deck.RemoveAConnection(c1.ID())
+		evt.Ref = "fakeEventRef"
 		require.NoError(t, err)
 
 		mockPrefs.EXPECT().
@@ -205,7 +216,10 @@ func TestFyneConnectionsRepository_remove(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			Publish(gomock.Eq(connection_deck.NewRemoveSuccessEvent(deck, c1))).
+			Publish(gomock.Eq(event.New(connection_deck.RemoveConnectionSucceeded{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: c1},
+				Deck:              deck,
+			}, event.WithRef("fakeEventRef")))).
 			Do(func(e event.Event) { close(done) }).
 			Times(1)
 
@@ -234,17 +248,22 @@ func TestFyneConnectionsRepository_update(t *testing.T) {
 		defer close(events)
 
 		deck := connection_deck.New()
-		c1 := deck.New("conn 1", "ak", "sk", "bucket").Connection()
+		c1 := deck.New("conn 1", "ak", "sk", "bucket").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 		evt, err := deck.Update(c1.ID(), connection_deck.WithName("new name"))
+		evt.Ref = "fakeEventRef"
 		require.NoError(t, err)
-		c2 := evt.Connection()
+		c2 := evt.Payload.(connection_deck.UpdateConnectionTriggered).Connection()
 
 		mockPrefs.EXPECT().
 			SetString(gomock.Eq("allConnections"), gomock.Any()).
 			Times(1)
 
 		mockBus.EXPECT().
-			Publish(gomock.Eq(connection_deck.NewUpdateSuccessEvent(deck, c2))).
+			Publish(gomock.Eq(event.New(connection_deck.UpdateConnectionSucceeded{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: c2},
+				Deck:              deck,
+			}, event.WithRef("fakeEventRef")))).
 			Do(func(e event.Event) { close(done) }).
 			Times(1)
 

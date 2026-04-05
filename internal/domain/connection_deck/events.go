@@ -2,248 +2,200 @@ package connection_deck
 
 import "github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 
-const (
-	SelectEventType event.Type = "deck.select"
-	RemoveEventType event.Type = "deck.remove"
-	CreateEventType event.Type = "deck.create"
-	UpdateEventType event.Type = "deck.update"
-)
-
-type ConnectionEvent interface {
-	event.Event
+type ConnectionGetter interface {
 	Connection() *Connection
 }
 
-type withDeck struct {
-	deck *Deck
+type ConnectionPayload struct {
+	Conn *Connection
 }
 
-func (e withDeck) Deck() *Deck {
-	return e.deck
+type ErrorGetter interface {
+	Error() error
 }
 
-type withConnection struct {
-	connection *Connection
+func (e ConnectionPayload) Connection() *Connection {
+	return e.Conn
 }
 
-func (e withConnection) Connection() *Connection {
-	return e.connection
-}
-
-type SelectEvent struct {
-	event.BaseEvent
-	withConnection
-	withDeck
-	previous *Connection
-}
-
-func NewSelectEvent(deck *Deck, selected *Connection, previous *Connection) SelectEvent {
-	return SelectEvent{
-		event.NewBaseEvent(SelectEventType),
-		withConnection{selected},
-		withDeck{deck},
-		previous,
-	}
-}
-
-func (e SelectEvent) Previous() *Connection {
-	return e.previous
-}
-
-type SelectSuccessEvent struct {
-	event.BaseEvent
-	withConnection
-	withDeck
-}
-
-func NewSelectSuccessEvent(deck *Deck, connection *Connection) SelectSuccessEvent {
-	return SelectSuccessEvent{
-		event.NewBaseEvent(SelectEventType.AsSuccess()),
-		withConnection{connection},
-		withDeck{deck},
-	}
-}
-
-type SelectFailureEvent struct {
-	event.BaseErrorEvent
-	withConnection
-}
-
-func NewSelectFailureEvent(err error, conn *Connection) SelectFailureEvent {
-	return SelectFailureEvent{
-		event.NewBaseErrorEvent(SelectEventType.AsFailure(), err),
-		withConnection{conn},
-	}
-}
-
-type RemoveEvent struct {
-	event.BaseEvent
-	withConnection
-	withDeck
-	removedIndex int
-	wasSelected  bool
-}
-
-func NewRemoveEvent(deck *Deck, connection *Connection, index int, wasSelected bool) RemoveEvent {
-	return RemoveEvent{
-		event.NewBaseEvent(RemoveEventType),
-		withConnection{connection},
-		withDeck{deck},
-		index,
-		wasSelected,
-	}
-}
-
-func (e RemoveEvent) RemovedIndex() int {
-	return e.removedIndex
-}
-
-func (e RemoveEvent) WasSelected() bool {
-	return e.wasSelected
-}
-
-type RemoveSuccessEvent struct {
-	event.BaseEvent
-	withConnection
-	withDeck
-}
-
-func NewRemoveSuccessEvent(deck *Deck, connection *Connection) RemoveSuccessEvent {
-	return RemoveSuccessEvent{
-		event.NewBaseEvent(RemoveEventType.AsSuccess()),
-		withConnection{connection},
-		withDeck{deck},
-	}
-}
-
-type RemoveFailureEvent struct {
-	event.BaseErrorEvent
-	withConnection
-	removedIndex int
-	wasSelected  bool
-}
-
-func NewRemoveFailureEvent(err error, index int, wasSelected bool, conn *Connection) RemoveFailureEvent {
-	return RemoveFailureEvent{
-		event.NewBaseErrorEvent(RemoveEventType.AsFailure(), err),
-		withConnection{conn},
-		index,
-		wasSelected,
-	}
-}
-
-func (e RemoveFailureEvent) RemovedIndex() int {
-	return e.removedIndex
-}
-
-func (e RemoveFailureEvent) WasSelected() bool {
-	return e.wasSelected
-}
-
-type CreateEvent struct {
-	event.BaseEvent
-	withConnection
-	withDeck
-}
-
-func NewCreateEvent(deck *Deck, connection *Connection) CreateEvent {
-	return CreateEvent{
-		event.NewBaseEvent(CreateEventType),
-		withConnection{connection},
-		withDeck{deck},
-	}
-}
-
-type CreateSuccessEvent struct {
-	event.BaseEvent
-	withConnection
-	withDeck
-}
-
-func NewCreateSuccessEvent(deck *Deck, connection *Connection) CreateSuccessEvent {
-	return CreateSuccessEvent{
-		event.NewBaseEvent(CreateEventType.AsSuccess()),
-		withConnection{connection},
-		withDeck{deck},
-	}
-}
-
-type CreateFailureEvent struct {
-	event.BaseErrorEvent
-	withConnection
-}
-
-func NewCreateFailureEvent(err error, conn *Connection) CreateFailureEvent {
-	return CreateFailureEvent{
-		event.NewBaseErrorEvent(CreateEventType.AsFailure(), err),
-		withConnection{conn},
-	}
-}
-
-type UpdateEvent struct {
-	event.BaseEvent
-	withDeck
-	withConnection
-	previous *Connection
-}
-
-func NewUpdateEvent(deck *Deck, previous *Connection, newConnection *Connection) UpdateEvent {
-	return UpdateEvent{
-		event.NewBaseEvent(UpdateEventType),
-		withDeck{deck},
-		withConnection{newConnection},
-		previous,
-	}
-}
-
-func (e UpdateEvent) Previous() *Connection {
-	return e.previous
-}
-
-type UpdateSuccessEvent struct {
-	event.BaseEvent
-	withDeck
-	withConnection
-}
-
-func NewUpdateSuccessEvent(deck *Deck, newConnection *Connection) UpdateSuccessEvent {
-	return UpdateSuccessEvent{
-		event.NewBaseEvent(UpdateEventType.AsSuccess()),
-		withDeck{deck},
-		withConnection{newConnection},
-	}
-}
-
-type UpdateFailureEvent struct {
-	event.BaseErrorEvent
-	withConnection
-}
-
-func NewUpdateFailureEvent(err error, previous *Connection) UpdateFailureEvent {
-	return UpdateFailureEvent{
-		event.NewBaseErrorEvent(UpdateEventType.AsFailure(), err),
-		withConnection{previous},
-	}
-}
+const (
+	SelectConnectionTriggeredType event.Type = "deck.connection.select.triggered"
+	SelectConnectionSucceededType event.Type = "deck.connection.select.succeeded"
+	SelectConnectionFailedType    event.Type = "deck.connection.select.failed"
+)
 
 var (
-	_ event.ErrorEvent = (*SelectFailureEvent)(nil)
-	_ event.ErrorEvent = (*RemoveFailureEvent)(nil)
-	_ event.ErrorEvent = (*UpdateFailureEvent)(nil)
-	_ event.ErrorEvent = (*CreateFailureEvent)(nil)
-
-	_ ConnectionEvent = (*SelectEvent)(nil)
-	_ ConnectionEvent = (*RemoveEvent)(nil)
-	_ ConnectionEvent = (*CreateEvent)(nil)
-	_ ConnectionEvent = (*UpdateEvent)(nil)
-
-	_ ConnectionEvent = (*SelectSuccessEvent)(nil)
-	_ ConnectionEvent = (*UpdateSuccessEvent)(nil)
-	_ ConnectionEvent = (*RemoveSuccessEvent)(nil)
-	_ ConnectionEvent = (*CreateSuccessEvent)(nil)
-
-	_ ConnectionEvent = (*SelectFailureEvent)(nil)
-	_ ConnectionEvent = (*RemoveFailureEvent)(nil)
-	_ ConnectionEvent = (*UpdateFailureEvent)(nil)
-	_ ConnectionEvent = (*CreateFailureEvent)(nil)
+	_ ConnectionGetter = (*SelectConnectionTriggered)(nil)
+	_ ConnectionGetter = (*SelectConnectionSucceeded)(nil)
+	_ ConnectionGetter = (*SelectConnectionFailed)(nil)
+	_ ErrorGetter      = (*SelectConnectionFailed)(nil)
 )
+
+type SelectConnectionTriggered struct {
+	ConnectionPayload
+	Deck     *Deck
+	Previous *Connection
+}
+
+func (e SelectConnectionTriggered) Type() event.Type {
+	return SelectConnectionTriggeredType
+}
+
+type SelectConnectionSucceeded struct {
+	ConnectionPayload
+	Deck *Deck
+}
+
+func (e SelectConnectionSucceeded) Type() event.Type {
+	return SelectConnectionSucceededType
+}
+
+type SelectConnectionFailed struct {
+	Err error
+	ConnectionPayload
+}
+
+func (e SelectConnectionFailed) Type() event.Type {
+	return SelectConnectionFailedType
+}
+
+func (e SelectConnectionFailed) Error() error {
+	return e.Err
+}
+
+const (
+	RemoveConnectionTriggeredType event.Type = "deck.connection.remove.triggered"
+	RemoveConnectionSucceededType event.Type = "deck.connection.remove.succeeded"
+	RemoveConnectionFailedType    event.Type = "deck.connection.remove.failed"
+)
+
+var (
+	_ ConnectionGetter = (*RemoveConnectionTriggered)(nil)
+	_ ConnectionGetter = (*RemoveConnectionSucceeded)(nil)
+	_ ConnectionGetter = (*RemoveConnectionFailed)(nil)
+	_ ErrorGetter      = (*RemoveConnectionFailed)(nil)
+)
+
+type RemoveConnectionTriggered struct {
+	ConnectionPayload
+	Deck         *Deck
+	RemovedIndex int
+	WasSelected  bool
+}
+
+func (e RemoveConnectionTriggered) Type() event.Type {
+	return RemoveConnectionTriggeredType
+}
+
+type RemoveConnectionSucceeded struct {
+	ConnectionPayload
+	Deck *Deck
+}
+
+func (e RemoveConnectionSucceeded) Type() event.Type {
+	return RemoveConnectionSucceededType
+}
+
+type RemoveConnectionFailed struct {
+	ConnectionPayload
+	Err          error
+	RemovedIndex int
+	WasSelected  bool
+}
+
+func (e RemoveConnectionFailed) Type() event.Type {
+	return RemoveConnectionFailedType
+}
+
+func (e RemoveConnectionFailed) Error() error {
+	return e.Err
+}
+
+const (
+	CreateConnectionTriggeredType event.Type = "deck.connection.create.triggered"
+	CreateConnectionSucceededType event.Type = "deck.connection.create.succeeded"
+	CreateConnectionFailedType    event.Type = "deck.connection.create.failed"
+)
+
+var (
+	_ ConnectionGetter = (*CreateConnectionTriggered)(nil)
+	_ ConnectionGetter = (*CreateConnectionSucceeded)(nil)
+	_ ConnectionGetter = (*CreateConnectionFailed)(nil)
+	_ ErrorGetter      = (*CreateConnectionFailed)(nil)
+)
+
+type CreateConnectionTriggered struct {
+	ConnectionPayload
+	Deck *Deck
+}
+
+func (e CreateConnectionTriggered) Type() event.Type {
+	return CreateConnectionTriggeredType
+}
+
+type CreateConnectionSucceeded struct {
+	ConnectionPayload
+	Deck *Deck
+}
+
+func (e CreateConnectionSucceeded) Type() event.Type {
+	return CreateConnectionSucceededType
+}
+
+type CreateConnectionFailed struct {
+	ConnectionPayload
+	Err error
+}
+
+func (e CreateConnectionFailed) Type() event.Type {
+	return CreateConnectionFailedType
+}
+
+func (e CreateConnectionFailed) Error() error {
+	return e.Err
+}
+
+const (
+	UpdateConnectionTriggeredType event.Type = "deck.connection.update.triggered"
+	UpdateConnectionSucceededType event.Type = "deck.connection.update.succeeded"
+	UpdateConnectionFailedType    event.Type = "deck.connection.update.failed"
+)
+
+var (
+	_ ConnectionGetter = (*UpdateConnectionTriggered)(nil)
+	_ ConnectionGetter = (*UpdateConnectionSucceeded)(nil)
+	_ ConnectionGetter = (*UpdateConnectionFailed)(nil)
+	_ ErrorGetter      = (*UpdateConnectionFailed)(nil)
+)
+
+type UpdateConnectionTriggered struct {
+	ConnectionPayload
+	Deck     *Deck
+	Previous *Connection
+}
+
+func (e UpdateConnectionTriggered) Type() event.Type {
+	return UpdateConnectionTriggeredType
+}
+
+type UpdateConnectionSucceeded struct {
+	ConnectionPayload
+	Deck *Deck
+}
+
+func (e UpdateConnectionSucceeded) Type() event.Type {
+	return UpdateConnectionSucceededType
+}
+
+type UpdateConnectionFailed struct {
+	ConnectionPayload
+	Err error
+}
+
+func (e UpdateConnectionFailed) Type() event.Type {
+	return UpdateConnectionFailedType
+}
+
+func (e UpdateConnectionFailed) Error() error {
+	return e.Err
+}

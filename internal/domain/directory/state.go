@@ -13,13 +13,13 @@ const (
 
 type state interface {
 	Type() StateType
-	Load() (LoadEvent, error)
+	Load() (event.Event, error)
 	Status() Status
 	Recover(choice RecoveryChoice) (event.Event, error)
 	Files() []*File
 	SubDirectories() []*Directory
-	UploadFile(localPath string, overwrite bool) (FileUploadEvent, error)
-	Rename(newName string) (RenameEvent, error)
+	UploadFile(localPath string, overwrite bool) (event.Event, error)
+	Rename(newName string) (event.Event, error)
 	Notify(event.Event) error
 }
 
@@ -41,12 +41,12 @@ func (s *baseState) Files() []*File {
 	return make([]*File, 0)
 }
 
-func (s *baseState) UploadFile(string, bool) (FileUploadEvent, error) {
-	return FileUploadEvent{}, ErrNotLoaded
+func (s *baseState) UploadFile(string, bool) (event.Event, error) {
+	return event.Event{}, ErrNotLoaded
 }
 
-func (s *baseState) Rename(string) (RenameEvent, error) {
-	return RenameEvent{}, ErrNotLoaded
+func (s *baseState) Rename(string) (event.Event, error) {
+	return event.Event{}, ErrNotLoaded
 }
 
 func (s *baseState) Status() Status {
@@ -54,5 +54,5 @@ func (s *baseState) Status() Status {
 }
 
 func (s *baseState) Recover(RecoveryChoice) (event.Event, error) {
-	return nil, ErrNotResumable
+	return event.Event{}, ErrNotResumable
 }

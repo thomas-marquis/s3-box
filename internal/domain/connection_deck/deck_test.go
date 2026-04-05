@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 func TestDeck_New(t *testing.T) {
@@ -18,11 +19,13 @@ func TestDeck_New(t *testing.T) {
 
 		// Then
 		assert.NotNil(t, res)
-		assert.Equal(t, deck, res.Deck())
-		assert.Equal(t, "connection 1", res.Connection().Name())
-		assert.Equal(t, "accesskey", res.Connection().AccessKey())
-		assert.Equal(t, "secretkey", res.Connection().SecretKey())
-		assert.Equal(t, "myBucket", res.Connection().Bucket())
+		assert.Equal(t, connection_deck.CreateConnectionTriggeredType, res.Type())
+		pl := res.Payload.(connection_deck.CreateConnectionTriggered)
+		assert.Equal(t, deck, pl.Deck)
+		assert.Equal(t, "connection 1", pl.Connection().Name())
+		assert.Equal(t, "accesskey", pl.Connection().AccessKey())
+		assert.Equal(t, "secretkey", pl.Connection().SecretKey())
+		assert.Equal(t, "myBucket", pl.Connection().Bucket())
 	})
 }
 
@@ -31,7 +34,7 @@ func TestDeck_GetByID(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
 		event := deck.New("connection 1", "accesskey", "secretkey", "myBucket")
-		conn := event.Connection()
+		conn := event.Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 		// When
 		res, err := deck.GetByID(conn.ID())
@@ -59,33 +62,38 @@ func TestDeck_Select(t *testing.T) {
 	t.Run("should select a connection", func(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
-		conn1 := deck.New("conn 1", "ak", "sk", "b1").Connection()
+		conn1 := deck.New("conn 1", "ak", "sk", "b1").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 		// When
-		event, err := deck.Select(conn1.ID())
+		evt, err := deck.Select(conn1.ID())
 
 		// Then
 		assert.NoError(t, err)
+		pl := evt.Payload.(connection_deck.SelectConnectionTriggered)
 		assert.Equal(t, conn1, deck.SelectedConnection())
-		assert.Equal(t, conn1, event.Connection())
-		assert.Nil(t, event.Previous())
+		assert.Equal(t, conn1, pl.Connection())
+		assert.Nil(t, pl.Previous)
 	})
 
 	t.Run("should update selection and return previous connection", func(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
-		conn1 := deck.New("conn 1", "ak", "sk", "b1").Connection()
-		conn2 := deck.New("conn 2", "ak", "sk", "b2").Connection()
+		conn1 := deck.New("conn 1", "ak", "sk", "b1").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		conn2 := deck.New("conn 2", "ak", "sk", "b2").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 		_, _ = deck.Select(conn1.ID())
 
 		// When
-		event, err := deck.Select(conn2.ID())
+		evt, err := deck.Select(conn2.ID())
 
 		// Then
 		assert.NoError(t, err)
+		pl := evt.Payload.(connection_deck.SelectConnectionTriggered)
 		assert.Equal(t, conn2, deck.SelectedConnection())
-		assert.Equal(t, conn2, event.Connection())
-		assert.Equal(t, conn1, event.Previous())
+		assert.Equal(t, conn2, pl.Connection())
+		assert.Equal(t, conn1, pl.Previous)
 	})
 
 	t.Run("should return ErrNotFound when selecting non-existent connection", func(t *testing.T) {
@@ -105,18 +113,21 @@ func TestDeck_RemoveAConnection(t *testing.T) {
 	t.Run("should remove a connection", func(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
-		conn1 := deck.New("conn 1", "ak", "sk", "b1").Connection()
-		conn2 := deck.New("conn 2", "ak", "sk", "b2").Connection()
+		conn1 := deck.New("conn 1", "ak", "sk", "b1").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		conn2 := deck.New("conn 2", "ak", "sk", "b2").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 		// When
-		event, err := deck.RemoveAConnection(conn1.ID())
+		evt, err := deck.RemoveAConnection(conn1.ID())
 
 		// Then
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(deck.Get()))
-		assert.Equal(t, conn1, event.Connection())
-		assert.Equal(t, 0, event.RemovedIndex())
-		assert.False(t, event.WasSelected())
+		pl := evt.Payload.(connection_deck.RemoveConnectionTriggered)
+		assert.Equal(t, conn1, pl.Connection())
+		assert.Equal(t, 0, pl.RemovedIndex)
+		assert.False(t, pl.WasSelected)
 		assert.NotContains(t, deck.Get(), conn1)
 		assert.Contains(t, deck.Get(), conn2)
 	})
@@ -124,16 +135,18 @@ func TestDeck_RemoveAConnection(t *testing.T) {
 	t.Run("should reset selection if removed connection was selected", func(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
-		conn1 := deck.New("conn 1", "ak", "sk", "b1").Connection()
+		conn1 := deck.New("conn 1", "ak", "sk", "b1").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 		_, _ = deck.Select(conn1.ID())
 
 		// When
-		event, err := deck.RemoveAConnection(conn1.ID())
+		evt, err := deck.RemoveAConnection(conn1.ID())
 
 		// Then
 		assert.NoError(t, err)
+		pl := evt.Payload.(connection_deck.RemoveConnectionTriggered)
 		assert.Nil(t, deck.SelectedConnection())
-		assert.True(t, event.WasSelected())
+		assert.True(t, pl.WasSelected)
 	})
 
 	t.Run("should return ErrNotFound when removing non-existent connection", func(t *testing.T) {
@@ -170,7 +183,8 @@ func TestDeck_Update(t *testing.T) {
 	t.Run("should update a connection and increment revision using various options", func(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
-		conn1 := deck.New("conn 1", "ak", "sk", "b1").Connection()
+		conn1 := deck.New("conn 1", "ak", "sk", "b1").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 		customID := connection_deck.NewConnectionID()
 
 		// When
@@ -200,7 +214,8 @@ func TestDeck_Update(t *testing.T) {
 	t.Run("should update a connection as AWS", func(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
-		conn1 := deck.New("conn 1", "ak", "sk", "b1").Connection()
+		conn1 := deck.New("conn 1", "ak", "sk", "b1").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 		// When
 		_, err := deck.Update(conn1.ID(), connection_deck.AsAWS("eu-west-1"))
@@ -214,7 +229,8 @@ func TestDeck_Update(t *testing.T) {
 	t.Run("should update a connection with TLS", func(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
-		conn1 := deck.New("conn 1", "ak", "sk", "b1", connection_deck.AsS3Like("srv", false)).Connection()
+		conn1 := deck.New("conn 1", "ak", "sk", "b1", connection_deck.AsS3Like("srv", false)).
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 		// When
 		_, err := deck.Update(conn1.ID(), connection_deck.WithUseTLS(true))
@@ -242,11 +258,15 @@ func TestDeck_Notify(t *testing.T) {
 		t.Run("should remove the connection from the deck", func(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
-			conn := deck.New("conn 1", "ak", "sk", "b1").Connection()
+			conn := deck.New("conn 1", "ak", "sk", "b1").
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 			require.Len(t, deck.Get(), 1)
 
 			// When
-			deck.Notify(connection_deck.NewCreateFailureEvent(assert.AnError, conn))
+			deck.Notify(event.New(connection_deck.CreateConnectionFailed{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
+				Err:               assert.AnError,
+			}))
 
 			// Then
 			assert.Len(t, deck.Get(), 0)
@@ -255,11 +275,15 @@ func TestDeck_Notify(t *testing.T) {
 		t.Run("should do nothing if the connection is not in the deck", func(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
-			conn := connection_deck.New().New("conn 1", "ak", "sk", "b1").Connection()
+			conn := connection_deck.New().New("conn 1", "ak", "sk", "b1").
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 			require.Len(t, deck.Get(), 0)
 
 			// When
-			deck.Notify(connection_deck.NewCreateFailureEvent(assert.AnError, conn))
+			deck.Notify(event.New(connection_deck.CreateConnectionFailed{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
+				Err:               assert.AnError,
+			}))
 
 			// Then
 			assert.Len(t, deck.Get(), 0)
@@ -270,7 +294,10 @@ func TestDeck_Notify(t *testing.T) {
 			deck := connection_deck.New()
 
 			// When
-			deck.Notify(connection_deck.NewCreateFailureEvent(assert.AnError, nil))
+			deck.Notify(event.New(connection_deck.CreateConnectionFailed{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: nil},
+				Err:               assert.AnError,
+			}))
 
 			// Then
 			assert.Len(t, deck.Get(), 0)
@@ -281,14 +308,19 @@ func TestDeck_Notify(t *testing.T) {
 		t.Run("should restore the previous selection", func(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
-			conn1 := deck.New("conn 1", "ak", "sk", "b1").Connection()
-			conn2 := deck.New("conn 2", "ak", "sk", "b2").Connection()
+			conn1 := deck.New("conn 1", "ak", "sk", "b1").
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
+			conn2 := deck.New("conn 2", "ak", "sk", "b2").
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 			_, _ = deck.Select(conn1.ID())
 			_, _ = deck.Select(conn2.ID())
 			require.Equal(t, conn2, deck.SelectedConnection())
 
 			// When
-			deck.Notify(connection_deck.NewSelectFailureEvent(assert.AnError, conn1))
+			deck.Notify(event.New(connection_deck.SelectConnectionFailed{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn1},
+				Err:               assert.AnError,
+			}))
 
 			// Then
 			assert.Equal(t, conn1, deck.SelectedConnection())
@@ -297,12 +329,16 @@ func TestDeck_Notify(t *testing.T) {
 		t.Run("should do nothing if previous connection is nil", func(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
-			conn1 := deck.New("conn 1", "ak", "sk", "b1").Connection()
+			conn1 := deck.New("conn 1", "ak", "sk", "b1").
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 			_, _ = deck.Select(conn1.ID())
 			require.Equal(t, conn1, deck.SelectedConnection())
 
 			// When
-			deck.Notify(connection_deck.NewSelectFailureEvent(assert.AnError, nil))
+			deck.Notify(event.New(connection_deck.SelectConnectionFailed{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: nil},
+				Err:               assert.AnError,
+			}))
 
 			// Then
 			assert.Equal(t, conn1, deck.SelectedConnection())
@@ -313,21 +349,24 @@ func TestDeck_Notify(t *testing.T) {
 		t.Run("should restore the removed connection and its selection status", func(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
-			conn1 := deck.New("conn 1", "ak", "sk", "b1").Connection()
-			conn2 := deck.New("conn 2", "ak", "sk", "b2").Connection()
+			conn1 := deck.New("conn 1", "ak", "sk", "b1").
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
+			conn2 := deck.New("conn 2", "ak", "sk", "b2").
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 			_, _ = deck.Select(conn1.ID())
 
 			removeEvent, _ := deck.RemoveAConnection(conn1.ID())
+			removeEventPl := removeEvent.Payload.(connection_deck.RemoveConnectionTriggered)
 			require.Len(t, deck.Get(), 1)
 			require.Nil(t, deck.SelectedConnection())
 
 			// When
-			failureEvent := connection_deck.NewRemoveFailureEvent(
-				assert.AnError,
-				removeEvent.RemovedIndex(),
-				removeEvent.WasSelected(),
-				removeEvent.Connection(),
-			)
+			failureEvent := event.New(connection_deck.RemoveConnectionFailed{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: removeEventPl.Conn},
+				Err:               assert.AnError,
+				RemovedIndex:      removeEventPl.RemovedIndex,
+				WasSelected:       removeEventPl.WasSelected,
+			})
 			deck.Notify(failureEvent)
 
 			// Then
@@ -342,7 +381,9 @@ func TestDeck_Notify(t *testing.T) {
 			deck := connection_deck.New()
 
 			// When
-			deck.Notify(connection_deck.NewRemoveFailureEvent(assert.AnError, 0, false, nil))
+			deck.Notify(event.New(connection_deck.RemoveConnectionFailed{
+				Err: assert.AnError,
+			}))
 
 			// Then
 			assert.Len(t, deck.Get(), 0)
@@ -351,10 +392,15 @@ func TestDeck_Notify(t *testing.T) {
 		t.Run("should handle out of bounds index by appending at the end", func(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
-			conn := connection_deck.New().New("conn 1", "ak", "sk", "b1").Connection()
+			conn := connection_deck.New().New("conn 1", "ak", "sk", "b1").
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 			// When
-			deck.Notify(connection_deck.NewRemoveFailureEvent(assert.AnError, 5, false, conn))
+			deck.Notify(event.New(connection_deck.RemoveConnectionFailed{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
+				Err:               assert.AnError,
+				RemovedIndex:      5,
+			}))
 
 			// Then
 			assert.Len(t, deck.Get(), 1)
@@ -364,10 +410,15 @@ func TestDeck_Notify(t *testing.T) {
 		t.Run("should handle negative index by prepending at the beginning", func(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
-			conn := connection_deck.New().New("conn 1", "ak", "sk", "b1").Connection()
+			conn := connection_deck.New().New("conn 1", "ak", "sk", "b1").
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 			// When
-			deck.Notify(connection_deck.NewRemoveFailureEvent(assert.AnError, -1, false, conn))
+			deck.Notify(event.New(connection_deck.RemoveConnectionFailed{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
+				Err:               assert.AnError,
+				RemovedIndex:      -1,
+			}))
 
 			// Then
 			assert.Len(t, deck.Get(), 1)
@@ -379,25 +430,34 @@ func TestDeck_Notify(t *testing.T) {
 		t.Run("should roll back the connection to its previous state", func(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
-			conn := deck.New("conn 1", "ak", "sk", "b1").Connection()
+			conn := deck.New("conn 1", "ak", "sk", "b1").
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 			updateEvent, _ := deck.Update(conn.ID(), connection_deck.WithName("new name"))
+			updateEventPl := updateEvent.Payload.(connection_deck.UpdateConnectionTriggered)
 			require.Equal(t, "new name", conn.Name())
 
 			// When
-			deck.Notify(connection_deck.NewUpdateFailureEvent(assert.AnError, updateEvent.Previous()))
+			deck.Notify(event.New(connection_deck.UpdateConnectionFailed{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: updateEventPl.Previous},
+				Err:               assert.AnError,
+			}))
 
 			// Then
 			assert.Equal(t, "conn 1", deck.Get()[0].Name())
-			assert.Equal(t, updateEvent.Previous().Revision(), deck.Get()[0].Revision())
+			assert.Equal(t, updateEventPl.Previous.Revision(), deck.Get()[0].Revision())
 		})
 
 		t.Run("should do nothing if connection is not in the deck", func(t *testing.T) {
 			// Given
 			deck := connection_deck.New()
-			conn := connection_deck.New().New("conn 1", "ak", "sk", "b1").Connection()
+			conn := connection_deck.New().New("conn 1", "ak", "sk", "b1").
+				Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 			// When
-			deck.Notify(connection_deck.NewUpdateFailureEvent(assert.AnError, conn))
+			deck.Notify(event.New(connection_deck.UpdateConnectionFailed{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
+				Err:               assert.AnError,
+			}))
 
 			// Then
 			assert.Len(t, deck.Get(), 0)
@@ -408,7 +468,10 @@ func TestDeck_Notify(t *testing.T) {
 			deck := connection_deck.New()
 
 			// When
-			deck.Notify(connection_deck.NewUpdateFailureEvent(assert.AnError, nil))
+			deck.Notify(event.New(connection_deck.UpdateConnectionFailed{
+				ConnectionPayload: connection_deck.ConnectionPayload{Conn: nil},
+				Err:               assert.AnError,
+			}))
 
 			// Then
 			assert.Len(t, deck.Get(), 0)
@@ -418,10 +481,15 @@ func TestDeck_Notify(t *testing.T) {
 	t.Run("should do nothing for non-failure events", func(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
-		conn := deck.New("conn 1", "ak", "sk", "b1").Connection()
+		conn := deck.New("conn 1", "ak", "sk", "b1").
+			Payload.(connection_deck.CreateConnectionTriggered).
+			Connection()
 
 		// When
-		deck.Notify(connection_deck.NewCreateSuccessEvent(deck, conn))
+		deck.Notify(event.New(connection_deck.CreateConnectionSucceeded{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
+			Deck:              deck,
+		}))
 
 		// Then
 		assert.Len(t, deck.Get(), 1)
@@ -431,7 +499,8 @@ func TestDeck_Notify(t *testing.T) {
 func TestDeck_NewWithOptions(t *testing.T) {
 	t.Run("should create a deck with initial connections", func(t *testing.T) {
 		// Given
-		conn1 := connection_deck.New().New("conn 1", "ak", "sk", "b1").Connection()
+		conn1 := connection_deck.New().New("conn 1", "ak", "sk", "b1").
+			Payload.(connection_deck.CreateConnectionTriggered).Connection()
 
 		// When
 		deck := connection_deck.New(connection_deck.WithConnections([]*connection_deck.Connection{conn1}))

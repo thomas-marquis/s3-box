@@ -16,7 +16,6 @@ import (
 	binding "fyne.io/fyne/v2/data/binding"
 	connection_deck "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
-	event "github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	node "github.com/thomas-marquis/s3-box/internal/ui/node"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -246,10 +245,10 @@ func (mr *MockExplorerViewModelMockRecorder) Loading() *gomock.Call {
 }
 
 // PendingUserValidations mocks base method.
-func (m *MockExplorerViewModel) PendingUserValidations() <-chan directory.UserValidationEvent {
+func (m *MockExplorerViewModel) PendingUserValidations() <-chan directory.UserValidationAsked {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PendingUserValidations")
-	ret0, _ := ret[0].(<-chan directory.UserValidationEvent)
+	ret0, _ := ret[0].(<-chan directory.UserValidationAsked)
 	return ret0
 }
 
@@ -420,13 +419,13 @@ func (mr *MockExplorerViewModelMockRecorder) UploadFile(localPath, dir, overwrit
 }
 
 // Validate mocks base method.
-func (m *MockExplorerViewModel) Validate(dir *directory.Directory, reason event.Event, validated bool) {
+func (m *MockExplorerViewModel) Validate(event directory.UserValidationAsked, validated bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Validate", dir, reason, validated)
+	m.ctrl.Call(m, "Validate", event, validated)
 }
 
 // Validate indicates an expected call of Validate.
-func (mr *MockExplorerViewModelMockRecorder) Validate(dir, reason, validated any) *gomock.Call {
+func (mr *MockExplorerViewModelMockRecorder) Validate(event, validated any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Validate", reflect.TypeOf((*MockExplorerViewModel)(nil).Validate), dir, reason, validated)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Validate", reflect.TypeOf((*MockExplorerViewModel)(nil).Validate), event, validated)
 }

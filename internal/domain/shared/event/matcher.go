@@ -30,5 +30,6 @@ func (m *isOneOfMatcher) Match(event Event) bool {
 			return true
 		}
 	}
+
 	return false
 }

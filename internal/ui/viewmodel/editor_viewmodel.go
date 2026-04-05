@@ -61,15 +61,15 @@ func NewEditorViewModel(
 	}
 
 	bus.Subscribe().
-		On(event.Is(directory.FileLoadEventType.AsSuccess()), vm.handleFileLoadingSuccess).
-		On(event.Is(directory.FileLoadEventType.AsFailure()), vm.handleFileLoadingFailure).
+		On(event.Is(directory.LoadFileSucceededType), vm.handleFileLoadingSuccess).
+		On(event.Is(directory.LoadFileFailedType), vm.handleFileLoadingFailure).
 		On(event.IsOneOf(
-			connection_deck.SelectEventType.AsSuccess(),
-			connection_deck.UpdateEventType.AsSuccess(),
-			connection_deck.RemoveEventType.AsSuccess(),
+			connection_deck.SelectConnectionSucceededType,
+			connection_deck.UpdateConnectionSucceededType,
+			connection_deck.RemoveConnectionSucceededType,
 		), vm.handleConnectionChanged).
-		On(event.Is(fileeditor.SaveEventType), vm.handleFileSave).
-		On(event.Is(fileeditor.SaveEventType.AsFailure()), vm.handleFileSaveFailure).
+		On(event.Is(fileeditor.SaveTriggeredType), vm.handleFileSave).
+		On(event.Is(fileeditor.SaveFailedType), vm.handleFileSaveFailure).
 		ListenNonBlocking()
 
 	return vm
@@ -109,9 +109,9 @@ func (v *editorViewModelImpl) Open(ctx context.Context, file *directory.File) (*
 }
 
 func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
-	e := evt.(directory.FileLoadSuccessEvent)
-	content := e.Content
-	oe, ok := v.openedEditors[e.File().FullPath()]
+	pl := evt.Payload.(directory.LoadFileSucceeded)
+	content := pl.Content
+	oe, ok := v.openedEditors[pl.File.FullPath()]
 	if !ok {
 		// The editor has been closed before the file was loaded. And it's okay
 		return
@@ -139,15 +139,15 @@ func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
 }
 
 func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
-	e := evt.(directory.FileLoadFailureEvent)
-	v.notifier.NotifyError(e.Error())
-	oe, ok := v.openedEditors[e.File().FullPath()]
+	pl := evt.Payload.(directory.LoadFileFailed)
+	v.notifier.NotifyError(pl.Err)
+	oe, ok := v.openedEditors[pl.File.FullPath()]
 	if !ok {
 		// The editor has been closed before the file was loaded. And it's okay
 		return
 	}
-	oe.state.ErrorMsg.Set(e.Error().Error()) // nolint:errcheck
-	oe.state.IsLoaded.Set(true)              // nolint:errcheck
+	oe.state.ErrorMsg.Set(pl.Err.Error()) // nolint:errcheck
+	oe.state.IsLoaded.Set(true)           // nolint:errcheck
 }
 
 func (v *editorViewModelImpl) IsOpened(file *directory.File) bool {
@@ -160,8 +160,8 @@ func (v *editorViewModelImpl) Close(file *directory.File) {
 }
 
 func (v *editorViewModelImpl) handleFileSave(e event.Event) {
-	evt := e.(fileeditor.SaveEvent)
-	oe, ok := v.openedEditors[evt.File.FullPath()]
+	pl := e.Payload.(fileeditor.SaveTriggered)
+	oe, ok := v.openedEditors[pl.File.FullPath()]
 	if !ok {
 		// The editor has been closed before in the meantime (unlikely). But it's okay
 		return
@@ -172,40 +172,46 @@ func (v *editorViewModelImpl) handleFileSave(e event.Event) {
 	go func() {
 		defer close(terminated)
 		if _, err := oe.content.Seek(0, io.SeekStart); err != nil {
-			v.bus.Publish(fileeditor.NewSaveFailureEvent(evt.File, err))
+			v.bus.Publish(event.NewFollowup(e, fileeditor.SaveFailed{
+				Err:  err,
+				File: pl.File,
+			}))
 			return
 		}
-		if _, err := fmt.Fprint(oe.content, evt.Content); err != nil {
-			v.bus.Publish(fileeditor.NewSaveFailureEvent(evt.File, err))
+		if _, err := fmt.Fprint(oe.content, pl.Content); err != nil {
+			v.bus.Publish(event.NewFollowup(e, fileeditor.SaveFailed{
+				Err:  err,
+				File: pl.File,
+			}))
 			return
 		}
-		v.bus.Publish(fileeditor.NewSaveSuccessEvent(evt.File, evt.Content))
+		v.bus.Publish(event.NewFollowup(e, fileeditor.SaveSucceeded(pl)))
 	}()
 
 	select {
-	case <-evt.Context().Done():
+	case <-e.Context.Done():
 		oe.content.Cancel()
 	case <-terminated:
 	}
 }
 
 func (v *editorViewModelImpl) handleFileSaveFailure(evt event.Event) {
-	e := evt.(fileeditor.SaveFailureEvent)
-	v.notifier.NotifyError(e.Error())
+	pl := evt.Payload.(fileeditor.SaveFailed)
+	v.notifier.NotifyError(pl.Err)
 }
 
 func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {
 	var hasChanged bool
 	var conn *connection_deck.Connection
-	if _, ok := evt.(connection_deck.RemoveSuccessEvent); ok {
+	if _, ok := evt.Payload.(connection_deck.RemoveConnectionSucceeded); ok {
 		hasChanged = true
 	} else {
-		e, ok := evt.(connection_deck.SelectSuccessEvent)
+		pl, ok := evt.Payload.(connection_deck.SelectConnectionSucceeded)
 		if ok {
-			conn = e.Connection()
+			conn = pl.Connection()
 		} else {
-			e := evt.(connection_deck.UpdateSuccessEvent)
-			conn = e.Connection()
+			pl := evt.Payload.(connection_deck.UpdateConnectionSucceeded)
+			conn = pl.Connection()
 			if conn.ID() != v.selectedConnection.ID() {
 				return
 			}

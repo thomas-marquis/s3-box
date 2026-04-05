@@ -96,22 +96,32 @@ func (f *File) FullPath() string {
 	return f.DirectoryPath().String() + f.name.String()
 }
 
-func (f *File) Download(connID connection_deck.ConnectionID, toPath string) FileDownloadEvent {
-	return NewFileDownloadEvent(connID, f, toPath)
+func (f *File) Download(connID connection_deck.ConnectionID, toPath string) event.Event {
+	return event.New(DownloadFileTriggered{
+		ConnectionID: connID,
+		DstPath:      toPath,
+		File:         f,
+	})
 }
 
-func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) FileLoadEvent {
-	return NewFileLoadEvent(connId, f, opts...)
+func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) event.Event {
+	return event.New(LoadFileTriggered{
+		File:         f,
+		ConnectionID: connId,
+	}, opts...)
 }
 
 // Rename changes the name of the file.
-// Returns a FileRenameEvent.
 // Returns an error if the new name is invalid.
-func (f *File) Rename(newName string) (FileRenameEvent, error) {
+func (f *File) Rename(newName string) (event.Event, error) {
 	_, err := NewFileName(newName)
 	if err != nil {
-		return FileRenameEvent{}, err
+		return event.Event{}, err
 	}
 
-	return NewFileRenameEvent(f.parent, f, newName), nil
+	return event.New(RenameFileTriggered{
+		File:      f,
+		NewName:   newName,
+		Directory: f.parent,
+	}), nil
 }

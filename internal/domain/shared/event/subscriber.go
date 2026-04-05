@@ -6,11 +6,11 @@ type Subscriber struct {
 	sync.RWMutex
 
 	registered map[Matcher]func(Event)
-	events     <-chan Event
+	events     chan Event
 	started    bool
 }
 
-func NewSubscriber(event <-chan Event) *Subscriber {
+func NewSubscriber(event chan Event) *Subscriber {
 	return &Subscriber{registered: make(map[Matcher]func(Event)), events: event}
 }
 
@@ -31,6 +31,11 @@ func (s *Subscriber) On(matcher Matcher, callback func(Event)) *Subscriber {
 
 func (s *Subscriber) listen() {
 	for event := range s.events {
+		//if event.Type().IsCarrier() {
+		//	c := event.(Carrier)
+		//	c.Dispatch(s.events)
+		//	continue
+		//}
 		s.RLock()
 		for matcher, callback := range s.registered {
 			s.RUnlock()
