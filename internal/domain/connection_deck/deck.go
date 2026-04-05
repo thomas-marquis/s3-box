@@ -133,9 +133,8 @@ func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (event.E
 }
 
 func (d *Deck) Notify(evt event.Event) {
-	switch evt.Type() {
-	case CreateConnectionFailedType:
-		pl := evt.Payload.(CreateConnectionFailed)
+	switch pl := evt.Payload.(type) {
+	case CreateConnectionFailed:
 		for i, c := range d.connections {
 			if c.Is(pl.Connection()) {
 				d.connections = append(d.connections[:i], d.connections[i+1:]...)
@@ -143,15 +142,13 @@ func (d *Deck) Notify(evt event.Event) {
 			}
 		}
 
-	case SelectConnectionFailedType:
-		pl := evt.Payload.(SelectConnectionFailed)
+	case SelectConnectionFailed:
 		prev := pl.Connection()
 		if prev != nil {
 			d.selectedID = prev.ID()
 		}
 
-	case RemoveConnectionFailedType:
-		pl := evt.Payload.(RemoveConnectionFailed)
+	case RemoveConnectionFailed:
 		conn := pl.Connection()
 		if conn != nil {
 			index := pl.RemovedIndex
@@ -173,8 +170,7 @@ func (d *Deck) Notify(evt event.Event) {
 			}
 		}
 
-	case UpdateConnectionFailedType:
-		pl := evt.Payload.(UpdateConnectionFailed)
+	case UpdateConnectionFailed:
 		previous := pl.Connection()
 		if previous == nil {
 			return

@@ -486,7 +486,7 @@ func TestDeck_Notify(t *testing.T) {
 			Connection()
 
 		// When
-		deck.Notify(event.New(connection_deck.SelectConnectionSucceeded{
+		deck.Notify(event.New(connection_deck.CreateConnectionSucceeded{
 			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn},
 			Deck:              deck,
 		}))
