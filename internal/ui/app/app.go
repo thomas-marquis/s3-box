@@ -1,12 +1,14 @@
 package app
 
 import (
+	"fmt"
 	"sync"
 
 	"fyne.io/fyne/v2"
 	fyne_app "fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/theme"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
@@ -69,7 +71,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	terminated := make(chan struct{})
 	notifier := infrastructure.NewNotificationPublisher(notification.LevelDebug)
 
-	eventBus := newEventBusImpl(terminated, notifier)
+	eventBus := event.NewInMemoryBus(terminated, &notifierAdapter{notifier})
 
 	fyneSettings := a.Settings()
 
@@ -139,4 +141,12 @@ func (a *Go2S3App) Start() error {
 	}
 	a.appCtx.Window().ShowAndRun() // blocking
 	return nil
+}
+
+type notifierAdapter struct {
+	notifier notification.Repository
+}
+
+func (n *notifierAdapter) Notify(evt event.Event) {
+	n.notifier.NotifyDebug(fmt.Sprintf("Event published: %s", evt.Type()))
 }

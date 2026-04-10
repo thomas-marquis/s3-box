@@ -8,10 +8,21 @@ type Subscriber struct {
 	registered map[Matcher]func(Event)
 	events     chan Event
 	started    bool
+	bus        Bus
+	done       chan struct{}
 }
 
 func NewSubscriber(event chan Event) *Subscriber {
-	return &Subscriber{registered: make(map[Matcher]func(Event)), events: event}
+	return &Subscriber{
+		registered: make(map[Matcher]func(Event)),
+		events:     event,
+		bus:        NewInMemoryBus(make(<-chan struct{}), nil), // TODO: remove this
+		done:       make(chan struct{}),
+	}
+}
+
+func NewSubscriberWithBus(event chan Event, bus Bus) *Subscriber {
+	return &Subscriber{registered: make(map[Matcher]func(Event)), events: event, bus: bus, done: make(chan struct{})}
 }
 
 func (s *Subscriber) On(matcher Matcher, callback func(Event)) *Subscriber {
@@ -30,22 +41,44 @@ func (s *Subscriber) On(matcher Matcher, callback func(Event)) *Subscriber {
 }
 
 func (s *Subscriber) listen() {
-	for event := range s.events {
-		//if event.Type().IsCarrier() {
-		//	c := event.(Carrier)
-		//	c.Dispatch(s.events)
-		//	continue
-		//}
-		s.RLock()
-		for matcher, callback := range s.registered {
-			s.RUnlock()
-			if matcher.Match(event) {
-				callback(event)
+	for {
+		select {
+		case <-s.done:
+			return
+		case event := <-s.events:
+			if event.Type().IsCarrier() {
+				c := event.Payload.(Carrier)
+				c.Dispatch(s.bus)
+				continue
 			}
 			s.RLock()
+			for matcher, callback := range s.registered {
+				s.RUnlock()
+				if matcher.Match(event) {
+					callback(event)
+				}
+				s.RLock()
+			}
+			s.RUnlock()
 		}
-		s.RUnlock()
 	}
+
+	//for event := range s.events {
+	//	if event.Type().IsCarrier() {
+	//		c := event.Payload.(Carrier)
+	//		c.Dispatch(s.bus)
+	//		continue
+	//	}
+	//	s.RLock()
+	//	for matcher, callback := range s.registered {
+	//		s.RUnlock()
+	//		if matcher.Match(event) {
+	//			callback(event)
+	//		}
+	//		s.RLock()
+	//	}
+	//	s.RUnlock()
+	//}
 }
 
 func (s *Subscriber) ListenWithWorkers(workers int) {
@@ -58,17 +91,45 @@ func (s *Subscriber) ListenWithWorkers(workers int) {
 func (s *Subscriber) ListenNonBlocking() {
 	s.started = true
 	go func() {
-		for event := range s.events {
-			s.RLock()
-			for matcher, callback := range s.registered {
-				s.RUnlock()
-				if matcher.Match(event) {
-					go callback(event)
+
+		for {
+			select {
+			case <-s.done:
+				return
+			case event := <-s.events:
+				if event.Type().IsCarrier() {
+					c := event.Payload.(Carrier)
+					c.Dispatch(s.bus)
+					continue
 				}
 				s.RLock()
+				for matcher, callback := range s.registered {
+					s.RUnlock()
+					if matcher.Match(event) {
+						go callback(event)
+					}
+					s.RLock()
+				}
+				s.RUnlock()
 			}
-			s.RUnlock()
 		}
+
+		//for event := range s.events {
+		//	if event.Type().IsCarrier() {
+		//		c := event.Payload.(Carrier)
+		//		c.Dispatch(s.events)
+		//		continue
+		//	}
+		//	s.RLock()
+		//	for matcher, callback := range s.registered {
+		//		s.RUnlock()
+		//		if matcher.Match(event) {
+		//			go callback(event)
+		//		}
+		//		s.RLock()
+		//	}
+		//	s.RUnlock()
+		//}
 	}()
 }
 
@@ -81,4 +142,8 @@ func (s *Subscriber) Accept(event Event) bool {
 		}
 	}
 	return false
+}
+
+func (s *Subscriber) Detach() {
+	close(s.done)
 }

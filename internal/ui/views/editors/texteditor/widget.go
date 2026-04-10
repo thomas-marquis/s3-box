@@ -107,8 +107,8 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 				return
 			}
 
-			state.IsLoaded.Set(false)      // nolint:errcheck
-			w.stateLabel.Set("!Saving...") // nolint:errcheck
+			state.IsLoaded.Set(false)     // nolint:errcheck
+			w.stateLabel.Set("Saving...") // nolint:errcheck
 		}).
 		On(event.Is(fileeditor.SaveSucceededType), func(e event.Event) {
 			pl := e.Payload.(fileeditor.SaveSucceeded)
