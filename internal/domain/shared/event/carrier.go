@@ -38,8 +38,20 @@ var (
 	_ Carrier = (*CarriesAll)(nil)
 )
 
-func NewCarriesAll(carried []Event, doneCond func(sent, received Event) bool, onDone, onTimeout Event) *CarriesAll {
-	return &CarriesAll{Carried: carried, OnDone: onDone, OnTimeout: onTimeout, DoneCondition: doneCond, maxConcurrency: 10, timeout: defaultCarrierTimeout}
+type CarrierOption func(*CarriesAll)
+
+func WithTimeout(d time.Duration) CarrierOption {
+	return func(c *CarriesAll) {
+		c.timeout = d
+	}
+}
+
+func NewCarriesAll(carried []Event, doneCond func(sent, received Event) bool, onDone, onTimeout Event, opts ...CarrierOption) *CarriesAll {
+	c := &CarriesAll{Carried: carried, OnDone: onDone, OnTimeout: onTimeout, DoneCondition: doneCond, maxConcurrency: 10, timeout: defaultCarrierTimeout}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
 func (c *CarriesAll) Dispatch(bus Bus) {

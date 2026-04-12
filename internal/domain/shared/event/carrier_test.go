@@ -2,6 +2,7 @@ package event_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
@@ -73,6 +74,37 @@ func TestCarriesAll_Dispatch(t *testing.T) {
 	})
 
 	t.Run("should abort the dispatch process on timeout", func(t *testing.T) {
+		// Given
+		busDone := make(chan struct{})
+		defer close(busDone)
+		bus := event.NewInMemoryBus(busDone, &event.NopNotifier{})
 
+		e1 := event.New(fakePayload("e1"))
+		et := event.New(fakePayload("timeout"))
+
+		c := event.NewCarriesAll(
+			[]event.Event{e1},
+			func(sent, received event.Event) bool {
+				return false // Never done
+			},
+			event.Event{}, et,
+			event.WithTimeout(100*time.Millisecond),
+		)
+
+		timeoutReceived := make(chan struct{})
+
+		testSub := bus.Subscribe()
+		testSub.On(event.IsAny(), func(e event.Event) {
+			if e == et {
+				close(timeoutReceived)
+			}
+		}).ListenWithWorkers(1)
+		defer testSub.Detach()
+
+		// When
+		bus.Publish(event.New(c))
+
+		// Then
+		testutil.AssertEventually(t, timeoutReceived)
 	})
 }
