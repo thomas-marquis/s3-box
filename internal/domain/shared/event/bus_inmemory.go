@@ -37,7 +37,7 @@ func NewInMemoryBus(done <-chan struct{}, notifier Notifier) Bus {
 	if notifier != nil {
 		b.notifier = notifier
 	} else {
-		b.notifier = &noopNotifier{}
+		b.notifier = &NopNotifier{}
 	}
 
 	for i := 0; i < publicationWorkers; i++ {

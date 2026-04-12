@@ -4,6 +4,6 @@ type Notifier interface {
 	Notify(Event)
 }
 
-type noopNotifier struct{}
+type NopNotifier struct{}
 
-func (n noopNotifier) Notify(_ Event) {}
+func (n NopNotifier) Notify(_ Event) {}

@@ -33,3 +33,13 @@ func (m *isOneOfMatcher) Match(event Event) bool {
 
 	return false
 }
+
+type isAny struct{}
+
+func IsAny() Matcher {
+	return &isAny{}
+}
+
+func (m *isAny) Match(event Event) bool {
+	return true
+}
