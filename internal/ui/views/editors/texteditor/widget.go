@@ -64,6 +64,7 @@ type TextEditor struct {
 	stateLabel           binding.String
 	shouldCloseWhenSaved bool
 	cancelFunc           func()
+	subscriber           *event.Subscriber
 
 	// put as struct attributes to be used in tests (meh...):
 	textEditor *textContentEntry
@@ -100,7 +101,7 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 		dialog.ShowError(errors.New(msg), state.Window)
 	}))
 
-	w.state.Bus.Subscribe().
+	sub := w.state.Bus.Subscribe().
 		On(event.Is(fileeditor.SaveTriggeredType), func(e event.Event) {
 			pl := e.Payload.(fileeditor.SaveTriggered)
 			if !pl.File.Is(state.File) {
@@ -123,6 +124,9 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 			}
 			w.cancelFunc = nil
 			if w.shouldCloseWhenSaved {
+				if w.subscriber != nil {
+					w.subscriber.Detach()
+				}
 				fyne.Do(func() {
 					state.Window.Close()
 				})
@@ -141,8 +145,9 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 				w.cancelFunc()
 			}
 			w.cancelFunc = nil
-		}).
-		ListenWithWorkers(1)
+		})
+	sub.ListenWithWorkers(1)
+	w.subscriber = sub
 
 	return w
 }
@@ -217,10 +222,16 @@ func (w *TextEditor) close() {
 	if w.hasChanged(val) {
 		dialog.ShowConfirm("Discard changes?", "Do you want to discard your changes?", func(confirmed bool) {
 			if confirmed {
+				if w.subscriber != nil {
+					w.subscriber.Detach()
+				}
 				w.state.Window.Close()
 			}
 		}, w.state.Window)
 	} else {
+		if w.subscriber != nil {
+			w.subscriber.Detach()
+		}
 		w.state.Window.Close()
 	}
 }

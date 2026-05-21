@@ -46,7 +46,7 @@ func (s *Subscriber) listen() {
 		case <-s.done:
 			return
 		case event := <-s.events:
-			if event.Type().IsCarrier() {
+			if event.Type().IsCarrier() { // TODO: move it to the event bus' Publish method
 				c := event.Payload.(Carrier)
 				c.Dispatch(s.bus)
 				continue

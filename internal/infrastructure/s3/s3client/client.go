@@ -3,6 +3,8 @@ package s3client
 import (
 	"context"
 	"io"
+	"net/url"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
@@ -65,7 +67,7 @@ func (c *clientImpl) RenameObject(ctx context.Context, oldKey, newKey string, op
 
 	cpyInput := &s3.CopyObjectInput{
 		Bucket:                         aws.String(c.bucket),
-		CopySource:                     aws.String(c.bucket + "/" + oldKey),
+		CopySource:                     aws.String(strings.ReplaceAll(url.QueryEscape(c.bucket+"/"+oldKey), "+", " ")), // TODO: weired escape for OVH...
 		Key:                            aws.String(newKey),
 		CacheControl:                   headRes.CacheControl,
 		ContentDisposition:             headRes.ContentDisposition,

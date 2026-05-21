@@ -29,7 +29,7 @@ type CarriesAll struct {
 	Carried        []Event
 	OnDone         Event
 	OnTimeout      Event
-	DoneCondition  func(sent, received Event) bool
+	DoneCondition  func(sent, received Event) bool //TODO: use a matcher instead???
 	maxConcurrency int
 	timeout        time.Duration
 }
@@ -43,6 +43,12 @@ type CarrierOption func(*CarriesAll)
 func WithTimeout(d time.Duration) CarrierOption {
 	return func(c *CarriesAll) {
 		c.timeout = d
+	}
+}
+
+func WithMaxConcurrency(n int) CarrierOption {
+	return func(c *CarriesAll) {
+		c.maxConcurrency = n
 	}
 }
 
@@ -79,16 +85,16 @@ func (c *CarriesAll) Dispatch(bus Bus) {
 					mu.Lock()
 					evtProcessed[evt.Ref] = false
 					mu.Unlock()
-					bus.Publish(evt)
+					bus.Publish(evt) //TODO; won't prevent to overwhelming the event bus
 				}
 			}
 		}()
 	}
 
 	sub := bus.Subscribe().
-		On(IsOneOf(getUniqueEventTypes(c.Carried)...), func(received Event) {
+		On(IsOneOf(getUniqueEventTypes(c.Carried)...), func(received Event) { // TODO: followup events haven't necessary the same types as the carried ones
 			mu.Lock()
-			if processed, ok := evtProcessed[received.Ref]; ok && !processed && c.DoneCondition(evtByRef[received.Ref], received) {
+			if processed, ok := evtProcessed[received.Ref]; ok && !processed && c.DoneCondition(evtByRef[received.Ref], received) { //TODO: use a matcher instead???
 				evtProcessed[received.Ref] = true
 			}
 			mu.Unlock()

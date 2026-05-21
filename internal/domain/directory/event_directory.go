@@ -19,10 +19,7 @@ func (e CreateTriggered) Type() event.Type {
 	return CreateTriggeredType
 }
 
-type CreateSucceeded struct {
-	ParentDirectory *Directory
-	Directory       *Directory
-}
+type CreateSucceeded CreateTriggered
 
 func (e CreateSucceeded) Type() event.Type {
 	return CreateSucceededType
