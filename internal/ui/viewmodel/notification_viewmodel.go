@@ -1,25 +1,23 @@
 package viewmodel
 
 import (
-	"fmt"
-
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 )
 
 type NotificationViewModel interface {
-	Notifications() binding.StringList
-	SendError(error)
-	SendInfo(string)
+	Notifications() binding.List[notification.Notification]
 }
 
 type notificationViewModelImpl struct {
-	notifications binding.StringList
+	notifications binding.List[notification.Notification]
 	notifier      notification.Repository
 }
 
 func NewNotificationViewModel(notifier notification.Repository, terminated <-chan struct{}) NotificationViewModel {
-	notifications := binding.NewStringList()
+	notifications := binding.NewList[notification.Notification](func(n notification.Notification, n2 notification.Notification) bool {
+		return n.Id() == n2.Id()
+	})
 	notifStream := make(chan notification.Notification)
 
 	notifier.Subscribe(notifStream)
@@ -30,18 +28,7 @@ func NewNotificationViewModel(notifier notification.Repository, terminated <-cha
 			case <-terminated:
 				return
 			case notif := <-notifStream:
-				formattedDt := notif.Time().Format("2006-01-02 15:04:05")
-				switch notif.Type() {
-				case notification.LevelError:
-					notifications.Prepend(fmt.Sprintf("%s: Error: %s", //nolint:errcheck
-						formattedDt, notif.(notification.ErrorNotification).Error().Error()))
-				case notification.LevelInfo:
-					notifications.Prepend(fmt.Sprintf("%s: Info: %s", //nolint:errcheck
-						formattedDt, notif.(notification.LogNotification).Message()))
-				case notification.LevelDebug:
-					notifications.Prepend(fmt.Sprintf("%s: Debug: %s", //nolint:errcheck
-						formattedDt, notif.(notification.LogNotification).Message()))
-				}
+				notifications.Prepend(notif) //nolint:errcheck
 			}
 		}
 	}()
@@ -52,14 +39,6 @@ func NewNotificationViewModel(notifier notification.Repository, terminated <-cha
 	}
 }
 
-func (vm *notificationViewModelImpl) Notifications() binding.StringList {
+func (vm *notificationViewModelImpl) Notifications() binding.List[notification.Notification] {
 	return vm.notifications
-}
-
-func (vm *notificationViewModelImpl) SendError(err error) {
-	vm.notifier.NotifyError(err)
-}
-
-func (vm *notificationViewModelImpl) SendInfo(msg string) {
-	vm.notifier.NotifyInfo(msg)
 }

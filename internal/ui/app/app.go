@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -148,5 +149,11 @@ type notifierAdapter struct {
 }
 
 func (n *notifierAdapter) Notify(evt event.Event) {
-	n.notifier.NotifyDebug(fmt.Sprintf("Event published: %s", evt.Type()))
+	content, err := json.MarshalIndent(evt, "", "  ")
+	if err != nil {
+		n.notifier.NotifyError(err)
+		return
+	}
+	title := fmt.Sprintf("Event published: %s", evt.Type())
+	n.notifier.NotifyDebug(title, string(content))
 }

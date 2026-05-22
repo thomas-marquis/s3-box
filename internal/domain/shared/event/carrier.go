@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -10,7 +11,8 @@ import (
 const (
 	CarrierTypePrefix = "__carrier__"
 
-	defaultCarrierTimeout = 60 * time.Second
+	defaultCarrierTimeout     = 60 * time.Second
+	defaultCarrierConcurrency = 10
 )
 
 func (t Type) IsCarrier() bool {
@@ -26,12 +28,12 @@ type Carrier interface {
 }
 
 type CarriesAll struct {
-	Carried        []Event
-	OnDone         Event
-	OnTimeout      Event
-	DoneCondition  func(sent, received Event) bool //TODO: use a matcher instead???
-	maxConcurrency int
-	timeout        time.Duration
+	Carried          []Event
+	DoneEventFactory func(received []Event) Event
+	OnTimeout        Event
+	DoneCondition    func(sent, received Event) bool //TODO: use a matcher instead???
+	maxConcurrency   int
+	timeout          time.Duration
 }
 
 var (
@@ -39,6 +41,7 @@ var (
 )
 
 type CarrierOption func(*CarriesAll)
+type DoneCondition func(sent, received Event) bool
 
 func WithTimeout(d time.Duration) CarrierOption {
 	return func(c *CarriesAll) {
@@ -52,12 +55,43 @@ func WithMaxConcurrency(n int) CarrierOption {
 	}
 }
 
-func NewCarriesAll(carried []Event, doneCond func(sent, received Event) bool, onDone, onTimeout Event, opts ...CarrierOption) *CarriesAll {
-	c := &CarriesAll{Carried: carried, OnDone: onDone, OnTimeout: onTimeout, DoneCondition: doneCond, maxConcurrency: 10, timeout: defaultCarrierTimeout}
+func WithDoneCondition(cond DoneCondition) CarrierOption {
+	return func(c *CarriesAll) {
+		c.DoneCondition = cond
+	}
+}
+
+// DoneWhenFollowupReceived is a done condition that always returns true.
+// This function must not be used in another context than a Carrier.
+// Default done function.
+func DoneWhenFollowupReceived(sent, received Event) bool {
+	return true // always true by construction: we already now that the received event is a followup of the sent one
+}
+
+// NewCarriesAll creates a new Carrier that will dispatch all events in the given slice to the event Bus.
+// All carried events must have unique Ref (that means they must not be followup from each other), otherwise the behavior is undefined.
+func NewCarriesAll(carried []Event, doneEventFactory func(received []Event) Event, onTimeout Event, opts ...CarrierOption) Event {
+	var uniqueRefset = make(map[string]struct{})
+	for _, evt := range carried {
+		if _, exists := uniqueRefset[evt.Ref]; exists {
+			log.Printf("duplicate event ref: %s, undefined behaviour mey will append", evt.Ref)
+			continue
+		}
+		uniqueRefset[evt.Ref] = struct{}{}
+	}
+
+	c := &CarriesAll{
+		Carried:          carried,
+		DoneEventFactory: doneEventFactory,
+		OnTimeout:        onTimeout,
+		DoneCondition:    DoneWhenFollowupReceived,
+		maxConcurrency:   defaultCarrierConcurrency,
+		timeout:          defaultCarrierTimeout,
+	}
 	for _, opt := range opts {
 		opt(c)
 	}
-	return c
+	return New(c)
 }
 
 func (c *CarriesAll) Dispatch(bus Bus) {
@@ -66,6 +100,7 @@ func (c *CarriesAll) Dispatch(bus Bus) {
 
 	evtProcessed := make(map[string]bool)
 	evtByRef := make(map[string]Event)
+	receivedEvents := make([]Event, 0, len(c.Carried))
 	for _, evt := range c.Carried {
 		evtByRef[evt.Ref] = evt
 	}
@@ -92,10 +127,13 @@ func (c *CarriesAll) Dispatch(bus Bus) {
 	}
 
 	sub := bus.Subscribe().
-		On(IsOneOf(getUniqueEventTypes(c.Carried)...), func(received Event) { // TODO: followup events haven't necessary the same types as the carried ones
+		On(IsFollowupOf(c.Carried...), func(received Event) {
 			mu.Lock()
-			if processed, ok := evtProcessed[received.Ref]; ok && !processed && c.DoneCondition(evtByRef[received.Ref], received) { //TODO: use a matcher instead???
+			if processed, ok := evtProcessed[received.Ref]; ok &&
+				!processed &&
+				c.DoneCondition(evtByRef[received.Ref], received) {
 				evtProcessed[received.Ref] = true
+				receivedEvents = append(receivedEvents, received)
 			}
 			mu.Unlock()
 		})
@@ -112,7 +150,7 @@ func (c *CarriesAll) Dispatch(bus Bus) {
 	close(workload)
 
 	// Wait for completion or timeout
-	t := time.NewTicker(100 * time.Millisecond) // polling may not be the better option...
+	t := time.NewTicker(10 * time.Millisecond) // polling may not be the better option...
 	defer t.Stop()
 	for {
 		select {
@@ -121,7 +159,7 @@ func (c *CarriesAll) Dispatch(bus Bus) {
 			return
 		case <-t.C:
 			if len(evtProcessed) == len(c.Carried) && allEventsHasBeenProcessed(evtProcessed) {
-				bus.Publish(c.OnDone)
+				bus.Publish(c.DoneEventFactory(receivedEvents))
 				return
 			}
 		}

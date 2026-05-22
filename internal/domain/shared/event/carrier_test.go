@@ -1,6 +1,7 @@
 package event_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ func TestCarriesAll_Dispatch(t *testing.T) {
 		bus := event.NewInMemoryBus(busDone, &event.NopNotifier{})
 
 		e1 := event.New(fakePayload("e1"))
-		e1Res := event.NewFollowup(e1, fakePayload("e1-success"))
+		e1Res := event.NewFollowup(e1, fakePayload2{})
 
 		e2 := event.New(fakePayload("e2"))
 		e2Res := event.NewFollowup(e2, fakePayload("e2-success"))
@@ -34,9 +35,6 @@ func TestCarriesAll_Dispatch(t *testing.T) {
 
 		c := event.NewCarriesAll(
 			[]event.Event{e1, e2, e3},
-			func(sent, received event.Event) bool {
-				return true
-			},
 			ed, event.Event{},
 		)
 
@@ -64,7 +62,7 @@ func TestCarriesAll_Dispatch(t *testing.T) {
 		defer testSub.Detach()
 
 		// When
-		bus.Publish(event.New(c))
+		bus.Publish(c)
 
 		// Then
 		testutil.AssertEventually(t, done)
@@ -73,7 +71,52 @@ func TestCarriesAll_Dispatch(t *testing.T) {
 		testutil.AssertEventually(t, e3Done)
 	})
 
-	t.Run("should abort the dispatch process on timeout", func(t *testing.T) {
+	t.Run("should dispatch all carried events then the done event with custom done condition", func(t *testing.T) {
+		// Given
+		busDone := make(chan struct{})
+		defer close(busDone)
+		bus := event.NewInMemoryBus(busDone, &event.NopNotifier{})
+
+		in := event.New(fakePayload("e1"))
+		eRes1 := event.NewFollowup(in, fakePayload("val1"))
+		eRes2 := event.NewFollowup(in, fakePayload("val2"))
+
+		ed := event.New(fakePayload("done"))
+
+		c := event.NewCarriesAll(
+			[]event.Event{in},
+			ed, event.Event{},
+			event.WithDoneCondition(func(sent, received event.Event) bool {
+				return received.Payload.(fakePayload) == "val2"
+			}),
+		)
+
+		done := make(chan struct{})
+		eResDone := make(chan struct{})
+
+		testSub := bus.Subscribe()
+		testSub.On(event.IsAny(), func(e event.Event) {
+			fmt.Println(e)
+			switch e {
+			case in:
+				bus.Publish(eRes1)
+				bus.Publish(eRes2)
+				close(eResDone)
+			case ed:
+				close(done)
+			}
+		}).ListenWithWorkers(1)
+		defer testSub.Detach()
+
+		// When
+		bus.Publish(c)
+
+		// Then
+		testutil.AssertEventually(t, done)
+		testutil.AssertEventually(t, eResDone)
+	})
+
+	t.Run("should abort the dispatch and dispatch the timeout event process on timeout", func(t *testing.T) {
 		// Given
 		busDone := make(chan struct{})
 		defer close(busDone)
@@ -84,9 +127,6 @@ func TestCarriesAll_Dispatch(t *testing.T) {
 
 		c := event.NewCarriesAll(
 			[]event.Event{e1},
-			func(sent, received event.Event) bool {
-				return false // Never done
-			},
 			event.Event{}, et,
 			event.WithTimeout(100*time.Millisecond),
 		)
@@ -102,7 +142,7 @@ func TestCarriesAll_Dispatch(t *testing.T) {
 		defer testSub.Detach()
 
 		// When
-		bus.Publish(event.New(c))
+		bus.Publish(c)
 
 		// Then
 		testutil.AssertEventually(t, timeoutReceived)

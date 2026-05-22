@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 )
@@ -17,6 +18,7 @@ type Payload interface {
 }
 
 type Event struct {
+	ID        string
 	Payload   Payload
 	Context   context.Context
 	Ref       string
@@ -27,8 +29,13 @@ func (e Event) Type() Type {
 	return e.eventType
 }
 
+func (e Event) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.Payload)
+}
+
 func New(payload Payload, opts ...Option) Event {
 	e := Event{
+		ID:        uuid.New().String(),
 		Ref:       uuid.New().String(),
 		Payload:   payload,
 		eventType: payload.Type(),

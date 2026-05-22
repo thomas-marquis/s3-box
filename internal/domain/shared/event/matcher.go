@@ -43,3 +43,20 @@ func IsAny() Matcher {
 func (m *isAny) Match(event Event) bool {
 	return true
 }
+
+type isFollowup struct {
+	events []Event
+}
+
+func IsFollowupOf(event ...Event) Matcher {
+	return &isFollowup{events: event}
+}
+
+func (m *isFollowup) Match(event Event) bool {
+	for _, e := range m.events {
+		if e.ID != event.ID && e.Ref == event.Ref {
+			return true
+		}
+	}
+	return false
+}

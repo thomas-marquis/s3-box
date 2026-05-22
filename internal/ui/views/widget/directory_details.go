@@ -3,6 +3,9 @@ package widget
 import (
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -195,11 +198,53 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 
 	w.dropZone.Reset()
 	w.dropZone.OnFilesDropped = func(uris []fyne.URI) {
+		var fis []os.FileInfo
+		var paths []string
+		for _, uri := range uris {
+			fi, err := os.Stat(uri.Path())
+			if err != nil {
+				dialog.ShowError(err, w.appCtx.Window())
+				return
+			}
+			if fi.IsDir() {
+				if err := filepath.WalkDir(uri.Path(), func(path string, d fs.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if d.IsDir() {
+						return nil
+					}
+					fi, err := os.Stat(path)
+					if err != nil {
+						return err
+					}
+					fis = append(fis, fi)
+					paths = append(paths, path)
+					return nil
+				}); err != nil {
+					dialog.ShowError(err, w.appCtx.Window())
+					return
+				}
+				continue
+			}
+			fis = append(fis, fi)
+			paths = append(paths, uri.Path())
+		}
 		w.dropZone.Text = fmt.Sprintf("Uploading %d files...", len(uris))
-		dialog.ShowInformation("Drop files",
-			fmt.Sprintf("Dropped %d files in directory %s", len(uris), dir.Name()),
-			w.appCtx.Window())
-		// TODO: implement uploading here
+		dialog.ShowConfirm(
+			fmt.Sprintf("Uploading %d files", len(uris)),
+			"Are you sure you want to upload these files?",
+			func(confirmed bool) {
+				if !confirmed {
+					return
+				}
+				if err := vm.UploadFiles(paths, dir, false); err != nil {
+					dialog.ShowError(err, w.appCtx.Window())
+					return
+				}
+			},
+			w.appCtx.Window(),
+		)
 	}
 	w.dropZone.OnClick = w.makeOnUpload(vm, dir)
 }
@@ -394,10 +439,10 @@ func (w *renameFailedPanel) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
 	statusLabel := NewOpenableLabel("", w.window)
-	statusLabel.Selectable = false
-	statusLabel.Alignment = fyne.TextAlignLeading
-	statusLabel.Truncation = fyne.TextTruncateEllipsis
-	statusLabel.TextStyle = fyne.TextStyle{Bold: true}
+	statusLabel.Label.Selectable = false
+	statusLabel.Label.Alignment = fyne.TextAlignLeading
+	statusLabel.Label.Truncation = fyne.TextTruncateEllipsis
+	statusLabel.Label.TextStyle = fyne.TextStyle{Bold: true}
 
 	w.resumeBtn = widget.NewButton("Resume", func() {})
 	w.rollbackBtn = widget.NewButton("Rollback", func() {})
@@ -422,7 +467,7 @@ func (w *renameFailedPanel) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (w *renameFailedPanel) SetMessage(msg string) {
-	w.statusLabel.SetText(msg)
+	w.statusLabel.Label.SetText(msg)
 }
 
 func (w *renameFailedPanel) SetCallbacks(resume, rollback, abort func()) {

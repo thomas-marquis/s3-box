@@ -54,12 +54,18 @@ func (b *inMemoryBus) Subscribe() *Subscriber {
 	defer b.Unlock()
 
 	events := make(chan Event)
-	subscriber := NewSubscriberWithBus(events, b)
+	subscriber := NewSubscriber(events)
 	b.subscribers[events] = subscriber
 	return subscriber
 }
 
 func (b *inMemoryBus) Publish(evt Event) {
+	b.notifier.Notify(evt)
+	if c, ok := evt.Payload.(Carrier); ok {
+		c.Dispatch(b)
+		return
+	}
+
 	b.Lock()
 	defer b.Unlock()
 
@@ -72,7 +78,6 @@ func (b *inMemoryBus) Publish(evt Event) {
 		case <-b.done:
 		}
 	}
-	b.notifier.Notify(evt)
 }
 
 func (b *inMemoryBus) pubWorker() {

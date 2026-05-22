@@ -1,6 +1,10 @@
 package notification
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Level string
 
@@ -27,20 +31,32 @@ const (
 )
 
 type Notification interface {
+	Id() string
 	Type() Level
 	Time() time.Time
+	Title() string
 }
 
 type baseNotification struct {
-	time time.Time
+	id    string
+	time  time.Time
+	title string
 }
 
-func newBaseNotification() baseNotification {
-	return baseNotification{time: time.Now()}
+func newBaseNotification(title string) baseNotification {
+	return baseNotification{time: time.Now(), title: title, id: uuid.New().String()}
 }
 
 func (n baseNotification) Time() time.Time {
 	return n.time
+}
+
+func (n baseNotification) Title() string {
+	return n.title
+}
+
+func (n baseNotification) Id() string {
+	return n.id
 }
 
 type ErrorNotification interface {
@@ -59,7 +75,7 @@ type errorNotificationImpl struct {
 }
 
 func NewError(err error) ErrorNotification {
-	return errorNotificationImpl{baseNotification: newBaseNotification(), err: err}
+	return errorNotificationImpl{baseNotification: newBaseNotification("Error"), err: err}
 }
 
 func (n errorNotificationImpl) Type() Level {
@@ -75,8 +91,8 @@ type infoNotificationImpl struct {
 	message string
 }
 
-func NewInfo(message string) LogNotification {
-	return infoNotificationImpl{baseNotification: newBaseNotification(), message: message}
+func NewInfo(title, message string) LogNotification {
+	return infoNotificationImpl{baseNotification: newBaseNotification(title), message: message}
 }
 
 func (n infoNotificationImpl) Type() Level {
@@ -92,8 +108,8 @@ type debugNotificationImpl struct {
 	message string
 }
 
-func NewDebug(message string) LogNotification {
-	return debugNotificationImpl{baseNotification: newBaseNotification(), message: message}
+func NewDebug(title, message string) LogNotification {
+	return debugNotificationImpl{baseNotification: newBaseNotification(title), message: message}
 }
 
 func (n debugNotificationImpl) Type() Level {

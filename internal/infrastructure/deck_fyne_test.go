@@ -157,7 +157,7 @@ func TestFyneConnectionsRepository_create(t *testing.T) {
 
 		mockBus.EXPECT().
 			Subscribe().
-			Return(event.NewSubscriberWithBus(events, mockBus)).
+			Return(event.NewSubscriber(events)).
 			Times(1)
 
 		_ = infrastructure.NewFyneConnectionsRepository(mockPrefs, mockBus)

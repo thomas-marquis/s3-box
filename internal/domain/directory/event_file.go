@@ -147,6 +147,9 @@ const (
 	UploadFileTriggeredType event.Type = "event.file.upload.triggered"
 	UploadFileSucceededType event.Type = "event.file.upload.succeeded"
 	UploadFileFailedType    event.Type = "event.file.upload.failed"
+
+	UploadMultipleFilesSucceededType event.Type = "event.file.upload.multiple.succeeded"
+	UploadMultipleFilesFailedType    event.Type = "event.file.upload.multiple.failed"
 )
 
 type UploadFileTriggered struct {
@@ -206,4 +209,21 @@ type DownloadFileFailed struct {
 
 func (e DownloadFileFailed) Type() event.Type {
 	return DownloadFileFailedType
+}
+
+type UploadMultipleFilesSucceeded struct {
+	Files     []*File
+	Directory *Directory
+}
+
+func (e UploadMultipleFilesSucceeded) Type() event.Type {
+	return UploadMultipleFilesSucceededType
+}
+
+type UploadMultipleFilesFailed struct {
+	Err error
+}
+
+func (e UploadMultipleFilesFailed) Type() event.Type {
+	return UploadMultipleFilesFailedType
 }

@@ -3,6 +3,7 @@ package viewmodel
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 
@@ -70,6 +71,9 @@ type ExplorerViewModel interface {
 
 	// UploadFile uploads a local file to the specified remote directory
 	UploadFile(localPath string, dir *directory.Directory, overwrite bool) error
+
+	// UploadFiles uploads multiple local files to the specified remote directory
+	UploadFiles(localPaths []string, dir *directory.Directory, overwrite bool) error
 
 	// DeleteFile removes a file from storage and updates the tree
 	DeleteFile(file *directory.File)
@@ -412,6 +416,34 @@ func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
 	v.notifier.NotifyError(err)
 	v.errorMessage.Set(err.Error()) //nolint:errcheck
 	v.triggerStateListeners()
+}
+
+func (v *explorerViewModelImpl) UploadFiles(localPaths []string, dir *directory.Directory, overwrite bool) error {
+	evts := make([]event.Event, len(localPaths))
+	for i, p := range localPaths {
+		evts[i] = event.New(directory.UploadFileTriggered{
+			Directory: dir,
+			SrcPath:   p,
+		})
+	}
+	onTimeout := event.New(directory.UploadFileFailed{
+		Err:       errors.New("failed to upload files: timeout"),
+		Directory: dir,
+	})
+	carr := event.NewCarriesAll(evts, func(received []event.Event) event.Event {
+		files := make([]*directory.File, 0, len(received))
+		for _, evt := range received {
+			if evt.Type() == directory.UploadFileSucceededType {
+				files = append(files, evt.Payload.(directory.UploadFileSucceeded).File)
+			}
+		}
+		return event.New(directory.UploadMultipleFilesSucceeded{
+			Files:     files,
+			Directory: dir,
+		})
+	}, onTimeout, event.WithTimeout(1*time.Second))
+	v.bus.Publish(carr)
+	return nil
 }
 
 func (v *explorerViewModelImpl) DeleteFile(file *directory.File) {
