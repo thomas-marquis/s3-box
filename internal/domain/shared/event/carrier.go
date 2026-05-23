@@ -190,3 +190,32 @@ func allEventsHasBeenProcessed(eventMap map[string]bool) bool {
 	}
 	return true
 }
+
+type CarriesSequence struct {
+	Carried          []Event
+	DoneEventFactory func(received []Event) Event
+	OnTimeout        Event
+
+	timeout time.Duration
+}
+
+func (c *CarriesSequence) Type() Type {
+	return Type(CarrierTypePrefix + ".sequence")
+}
+
+func (c *CarriesSequence) Dispatch(bus Bus) {
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+
+	sub := bus.Subscribe().
+		On(IsFollowupOf(c.Carried...), func(received Event) {
+
+		})
+	sub.ListenWithWorkers(1)
+	defer sub.Detach()
+
+	for _, evt := range c.Carried {
+		bus.Publish(evt)
+	}
+
+}

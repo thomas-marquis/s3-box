@@ -82,6 +82,16 @@ func (d *Directory) IsFileExists(name FileName) bool {
 	return false
 }
 
+func (d *Directory) IsSubDirectoryExists(name string) bool {
+	subDirs := d.currentState.SubDirectories()
+	for _, subDir := range subDirs {
+		if subDir.Name() == name {
+			return true
+		}
+	}
+	return false
+}
+
 func (d *Directory) IsRoot() bool {
 	return d.parent.Path() == NilParentPath && d.path == RootPath
 }

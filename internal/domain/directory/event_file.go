@@ -15,6 +15,7 @@ type CreateFileTriggered struct {
 	File         *File
 	ConnectionID connection_deck.ConnectionID
 	Directory    *Directory
+	//Recursive    bool
 }
 
 func (e CreateFileTriggered) Type() event.Type {

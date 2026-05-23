@@ -3,6 +3,7 @@ package directory
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
@@ -41,6 +42,7 @@ func (s *loadedState) Load() (event.Event, error) {
 
 func (s *loadedState) UploadFile(localPath string, overwrite bool) (event.Event, error) {
 	fileName := filepath.Base(localPath)
+
 	if !overwrite && s.d.IsFileExists(FileName(fileName)) {
 		return event.Event{}, errors.Join(
 			ErrAlreadyExists,
@@ -53,6 +55,29 @@ func (s *loadedState) UploadFile(localPath string, overwrite bool) (event.Event,
 	})
 
 	return uploadedEvt, nil
+}
+
+func (s *loadedState) UploadSubDirectory(srcPath string, overwrite bool) (event.Event, error) {
+	stats, err := os.Stat(srcPath)
+	if err != nil {
+		return event.Event{}, err
+	}
+	if !stats.IsDir() {
+		return event.Event{}, fmt.Errorf("%s is not a directory", srcPath)
+	}
+	name := filepath.Base(srcPath)
+
+	if !overwrite && s.d.IsSubDirectoryExists(name) {
+		return event.Event{}, errors.Join(
+			ErrAlreadyExists,
+			fmt.Errorf("subdirectory %s already exists in directory %s", name, s.d.path))
+	}
+
+	uploadEvt := event.New(UploadTriggered{
+		Directory: s.d,
+		SrcPath:   srcPath,
+	})
+	return uploadEvt, nil
 }
 
 func (s *loadedState) Rename(newName string) (event.Event, error) {

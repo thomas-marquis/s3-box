@@ -179,3 +179,71 @@ type UserValidationRefused struct {
 func (e UserValidationRefused) Type() event.Type {
 	return UserValidationRefusedType
 }
+
+const (
+	UploadTriggeredType event.Type = "event.directory.upload.triggered"
+	UploadPreviewedType event.Type = "event.directory.upload.previewed"
+	UploadConfirmedType event.Type = "event.directory.upload.confirmed"
+	UploadAbortedType   event.Type = "event.directory.upload.aborted"
+	UploadFailedType    event.Type = "event.directory.upload.failed"
+	UploadSucceededType event.Type = "event.directory.upload.succeeded"
+)
+
+type UploadTriggered struct {
+	Directory *Directory
+	Items     []FsItem
+}
+
+func (e UploadTriggered) Type() event.Type {
+	return UploadTriggeredType
+}
+
+type UploadPreviewed struct {
+	Directory       *Directory
+	Previews        map[UploadMode][]UploadedItemPreview
+	UploadableItems []FsItem
+}
+
+func (e UploadPreviewed) Type() event.Type {
+	return UploadPreviewedType
+}
+
+type UploadConfirmed struct {
+	Directory       *Directory
+	SelectedMode    UploadMode
+	UploadableItems []FsItem
+}
+
+func (e UploadConfirmed) Type() event.Type {
+	return UploadConfirmedType
+}
+
+type UploadAborted struct {
+	Directory *Directory
+}
+
+func (e UploadAborted) Type() event.Type {
+	return UploadAbortedType
+}
+
+type UploadFailed struct {
+	Err       error
+	Directory *Directory
+}
+
+func (e UploadFailed) Type() event.Type {
+	return UploadFailedType
+}
+
+type UploadSucceeded LoadSucceeded
+
+func (e UploadSucceeded) Type() event.Type {
+	return UploadSucceededType
+}
+
+// on retourne une erreur direct avant le uploadTriggered si un sous-dossier existe déjà dans l'entité
+// on refera un double check côté infra plus tard dés fois que l'état remote ait changé entre temps
+// On ne retourne une preview et on ne demande une confirmation que si il y a plus de 1 fichier et/ou plus de 1 dossier
+// On ne demande l'avis de l'utilisateur sur le mode d'upload que s'il y a conflit. On utilise celui par défaut sinon.
+// Mais on lui montre la preview dans tous les cas et on lui demande confirmation
+// On ne charge que le premier niveau si l'upload fonctionne
