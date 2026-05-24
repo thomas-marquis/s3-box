@@ -419,6 +419,7 @@ func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) UploadFiles(localPaths []string, dir *directory.Directory, overwrite bool) error {
+
 	evts := make([]event.Event, len(localPaths))
 	for i, p := range localPaths {
 		evts[i] = event.New(directory.UploadFileTriggered{

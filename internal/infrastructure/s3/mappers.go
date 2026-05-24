@@ -10,7 +10,11 @@ func mapDirToObjectKey(dir *directory.Directory) string {
 	if dir.Path().String() == "" || dir.IsRoot() {
 		return ""
 	}
-	return strings.TrimPrefix(dir.Path().String(), "/")
+	return mapPathToObjectKey(dir.Path())
+}
+
+func mapPathToObjectKey(path directory.Path) string {
+	return strings.TrimPrefix(path.String(), "/")
 }
 
 func mapPathToSearchKey(path directory.Path) string {

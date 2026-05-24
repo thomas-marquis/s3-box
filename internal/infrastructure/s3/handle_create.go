@@ -1,11 +1,13 @@
 package s3
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 )
 
 func (h *EventHandler) handleCreateFile(evt event.Event) {
@@ -55,12 +57,19 @@ func (h *EventHandler) handleCreateDirectory(e event.Event) {
 		return
 	}
 
-	key := mapDirToObjectKey(newDir)
-	if err := client.PutObject(ctx, key, strings.NewReader("")); err != nil {
+	if err := h.createEmptyDirectory(ctx, client, newDir.Path()); err != nil {
 		handleError(err)
 		return
 	}
 
 	h.bus.Publish(
 		event.NewFollowup(e, directory.CreateSucceeded{ParentDirectory: pl.ParentDirectory, Directory: newDir}))
+}
+
+func (h *EventHandler) createEmptyDirectory(ctx context.Context, client s3client.Client, path directory.Path) error {
+	key := mapPathToObjectKey(path)
+	if err := client.PutObject(ctx, key, strings.NewReader("")); err != nil {
+		return err
+	}
+	return nil
 }

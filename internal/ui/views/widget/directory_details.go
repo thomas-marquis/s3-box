@@ -198,6 +198,10 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 
 	w.dropZone.Reset()
 	w.dropZone.OnFilesDropped = func(uris []fyne.URI) {
+		if len(uris) == 0 {
+			return
+		}
+		basePath := filepath.Dir(uris[0].Path()) // TODO: get the shorter possible pase and extract its parent dir
 		var fis []os.FileInfo
 		var paths []string
 		for _, uri := range uris {

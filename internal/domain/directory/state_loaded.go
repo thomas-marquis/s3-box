@@ -3,7 +3,6 @@ package directory
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
@@ -57,27 +56,47 @@ func (s *loadedState) UploadFile(localPath string, overwrite bool) (event.Event,
 	return uploadedEvt, nil
 }
 
-func (s *loadedState) UploadSubDirectory(srcPath string, overwrite bool) (event.Event, error) {
-	stats, err := os.Stat(srcPath)
-	if err != nil {
-		return event.Event{}, err
-	}
-	if !stats.IsDir() {
-		return event.Event{}, fmt.Errorf("%s is not a directory", srcPath)
-	}
-	name := filepath.Base(srcPath)
-
-	if !overwrite && s.d.IsSubDirectoryExists(name) {
-		return event.Event{}, errors.Join(
-			ErrAlreadyExists,
-			fmt.Errorf("subdirectory %s already exists in directory %s", name, s.d.path))
+func (s *loadedState) Upload(items []FsItem) (event.Event, error) {
+	for _, i := range items {
+		if s.d.IsSubDirectoryExists(i.Name) {
+			return event.Event{}, errors.Join(
+				ErrAlreadyExists,
+				fmt.Errorf("subdirectory %s already exists in directory %s", i.Name, s.d.path))
+		}
 	}
 
-	uploadEvt := event.New(UploadTriggered{
+	return event.New(UploadTriggered{
 		Directory: s.d,
-		SrcPath:   srcPath,
-	})
-	return uploadEvt, nil
+		Items:     items,
+	}), nil
+	//stats, err := os.Stat(srcPath)
+	//if err != nil {
+	//	return event.Event{}, err
+	//}
+	//if !stats.IsDir() {
+	//	return event.Event{}, fmt.Errorf("%s is not a directory", srcPath)
+	//}
+	//name := filepath.Base(srcPath)
+	//
+	//if !overwrite && s.d.IsSubDirectoryExists(name) {
+	//	return event.Event{}, errors.Join(
+	//		ErrAlreadyExists,
+	//		fmt.Errorf("subdirectory %s already exists in directory %s", name, s.d.path))
+	//}
+	//
+	//uploadEvt := event.New(UploadTriggered{
+	//	Directory: s.d,
+	//	SrcPath:   srcPath,
+	//})
+	//return uploadEvt, nil
+}
+
+func (s *loadedState) ConfirmUpload(items []FsItem, mode UploadMode) (event.Event, error) { // TODO: necessary???
+	return event.New(UploadConfirmed{
+		Directory:       s.d,
+		SelectedMode:    mode,
+		UploadableItems: items,
+	}), nil
 }
 
 func (s *loadedState) Rename(newName string) (event.Event, error) {

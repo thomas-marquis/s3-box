@@ -19,8 +19,8 @@ type state interface {
 	Files() []*File
 	SubDirectories() []*Directory
 	UploadFile(localPath string, overwrite bool) (event.Event, error)
-	CheckUpload(localPath []string) (event.Event, error)
-	DoUpload(localPaths []string, mode UploadMode) (event.Event, error)
+	Upload(items []FsItem) (event.Event, error)
+	ConfirmUpload(items []FsItem, mode UploadMode) (event.Event, error)
 	Rename(newName string) (event.Event, error)
 	Notify(event.Event) error
 }
@@ -47,7 +47,11 @@ func (s *baseState) UploadFile(string, bool) (event.Event, error) {
 	return event.Event{}, ErrNotLoaded
 }
 
-func (s *baseState) UploadSubDirectory(string, bool) (event.Event, error) {
+func (s *baseState) Upload([]FsItem) (event.Event, error) {
+	return event.Event{}, ErrNotLoaded
+}
+
+func (s *baseState) ConfirmUpload([]FsItem, UploadMode) (event.Event, error) {
 	return event.Event{}, ErrNotLoaded
 }
 

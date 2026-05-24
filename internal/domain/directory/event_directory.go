@@ -241,7 +241,6 @@ func (e UploadSucceeded) Type() event.Type {
 	return UploadSucceededType
 }
 
-// on retourne une erreur direct avant le uploadTriggered si un sous-dossier existe déjà dans l'entité
 // on refera un double check côté infra plus tard dés fois que l'état remote ait changé entre temps
 // On ne retourne une preview et on ne demande une confirmation que si il y a plus de 1 fichier et/ou plus de 1 dossier
 // On ne demande l'avis de l'utilisateur sur le mode d'upload que s'il y a conflit. On utilise celui par défaut sinon.
