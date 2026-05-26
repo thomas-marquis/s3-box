@@ -10,6 +10,8 @@ import (
 )
 
 func TestMakeDirectory(t *testing.T) {
+	fakeConnId := connection_deck.NewConnectionID()
+
 	t.Run("should create a single root directory", func(t *testing.T) {
 		// When
 		res := testutil.MakeDirectory(t, "", testutil.AsRoot())
@@ -22,14 +24,11 @@ func TestMakeDirectory(t *testing.T) {
 	})
 
 	t.Run("should create a loaded non-root directory with files", func(t *testing.T) {
-		// Given
-		fakeConnId := connection_deck.NewConnectionID()
-
 		// When
 		res := testutil.MakeDirectory(t, "mydir",
 			testutil.WithRootParent(),
 			testutil.WithConnectionId(fakeConnId),
-			testutil.WithLoaded(true),
+			testutil.IsLoaded(),
 			testutil.WithFiles("file1.txt", "file2.txt"),
 		)
 
@@ -44,13 +43,11 @@ func TestMakeDirectory(t *testing.T) {
 	})
 
 	t.Run("should create a directory with a non-root parent", func(t *testing.T) {
-		// Given
-		fakeConnId := connection_deck.NewConnectionID()
-
 		// When
 		res := testutil.MakeDirectory(t, "mysubdir",
+			testutil.WithConnectionId(fakeConnId),
 			testutil.WithParent("mydir",
-				testutil.AsRoot(),
+				testutil.WithRootParent(),
 			),
 		)
 
@@ -62,5 +59,57 @@ func TestMakeDirectory(t *testing.T) {
 		assert.Equal(t, fakeConnId, res.Parent().ConnectionID())
 
 		assert.Equal(t, directory.RootPath, res.Parent().Parent().Path())
+	})
+
+	t.Run("should create a directory nested in a complex folder structure", func(t *testing.T) {
+		// When
+
+		// /
+		//   home/
+		//     thomas/
+		//       documents/ <- res
+		//         report.pdf
+		//         invoice.pdf
+		//         code/
+		//           main.go
+		//           test.go
+		//         data/
+		//     melanie/
+
+		res := testutil.MakeDirectory(t, "documents",
+			testutil.WithConnectionId(fakeConnId),
+			testutil.IsLoaded(),
+			testutil.WithFiles("report.pdf", "invoice.pdf"),
+			testutil.WithSubDirectory("code",
+				testutil.IsLoaded(),
+				testutil.WithFiles("main.go", "test.go"),
+			),
+			testutil.WithSubDirectory("data"),
+			testutil.WithParent("thomas",
+				testutil.WithParent("home", testutil.WithRootParent()),
+				testutil.IsLoaded(),
+				testutil.WithSubDirectory("melanie"),
+			),
+		)
+
+		// Then
+		assert.Equal(t, "/home/thomas/documents/", res.Path().String())
+		assert.Equal(t, fakeConnId, res.ConnectionID())
+		assert.True(t, res.IsLoaded())
+
+		assert.Len(t, res.SubDirectories(), 2)
+		codeDir := res.SubDirectories()[0]
+		dataDir := res.SubDirectories()[1]
+		assert.Equal(t, "/home/thomas/documents/code/", codeDir.Path().String())
+		assert.Equal(t, "/home/thomas/documents/data/", dataDir.Path().String())
+		assert.Len(t, codeDir.Files(), 2)
+		assert.Equal(t, "main.go", codeDir.Files()[0].Name().String())
+		assert.Equal(t, "test.go", codeDir.Files()[1].Name().String())
+
+		assert.Equal(t, "/home/thomas/", res.Parent().Path().String())
+		assert.Equal(t, fakeConnId, res.Parent().ConnectionID())
+		assert.Equal(t, "/home/", res.Parent().Parent().Path().String())
+		assert.Equal(t, fakeConnId, res.Parent().Parent().ConnectionID())
+		assert.Equal(t, directory.RootPath, res.Parent().Parent().Parent().Path())
 	})
 }

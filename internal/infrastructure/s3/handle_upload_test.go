@@ -39,7 +39,7 @@ func TestS3EventHandler_upload(t *testing.T) {
 
 		mydir := testutil.MakeDirectory(t, "mydir",
 			testutil.WithConnectionId(testutil.FakeAwsConnectionId),
-			testutil.WithLoaded(true),
+			testutil.IsLoaded(true),
 			testutil.WithRootParent(),
 			testutil.WithFiles("file1.txt", "file2.txt"),
 			//testutil.WithSubDirectories(

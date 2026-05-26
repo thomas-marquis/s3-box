@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -184,17 +185,17 @@ type directoryBuilderConfig struct {
 	subDirConfigs []*directoryBuilderConfig
 	files         []string
 	connectionId  connection_deck.ConnectionID
-	parent        *directory.Directory
 	parentConfig  *directoryBuilderConfig
+	parent        *directory.Directory
 	hasRootParent bool
 	isRoot        bool
 }
 
 type DirectoryBuilderOption func(*directoryBuilderConfig)
 
-func WithLoaded(loaded bool) DirectoryBuilderOption {
+func IsLoaded() DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
-		cfg.loaded = loaded
+		cfg.loaded = true
 	}
 }
 
@@ -212,17 +213,16 @@ func WithFiles(fileNames ...string) DirectoryBuilderOption {
 
 func WithSubDirectory(name string, opts ...DirectoryBuilderOption) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
-		sdCfg := directoryBuilderConfig{}
+		sdCfg := directoryBuilderConfig{
+			name:         name,
+			connectionId: cfg.connectionId,
+		}
 		for _, opt := range opts {
 			opt(&sdCfg)
 		}
 		sdCfg.connectionId = cfg.connectionId
-		sdCfg.parent = cfg.parent
-		sdCfg.name = name
 		sdCfg.isRoot = false
-		if cfg.hasRootParent {
-			sdCfg.hasRootParent = false
-		}
+		sdCfg.hasRootParent = cfg.isRoot
 		cfg.subDirConfigs = append(cfg.subDirConfigs, &sdCfg)
 	}
 }
@@ -230,13 +230,16 @@ func WithSubDirectory(name string, opts ...DirectoryBuilderOption) DirectoryBuil
 func WithParent(name string, opts ...DirectoryBuilderOption) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
 		pCfg := directoryBuilderConfig{
-			name: name,
+			name:         name,
+			connectionId: cfg.connectionId,
 		}
 		for _, opt := range opts {
 			opt(&pCfg)
 		}
 		pCfg.loaded = true
-		pCfg.subDirConfigs = append(pCfg.subDirConfigs, cfg)
+		if cfg.hasRootParent {
+			pCfg.isRoot = true
+		}
 		pCfg.connectionId = cfg.connectionId
 		cfg.parentConfig = &pCfg
 	}
@@ -254,9 +257,9 @@ func AsRoot() DirectoryBuilderOption {
 	}
 }
 
-func withDirectoryBuilderConfig(cfg *directoryBuilderConfig) DirectoryBuilderOption {
-	return func(opts *directoryBuilderConfig) {
-		*opts = *cfg
+func withDirectoryBuilderConfig(newCfg *directoryBuilderConfig) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		*cfg = *newCfg
 	}
 }
 
@@ -275,7 +278,6 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 	var err error
 	if cfg.isRoot {
 		dir, err = directory.NewRoot(cfg.connectionId)
-		require.NoError(t, err)
 	} else if cfg.hasRootParent {
 		root, errRoot := directory.NewRoot(cfg.connectionId)
 		require.NoError(t, errRoot)
@@ -285,12 +287,20 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 			Directory: root,
 		}))
 		require.NoError(t, errRoot)
-
 		dir, err = directory.New(cfg.connectionId, cfg.name, root)
+	} else if cfg.parentConfig != nil {
+		parent := MakeDirectory(t, cfg.parentConfig.name, withDirectoryBuilderConfig(cfg.parentConfig))
+		dir, err = directory.New(cfg.connectionId, cfg.name, parent)
 	} else if cfg.parent != nil {
-		dir, err = directory.New(cfg.connectionId, cfg.name, cfg.parent)
+		evt, err2 := cfg.parent.NewSubDirectory(cfg.name)
+		require.NoError(t, err2)
+		dir = evt.Payload.(directory.CreateTriggered).Directory
+		err = cfg.parent.Notify(event.New(directory.CreateSucceeded{
+			ParentDirectory: cfg.parent,
+			Directory:       dir,
+		}))
 	} else {
-		dir, err = directory.NewRoot(cfg.connectionId)
+		log.Fatalf("no parent directory provided for '%s', please one of the following options: AsRoot or WithParent\n", name)
 	}
 	require.NoError(t, err)
 
@@ -308,14 +318,11 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 		for _, fileName := range cfg.files {
 			fEvt, err := dir.NewFile(fileName, false)
 			require.NoError(t, err)
-
 			f := fEvt.Payload.(directory.CreateFileTriggered).File
-
-			err = dir.Notify(event.New(directory.CreateFileSucceeded{
+			require.NoError(t, dir.Notify(event.New(directory.CreateFileSucceeded{
 				File:      f,
 				Directory: dir,
-			}))
-			require.NoError(t, err)
+			})))
 		}
 	}
 
