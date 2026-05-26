@@ -3,9 +3,6 @@ package widget
 import (
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -198,42 +195,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 
 	w.dropZone.Reset()
 	w.dropZone.OnFilesDropped = func(uris []fyne.URI) {
-		if len(uris) == 0 {
-			return
-		}
-		basePath := filepath.Dir(uris[0].Path()) // TODO: get the shorter possible pase and extract its parent dir
-		var fis []os.FileInfo
-		var paths []string
-		for _, uri := range uris {
-			fi, err := os.Stat(uri.Path())
-			if err != nil {
-				dialog.ShowError(err, w.appCtx.Window())
-				return
-			}
-			if fi.IsDir() {
-				if err := filepath.WalkDir(uri.Path(), func(path string, d fs.DirEntry, err error) error {
-					if err != nil {
-						return err
-					}
-					if d.IsDir() {
-						return nil
-					}
-					fi, err := os.Stat(path)
-					if err != nil {
-						return err
-					}
-					fis = append(fis, fi)
-					paths = append(paths, path)
-					return nil
-				}); err != nil {
-					dialog.ShowError(err, w.appCtx.Window())
-					return
-				}
-				continue
-			}
-			fis = append(fis, fi)
-			paths = append(paths, uri.Path())
-		}
 		w.dropZone.Text = fmt.Sprintf("Uploading %d files...", len(uris))
 		dialog.ShowConfirm(
 			fmt.Sprintf("Uploading %d files", len(uris)),
@@ -242,7 +203,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 				if !confirmed {
 					return
 				}
-				if err := vm.UploadFiles(paths, dir, false); err != nil {
+				if err := vm.Upload(uris, dir); err != nil {
 					dialog.ShowError(err, w.appCtx.Window())
 					return
 				}

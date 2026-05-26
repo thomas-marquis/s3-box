@@ -2,9 +2,11 @@ package s3
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
@@ -68,23 +70,68 @@ func (h *EventHandler) handleUploadTriggered(e event.Event) {
 		h.bus.Publish(event.NewFollowup(e, directory.UploadFailed{Directory: pl.Directory, Err: err}))
 	}
 
+	client, err := h.clientFactory.Get(e.Context, pl.Directory.ConnectionID())
+	if err != nil {
+		handleError(err)
+		return
+	}
+
 	if len(pl.Items) == 1 && !pl.Items[0].IsDir {
 		if err := h.doUpload(e.Context, pl.Directory, pl.Items); err != nil {
 			handleError(err)
 		}
 		return
 	}
+
+	// 1. check the directories are empty. Emit a failure event if it's not the case, as well as a load event for the directory (to reload it)
+
+	// 2. Build search keys for all items
+	searchKeys := mapPathToSearchKey(pl.Directory.Path())
+	res, err := client.ListObjects(e.Context, searchKeys, true)
+	if err != nil {
+		handleError(err)
+		return
+	}
+
+	if !res.IsEmpty() {
+		errs := make([]error, 0)
+		for _, item := range pl.Items {
+			if !item.IsDir {
+				continue
+			}
+
+			for _, key := range res.Keys {
+				if key == strings.ReplaceAll(item.RelPath(), string(filepath.Separator), "/") {
+					errs = append(errs, fmt.Errorf("directory %s already exists on the server and is not empty", item.Name))
+				}
+			}
+		}
+
+		if len(errs) > 0 {
+			handleError(fmt.Errorf("failed to upload: %w", errors.Join(errs...)))
+			return
+		}
+	}
+
+	// 4. Merge the search result with the items following each update mode rule
+
+	evt := event.NewFollowup(e, directory.UploadPreviewed{
+		Directory:       pl.Directory,
+		Previews:        nil,
+		UploadableItems: pl.Items,
+	})
+	h.bus.Publish(evt)
 }
 
 func (h *EventHandler) handleUpload(e event.Event) {
-	pl := e.Payload.(directory.UploadConfirmed)
+	//pl := e.Payload.(directory.UploadConfirmed)
 }
 
-func (h *EventHandler) doUpload(ctx context.Context, dir *directory.Directory, items []directory.FsItem) error {
-	client, err := h.clientFactory.Get(ctx, dir.ConnectionID())
-	if err != nil {
-		return err
-	}
+func (h *EventHandler) doUpload(ctx context.Context, dir *directory.Directory, items []*directory.FsItem) error {
+	//client, err := h.clientFactory.Get(ctx, dir.ConnectionID())
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }

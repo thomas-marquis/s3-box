@@ -191,7 +191,7 @@ const (
 
 type UploadTriggered struct {
 	Directory *Directory
-	Items     []FsItem
+	Items     []*FsItem
 }
 
 func (e UploadTriggered) Type() event.Type {
@@ -201,7 +201,7 @@ func (e UploadTriggered) Type() event.Type {
 type UploadPreviewed struct {
 	Directory       *Directory
 	Previews        map[UploadMode][]UploadedItemPreview
-	UploadableItems []FsItem
+	UploadableItems []*FsItem
 }
 
 func (e UploadPreviewed) Type() event.Type {
@@ -211,7 +211,7 @@ func (e UploadPreviewed) Type() event.Type {
 type UploadConfirmed struct {
 	Directory       *Directory
 	SelectedMode    UploadMode
-	UploadableItems []FsItem
+	UploadableItems []*FsItem
 }
 
 func (e UploadConfirmed) Type() event.Type {

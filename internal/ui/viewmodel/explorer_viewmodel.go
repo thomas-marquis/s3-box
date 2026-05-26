@@ -2,6 +2,8 @@ package viewmodel
 
 import (
 	"errors"
+	"io/fs"
+	"os"
 	"sync"
 	"time"
 
@@ -70,10 +72,10 @@ type ExplorerViewModel interface {
 	DownloadFile(f *directory.File, dest string)
 
 	// UploadFile uploads a local file to the specified remote directory
+	// Deprecated: use Upload instead
 	UploadFile(localPath string, dir *directory.Directory, overwrite bool) error
 
-	// UploadFiles uploads multiple local files to the specified remote directory
-	UploadFiles(localPaths []string, dir *directory.Directory, overwrite bool) error
+	Upload(uris []fyne.URI, dir *directory.Directory) error
 
 	// DeleteFile removes a file from storage and updates the tree
 	DeleteFile(file *directory.File)
@@ -418,8 +420,86 @@ func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
 	v.triggerStateListeners()
 }
 
-func (v *explorerViewModelImpl) UploadFiles(localPaths []string, dir *directory.Directory, overwrite bool) error {
+func (v *explorerViewModelImpl) Upload(uris []fyne.URI, dir *directory.Directory) error {
+	if len(uris) == 0 {
+		return nil
+	}
+	basePath := filepath.Dir(uris[0].Path()) // TODO: get the shorter possible pase and extract its parent dir
+	var items []*directory.FsItem
+	dirItemsByPath := make(map[string]*directory.FsItem)
+	for _, uri := range uris {
+		fi, err := os.Stat(uri.Path())
+		if err != nil {
+			return err
+		}
+		var currItem *directory.FsItem
+		if fi.IsDir() {
+			currItem = &directory.FsItem{
+				Name:     uri.Name(),
+				AbsPath:  uri.Path(),
+				BasePath: basePath,
+				IsDir:    true,
+				Children: make([]*directory.FsItem, 0),
+			}
+			dirItemsByPath[uri.Path()] = currItem
 
+			if err := filepath.WalkDir(uri.Path(), func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if path == uri.Path() {
+					return nil
+				}
+				parentPath := filepath.Dir(path)
+				parent, found := dirItemsByPath[parentPath]
+				if !found {
+					return nil
+				}
+
+				if d.IsDir() {
+					item := &directory.FsItem{
+						Name:     d.Name(),
+						AbsPath:  path,
+						BasePath: basePath,
+						IsDir:    true,
+						Children: make([]*directory.FsItem, 0),
+					}
+					parent.Children = append(parent.Children, item)
+					dirItemsByPath[path] = item
+				} else {
+					parent.Children = append(parent.Children, &directory.FsItem{
+						Name:     d.Name(),
+						AbsPath:  path,
+						BasePath: basePath,
+						IsDir:    false,
+					})
+				}
+				return nil
+			}); err != nil {
+				return err
+			}
+		} else {
+			currItem = &directory.FsItem{
+				Name:     uri.Name(),
+				AbsPath:  uri.Path(),
+				BasePath: basePath,
+				IsDir:    false,
+			}
+		}
+		items = append(items, currItem)
+	}
+
+	evt, err := dir.Upload(items)
+	if err != nil {
+		return err
+	}
+
+	v.bus.Publish(evt)
+
+	return nil
+}
+
+func (v *explorerViewModelImpl) UploadFiles(localPaths []string, dir *directory.Directory, overwrite bool) error {
 	evts := make([]event.Event, len(localPaths))
 	for i, p := range localPaths {
 		evts[i] = event.New(directory.UploadFileTriggered{

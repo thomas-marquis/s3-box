@@ -60,7 +60,9 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
+		eh := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
+		defer eh.Destroy()
+		eh.Listen()
 
 		// When
 		fakeEventChan <- event.New(directory.LoadTriggered{Directory: rootDir})

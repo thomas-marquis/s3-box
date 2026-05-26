@@ -23,6 +23,7 @@ type EventHandler struct {
 	s3ClientOptions      []func(*s3.Options)
 
 	clientFactory s3client.Factory
+	subscriber    *event.Subscriber
 }
 
 func NewS3EventHandler(
@@ -42,7 +43,7 @@ func NewS3EventHandler(
 }
 
 func (h *EventHandler) Listen() {
-	h.bus.Subscribe().
+	h.subscriber = h.bus.Subscribe().
 		On(event.Is(directory.CreateTriggeredType), h.handleCreateDirectory).
 		On(event.Is(directory.DeleteTriggeredType), h.handleDeleteDirectory).
 		On(event.Is(directory.CreateFileTriggeredType), h.handleCreateFile).
@@ -59,7 +60,16 @@ func (h *EventHandler) Listen() {
 			connection_deck.RemoveConnectionSucceededType,
 			connection_deck.UpdateConnectionSucceededType,
 		), h.handleConnectionChanged).
-		ListenNonBlocking() // TODO: set a limit of simultaneous tasks
+		On(event.Is(directory.UploadTriggeredType), h.handleUploadTriggered)
+
+	h.subscriber.ListenNonBlocking() // TODO: set a limit of simultaneous tasks
+}
+
+func (h *EventHandler) Destroy() {
+	if h.subscriber == nil {
+		return
+	}
+	h.subscriber.Detach()
 }
 
 func (h *EventHandler) handleConnectionChanged(evt event.Event) {

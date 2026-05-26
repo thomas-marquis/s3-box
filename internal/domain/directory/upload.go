@@ -1,5 +1,7 @@
 package directory
 
+import "path/filepath"
+
 type UploadMode int
 
 const (
@@ -12,8 +14,13 @@ const (
 type FsItem struct {
 	Name     string
 	AbsPath  string
+	BasePath string
 	IsDir    bool
-	Children []FsItem
+	Children []*FsItem
+}
+
+func (f *FsItem) RelPath() string {
+	return filepath.ToSlash(f.AbsPath[len(f.BasePath):])
 }
 
 type UploadedItemPreview struct {

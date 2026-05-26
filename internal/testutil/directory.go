@@ -22,8 +22,14 @@ func FakeNotLoadedRootDirectory(t *testing.T) *directory.Directory {
 // FakeLoadedRootDirectory creates a new root directory (loaded) with FakeS3LikeConnectionId
 func FakeLoadedRootDirectory(t *testing.T) *directory.Directory {
 	t.Helper()
+	return FakeLoadedRootDirectoryWithConn(t, FakeS3LikeConnectionId)
+}
 
-	dir, err := directory.NewRoot(FakeS3LikeConnectionId)
+// FakeLoadedRootDirectoryWithConn creates a new root directory (loaded) with connection ID
+func FakeLoadedRootDirectoryWithConn(t *testing.T, connId connection_deck.ConnectionID) *directory.Directory {
+	t.Helper()
+
+	dir, err := directory.NewRoot(connId)
 	require.NoError(t, err)
 
 	_, err = dir.Load()
@@ -170,4 +176,131 @@ func AddSubNotLoadedDirectoryToDirectory(t *testing.T, dir *directory.Directory,
 	require.NoError(t, err)
 
 	return nd
+}
+
+type subDirectoryBuilderConfig struct {
+	files          []string
+	loaded         bool
+	subDirectories []*directory.Directory
+}
+
+type directoryBuilderConfig struct {
+	loaded         bool
+	subDirectories []*directory.Directory
+	files          []string
+	connectionId   connection_deck.ConnectionID
+	parent         *directory.Directory
+	hasRootParent  bool
+}
+
+type DirectoryBuilderOption func(*directoryBuilderConfig)
+type SubDirectoryBuilderOption func(*subDirectoryBuilderConfig)
+
+func WithLoaded(loaded bool) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.loaded = loaded
+	}
+}
+
+func WithConnectionId(connId connection_deck.ConnectionID) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.connectionId = connId
+	}
+}
+
+func WithFiles(fileNames ...string) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.files = fileNames
+	}
+}
+
+func WithSubDirectories(dirs ...*directory.Directory) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.subDirectories = dirs
+	}
+}
+
+func WithSubDirectory(name string) SubDirectoryBuilderOption {
+	return func(cfg *subDirectoryBuilderConfig) {
+
+	}
+}
+
+func WithParent(parent *directory.Directory) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.parent = parent
+	}
+}
+
+func WithRootParent() DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.hasRootParent = true
+	}
+}
+
+func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *directory.Directory {
+	t.Helper()
+
+	cfg := directoryBuilderConfig{
+		connectionId: FakeAwsConnectionId,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	var dir *directory.Directory
+	var err error
+	if cfg.hasRootParent {
+		root, errRoot := directory.NewRoot(cfg.connectionId)
+		require.NoError(t, errRoot)
+		_, errRoot = root.Load()
+		require.NoError(t, errRoot)
+		errRoot = root.Notify(event.New(directory.LoadSucceeded{
+			Directory: root,
+		}))
+		require.NoError(t, errRoot)
+
+		dir, err = directory.New(cfg.connectionId, name, root)
+	} else if cfg.parent != nil {
+		dir, err = directory.New(cfg.connectionId, name, cfg.parent)
+	} else {
+		dir, err = directory.NewRoot(cfg.connectionId)
+	}
+	require.NoError(t, err)
+
+	if len(cfg.files) > 0 {
+		for _, fileName := range cfg.files {
+			fEvt, err := dir.NewFile(fileName, false)
+			require.NoError(t, err)
+
+			f := fEvt.Payload.(directory.CreateFileTriggered).File
+
+			err = dir.Notify(event.New(directory.CreateFileSucceeded{
+				File:      f,
+				Directory: dir,
+			}))
+			require.NoError(t, err)
+		}
+	}
+
+	if len(cfg.subDirectories) > 0 {
+		for _, subDir := range cfg.subDirectories {
+			err = dir.Notify(event.New(directory.CreateSucceeded{
+				ParentDirectory: dir,
+				Directory:       subDir,
+			}))
+			require.NoError(t, err)
+		}
+	}
+
+	if cfg.loaded {
+		_, err = dir.Load()
+		require.NoError(t, err)
+		err = dir.Notify(event.New(directory.LoadSucceeded{
+			Directory: dir,
+		}))
+		require.NoError(t, err)
+	}
+
+	return dir
 }
