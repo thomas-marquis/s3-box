@@ -125,8 +125,13 @@ func (d *Directory) Name() string {
 	return d.name
 }
 
+// Deprecated: use Parent().Path() instead
 func (d *Directory) ParentPath() Path {
 	return d.parent.Path()
+}
+
+func (d *Directory) Parent() *Directory {
+	return d.parent
 }
 
 func (d *Directory) SubDirectories() []*Directory {

@@ -178,23 +178,19 @@ func AddSubNotLoadedDirectoryToDirectory(t *testing.T, dir *directory.Directory,
 	return nd
 }
 
-type subDirectoryBuilderConfig struct {
-	files          []string
-	loaded         bool
-	subDirectories []*directory.Directory
-}
-
 type directoryBuilderConfig struct {
-	loaded         bool
-	subDirectories []*directory.Directory
-	files          []string
-	connectionId   connection_deck.ConnectionID
-	parent         *directory.Directory
-	hasRootParent  bool
+	name          string
+	loaded        bool
+	subDirConfigs []*directoryBuilderConfig
+	files         []string
+	connectionId  connection_deck.ConnectionID
+	parent        *directory.Directory
+	parentConfig  *directoryBuilderConfig
+	hasRootParent bool
+	isRoot        bool
 }
 
 type DirectoryBuilderOption func(*directoryBuilderConfig)
-type SubDirectoryBuilderOption func(*subDirectoryBuilderConfig)
 
 func WithLoaded(loaded bool) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
@@ -214,21 +210,35 @@ func WithFiles(fileNames ...string) DirectoryBuilderOption {
 	}
 }
 
-func WithSubDirectories(dirs ...*directory.Directory) DirectoryBuilderOption {
+func WithSubDirectory(name string, opts ...DirectoryBuilderOption) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
-		cfg.subDirectories = dirs
+		sdCfg := directoryBuilderConfig{}
+		for _, opt := range opts {
+			opt(&sdCfg)
+		}
+		sdCfg.connectionId = cfg.connectionId
+		sdCfg.parent = cfg.parent
+		sdCfg.name = name
+		sdCfg.isRoot = false
+		if cfg.hasRootParent {
+			sdCfg.hasRootParent = false
+		}
+		cfg.subDirConfigs = append(cfg.subDirConfigs, &sdCfg)
 	}
 }
 
-func WithSubDirectory(name string) SubDirectoryBuilderOption {
-	return func(cfg *subDirectoryBuilderConfig) {
-
-	}
-}
-
-func WithParent(parent *directory.Directory) DirectoryBuilderOption {
+func WithParent(name string, opts ...DirectoryBuilderOption) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
-		cfg.parent = parent
+		pCfg := directoryBuilderConfig{
+			name: name,
+		}
+		for _, opt := range opts {
+			opt(&pCfg)
+		}
+		pCfg.loaded = true
+		pCfg.subDirConfigs = append(pCfg.subDirConfigs, cfg)
+		pCfg.connectionId = cfg.connectionId
+		cfg.parentConfig = &pCfg
 	}
 }
 
@@ -238,11 +248,24 @@ func WithRootParent() DirectoryBuilderOption {
 	}
 }
 
+func AsRoot() DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.isRoot = true
+	}
+}
+
+func withDirectoryBuilderConfig(cfg *directoryBuilderConfig) DirectoryBuilderOption {
+	return func(opts *directoryBuilderConfig) {
+		*opts = *cfg
+	}
+}
+
 func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *directory.Directory {
 	t.Helper()
 
 	cfg := directoryBuilderConfig{
 		connectionId: FakeAwsConnectionId,
+		name:         name,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -250,7 +273,10 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 
 	var dir *directory.Directory
 	var err error
-	if cfg.hasRootParent {
+	if cfg.isRoot {
+		dir, err = directory.NewRoot(cfg.connectionId)
+		require.NoError(t, err)
+	} else if cfg.hasRootParent {
 		root, errRoot := directory.NewRoot(cfg.connectionId)
 		require.NoError(t, errRoot)
 		_, errRoot = root.Load()
@@ -260,13 +286,23 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 		}))
 		require.NoError(t, errRoot)
 
-		dir, err = directory.New(cfg.connectionId, name, root)
+		dir, err = directory.New(cfg.connectionId, cfg.name, root)
 	} else if cfg.parent != nil {
-		dir, err = directory.New(cfg.connectionId, name, cfg.parent)
+		dir, err = directory.New(cfg.connectionId, cfg.name, cfg.parent)
 	} else {
 		dir, err = directory.NewRoot(cfg.connectionId)
 	}
 	require.NoError(t, err)
+
+	shouldBeLoaded := cfg.loaded || len(cfg.files) > 0 || len(cfg.subDirConfigs) > 0
+	if shouldBeLoaded {
+		_, err = dir.Load()
+		require.NoError(t, err)
+		err = dir.Notify(event.New(directory.LoadSucceeded{
+			Directory: dir,
+		}))
+		require.NoError(t, err)
+	}
 
 	if len(cfg.files) > 0 {
 		for _, fileName := range cfg.files {
@@ -283,23 +319,11 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 		}
 	}
 
-	if len(cfg.subDirectories) > 0 {
-		for _, subDir := range cfg.subDirectories {
-			err = dir.Notify(event.New(directory.CreateSucceeded{
-				ParentDirectory: dir,
-				Directory:       subDir,
-			}))
-			require.NoError(t, err)
+	if len(cfg.subDirConfigs) > 0 {
+		for _, sdCfg := range cfg.subDirConfigs {
+			sdCfg.parent = dir
+			MakeDirectory(t, sdCfg.name, withDirectoryBuilderConfig(sdCfg))
 		}
-	}
-
-	if cfg.loaded {
-		_, err = dir.Load()
-		require.NoError(t, err)
-		err = dir.Notify(event.New(directory.LoadSucceeded{
-			Directory: dir,
-		}))
-		require.NoError(t, err)
 	}
 
 	return dir

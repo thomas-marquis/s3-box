@@ -46,7 +46,9 @@ func TestS3EventHandler_upload(t *testing.T) {
 			//	testutil.MakeDirectory(t, "subdir"),
 			//	testutil.MakeDirectory(t, "dir2"),
 			//),
-			testutil.WithSubDirectory(),
+			testutil.WithSubDirectory("subdir"
+				testutil.WithFiles("otherfile1.txt", "otherfile2.txt"),
+			),
 		)
 
 		//rootDir := testutil.FakeLoadedRootDirectoryWithConn(t, testutil.FakeAwsConnectionId)
