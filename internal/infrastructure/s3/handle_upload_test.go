@@ -22,7 +22,7 @@ func TestS3EventHandler_upload(t *testing.T) {
 	defer terminate()
 	client := testutil.SetupS3Client(t, endpoint)
 
-	t.Run("shoudl compute and emit a preview when some content already exists", func(t *testing.T) {
+	t.Run("should compute and emit a preview when some content already exists", func(t *testing.T) {
 		// Given
 		bucket := testutil.FakeRandomBucketName()
 		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{
@@ -39,24 +39,13 @@ func TestS3EventHandler_upload(t *testing.T) {
 
 		mydir := testutil.MakeDirectory(t, "mydir",
 			testutil.WithConnectionId(testutil.FakeAwsConnectionId),
-			testutil.IsLoaded(true),
+			testutil.IsLoaded(),
 			testutil.WithRootParent(),
 			testutil.WithFiles("file1.txt", "file2.txt"),
-			//testutil.WithSubDirectories(
-			//	testutil.MakeDirectory(t, "subdir"),
-			//	testutil.MakeDirectory(t, "dir2"),
-			//),
-			testutil.WithSubDirectory("subdir"
-				testutil.WithFiles("otherfile1.txt", "otherfile2.txt"),
-			),
-		)
-
-		//rootDir := testutil.FakeLoadedRootDirectoryWithConn(t, testutil.FakeAwsConnectionId)
-		//myDir := testutil.AddSubDirectoryToDirectory(t, rootDir, "mydir")
-		//testutil.AddFileToDirectory(t, myDir, "file1.txt")
-		//testutil.AddFileToDirectory(t, myDir, "file2.txt")
-		//testutil.AddSubNotLoadedDirectoryToDirectory(t, myDir, "subdir")
-		//testutil.AddSubNotLoadedDirectoryToDirectory(t, myDir, "dir2")
+			testutil.WithSubDirectory("subdir",
+				testutil.WithFiles("otherfile1.txt", "otherfile2.txt")),
+			testutil.WithSubDirectory("dir2",
+				testutil.WithFiles("something1.md", "something2.md")))
 
 		itemsToUpload := []*directory.FsItem{
 			{Name: "file2.txt"},
@@ -68,6 +57,20 @@ func TestS3EventHandler_upload(t *testing.T) {
 			{Name: "dir2", IsDir: true, Children: []*directory.FsItem{ // TODO: move this in another test case
 				{Name: "new.txt"},
 			}},
+		}
+
+		// skip:
+
+		expectedPreviews := map[directory.UploadMode]directory.UploadedItemPreview{
+			directory.UploadModeSkip: {
+				Name:       "",
+				IsDir:      false,
+				IsNew:      false,
+				IsReplaced: false,
+				Children:   nil,
+			},
+			directory.UploadModeDuplicate: {},
+			directory.UploadModeReplace:   {},
 		}
 
 		fakeEventChan := make(chan event.Event, 1)
@@ -88,7 +91,7 @@ func TestS3EventHandler_upload(t *testing.T) {
 		eh.Listen()
 
 		// When
-		fakeEventChan <- event.New(directory.UploadTriggered{Directory: myDir, Items: itemsToUpload})
+		fakeEventChan <- event.New(directory.UploadTriggered{Directory: mydir, Items: itemsToUpload})
 
 		// Then
 		testutil.AssertEventually(t, done)

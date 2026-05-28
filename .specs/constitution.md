@@ -21,6 +21,12 @@
 - use design patterns when it's relevant
 - only a root entity can be notified by an event.
 
+## Documentation
+
+- Technical documentation lies in the `docs/technical` folder. One file per concept (e.g. event-test-harness.md, event-bus.md, mocks.md, etc)
+- Update the existing documentation and/or add new files when necessary
+- The index in contained in the file `docs/technical/index.md`, update it as well
+
 ## Testing Guidelines
 
 - Use `testing` with `testify/assert` and `testify/require`; reserve `require` for setup preconditions, then use `assert` for expectations.

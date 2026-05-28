@@ -200,7 +200,7 @@ func (e UploadTriggered) Type() event.Type {
 
 type UploadPreviewed struct {
 	Directory       *Directory
-	Previews        map[UploadMode][]UploadedItemPreview
+	Previews        map[UploadMode][]any
 	UploadableItems []*FsItem
 }
 

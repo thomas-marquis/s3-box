@@ -1,6 +1,8 @@
 package directory
 
-import "path/filepath"
+import (
+	"path/filepath"
+)
 
 type UploadMode int
 
@@ -21,10 +23,4 @@ type FsItem struct {
 
 func (f *FsItem) RelPath() string {
 	return filepath.ToSlash(f.AbsPath[len(f.BasePath):])
-}
-
-type UploadedItemPreview struct {
-	Name                     string
-	IsDir, IsNew, IsReplaced bool
-	Children                 []UploadedItemPreview
 }

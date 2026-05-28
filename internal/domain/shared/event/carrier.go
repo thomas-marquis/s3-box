@@ -23,7 +23,7 @@ type Carrier interface {
 	Payload
 
 	// Dispatch dispatches all events in the carrier to the given channel.
-	// This method is not supposed to be blocking.
+	// Depending on bus implementation, this may be blocking or non-blocking.
 	Dispatch(bus Bus)
 }
 
@@ -40,24 +40,30 @@ var (
 	_ Carrier = (*CarriesAll)(nil)
 )
 
-type CarrierOption func(*CarriesAll)
+type carrierConfig struct {
+	maxConcurrency int
+	timeout        time.Duration
+	doneCondition  DoneCondition
+}
+
+type CarrierOption func(config *carrierConfig)
 type DoneCondition func(sent, received Event) bool
 
 func WithTimeout(d time.Duration) CarrierOption {
-	return func(c *CarriesAll) {
+	return func(c *carrierConfig) {
 		c.timeout = d
 	}
 }
 
 func WithMaxConcurrency(n int) CarrierOption {
-	return func(c *CarriesAll) {
+	return func(c *carrierConfig) {
 		c.maxConcurrency = n
 	}
 }
 
 func WithDoneCondition(cond DoneCondition) CarrierOption {
-	return func(c *CarriesAll) {
-		c.DoneCondition = cond
+	return func(c *carrierConfig) {
+		c.doneCondition = cond
 	}
 }
 
@@ -70,6 +76,7 @@ func DoneWhenFollowupReceived(sent, received Event) bool {
 
 // NewCarriesAll creates a new Carrier that will dispatch all events in the given slice to the event Bus.
 // All carried events must have unique Ref (that means they must not be followup from each other), otherwise the behavior is undefined.
+// This event carrier has a blocking Dispatch method.
 func NewCarriesAll(carried []Event, doneEventFactory func(received []Event) Event, onTimeout Event, opts ...CarrierOption) Event {
 	var uniqueRefset = make(map[string]struct{})
 	for _, evt := range carried {
@@ -84,13 +91,21 @@ func NewCarriesAll(carried []Event, doneEventFactory func(received []Event) Even
 		Carried:          carried,
 		DoneEventFactory: doneEventFactory,
 		OnTimeout:        onTimeout,
-		DoneCondition:    DoneWhenFollowupReceived,
-		maxConcurrency:   defaultCarrierConcurrency,
-		timeout:          defaultCarrierTimeout,
+	}
+
+	cfg := &carrierConfig{
+		maxConcurrency: defaultCarrierConcurrency,
+		timeout:        defaultCarrierTimeout,
+		doneCondition:  DoneWhenFollowupReceived,
 	}
 	for _, opt := range opts {
-		opt(c)
+		opt(cfg)
 	}
+
+	c.maxConcurrency = cfg.maxConcurrency
+	c.timeout = cfg.timeout
+	c.DoneCondition = cfg.doneCondition
+
 	return New(c)
 }
 
@@ -170,17 +185,17 @@ func (c *CarriesAll) Type() Type {
 	return Type(CarrierTypePrefix + ".all")
 }
 
-func getUniqueEventTypes(events []Event) []Type {
-	typeSet := make(map[Type]struct{})
-	for _, evt := range events {
-		typeSet[evt.Type()] = struct{}{}
-	}
-	uniques := make([]Type, 0, len(typeSet))
-	for t := range typeSet {
-		uniques = append(uniques, t)
-	}
-	return uniques
-}
+//func getUniqueEventTypes(events []Event) []Type {
+//	typeSet := make(map[Type]struct{})
+//	for _, evt := range events {
+//		typeSet[evt.Type()] = struct{}{}
+//	}
+//	uniques := make([]Type, 0, len(typeSet))
+//	for t := range typeSet {
+//		uniques = append(uniques, t)
+//	}
+//	return uniques
+//}
 
 func allEventsHasBeenProcessed(eventMap map[string]bool) bool {
 	for _, processed := range eventMap {
@@ -191,31 +206,97 @@ func allEventsHasBeenProcessed(eventMap map[string]bool) bool {
 	return true
 }
 
-//type CarriesSequence struct {
-//	Carried          []Event
-//	DoneEventFactory func(received []Event) Event
-//	OnTimeout        Event
-//
-//	timeout time.Duration
-//}
-//
-//func (c *CarriesSequence) Type() Type {
-//	return Type(CarrierTypePrefix + ".sequence")
-//}
-//
-//func (c *CarriesSequence) Dispatch(bus Bus) {
-//	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
-//	defer cancel()
-//
-//	sub := bus.Subscribe().
-//		On(IsFollowupOf(c.Carried...), func(received Event) {
-//
-//		})
-//	sub.ListenWithWorkers(1)
-//	defer sub.Detach()
-//
-//	for _, evt := range c.Carried {
-//		bus.Publish(evt)
-//	}
-//
-//}
+type CarriesSequence struct {
+	Carried          []Event
+	DoneEventFactory func(received []Event) Event
+	OnTimeout        Event
+	DoneCondition    DoneCondition
+
+	timeout time.Duration
+}
+
+func NewCarriesSequence(carried []Event, doneEventFactory func(received []Event) Event, onTimeout Event, opts ...CarrierOption) Event {
+	c := &CarriesSequence{
+		Carried:          carried,
+		DoneEventFactory: doneEventFactory,
+		OnTimeout:        onTimeout,
+	}
+
+	cfg := &carrierConfig{
+		timeout:       defaultCarrierTimeout,
+		doneCondition: DoneWhenFollowupReceived,
+	}
+
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	c.timeout = cfg.timeout
+	c.DoneCondition = cfg.doneCondition
+
+	return New(c)
+}
+
+func (c *CarriesSequence) Type() Type {
+	return Type(CarrierTypePrefix + ".sequence")
+}
+
+func (c *CarriesSequence) Dispatch(bus Bus) {
+	if len(c.Carried) == 0 {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+
+	go func() {
+		defer cancel()
+		receivedEvents := c.doDispatch(ctx, bus)
+		bus.Publish(c.DoneEventFactory(receivedEvents))
+	}()
+}
+
+func (c *CarriesSequence) doDispatch(ctx context.Context, bus Bus) (receivedEvents []Event) {
+	workload := make(chan Event, 1)
+	defer close(workload)
+
+	var currIdx int
+	workload <- c.Carried[currIdx]
+
+	var mu sync.Mutex
+
+	for {
+		select {
+		case evt := <-workload:
+			finished := make(chan struct{})
+			sub := bus.Subscribe().
+				On(IsFollowupOf(evt), func(received Event) {
+					if c.DoneCondition(evt, received) {
+						mu.Lock()
+						defer mu.Unlock()
+						receivedEvents = append(receivedEvents, received)
+						close(finished)
+					}
+				})
+			sub.ListenWithWorkers(1)
+			bus.Publish(evt)
+
+			select {
+			case <-finished:
+				currIdx++
+				if currIdx == len(c.Carried) {
+					sub.Detach()
+					return
+				}
+				workload <- c.Carried[currIdx]
+			case <-ctx.Done():
+				bus.Publish(c.OnTimeout)
+				sub.Detach()
+				return
+			}
+
+			sub.Detach()
+		case <-ctx.Done():
+			return
+		}
+	}
+}

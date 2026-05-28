@@ -27,6 +27,8 @@ type inMemoryBus struct {
 	notifier       Notifier
 }
 
+// NewInMemoryBus creates a new in-memory event bus.
+// This implementation allows blocking carrier Dispatch method.
 func NewInMemoryBus(done <-chan struct{}, notifier Notifier) Bus {
 	b := &inMemoryBus{
 		subscribers:    make(map[chan Event]*Subscriber),
@@ -62,7 +64,7 @@ func (b *inMemoryBus) Subscribe() *Subscriber {
 func (b *inMemoryBus) Publish(evt Event) {
 	b.notifier.Notify(evt)
 	if c, ok := evt.Payload.(Carrier); ok {
-		c.Dispatch(b)
+		go c.Dispatch(b)
 		return
 	}
 
