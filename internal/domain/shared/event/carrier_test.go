@@ -222,3 +222,435 @@ func TestCarriesSequence_Dispatch(t *testing.T) {
 		testutil.AssertEventually(t, e3Done)
 	})
 }
+
+// =============================================================================
+// TestHarness-based Tests for Carriers
+// =============================================================================
+
+func setupHarness(opts ...event.TestHarnessOption) (*event.TestHarness, chan struct{}) {
+	busDone := make(chan struct{})
+	bus := event.NewInMemoryBus(busDone, &event.NopNotifier{})
+	return event.NewTestHarness(bus, opts...), busDone
+}
+
+func TestCarriesAll_WithHarness(t *testing.T) {
+	t.Run("should dispatch all carried events then the done event", func(t *testing.T) {
+		// Given
+		h, busDone := setupHarness()
+		defer close(busDone)
+
+		e1 := event.New(fakePayload("e1"))
+		e2 := event.New(fakePayload("e2"))
+		e3 := event.New(fakePayload("e3"))
+		ed := event.New(fakePayload("done"))
+
+		payloads := map[string]event.Payload{
+			"e1": fakePayload("e1"),
+			"e2": fakePayload("e2"),
+			"e3": fakePayload("e3"),
+			"r1": fakePayload("r1"),
+			"r2": fakePayload("r2"),
+			"r3": fakePayload("r3"),
+			"ed": fakePayload("done"),
+		}
+
+		c := event.NewCarriesAll(
+			[]event.Event{e1, e2, e3},
+			func([]event.Event) event.Event {
+				return ed
+			},
+			event.Event{},
+		)
+
+		in := "   ______________('r1<-e1''r2<-e2')--'r3<-e3'    "
+		exp := "  ('e1''e2''e3')('r1''r2')_________-'r3'    'ed'"
+
+		// When
+		h.Given(in, payloads)
+		h.Expect(exp, payloads)
+		h.Publish(c)
+
+		// Then
+		if !h.PrayAndWait() {
+			t.Errorf("TestHarness failed: %s", h.GetFailureReason())
+		}
+	})
+
+	t.Run("should dispatch all carried events then the done event with custom done condition", func(t *testing.T) {
+		// Given
+		h, busDone := setupHarness()
+		defer close(busDone)
+
+		in := event.New(fakePayload("e1"))
+		ed := event.New(fakePayload("done"))
+
+		payloads := map[string]event.Payload{
+			"in": fakePayload("e1"),
+			"r1": fakePayload("val1"),
+			"r2": fakePayload("val2"),
+			"ed": fakePayload("done"),
+		}
+
+		c := event.NewCarriesAll(
+			[]event.Event{in},
+			func([]event.Event) event.Event {
+				return ed
+			},
+			event.Event{},
+			event.WithDoneCondition(func(sent, received event.Event) bool {
+				return received.Payload.(fakePayload) == "val2"
+			}),
+		)
+
+		given := " ('r1<-in''r2<-in')"
+		expect := "('in''r1''r2')    'ed'"
+
+		// When
+		h.Given(given, payloads)
+		h.Expect(expect, payloads)
+		h.Publish(c)
+
+		// Then
+		if !h.PrayAndWait() {
+			t.Errorf("TestHarness failed: %s", h.GetFailureReason())
+		}
+	})
+
+	t.Run("should abort dispatch and publish timeout event on timeout", func(t *testing.T) {
+		// Given
+		h, busDone := setupHarness(event.WithTickDuration(20 * time.Millisecond))
+		defer close(busDone)
+
+		e1 := event.New(fakePayload("e1"))
+		et := event.New(fakePayload("timeout"))
+
+		payloads := map[string]event.Payload{
+			"e1": fakePayload("e1"),
+			"et": fakePayload("timeout"),
+		}
+
+		c := event.NewCarriesAll(
+			[]event.Event{e1},
+			func([]event.Event) event.Event {
+				return event.Event{}
+			},
+			et,
+			event.WithTimeout(100*time.Millisecond),
+		)
+
+		expect := "'e1'----'et'"
+
+		// When
+		h.Expect(expect, payloads)
+		h.Publish(c)
+
+		// Then
+		if !h.PrayAndWait() {
+			t.Errorf("TestHarness failed: %s", h.GetFailureReason())
+		}
+	})
+
+	t.Run("should handle single event carrier", func(t *testing.T) {
+		// Given
+		h, busDone := setupHarness()
+		defer close(busDone)
+
+		e1 := event.New(fakePayload("single"))
+		ed := event.New(fakePayload("done"))
+
+		payloads := map[string]event.Payload{
+			"e1": fakePayload("single"),
+			"r1": fakePayload("response"),
+			"ed": fakePayload("done"),
+		}
+
+		c := event.NewCarriesAll(
+			[]event.Event{e1},
+			func([]event.Event) event.Event {
+				return ed
+			},
+			event.Event{},
+		)
+
+		given := " 'r1<-e1'      "
+		expect := "('e1''r1')'ed'"
+
+		// When
+		h.Given(given, payloads)
+		h.Expect(expect, payloads)
+		h.Publish(c)
+
+		// Then
+		if !h.PrayAndWait() {
+			t.Errorf("TestHarness failed: %s", h.GetFailureReason())
+		}
+	})
+
+	t.Run("should handle concurrent events with max concurrency", func(t *testing.T) {
+		// Given
+		h, busDone := setupHarness()
+		defer close(busDone)
+
+		e1 := event.New(fakePayload("e1"))
+		e2 := event.New(fakePayload("e2"))
+		e3 := event.New(fakePayload("e3"))
+		ed := event.New(fakePayload("done"))
+
+		payloads := map[string]event.Payload{
+			"e1": fakePayload("e1"),
+			"e2": fakePayload("e2"),
+			"e3": fakePayload("e3"),
+			"r1": fakePayload("r1"),
+			"r2": fakePayload("r2"),
+			"r3": fakePayload("r3"),
+			"ed": fakePayload("done"),
+		}
+
+		c := event.NewCarriesAll(
+			[]event.Event{e1, e2, e3},
+			func([]event.Event) event.Event {
+				return ed
+			},
+			event.Event{},
+			event.WithMaxConcurrency(3),
+		)
+
+		given := " ('r1<-e1''r2<-e2''r3<-e3')"
+		expect := "('e1''e2''e3''r1''r2''r3')'ed'"
+
+		// When
+		h.Given(given, payloads)
+		h.Expect(expect, payloads)
+		h.Publish(c)
+
+		// Then
+		if !h.PrayAndWait() {
+			t.Errorf("TestHarness failed: %s", h.GetFailureReason())
+		}
+	})
+
+	t.Run("should handle multiple followups for same event", func(t *testing.T) {
+		// Given
+		h, busDone := setupHarness()
+		defer close(busDone)
+
+		e1 := event.New(fakePayload("e1"))
+		ed := event.New(fakePayload("done"))
+
+		payloads := map[string]event.Payload{
+			"e1": fakePayload("e1"),
+			"r1": fakePayload("response1"),
+			"r2": fakePayload("response2"),
+			"r3": fakePayload("response3"),
+			"ed": fakePayload("done"),
+		}
+
+		c := event.NewCarriesAll(
+			[]event.Event{e1},
+			func([]event.Event) event.Event {
+				return ed
+			},
+			event.Event{},
+			event.WithDoneCondition(func(sent, received event.Event) bool {
+				return true
+			}),
+		)
+
+		given := " ('r1<-e1''r2<-e1''r3<-e1')"
+		expect := "('e1''r1''r2''r3')        'ed'"
+
+		// When
+		h.Given(given, payloads)
+		h.Expect(expect, payloads)
+		h.Publish(c)
+
+		// Then
+		if !h.PrayAndWait() {
+			t.Errorf("TestHarness failed: %s", h.GetFailureReason())
+		}
+	})
+
+	t.Run("should handle custom max concurrency", func(t *testing.T) {
+		// Given
+		h, busDone := setupHarness()
+		defer close(busDone)
+
+		e1 := event.New(fakePayload("e1"))
+		e2 := event.New(fakePayload("e2"))
+		ed := event.New(fakePayload("done"))
+
+		payloads := map[string]event.Payload{
+			"e1": fakePayload("e1"),
+			"e2": fakePayload("e2"),
+			"r1": fakePayload("r1"),
+			"r2": fakePayload("r2"),
+			"ed": fakePayload("done"),
+		}
+
+		c := event.NewCarriesAll(
+			[]event.Event{e1, e2},
+			func([]event.Event) event.Event {
+				return ed
+			},
+			event.Event{},
+			event.WithMaxConcurrency(1),
+			event.WithTimeout(500*time.Millisecond),
+		)
+
+		given := " ('r1<-e1''r2<-e2')"
+		expect := "('e1''e2''r1''r2')'ed'"
+
+		// When
+		h.Given(given, payloads)
+		h.Expect(expect, payloads)
+		h.Publish(c)
+
+		// Then
+		if !h.PrayAndWait() {
+			t.Errorf("TestHarness failed: %s", h.GetFailureReason())
+		}
+	})
+}
+
+func TestCarriesSequence_WithHarness(t *testing.T) {
+	t.Run("should dispatch all carried events sequentially then the done event", func(t *testing.T) {
+		// Given
+		h, busDone := setupHarness()
+		defer close(busDone)
+
+		e1 := event.New(fakePayload("e1"))
+		e2 := event.New(fakePayload("e2"))
+		e3 := event.New(fakePayload("e3"))
+		ed := event.New(fakePayload("done"))
+
+		payloads := map[string]event.Payload{
+			"e1": fakePayload("e1"),
+			"e2": fakePayload("e2"),
+			"e3": fakePayload("e3"),
+			"r1": fakePayload("r1"),
+			"r2": fakePayload("r2"),
+			"r3": fakePayload("r3"),
+			"ed": fakePayload("done"),
+		}
+
+		c := event.NewCarriesSequence(
+			[]event.Event{e1, e2, e3},
+			func([]event.Event) event.Event {
+				return ed
+			},
+			event.Event{},
+		)
+
+		given := " ('r1<-e1''r2<-e2''r3<-e3')"
+		expect := "('e1''e2''e3''r1''r2''r3''ed')"
+
+		// When
+		h.Given(given, payloads)
+		h.Expect(expect, payloads)
+		h.Publish(c)
+
+		// Then
+		if !h.PrayAndWait() {
+			t.Errorf("TestHarness failed: %s", h.GetFailureReason())
+		}
+	})
+
+	t.Run("should handle single event in sequence", func(t *testing.T) {
+		// Given
+		h, busDone := setupHarness()
+		defer close(busDone)
+
+		e1 := event.New(fakePayload("single"))
+		ed := event.New(fakePayload("done"))
+
+		payloads := map[string]event.Payload{
+			"e1": fakePayload("single"),
+			"r1": fakePayload("response"),
+			"ed": fakePayload("done"),
+		}
+
+		c := event.NewCarriesSequence(
+			[]event.Event{e1},
+			func([]event.Event) event.Event {
+				return ed
+			},
+			event.Event{},
+		)
+
+		given := " 'r1<-e1'"
+		expect := "('e1''r1''ed')"
+
+		// When
+		h.Given(given, payloads)
+		h.Expect(expect, payloads)
+		h.Publish(c)
+
+		// Then
+		if !h.PrayAndWait() {
+			t.Errorf("TestHarness failed: %s", h.GetFailureReason())
+		}
+	})
+
+	t.Run("should handle empty sequence", func(t *testing.T) {
+		// Given
+		h, busDone := setupHarness()
+		defer close(busDone)
+
+		c := event.NewCarriesSequence(
+			[]event.Event{},
+			func([]event.Event) event.Event {
+				return event.Event{}
+			},
+			event.Event{},
+		)
+
+		// When
+		h.Expect("", map[string]event.Payload{})
+		h.Publish(c)
+
+		// Then
+		if !h.PrayAndWait() {
+			t.Errorf("TestHarness failed: %s", h.GetFailureReason())
+		}
+	})
+
+	t.Run("should use custom done condition", func(t *testing.T) {
+		// Given
+		h, busDone := setupHarness()
+		defer close(busDone)
+
+		e1 := event.New(fakePayload("e1"))
+		ed := event.New(fakePayload("done"))
+
+		payloads := map[string]event.Payload{
+			"e1": fakePayload("e1"),
+			"r1": fakePayload("val1"),
+			"r2": fakePayload("val2"),
+			"ed": fakePayload("done"),
+		}
+
+		c := event.NewCarriesSequence(
+			[]event.Event{e1},
+			func([]event.Event) event.Event {
+				return ed
+			},
+			event.Event{},
+			event.WithDoneCondition(func(sent, received event.Event) bool {
+				return received.Payload.(fakePayload) == "val2"
+			}),
+		)
+
+		given := " ('r1<-e1''r2<-e1')"
+		expect := "('e1''r1''r2''ed')"
+
+		// When
+		h.Given(given, payloads)
+		h.Expect(expect, payloads)
+		h.Publish(c)
+
+		// Then
+		if !h.PrayAndWait() {
+			t.Errorf("TestHarness failed: %s", h.GetFailureReason())
+		}
+	})
+}

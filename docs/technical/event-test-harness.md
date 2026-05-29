@@ -12,10 +12,16 @@ The `TestHarness` is a utility to simplify testing of event-driven flows. It all
     - `a`, `b`, `'label'`: Events. Each event also occupies one time tick in the diagram.
     - `(ab)`: Grouping. Multiple events or followup rules can happen at the same tick.
     - `'r<-e'`: Explicit followup rule (only in `Given`). Specifies that `r` should be published when `e` is received.
+- **Delayed Followup Activation**: Followup rules specified in `Given` can have delayed activation times based on their position in the marble string. The harness will retroactively check if triggers were already received before the rule became active.
 - **Lazy Publishing**: `Publish(evt)` calls are recorded and only executed when `PrayAndWait` is called.
 - **Strict Validation**: The harness ensures that events happen at the correct ticks and that no unexpected events occur during "nothing" ticks.
+- **Detailed Error Reporting**: When `PrayAndWait()` returns `false`, use `GetFailureReason()` to get a detailed explanation of what went wrong.
 
 ## Usage
+
+### Guidelines
+
+- declare the marble templates in dedicated variable and ensure everything is correctly visually aligned for readability
 
 ### Basic Example
 
@@ -43,11 +49,33 @@ if !th.PrayAndWait() {
 Use the `(...)` syntax to define events happening at the same tick.
 
 ```go
-th.Expect("(qr)", evtMap).
-   Given("'r<-q'", evtMap) 
+exp := "  (qr)"
+given := "'r<-q'"
+th.Expect(exp, evtMap).
+   Given(given, evtMap)
 
 // When event 'q' is received, the harness will automatically publish 'r' as a followup.
 // Since 'q' and 'r' happen at the same tick (T0), we group them in Expect.
+```
+
+### Delayed Followup Activation
+
+Followup rules can be activated at specific ticks, allowing modeling of real-world scenarios where responses don't arrive immediately:
+
+```go
+// Followup rules become active at different times
+given := "--('r1<-e1''r2<-e2')--'r3<-e3'"
+// e1, e2, e3 are published at T0, but:
+// - r1 and r2 followup rules become active at T2
+// - r3 followup rule becomes active at T4
+// The harness will retroactively trigger r1/r2 if e1/e2 were already received
+
+exp := "('e1''e2''e3')--('r1''r2')--'r3'"
+// Events are expected at: T0 (e1,e2,e3), T2 (r1,r2), T4 (r3)
+
+th.Given(given, payloads).
+   Expect(exp, payloads).
+   Publish(carrier)
 ```
 
 ## Internal Mechanism
