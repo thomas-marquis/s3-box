@@ -16,11 +16,11 @@ import _ "go.uber.org/mock/gomock"
 
 // Global
 //go:generate mockgen -package mocks_appcontext -destination mocks/context/appcontext.go github.com/thomas-marquis/s3-box/internal/ui/app/context AppContext
-//go:generate mockgen -package mocks_event -destination mocks/event/bus.go github.com/thomas-marquis/s3-box/internal/domain/shared/event Bus
 
 // External
 //go:generate mockgen -package mocks_binding -destination mocks/binding/tree.go fyne.io/fyne/v2/data/binding UntypedTree
 //go:generate mockgen -package mocks_fyne -destination mocks/fyne/preferences.go fyne.io/fyne/v2 Preferences
+//go:generate mockgen -package mocks_event -destination mocks/event/bus.go github.com/thomas-marquis/it-happened/event Bus
 
 // Resources
 //go:generate fyne bundle -o internal/ui/theme/resources/logo.go --package resources resources/logo-wbg.png

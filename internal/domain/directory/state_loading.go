@@ -3,7 +3,7 @@ package directory
 import (
 	"errors"
 
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/it-happened/event"
 )
 
 type loadingState struct {

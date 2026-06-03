@@ -7,7 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/it-happened/carrier"
+	"github.com/thomas-marquis/it-happened/event"
 
 	"fmt"
 	"path/filepath"
@@ -511,7 +512,7 @@ func (v *explorerViewModelImpl) UploadFiles(localPaths []string, dir *directory.
 		Err:       errors.New("failed to upload files: timeout"),
 		Directory: dir,
 	})
-	carr := event.NewCarriesAll(evts, func(received []event.Event) event.Event {
+	carr := carrier.NewAll(evts, func(received []event.Event) event.Event {
 		files := make([]*directory.File, 0, len(received))
 		for _, evt := range received {
 			if evt.Type() == directory.UploadFileSucceededType {
@@ -522,7 +523,7 @@ func (v *explorerViewModelImpl) UploadFiles(localPaths []string, dir *directory.
 			Files:     files,
 			Directory: dir,
 		})
-	}, onTimeout, event.WithTimeout(1*time.Second))
+	}, onTimeout, carrier.WithTimeout(1*time.Second))
 	v.bus.Publish(carr)
 	return nil
 }

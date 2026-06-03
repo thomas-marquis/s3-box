@@ -3,8 +3,8 @@ package s3
 import (
 	"fmt"
 
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 func (h *EventHandler) handleDeleteFile(evt event.Event) {

@@ -8,8 +8,9 @@ import (
 	"fyne.io/fyne/v2"
 	fyne_app "fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/theme"
+	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/it-happened/inmemory"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
@@ -72,7 +73,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	terminated := make(chan struct{})
 	notifier := infrastructure.NewNotificationPublisher(notification.LevelDebug)
 
-	eventBus := event.NewInMemoryBus(terminated, &notifierAdapter{notifier})
+	eventBus := inmemory.NewBus(terminated, &notifierAdapter{notifier})
 
 	fyneSettings := a.Settings()
 

@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/it-happened/carrier"
+	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/it-happened/inmemory"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
 )
 
@@ -21,7 +23,7 @@ func TestCarriesAll_Dispatch(t *testing.T) {
 		// Given
 		busDone := make(chan struct{})
 		defer close(busDone)
-		bus := event.NewInMemoryBus(busDone, &event.NopNotifier{})
+		bus := inmemory.NewBus(busDone, &event.NopNotifier{})
 
 		e1 := event.New(fakePayload("e1"))
 		e1Res := event.NewFollowup(e1, fakePayload2{})
@@ -34,7 +36,7 @@ func TestCarriesAll_Dispatch(t *testing.T) {
 
 		ed := event.New(fakePayload("done"))
 
-		c := event.NewCarriesAll(
+		c := carrier.NewAll(
 			[]event.Event{e1, e2, e3},
 			func([]event.Event) event.Event {
 				return ed

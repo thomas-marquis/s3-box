@@ -3,7 +3,8 @@ package directory
 import (
 	"errors"
 
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/it-happened/carrier"
+	"github.com/thomas-marquis/it-happened/event"
 )
 
 type ChangeType string
@@ -75,7 +76,7 @@ func (p *Preview) With(change Change) {
 func (p *Preview) ApplyAll(
 	doneEventFactory func(received []event.Event) event.Event,
 	onTimeout event.Event,
-	opts ...event.CarrierOption,
+	opts ...carrier.Option,
 ) (event.Event, error) {
 	if len(p.changes) == 0 {
 		return event.Event{}, errors.New("no changes to apply")
@@ -90,5 +91,5 @@ func (p *Preview) ApplyAll(
 		events[i] = event
 	}
 
-	return event.NewCarriesAll(events, doneEventFactory, onTimeout, opts...), nil
+	return carrier.NewAll(events, doneEventFactory, onTimeout, opts...), nil
 }

@@ -86,7 +86,10 @@ func (h *TestHarness) Expect(marble string, evtMap map[string]Payload) *TestHarn
 		h.payloads[k] = v
 	}
 
-	ops := parseMarble(marble)
+	ops, err := parseMarble(marble)
+	if err != nil {
+		panic(fmt.Sprintf("invalid marble syntax: %v", err))
+	}
 	currentTick := 0
 	for _, o := range ops {
 		h.applyOp(o, &currentTick, true)
@@ -114,7 +117,10 @@ func (h *TestHarness) Given(marble string, evtMap map[string]Payload) *TestHarne
 		h.payloads[k] = v
 	}
 
-	ops := parseMarble(marble)
+	ops, err := parseMarble(marble)
+	if err != nil {
+		panic(fmt.Sprintf("invalid marble syntax: %v", err))
+	}
 	currentTick := 0
 	for _, o := range ops {
 		h.applyOp(o, &currentTick, false)

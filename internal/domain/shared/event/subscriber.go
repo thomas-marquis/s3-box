@@ -41,14 +41,17 @@ func (s *Subscriber) listen() {
 			return
 		case event := <-s.events:
 			s.RLock()
-			for matcher, callback := range s.registered {
-				s.RUnlock()
+			handlers := make(map[Matcher]func(Event), len(s.registered))
+			for m, cb := range s.registered {
+				handlers[m] = cb
+			}
+			s.RUnlock()
+
+			for matcher, callback := range handlers {
 				if matcher.Match(event) {
 					callback(event)
 				}
-				s.RLock()
 			}
-			s.RUnlock()
 		}
 	}
 }
@@ -63,21 +66,23 @@ func (s *Subscriber) ListenWithWorkers(workers int) {
 func (s *Subscriber) ListenNonBlocking() {
 	s.started = true
 	go func() {
-
 		for {
 			select {
 			case <-s.done:
 				return
 			case event := <-s.events:
 				s.RLock()
-				for matcher, callback := range s.registered {
-					s.RUnlock()
+				handlers := make(map[Matcher]func(Event), len(s.registered))
+				for m, cb := range s.registered {
+					handlers[m] = cb
+				}
+				s.RUnlock()
+
+				for matcher, callback := range handlers {
 					if matcher.Match(event) {
 						go callback(event)
 					}
-					s.RLock()
 				}
-				s.RUnlock()
 			}
 		}
 	}()

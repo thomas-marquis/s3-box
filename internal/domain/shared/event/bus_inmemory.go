@@ -25,6 +25,7 @@ type inMemoryBus struct {
 	publishingChan chan publishedLoad
 	done           <-chan struct{}
 	notifier       Notifier
+	wg             sync.WaitGroup
 }
 
 // NewInMemoryBus creates a new in-memory event bus.
@@ -43,6 +44,7 @@ func NewInMemoryBus(done <-chan struct{}, notifier Notifier) Bus {
 	}
 
 	for i := 0; i < publicationWorkers; i++ {
+		b.wg.Add(1)
 		go b.pubWorker()
 	}
 
@@ -83,6 +85,7 @@ func (b *inMemoryBus) Publish(evt Event) {
 }
 
 func (b *inMemoryBus) pubWorker() {
+	defer b.wg.Done()
 	for {
 		select {
 		case <-b.done:
@@ -98,7 +101,11 @@ func (b *inMemoryBus) pubWorker() {
 
 func (b *inMemoryBus) terminate() {
 	<-b.done
+	b.wg.Wait()
+	b.Lock()
+	defer b.Unlock()
 	for subChanel := range b.subscribers {
 		close(subChanel)
 	}
+	clear(b.subscribers)
 }

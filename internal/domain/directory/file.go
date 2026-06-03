@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 // FileName is a value object representing a file name.

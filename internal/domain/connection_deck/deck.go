@@ -1,6 +1,6 @@
 package connection_deck
 
-import "github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+import "github.com/thomas-marquis/it-happened/event"
 
 // Deck represents a collection of connections and maintains a currently selected connection by its ID.
 // There is only one deck per user. The deck ensures the consistency of all operations performed over connections.

@@ -1,6 +1,6 @@
 package directory
 
-import "github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+import "github.com/thomas-marquis/it-happened/event"
 
 type StateType int
 

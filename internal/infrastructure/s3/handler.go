@@ -5,8 +5,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"

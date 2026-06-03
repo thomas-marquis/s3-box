@@ -1,6 +1,6 @@
 package connection_deck
 
-import "github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+import "github.com/thomas-marquis/it-happened/event"
 
 type ConnectionGetter interface {
 	Connection() *Connection

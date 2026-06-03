@@ -1,8 +1,8 @@
 package directory
 
 import (
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 const (

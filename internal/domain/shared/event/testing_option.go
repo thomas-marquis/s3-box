@@ -18,3 +18,10 @@ func WithHarnessTimeout(d time.Duration) TestHarnessOption {
 		h.timeout = d
 	}
 }
+
+// WithClock sets the clock used by the harness.
+func WithClock(c Clock) TestHarnessOption {
+	return func(h *TestHarness) {
+		h.clock = c
+	}
+}

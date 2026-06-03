@@ -1,6 +1,6 @@
 module github.com/thomas-marquis/s3-box
 
-go 1.24.6
+go 1.25.5
 
 require (
 	fyne.io/fyne/v2 v2.7.2
@@ -65,6 +65,7 @@ require (
 	github.com/shirou/gopsutil/v4 v4.25.6 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/testcontainers/testcontainers-go v0.40.0 // indirect
+	github.com/thomas-marquis/it-happened v0.1.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
 	github.com/tklauser/numcpus v0.7.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
@@ -78,6 +79,7 @@ require (
 	golang.org/x/mod v0.31.0 // indirect
 	google.golang.org/grpc v1.78.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
+	pgregory.net/rapid v1.3.0 // indirect
 )
 
 require (

@@ -3,8 +3,8 @@ package fileeditor
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 type State struct {

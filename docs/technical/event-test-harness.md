@@ -12,10 +12,16 @@ The `TestHarness` is a utility to simplify testing of event-driven flows. It all
     - `a`, `b`, `'label'`: Events. Each event also occupies one time tick in the diagram.
     - `(ab)`: Grouping. Multiple events or followup rules can happen at the same tick.
     - `'r<-e'`: Explicit followup rule (only in `Given`). Specifies that `r` should be published when `e` is received.
+    - `a->b`: Temporal ordering constraint. Event `a` must arrive before event `b`.
+    - `a[1-3]`: Temporal window constraint. Event `a` must arrive between ticks 1 and 3.
+    - `a--b`: Relative time constraint. Event `b` must arrive exactly 2 ticks after event `a`.
 - **Delayed Followup Activation**: Followup rules specified in `Given` can have delayed activation times based on their position in the marble string. The harness will retroactively check if triggers were already received before the rule became active.
 - **Lazy Publishing**: `Publish(evt)` calls are recorded and only executed when `PrayAndWait` is called.
 - **Strict Validation**: The harness ensures that events happen at the correct ticks and that no unexpected events occur during "nothing" ticks.
 - **Detailed Error Reporting**: When `PrayAndWait()` returns `false`, use `GetFailureReason()` to get a detailed explanation of what went wrong.
+- **Custom Matchers**: Support for custom event matchers via the `Matcher` interface. Built-in matchers include `AnyMatcher`, `FieldMatcher`, and type-based matchers.
+- **Multiple Buses**: Monitor and test interactions across multiple event buses simultaneously.
+- **Thread-Safe**: All components use proper synchronization to ensure thread safety.
 
 ## Usage
 
@@ -77,6 +83,68 @@ th.Given(given, payloads).
    Expect(exp, payloads).
    Publish(carrier)
 ```
+
+### Temporal Constraints
+
+Use temporal constraints to validate ordering, windows, and relative timing:
+
+```go
+// Ordering: a must arrive before b
+th.Expect("a->b", payloads)
+
+// Window: a must arrive between ticks 1 and 3
+th.Expect("a[1-3]", payloads)
+
+// Relative time: b must arrive exactly 2 ticks after a
+th.Expect("a--b", payloads)
+```
+
+### Custom Matchers
+
+Use custom matchers for more flexible event matching:
+
+```go
+// Match any event
+h.Expect("-a-", map[string]event.Payload{
+    "a": event.IsAny(),
+})
+
+// Match specific event type
+h.Expect("-a-", map[string]event.Payload{
+    "a": event.Is(MyEventType),
+})
+
+// Match events with specific field values
+h.Expect("-a-", map[string]event.Payload{
+    "a": &event.FieldMatcher{Field: "Status", Value: "completed"},
+})
+```
+
+### Multiple Buses
+
+Test interactions across multiple event buses:
+
+```go
+bus1 := event.NewInMemoryBus(done1, nil)
+bus2 := event.NewInMemoryBus(done2, nil)
+
+h := event.NewTestHarness(bus1).
+    AddBus(bus2)
+
+// Expect events from either bus
+h.Expect("-a-", payloads)
+```
+
+## Architecture
+
+The `TestHarness` is composed of several modular components:
+
+- **MarbleParser**: Parses marble diagram syntax into structured `MarbleEntry` objects.
+- **EventScheduler**: Schedules events to be published at specific ticks.
+- **EventMatcher**: Matches received events against expected labels using either payload comparison or custom matchers.
+- **FollowupManager**: Manages followup rules and retroactive triggering of responses.
+- **ExpectationValidator**: Validates that all expected events were received at the correct ticks and that no unexpected events occurred. Also validates temporal constraints.
+- **Clock**: Interface abstraction for time operations, with `RealClock` for production and `FakeClock` for deterministic testing.
 
 ## Internal Mechanism
 
