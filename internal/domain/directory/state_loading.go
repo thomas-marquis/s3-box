@@ -21,11 +21,11 @@ func (s *loadingState) Type() StateType {
 }
 
 func (s *loadingState) Load() (event.Event, error) {
-	return event.Event{}, NewError(s.d, "loading is still in progress")
+	return nil, NewError(s.d, "loading is still in progress")
 }
 
 func (s *loadingState) Notify(evt event.Event) error {
-	switch pl := evt.Payload.(type) {
+	switch pl := evt.Payload().(type) {
 	case LoadSucceeded:
 		s.d.setState(newLoadedState(s.baseState, pl.SubDirectories, pl.Files))
 

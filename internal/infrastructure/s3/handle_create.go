@@ -11,17 +11,17 @@ import (
 )
 
 func (h *EventHandler) handleCreateFile(evt event.Event) {
-	ctx := evt.Context
+	ctx := evt.Context()
 
-	e := evt.Payload.(directory.CreateFileTriggered)
+	pl := evt.Payload().(directory.CreateFileTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed creating file: %w", err))
 		h.bus.Publish(
-			event.NewFollowup(evt, directory.CreateFileFailed{Err: err, Directory: e.Directory}))
+			evt.NewFollowup(directory.CreateFileFailed{Err: err, Directory: pl.Directory}))
 	}
 
-	obj, err := h.loadFile(ctx, e.File, e.ConnectionID)
+	obj, err := h.loadFile(ctx, pl.File, pl.ConnectionID)
 	if err != nil {
 		handleError(err)
 		return
@@ -32,17 +32,17 @@ func (h *EventHandler) handleCreateFile(evt event.Event) {
 	}
 
 	h.bus.Publish(
-		event.NewFollowup(evt, directory.CreateFileSucceeded{File: e.File, Directory: e.Directory}))
+		evt.NewFollowup(directory.CreateFileSucceeded{File: pl.File, Directory: pl.Directory}))
 }
 
 func (h *EventHandler) handleCreateDirectory(e event.Event) {
-	ctx := e.Context
-	pl := e.Payload.(directory.CreateTriggered)
+	ctx := e.Context()
+	pl := e.Payload().(directory.CreateTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed creating directory: %w", err))
 		h.bus.Publish(
-			event.NewFollowup(e, directory.CreateFailed{Err: err, ParentDirectory: pl.ParentDirectory}))
+			e.NewFollowup(directory.CreateFailed{Err: err, ParentDirectory: pl.ParentDirectory}))
 	}
 
 	client, err := h.clientFactory.Get(ctx, pl.ParentDirectory.ConnectionID())
@@ -63,7 +63,7 @@ func (h *EventHandler) handleCreateDirectory(e event.Event) {
 	}
 
 	h.bus.Publish(
-		event.NewFollowup(e, directory.CreateSucceeded{ParentDirectory: pl.ParentDirectory, Directory: newDir}))
+		e.NewFollowup(directory.CreateSucceeded{ParentDirectory: pl.ParentDirectory, Directory: newDir}))
 }
 
 func (h *EventHandler) createEmptyDirectory(ctx context.Context, client s3client.Client, path directory.Path) error {

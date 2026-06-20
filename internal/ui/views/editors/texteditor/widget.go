@@ -103,7 +103,7 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 
 	sub := w.state.Bus.Subscribe().
 		On(event.Is(fileeditor.SaveTriggeredType), func(e event.Event) {
-			pl := e.Payload.(fileeditor.SaveTriggered)
+			pl := e.Payload().(fileeditor.SaveTriggered)
 			if !pl.File.Is(state.File) {
 				return
 			}
@@ -112,7 +112,7 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 			w.stateLabel.Set("Saving...") // nolint:errcheck
 		}).
 		On(event.Is(fileeditor.SaveSucceededType), func(e event.Event) {
-			pl := e.Payload.(fileeditor.SaveSucceeded)
+			pl := e.Payload().(fileeditor.SaveSucceeded)
 			if !pl.File.Is(state.File) {
 				return
 			}
@@ -133,7 +133,7 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 			}
 		}).
 		On(event.Is(fileeditor.SaveFailedType), func(e event.Event) {
-			pl := e.Payload.(fileeditor.SaveFailed)
+			pl := e.Payload().(fileeditor.SaveFailed)
 			if !pl.File.Is(state.File) {
 				return
 			}

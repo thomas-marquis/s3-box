@@ -73,7 +73,7 @@ func (h *EventHandler) Destroy() {
 }
 
 func (h *EventHandler) handleConnectionChanged(evt event.Event) {
-	if pl, ok := evt.Payload.(connection_deck.ConnectionGetter); ok {
+	if pl, ok := evt.Payload().(connection_deck.ConnectionGetter); ok {
 		cId := pl.Connection().ID()
 		h.clientFactory.Remove(cId)
 	}

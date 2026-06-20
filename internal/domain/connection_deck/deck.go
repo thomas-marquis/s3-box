@@ -65,7 +65,7 @@ func (d *Deck) Select(connID ConnectionID) (event.Event, error) {
 		}
 	}
 
-	return event.Event{}, ErrNotFound
+	return nil, ErrNotFound
 }
 
 // RemoveAConnection removes a connection with the given ID from the deck.
@@ -88,7 +88,7 @@ func (d *Deck) RemoveAConnection(connID ConnectionID) (event.Event, error) {
 		}
 	}
 
-	return event.Event{}, ErrNotFound
+	return nil, ErrNotFound
 }
 
 // SelectedConnection returns the currently selected connection or nil if no connection is selected.
@@ -117,7 +117,7 @@ func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (event.E
 		}
 	}
 	if !found {
-		return event.Event{}, ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	for _, opt := range options {
@@ -133,7 +133,7 @@ func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (event.E
 }
 
 func (d *Deck) Notify(evt event.Event) {
-	switch pl := evt.Payload.(type) {
+	switch pl := evt.Payload().(type) {
 	case CreateConnectionFailed:
 		for i, c := range d.connections {
 			if c.Is(pl.Connection()) {

@@ -152,12 +152,12 @@ func (d *Directory) NewSubDirectory(name string) (event.Event, error) {
 	path := d.path.NewSubPath(name)
 	for _, subDir := range d.currentState.SubDirectories() {
 		if subDir.Path() == path {
-			return event.Event{}, fmt.Errorf("subdirectory %s already exists", path)
+			return nil, fmt.Errorf("subdirectory %s already exists", path)
 		}
 	}
 	newDir, err := New(d.connectionID, name, d)
 	if err != nil {
-		return event.Event{}, fmt.Errorf("failed to create subdirectory: %w", err)
+		return nil, fmt.Errorf("failed to create subdirectory: %w", err)
 	}
 
 	return event.New(CreateTriggered{
@@ -171,11 +171,11 @@ func (d *Directory) NewSubDirectory(name string) (event.Event, error) {
 func (d *Directory) NewFile(name string, overwrite bool, opts ...FileOption) (event.Event, error) {
 	file, err := NewFile(name, d, opts...)
 	if err != nil {
-		return event.Event{}, fmt.Errorf("failed to create file: %w", err)
+		return nil, fmt.Errorf("failed to create file: %w", err)
 	}
 
 	if !overwrite && d.IsFileExists(file.Name()) {
-		return event.Event{}, errors.Join(
+		return nil, errors.Join(
 			ErrAlreadyExists,
 			fmt.Errorf("file %s already exists in directory %s", name, d.path))
 	}
@@ -198,7 +198,7 @@ func (d *Directory) RemoveFile(name FileName) (event.Event, error) {
 			}), nil
 		}
 	}
-	return event.Event{}, ErrNotFound
+	return nil, ErrNotFound
 }
 
 func (d *Directory) RemoveSubDirectory(name string) (event.Event, error) {
@@ -212,7 +212,7 @@ func (d *Directory) RemoveSubDirectory(name string) (event.Event, error) {
 			}), nil
 		}
 	}
-	return event.Event{}, ErrNotFound
+	return nil, ErrNotFound
 }
 
 // Rename triggers an event to change the name of the directory.

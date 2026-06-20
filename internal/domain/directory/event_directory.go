@@ -15,13 +15,13 @@ type CreateTriggered struct {
 	Directory       *Directory
 }
 
-func (e CreateTriggered) Type() event.Type {
+func (e CreateTriggered) EventType() event.Type {
 	return CreateTriggeredType
 }
 
 type CreateSucceeded CreateTriggered
 
-func (e CreateSucceeded) Type() event.Type {
+func (e CreateSucceeded) EventType() event.Type {
 	return CreateSucceededType
 }
 
@@ -30,7 +30,7 @@ type CreateFailed struct {
 	ParentDirectory *Directory
 }
 
-func (e CreateFailed) Type() event.Type {
+func (e CreateFailed) EventType() event.Type {
 	return CreateFailedType
 }
 
@@ -45,7 +45,7 @@ type DeleteTriggered struct {
 	DeletedDirPath Path
 }
 
-func (e DeleteTriggered) Type() event.Type {
+func (e DeleteTriggered) EventType() event.Type {
 	return DeleteTriggeredType
 }
 
@@ -53,7 +53,7 @@ type DeleteSucceeded struct {
 	Directory *Directory
 }
 
-func (e DeleteSucceeded) Type() event.Type {
+func (e DeleteSucceeded) EventType() event.Type {
 	return DeleteSucceededType
 }
 
@@ -61,7 +61,7 @@ type DeleteFailed struct {
 	Err error
 }
 
-func (e DeleteFailed) Type() event.Type {
+func (e DeleteFailed) EventType() event.Type {
 	return DeleteFailedType
 }
 
@@ -75,7 +75,7 @@ type LoadTriggered struct {
 	Directory *Directory
 }
 
-func (e LoadTriggered) Type() event.Type {
+func (e LoadTriggered) EventType() event.Type {
 	return LoadTriggeredType
 }
 
@@ -85,7 +85,7 @@ type LoadSucceeded struct {
 	SubDirectories []*Directory
 }
 
-func (e LoadSucceeded) Type() event.Type {
+func (e LoadSucceeded) EventType() event.Type {
 	return LoadSucceededType
 }
 
@@ -94,7 +94,7 @@ type LoadFailed struct {
 	Directory *Directory
 }
 
-func (e LoadFailed) Type() event.Type {
+func (e LoadFailed) EventType() event.Type {
 	return LoadFailedType
 }
 
@@ -109,7 +109,7 @@ type RenameTriggered struct {
 	NewName   string
 }
 
-func (e RenameTriggered) Type() event.Type {
+func (e RenameTriggered) EventType() event.Type {
 	return RenameTriggeredType
 }
 
@@ -118,7 +118,7 @@ type RenameSucceeded struct {
 	NewName   string
 }
 
-func (e RenameSucceeded) Type() event.Type {
+func (e RenameSucceeded) EventType() event.Type {
 	return RenameSucceededType
 }
 
@@ -128,7 +128,7 @@ type RenameFailed struct {
 	NewName   string
 }
 
-func (e RenameFailed) Type() event.Type {
+func (e RenameFailed) EventType() event.Type {
 	return RenameFailedType
 }
 
@@ -142,7 +142,7 @@ type RenameRecoveryTriggered struct {
 	Choice    RecoveryChoice
 }
 
-func (e RenameRecoveryTriggered) Type() event.Type {
+func (e RenameRecoveryTriggered) EventType() event.Type {
 	return RenameRecoveryTriggeredType
 }
 
@@ -158,7 +158,7 @@ type UserValidationAsked struct {
 	Message   string
 }
 
-func (e UserValidationAsked) Type() event.Type {
+func (e UserValidationAsked) EventType() event.Type {
 	return UserValidationAskedType
 }
 
@@ -167,7 +167,7 @@ type UserValidationAccepted struct {
 	Reason    event.Event
 }
 
-func (e UserValidationAccepted) Type() event.Type {
+func (e UserValidationAccepted) EventType() event.Type {
 	return UserValidationAcceptedType
 }
 
@@ -176,7 +176,7 @@ type UserValidationRefused struct {
 	Reason    event.Event
 }
 
-func (e UserValidationRefused) Type() event.Type {
+func (e UserValidationRefused) EventType() event.Type {
 	return UserValidationRefusedType
 }
 
@@ -194,7 +194,7 @@ type UploadTriggered struct {
 	Items     []*FsItem
 }
 
-func (e UploadTriggered) Type() event.Type {
+func (e UploadTriggered) EventType() event.Type {
 	return UploadTriggeredType
 }
 
@@ -204,7 +204,7 @@ type UploadPreviewed struct {
 	UploadableItems []*FsItem
 }
 
-func (e UploadPreviewed) Type() event.Type {
+func (e UploadPreviewed) EventType() event.Type {
 	return UploadPreviewedType
 }
 
@@ -214,7 +214,7 @@ type UploadConfirmed struct {
 	UploadableItems []*FsItem
 }
 
-func (e UploadConfirmed) Type() event.Type {
+func (e UploadConfirmed) EventType() event.Type {
 	return UploadConfirmedType
 }
 
@@ -222,7 +222,7 @@ type UploadAborted struct {
 	Directory *Directory
 }
 
-func (e UploadAborted) Type() event.Type {
+func (e UploadAborted) EventType() event.Type {
 	return UploadAbortedType
 }
 
@@ -231,13 +231,13 @@ type UploadFailed struct {
 	Directory *Directory
 }
 
-func (e UploadFailed) Type() event.Type {
+func (e UploadFailed) EventType() event.Type {
 	return UploadFailedType
 }
 
 type UploadSucceeded LoadSucceeded
 
-func (e UploadSucceeded) Type() event.Type {
+func (e UploadSucceeded) EventType() event.Type {
 	return UploadSucceededType
 }
 

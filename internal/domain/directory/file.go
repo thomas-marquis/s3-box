@@ -116,7 +116,7 @@ func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) e
 func (f *File) Rename(newName string) (event.Event, error) {
 	_, err := NewFileName(newName)
 	if err != nil {
-		return event.Event{}, err
+		return nil, err
 	}
 
 	return event.New(RenameFileTriggered{

@@ -50,7 +50,7 @@ func TestNewS3DirectoryRepository_renameFile(t *testing.T) {
 
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
-				pl, ok := evt.Payload.(directory.RenameFileSucceeded)
+				pl, ok := evt.Payload().(directory.RenameFileSucceeded)
 				res := assert.True(t, ok) &&
 					assert.Equal(t, "renamed.txt", pl.NewName)
 				close(done)
@@ -115,7 +115,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				pl, ok := evt.Payload.(directory.UserValidationAsked)
+				pl, ok := evt.Payload().(directory.UserValidationAsked)
 				assert.True(t, ok)
 				assert.Equal(t, inputEvt, pl.Reason)
 				close(done)
@@ -172,7 +172,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				pl, ok := evt.Payload.(directory.RenameSucceeded)
+				pl, ok := evt.Payload().(directory.RenameSucceeded)
 				assert.True(t, ok)
 				assert.Equal(t, originalDir, pl.Directory)
 				assert.Equal(t, "newname", pl.NewName)
@@ -242,7 +242,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				pl, ok := evt.Payload.(directory.RenameSucceeded)
+				pl, ok := evt.Payload().(directory.RenameSucceeded)
 				assert.True(t, ok)
 				assert.Equal(t, subdir, pl.Directory)
 				assert.Equal(t, "newname", pl.NewName)
@@ -306,7 +306,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				pl, ok := evt.Payload.(directory.RenameSucceeded)
+				pl, ok := evt.Payload().(directory.RenameSucceeded)
 				assert.True(t, ok)
 				assert.Equal(t, dir, pl.Directory)
 				assert.Equal(t, "newname", pl.NewName)
@@ -357,7 +357,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				defer close(done)
-				errPl, ok := evt.Payload.(directory.RenameFailed)
+				errPl, ok := evt.Payload().(directory.RenameFailed)
 				if !assert.True(t, ok) {
 					return false
 				}
@@ -440,7 +440,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		done := make(chan struct{})
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
-				errPl, ok := evt.Payload.(directory.RenameFailed)
+				errPl, ok := evt.Payload().(directory.RenameFailed)
 				if ok {
 					assert.Contains(t, errPl.Err.Error(), "destination directory already exists")
 					close(done)
@@ -485,7 +485,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				defer close(done)
-				errEvt, ok := evt.Payload.(directory.RenameFailed)
+				errEvt, ok := evt.Payload().(directory.RenameFailed)
 				if !assert.True(t, ok) {
 					return false
 				}
@@ -530,7 +530,7 @@ func TestNewRepositoryImpl_renameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				pl, ok := evt.Payload.(directory.RenameSucceeded)
+				pl, ok := evt.Payload().(directory.RenameSucceeded)
 				assert.True(t, ok)
 				assert.Equal(t, dir, pl.Directory)
 				assert.Equal(t, "newname", pl.NewName)
@@ -603,7 +603,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				defer close(done)
-				pl, ok := evt.Payload.(directory.RenameSucceeded)
+				pl, ok := evt.Payload().(directory.RenameSucceeded)
 				if ok {
 					assert.Equal(t, "newname", pl.NewName)
 				}
@@ -679,7 +679,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				defer close(done)
-				pl, ok := evt.Payload.(directory.RenameSucceeded)
+				pl, ok := evt.Payload().(directory.RenameSucceeded)
 				if ok {
 					assert.Equal(t, "oldname", pl.NewName)
 				}
@@ -757,7 +757,7 @@ func TestRepositoryImpl_resumeRenameDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				defer wg.Done()
-				pl, ok := evt.Payload.(directory.LoadSucceeded)
+				pl, ok := evt.Payload().(directory.LoadSucceeded)
 				if !ok {
 					return ok
 				}

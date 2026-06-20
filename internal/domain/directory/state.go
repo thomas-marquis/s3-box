@@ -49,19 +49,19 @@ func (s *baseState) Files() []*File {
 
 // UploadFile is deprecated
 func (s *baseState) UploadFile(string, bool) (event.Event, error) {
-	return event.Event{}, ErrNotLoaded
+	return nil, ErrNotLoaded
 }
 
 func (s *baseState) Upload([]*FsItem) (event.Event, error) {
-	return event.Event{}, ErrNotLoaded
+	return nil, ErrNotLoaded
 }
 
 func (s *baseState) ConfirmUpload([]*FsItem, UploadMode) (event.Event, error) {
-	return event.Event{}, ErrNotLoaded
+	return nil, ErrNotLoaded
 }
 
 func (s *baseState) Rename(string) (event.Event, error) {
-	return event.Event{}, ErrNotLoaded
+	return nil, ErrNotLoaded
 }
 
 func (s *baseState) Status() Status {
@@ -69,5 +69,5 @@ func (s *baseState) Status() Status {
 }
 
 func (s *baseState) Recover(RecoveryChoice) (event.Event, error) {
-	return event.Event{}, ErrNotResumable
+	return nil, ErrNotResumable
 }

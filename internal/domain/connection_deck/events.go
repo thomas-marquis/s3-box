@@ -37,7 +37,7 @@ type SelectConnectionTriggered struct {
 	Previous *Connection
 }
 
-func (e SelectConnectionTriggered) Type() event.Type {
+func (e SelectConnectionTriggered) EventType() event.Type {
 	return SelectConnectionTriggeredType
 }
 
@@ -46,7 +46,7 @@ type SelectConnectionSucceeded struct {
 	Deck *Deck
 }
 
-func (e SelectConnectionSucceeded) Type() event.Type {
+func (e SelectConnectionSucceeded) EventType() event.Type {
 	return SelectConnectionSucceededType
 }
 
@@ -55,7 +55,7 @@ type SelectConnectionFailed struct {
 	ConnectionPayload
 }
 
-func (e SelectConnectionFailed) Type() event.Type {
+func (e SelectConnectionFailed) EventType() event.Type {
 	return SelectConnectionFailedType
 }
 
@@ -83,7 +83,7 @@ type RemoveConnectionTriggered struct {
 	WasSelected  bool
 }
 
-func (e RemoveConnectionTriggered) Type() event.Type {
+func (e RemoveConnectionTriggered) EventType() event.Type {
 	return RemoveConnectionTriggeredType
 }
 
@@ -92,7 +92,7 @@ type RemoveConnectionSucceeded struct {
 	Deck *Deck
 }
 
-func (e RemoveConnectionSucceeded) Type() event.Type {
+func (e RemoveConnectionSucceeded) EventType() event.Type {
 	return RemoveConnectionSucceededType
 }
 
@@ -103,7 +103,7 @@ type RemoveConnectionFailed struct {
 	WasSelected  bool
 }
 
-func (e RemoveConnectionFailed) Type() event.Type {
+func (e RemoveConnectionFailed) EventType() event.Type {
 	return RemoveConnectionFailedType
 }
 
@@ -129,7 +129,7 @@ type CreateConnectionTriggered struct {
 	Deck *Deck
 }
 
-func (e CreateConnectionTriggered) Type() event.Type {
+func (e CreateConnectionTriggered) EventType() event.Type {
 	return CreateConnectionTriggeredType
 }
 
@@ -138,7 +138,7 @@ type CreateConnectionSucceeded struct {
 	Deck *Deck
 }
 
-func (e CreateConnectionSucceeded) Type() event.Type {
+func (e CreateConnectionSucceeded) EventType() event.Type {
 	return CreateConnectionSucceededType
 }
 
@@ -147,7 +147,7 @@ type CreateConnectionFailed struct {
 	Err error
 }
 
-func (e CreateConnectionFailed) Type() event.Type {
+func (e CreateConnectionFailed) EventType() event.Type {
 	return CreateConnectionFailedType
 }
 
@@ -174,7 +174,7 @@ type UpdateConnectionTriggered struct {
 	Previous *Connection
 }
 
-func (e UpdateConnectionTriggered) Type() event.Type {
+func (e UpdateConnectionTriggered) EventType() event.Type {
 	return UpdateConnectionTriggeredType
 }
 
@@ -183,7 +183,7 @@ type UpdateConnectionSucceeded struct {
 	Deck *Deck
 }
 
-func (e UpdateConnectionSucceeded) Type() event.Type {
+func (e UpdateConnectionSucceeded) EventType() event.Type {
 	return UpdateConnectionSucceededType
 }
 
@@ -192,7 +192,7 @@ type UpdateConnectionFailed struct {
 	Err error
 }
 
-func (e UpdateConnectionFailed) Type() event.Type {
+func (e UpdateConnectionFailed) EventType() event.Type {
 	return UpdateConnectionFailedType
 }
 

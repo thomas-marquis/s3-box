@@ -131,7 +131,7 @@ func AddFileToDirectory(t *testing.T, dir *directory.Directory, name string) *di
 	require.NoError(t, err)
 	require.Equal(t, directory.CreateFileTriggeredType, fEvt.Type())
 
-	f := fEvt.Payload.(directory.CreateFileTriggered).File
+	f := fEvt.Payload().(directory.CreateFileTriggered).File
 
 	err = dir.Notify(event.New(directory.CreateFileSucceeded{
 		File:      f,
@@ -168,7 +168,7 @@ func AddSubNotLoadedDirectoryToDirectory(t *testing.T, dir *directory.Directory,
 	require.NoError(t, err)
 	require.Equal(t, directory.CreateTriggeredType, newEvt.Type())
 
-	nd := newEvt.Payload.(directory.CreateTriggered).Directory
+	nd := newEvt.Payload().(directory.CreateTriggered).Directory
 
 	err = dir.Notify(event.New(directory.CreateSucceeded{
 		ParentDirectory: dir,
@@ -294,7 +294,7 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 	} else if cfg.parent != nil {
 		evt, err2 := cfg.parent.NewSubDirectory(cfg.name)
 		require.NoError(t, err2)
-		dir = evt.Payload.(directory.CreateTriggered).Directory
+		dir = evt.Payload().(directory.CreateTriggered).Directory
 		err = cfg.parent.Notify(event.New(directory.CreateSucceeded{
 			ParentDirectory: cfg.parent,
 			Directory:       dir,
@@ -318,7 +318,7 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 		for _, fileName := range cfg.files {
 			fEvt, err := dir.NewFile(fileName, false)
 			require.NoError(t, err)
-			f := fEvt.Payload.(directory.CreateFileTriggered).File
+			f := fEvt.Payload().(directory.CreateFileTriggered).File
 			require.NoError(t, dir.Notify(event.New(directory.CreateFileSucceeded{
 				File:      f,
 				Directory: dir,

@@ -41,7 +41,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				pl, ok := evt.Payload.(directory.CreateFileSucceeded)
+				pl, ok := evt.Payload().(directory.CreateFileSucceeded)
 				res := assert.True(t, ok) &&
 					assert.Equal(t, "new_file.txt", pl.File.Name().String())
 				close(done)

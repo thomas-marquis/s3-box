@@ -28,11 +28,11 @@ func (s *errorState) Load() (event.Event, error) {
 }
 
 func (s *errorState) UploadFile(localPtah string, overwrite bool) (event.Event, error) {
-	return event.Event{}, errors.New("you can't upload files to a resumable directory")
+	return nil, errors.New("you can't upload files to a resumable directory")
 }
 
 func (s *errorState) Notify(evt event.Event) error {
-	switch pl := evt.Payload.(type) {
+	switch pl := evt.Payload().(type) {
 
 	case RenameSucceeded:
 		s.d.name = pl.NewName
@@ -82,7 +82,7 @@ func (s *errorState) Recover(choice RecoveryChoice) (event.Event, error) {
 					Choice:    choice,
 				}), nil
 			}
-			return event.Event{}, err
+			return nil, err
 		}
 
 		if status.IsSourceDir {
@@ -99,5 +99,5 @@ func (s *errorState) Recover(choice RecoveryChoice) (event.Event, error) {
 			Choice:    choice,
 		}), nil
 	}
-	return event.Event{}, errors.New("nothing to recover")
+	return nil, errors.New("nothing to recover")
 }

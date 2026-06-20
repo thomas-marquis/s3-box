@@ -14,12 +14,12 @@ import (
 )
 
 func (h *EventHandler) handleUploadFile(e event.Event) {
-	ctx := e.Context
-	pl := e.Payload.(directory.UploadFileTriggered)
+	ctx := e.Context()
+	pl := e.Payload().(directory.UploadFileTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
-		h.bus.Publish(event.NewFollowup(e, directory.UploadFileFailed{Err: err, Directory: pl.Directory}))
+		h.bus.Publish(e.NewFollowup(directory.UploadFileFailed{Err: err, Directory: pl.Directory}))
 	}
 
 	client, err := h.clientFactory.Get(ctx, pl.Directory.ConnectionID())
@@ -59,25 +59,25 @@ func (h *EventHandler) handleUploadFile(e event.Event) {
 		return
 	}
 
-	h.bus.Publish(event.NewFollowup(e, directory.UploadFileSucceeded{File: newFile, Directory: pl.Directory}))
+	h.bus.Publish(e.NewFollowup(directory.UploadFileSucceeded{File: newFile, Directory: pl.Directory}))
 }
 
 func (h *EventHandler) handleUploadTriggered(e event.Event) {
-	pl := e.Payload.(directory.UploadTriggered)
+	pl := e.Payload().(directory.UploadTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("upload failed: %w", err))
-		h.bus.Publish(event.NewFollowup(e, directory.UploadFailed{Directory: pl.Directory, Err: err}))
+		h.bus.Publish(e.NewFollowup(directory.UploadFailed{Directory: pl.Directory, Err: err}))
 	}
 
-	client, err := h.clientFactory.Get(e.Context, pl.Directory.ConnectionID())
+	client, err := h.clientFactory.Get(e.Context(), pl.Directory.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
 	}
 
 	if len(pl.Items) == 1 && !pl.Items[0].IsDir {
-		if err := h.doUpload(e.Context, pl.Directory, pl.Items); err != nil {
+		if err := h.doUpload(e.Context(), pl.Directory, pl.Items); err != nil {
 			handleError(err)
 		}
 		return
@@ -87,7 +87,7 @@ func (h *EventHandler) handleUploadTriggered(e event.Event) {
 
 	// 2. Build search keys for all items
 	searchKeys := mapPathToSearchKey(pl.Directory.Path())
-	res, err := client.ListObjects(e.Context, searchKeys, true)
+	res, err := client.ListObjects(e.Context(), searchKeys, true)
 	if err != nil {
 		handleError(err)
 		return
@@ -115,7 +115,7 @@ func (h *EventHandler) handleUploadTriggered(e event.Event) {
 
 	// 4. Merge the search result with the items following each update mode rule
 
-	evt := event.NewFollowup(e, directory.UploadPreviewed{
+	evt := e.NewFollowup(directory.UploadPreviewed{
 		Directory:       pl.Directory,
 		Previews:        nil,
 		UploadableItems: pl.Items,
@@ -124,7 +124,7 @@ func (h *EventHandler) handleUploadTriggered(e event.Event) {
 }
 
 func (h *EventHandler) handleUpload(e event.Event) {
-	//pl := e.Payload.(directory.UploadConfirmed)
+	//pl := e.Payload().(directory.UploadConfirmed)
 }
 
 func (h *EventHandler) doUpload(ctx context.Context, dir *directory.Directory, items []*directory.FsItem) error {

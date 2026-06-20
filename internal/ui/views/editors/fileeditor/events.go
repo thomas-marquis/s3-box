@@ -16,7 +16,7 @@ type SaveTriggered struct {
 	Content string
 }
 
-func (e SaveTriggered) Type() event.Type {
+func (e SaveTriggered) EventType() event.Type {
 	return SaveTriggeredType
 }
 
@@ -25,7 +25,7 @@ type SaveSucceeded struct {
 	Content string
 }
 
-func (e SaveSucceeded) Type() event.Type {
+func (e SaveSucceeded) EventType() event.Type {
 	return SaveSucceededType
 }
 
@@ -34,6 +34,6 @@ type SaveFailed struct {
 	File *directory.File
 }
 
-func (e SaveFailed) Type() event.Type {
+func (e SaveFailed) EventType() event.Type {
 	return SaveFailedType
 }

@@ -43,7 +43,7 @@ func (s *loadedState) UploadFile(localPath string, overwrite bool) (event.Event,
 	fileName := filepath.Base(localPath)
 
 	if !overwrite && s.d.IsFileExists(FileName(fileName)) {
-		return event.Event{}, errors.Join(
+		return nil, errors.Join(
 			ErrAlreadyExists,
 			fmt.Errorf("file %s already exists in directory %s", fileName, s.d.path))
 	}
@@ -59,7 +59,7 @@ func (s *loadedState) UploadFile(localPath string, overwrite bool) (event.Event,
 func (s *loadedState) Upload(items []*FsItem) (event.Event, error) {
 	for _, i := range items {
 		if s.d.IsSubDirectoryExists(i.Name) {
-			return event.Event{}, errors.Join(
+			return nil, errors.Join(
 				ErrAlreadyExists,
 				fmt.Errorf("subdirectory %s already exists in directory %s", i.Name, s.d.path))
 		}
@@ -101,19 +101,19 @@ func (s *loadedState) ConfirmUpload(items []*FsItem, mode UploadMode) (event.Eve
 
 func (s *loadedState) Rename(newName string) (event.Event, error) {
 	if s.d.name == RootDirName {
-		return event.Event{}, errors.New("cannot rename root directory")
+		return nil, errors.New("cannot rename root directory")
 	}
 
 	if err := validateName(newName, s.d.parent.Path()); err != nil {
-		return event.Event{}, err
+		return nil, err
 	}
 
 	if newName == s.d.name {
-		return event.Event{}, fmt.Errorf("new name must be different from current name %s", s.d.name)
+		return nil, fmt.Errorf("new name must be different from current name %s", s.d.name)
 	}
 
 	if _, err := s.d.parent.GetSubDirectoryByName(newName); !errors.Is(err, ErrNotFound) {
-		return event.Event{}, fmt.Errorf("a directory with name %s already exists in %s", newName, s.d.parent.Path())
+		return nil, fmt.Errorf("a directory with name %s already exists in %s", newName, s.d.parent.Path())
 	}
 
 	s.d.setState(newLoadingState(s.baseState))
@@ -124,7 +124,7 @@ func (s *loadedState) Rename(newName string) (event.Event, error) {
 }
 
 func (s *loadedState) Notify(evt event.Event) error {
-	switch pl := evt.Payload.(type) {
+	switch pl := evt.Payload().(type) {
 	case DeleteSucceeded:
 		for i, subDirPath := range s.subDirs {
 			if subDirPath.Is(pl.Directory) {

@@ -79,16 +79,16 @@ func (p *Preview) ApplyAll(
 	opts ...carrier.Option,
 ) (event.Event, error) {
 	if len(p.changes) == 0 {
-		return event.Event{}, errors.New("no changes to apply")
+		return nil, errors.New("no changes to apply")
 	}
 
 	events := make([]event.Event, len(p.changes))
 	for i, change := range p.changes {
-		event, err := change.Apply()(p.dir)
+		evt, err := change.Apply()(p.dir)
 		if err != nil {
-			return event, err
+			return evt, err
 		}
-		events[i] = event
+		events[i] = evt
 	}
 
 	return carrier.NewAll(events, doneEventFactory, onTimeout, opts...), nil

@@ -220,12 +220,12 @@ func (v *explorerViewModelImpl) PendingUserValidations() <-chan directory.UserVa
 }
 
 func (v *explorerViewModelImpl) handleUserValidationRequest(evt event.Event) {
-	pl := evt.Payload.(directory.UserValidationAsked)
+	pl := evt.Payload().(directory.UserValidationAsked)
 	v.pendingUserValidations <- pl
 }
 
 func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
-	pl := evt.Payload.(directory.UserValidationRefused)
+	pl := evt.Payload().(directory.UserValidationRefused)
 	dir := pl.Directory
 
 	if err := dir.Notify(evt); err != nil {
@@ -321,7 +321,7 @@ func (v *explorerViewModelImpl) ReloadDirectory(dir *directory.Directory) error 
 }
 
 func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
-	pl := evt.Payload.(directory.LoadSucceeded)
+	pl := evt.Payload().(directory.LoadSucceeded)
 	dir := pl.Directory
 	if err := dir.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
@@ -340,7 +340,7 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
-	pl := evt.Payload.(directory.LoadFailed)
+	pl := evt.Payload().(directory.LoadFailed)
 	dir := pl.Directory
 	if err := dir.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
@@ -361,13 +361,13 @@ func (v *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
 }
 
 func (v *explorerViewModelImpl) handleDownloadFileSuccess(evt event.Event) {
-	pl := evt.Payload.(directory.DownloadFileSucceeded)
+	pl := evt.Payload().(directory.DownloadFileSucceeded)
 	v.infoMessage.Set( //nolint:errcheck
 		fmt.Sprintf("File %s downloaded", pl.File.Name()))
 }
 
 func (v *explorerViewModelImpl) handleDownloadFileFailure(evt event.Event) {
-	pl := evt.Payload.(directory.DownloadFileFailed)
+	pl := evt.Payload().(directory.DownloadFileFailed)
 	err := fmt.Errorf("error downloading file: %w", pl.Err)
 	v.notifier.NotifyError(err)
 	v.errorMessage.Set(err.Error()) //nolint:errcheck
@@ -394,9 +394,9 @@ func (v *explorerViewModelImpl) UploadFile(localPath string, dir *directory.Dire
 }
 
 func (v *explorerViewModelImpl) handleFileUploadSuccess(evt event.Event) {
-	pl := evt.Payload.(directory.UploadFileSucceeded)
+	pl := evt.Payload().(directory.UploadFileSucceeded)
 	if err := v.addNewFileToTree(pl.File); err != nil {
-		v.bus.Publish(event.NewFollowup(evt, directory.UploadFileFailed{
+		v.bus.Publish(evt.NewFollowup(directory.UploadFileFailed{
 			Err:       err,
 			Directory: pl.Directory,
 		}))
@@ -411,7 +411,7 @@ func (v *explorerViewModelImpl) handleFileUploadSuccess(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
-	pl := evt.Payload.(directory.UploadFileFailed)
+	pl := evt.Payload().(directory.UploadFileFailed)
 	err := fmt.Errorf("error uploading file: %w", pl.Err)
 	if notifErr := pl.Directory.Notify(evt); notifErr != nil {
 		err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
@@ -516,7 +516,7 @@ func (v *explorerViewModelImpl) UploadFiles(localPaths []string, dir *directory.
 		files := make([]*directory.File, 0, len(received))
 		for _, evt := range received {
 			if evt.Type() == directory.UploadFileSucceededType {
-				files = append(files, evt.Payload.(directory.UploadFileSucceeded).File)
+				files = append(files, evt.Payload().(directory.UploadFileSucceeded).File)
 			}
 		}
 		return event.New(directory.UploadMultipleFilesSucceeded{
@@ -550,7 +550,7 @@ func (v *explorerViewModelImpl) DeleteFile(file *directory.File) {
 }
 
 func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
-	pl := evt.Payload.(directory.DeleteFileSucceeded)
+	pl := evt.Payload().(directory.DeleteFileSucceeded)
 
 	if err := pl.ParentDirectory.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
@@ -558,7 +558,7 @@ func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
 	}
 
 	if err := v.tree.Remove(pl.File.FullPath()); err != nil {
-		v.bus.Publish(event.NewFollowup(evt, directory.DeleteFileFailed{
+		v.bus.Publish(evt.NewFollowup(directory.DeleteFileFailed{
 			Err:             err,
 			ParentDirectory: pl.ParentDirectory,
 		}))
@@ -571,7 +571,7 @@ func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleDeleteFileFailure(evt event.Event) {
-	pl := evt.Payload.(directory.DeleteFileFailed)
+	pl := evt.Payload().(directory.DeleteFileFailed)
 	if err := pl.ParentDirectory.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
@@ -632,10 +632,10 @@ func (v *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory
 }
 
 func (v *explorerViewModelImpl) handleCreateDirSuccess(evt event.Event) {
-	pl := evt.Payload.(directory.CreateSucceeded)
+	pl := evt.Payload().(directory.CreateSucceeded)
 	if err := v.addNewDirectoryToTree(pl.Directory); err != nil {
 		v.bus.Publish(
-			event.NewFollowup(evt, directory.CreateFailed{
+			evt.NewFollowup(directory.CreateFailed{
 				Err:             err,
 				ParentDirectory: pl.ParentDirectory,
 			}))
@@ -648,7 +648,7 @@ func (v *explorerViewModelImpl) handleCreateDirSuccess(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleCreateDirFailure(evt event.Event) {
-	pl := evt.Payload.(directory.CreateFailed)
+	pl := evt.Payload().(directory.CreateFailed)
 	if err := pl.ParentDirectory.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
@@ -677,9 +677,9 @@ func (v *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, nam
 }
 
 func (v *explorerViewModelImpl) handleCreateFileSuccess(evt event.Event) {
-	pl := evt.Payload.(directory.CreateFileSucceeded)
+	pl := evt.Payload().(directory.CreateFileSucceeded)
 	if err := v.addNewFileToTree(pl.File); err != nil {
-		v.bus.Publish(event.NewFollowup(evt, directory.CreateFileFailed{
+		v.bus.Publish(evt.NewFollowup(directory.CreateFileFailed{
 			Err:       err,
 			Directory: pl.Directory,
 		}))
@@ -693,7 +693,7 @@ func (v *explorerViewModelImpl) handleCreateFileSuccess(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleCreateFileFailure(evt event.Event) {
-	pl := evt.Payload.(directory.CreateFileFailed)
+	pl := evt.Payload().(directory.CreateFileFailed)
 	err := fmt.Errorf("error creating file: %w", pl.Err)
 	if notifErr := pl.Directory.Notify(evt); notifErr != nil {
 		err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
@@ -722,7 +722,7 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 }
 
 func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
-	pl := evt.Payload.(directory.RenameSucceeded)
+	pl := evt.Payload().(directory.RenameSucceeded)
 	dir := pl.Directory
 
 	defer func() {
@@ -769,7 +769,7 @@ func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
-	pl := evt.Payload.(directory.RenameFailed)
+	pl := evt.Payload().(directory.RenameFailed)
 	dir := pl.Directory
 
 	defer func() {
@@ -835,7 +835,7 @@ func (v *explorerViewModelImpl) RenameFile(file *directory.File, newName string)
 }
 
 func (v *explorerViewModelImpl) handleRenameFileSuccess(evt event.Event) {
-	pl := evt.Payload.(directory.RenameFileSucceeded)
+	pl := evt.Payload().(directory.RenameFileSucceeded)
 	file := pl.File
 	parentDir := pl.Directory
 
@@ -866,7 +866,7 @@ func (v *explorerViewModelImpl) handleRenameFileSuccess(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleRenameFileFailure(evt event.Event) {
-	pl := evt.Payload.(directory.RenameFileFailed)
+	pl := evt.Payload().(directory.RenameFileFailed)
 	err := fmt.Errorf("error renaming file: %w", pl.Err)
 	if err := pl.Directory.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
@@ -967,11 +967,11 @@ func (v *explorerViewModelImpl) addNewFileToTree(fileToAdd *directory.File) erro
 
 func (v *explorerViewModelImpl) handleConnectionChange(evt event.Event) {
 	var conn *connection_deck.Connection
-	pl, ok := evt.Payload.(connection_deck.SelectConnectionSucceeded)
+	pl, ok := evt.Payload().(connection_deck.SelectConnectionSucceeded)
 	if ok {
 		conn = pl.Connection()
 	} else {
-		e := evt.Payload.(connection_deck.UpdateConnectionSucceeded)
+		e := evt.Payload().(connection_deck.UpdateConnectionSucceeded)
 		conn = e.Connection()
 		if conn.ID() != v.selectedConnectionVal.ID() {
 			return
@@ -994,7 +994,7 @@ func (v *explorerViewModelImpl) handleConnectionChange(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) handleConnectionRemoved(evt event.Event) {
-	pl := evt.Payload.(connection_deck.RemoveConnectionSucceeded)
+	pl := evt.Payload().(connection_deck.RemoveConnectionSucceeded)
 	conn := pl.Connection()
 	if v.selectedConnectionVal != nil && v.selectedConnectionVal.Is(conn) {
 		v.selectedConnectionVal = nil
