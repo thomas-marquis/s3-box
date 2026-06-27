@@ -56,7 +56,7 @@ func (s *loadedState) UploadFile(localPath string, overwrite bool) (event.Event,
 	return uploadedEvt, nil
 }
 
-func (s *loadedState) Upload(items []*FsItem) (event.Event, error) {
+func (s *loadedState) UploadOLD(items []*FsItem) (event.Event, error) {
 	for _, i := range items {
 		if s.d.IsSubDirectoryExists(i.Name) {
 			return nil, errors.Join(
@@ -91,7 +91,7 @@ func (s *loadedState) Upload(items []*FsItem) (event.Event, error) {
 	//return uploadEvt, nil
 }
 
-func (s *loadedState) ConfirmUpload(items []*FsItem, mode UploadMode) (event.Event, error) { // TODO: necessary???
+func (s *loadedState) ConfirmUploadOLD(items []*FsItem, mode UploadMode) (event.Event, error) { // TODO: necessary???
 	return event.New(UploadConfirmed{
 		Directory:       s.d,
 		SelectedMode:    mode,

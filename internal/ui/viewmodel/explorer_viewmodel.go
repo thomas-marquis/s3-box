@@ -76,7 +76,7 @@ type ExplorerViewModel interface {
 	// Deprecated: use Upload instead
 	UploadFile(localPath string, dir *directory.Directory, overwrite bool) error
 
-	Upload(uris []fyne.URI, dir *directory.Directory) error
+	Upload(uris []fyne.URI, dir *directory.Directory) (*directory.Preview, error)
 
 	// DeleteFile removes a file from storage and updates the tree
 	DeleteFile(file *directory.File)
@@ -421,28 +421,26 @@ func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
 	v.triggerStateListeners()
 }
 
-func (v *explorerViewModelImpl) Upload(uris []fyne.URI, dir *directory.Directory) error {
+func (v *explorerViewModelImpl) Upload(uris []fyne.URI, dir *directory.Directory) (*directory.Preview, error) {
 	if len(uris) == 0 {
-		return nil
+		return nil, nil
 	}
-	basePath := filepath.Dir(uris[0].Path()) // TODO: get the shorter possible pase and extract its parent dir
-	var items []*directory.FsItem
-	dirItemsByPath := make(map[string]*directory.FsItem)
+
+	prev := dir.Preview()
+	prevsByPath := make(map[string]*directory.Preview)
+
 	for _, uri := range uris {
 		fi, err := os.Stat(uri.Path())
 		if err != nil {
-			return err
+			return nil, err
 		}
-		var currItem *directory.FsItem
+
 		if fi.IsDir() {
-			currItem = &directory.FsItem{
-				Name:     uri.Name(),
-				AbsPath:  uri.Path(),
-				BasePath: basePath,
-				IsDir:    true,
-				Children: make([]*directory.FsItem, 0),
+			dirPrev, err := prev.AddSubDirectory(uri.Name())
+			if err != nil {
+				return nil, err
 			}
-			dirItemsByPath[uri.Path()] = currItem
+			prevsByPath[uri.Path()] = dirPrev
 
 			if err := filepath.WalkDir(uri.Path(), func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
@@ -452,52 +450,35 @@ func (v *explorerViewModelImpl) Upload(uris []fyne.URI, dir *directory.Directory
 					return nil
 				}
 				parentPath := filepath.Dir(path)
-				parent, found := dirItemsByPath[parentPath]
-				if !found {
-					return nil
-				}
 
+				parentPrev := prevsByPath[parentPath]
 				if d.IsDir() {
-					item := &directory.FsItem{
-						Name:     d.Name(),
-						AbsPath:  path,
-						BasePath: basePath,
-						IsDir:    true,
-						Children: make([]*directory.FsItem, 0),
+					subprev, err := parentPrev.AddSubDirectory(d.Name())
+					if err != nil {
+						return err
 					}
-					parent.Children = append(parent.Children, item)
-					dirItemsByPath[path] = item
+					prevsByPath[path] = subprev
 				} else {
-					parent.Children = append(parent.Children, &directory.FsItem{
-						Name:     d.Name(),
-						AbsPath:  path,
-						BasePath: basePath,
-						IsDir:    false,
-					})
+					fii, err := d.Info()
+					if err != nil {
+						return err
+					}
+					if err := parentPrev.AddFile(d.Name(), int(fii.Size()), fii.ModTime()); err != nil {
+						return err
+					}
 				}
 				return nil
 			}); err != nil {
-				return err
+				return nil, err
 			}
 		} else {
-			currItem = &directory.FsItem{
-				Name:     uri.Name(),
-				AbsPath:  uri.Path(),
-				BasePath: basePath,
-				IsDir:    false,
+			if err := prev.AddFile(uri.Name(), int(fi.Size()), fi.ModTime()); err != nil {
+				return nil, err
 			}
 		}
-		items = append(items, currItem)
 	}
 
-	evt, err := dir.Upload(items)
-	if err != nil {
-		return err
-	}
-
-	v.bus.Publish(evt)
-
-	return nil
+	return prev, nil
 }
 
 func (v *explorerViewModelImpl) UploadFiles(localPaths []string, dir *directory.Directory, overwrite bool) error {
@@ -512,7 +493,7 @@ func (v *explorerViewModelImpl) UploadFiles(localPaths []string, dir *directory.
 		Err:       errors.New("failed to upload files: timeout"),
 		Directory: dir,
 	})
-	carr := carrier.NewAll(evts, func(received []event.Event) event.Event {
+	carr := carrier.NewAll(evts, func(carrierEvt event.Event, received []event.Event) event.Event {
 		files := make([]*directory.File, 0, len(received))
 		for _, evt := range received {
 			if evt.Type() == directory.UploadFileSucceededType {

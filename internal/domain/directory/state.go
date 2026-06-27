@@ -19,11 +19,14 @@ type state interface {
 	Files() []*File
 	SubDirectories() []*Directory
 
-	// Deprecated: use Upload and ConfirmUpload instead
+	// Deprecated: use Upload instead
 	UploadFile(localPath string, overwrite bool) (event.Event, error)
+	// Deprecated: use Upload instead
+	UploadOLD(items []*FsItem) (event.Event, error)
+	// Deprecated: use Upload instead
+	ConfirmUploadOLD(items []*FsItem, mode UploadMode) (event.Event, error)
 
-	Upload(items []*FsItem) (event.Event, error)
-	ConfirmUpload(items []*FsItem, mode UploadMode) (event.Event, error)
+	//Upload() error
 
 	Rename(newName string) (event.Event, error)
 	Notify(event.Event) error
@@ -52,11 +55,11 @@ func (s *baseState) UploadFile(string, bool) (event.Event, error) {
 	return nil, ErrNotLoaded
 }
 
-func (s *baseState) Upload([]*FsItem) (event.Event, error) {
+func (s *baseState) UploadOLD([]*FsItem) (event.Event, error) {
 	return nil, ErrNotLoaded
 }
 
-func (s *baseState) ConfirmUpload([]*FsItem, UploadMode) (event.Event, error) {
+func (s *baseState) ConfirmUploadOLD([]*FsItem, UploadMode) (event.Event, error) {
 	return nil, ErrNotLoaded
 }
 

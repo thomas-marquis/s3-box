@@ -227,7 +227,7 @@ func (d *Directory) UploadFile(localPath string, overwrite bool) (event.Event, e
 }
 
 func (d *Directory) Upload(items []*FsItem) (event.Event, error) {
-	return d.currentState.Upload(items)
+	return d.currentState.UploadOLD(items)
 }
 
 // Notify processes of various event types and updates the state of the directory accordingly.
@@ -328,6 +328,10 @@ func (d *Directory) Recover(choice RecoveryChoice) (event.Event, error) {
 // Could be nil if the directory hasn't any status.
 func (d *Directory) Status() Status {
 	return d.currentState.Status()
+}
+
+func (d *Directory) Preview() *Preview {
+	return newPreview(d, d)
 }
 
 func (d *Directory) setState(state state) {

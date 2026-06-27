@@ -17,6 +17,10 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 )
 
+const (
+	dropZoneInitialText = "Drop files here to upload"
+)
+
 type DirectoryDetails struct {
 	widget.BaseWidget
 
@@ -65,7 +69,7 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 		reloadAction:       reloadAction,
 		loadingBar:         loadingBar,
 		renameErrContent:   newRenameFailedPanel(appCtx.Window()),
-		dropZone:           NewDropZone("Drop files here to upload", appCtx.Window()),
+		dropZone:           NewDropZone(dropZoneInitialText, appCtx.Window()),
 	}
 	w.ExtendBaseWidget(w)
 
@@ -203,10 +207,21 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 				if !confirmed {
 					return
 				}
-				if err := vm.Upload(uris, dir); err != nil {
+				prev, err := vm.Upload(uris, dir)
+				if err != nil {
 					dialog.ShowError(err, w.appCtx.Window())
 					return
 				}
+				dial := dialog.NewCustom("Upload preview", "Cancel",
+					container.NewScroll(
+						NewDirectoryPreview(w.appCtx, prev),
+					),
+					w.appCtx.Window())
+				dial.Resize(fyne.NewSize(800, 600))
+				dial.SetOnClosed(func() {
+					w.dropZone.Reset()
+				})
+				dial.Show()
 			},
 			w.appCtx.Window(),
 		)
