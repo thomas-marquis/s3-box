@@ -11,15 +11,19 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
 type DirectoryPreview struct {
 	widget.BaseWidget
 
-	appCtx   appcontext.AppContext
-	data     binding.Tree[previewNodeItem]
-	preview  *directory.Preview
-	infoData binding.String
+	OnValidate func(strategy directory.MaterializeStrategy)
+
+	appCtx           appcontext.AppContext
+	data             binding.Tree[previewNodeItem]
+	preview          *directory.Preview
+	infoData         binding.String
+	selectedStrategy binding.Item[directory.MaterializeStrategy]
 }
 
 func NewDirectoryPreview(appCtx appcontext.AppContext, preview *directory.Preview) *DirectoryPreview {
@@ -30,10 +34,14 @@ func NewDirectoryPreview(appCtx appcontext.AppContext, preview *directory.Previe
 	initPreviewData(data, preview, "")
 
 	w := &DirectoryPreview{
-		appCtx:   appCtx,
-		data:     data,
-		preview:  preview,
-		infoData: binding.NewString(),
+		appCtx:     appCtx,
+		data:       data,
+		preview:    preview,
+		infoData:   binding.NewString(),
+		OnValidate: func(directory.MaterializeStrategy) {},
+		selectedStrategy: binding.NewItem[directory.MaterializeStrategy](func(s1, s2 directory.MaterializeStrategy) bool {
+			return s1 == s2
+		}),
 	}
 
 	w.ExtendBaseWidget(w)
@@ -41,15 +49,45 @@ func NewDirectoryPreview(appCtx appcontext.AppContext, preview *directory.Previe
 	return w
 }
 
+func (w *DirectoryPreview) makeContent(mainContent fyne.CanvasObject, validateLabel string) fyne.CanvasObject {
+	var validateBtn fyne.CanvasObject
+	onValidate := func() {
+		val, _ := w.selectedStrategy.Get()
+		w.OnValidate(val)
+	}
+	if validateLabel != "" {
+		validateBtn = widget.NewButton(validateLabel, onValidate)
+	} else {
+		validateBtn = NewButtonWithData(
+			uiutils.NewBindingItemFormatter(w.selectedStrategy, func(strategy directory.MaterializeStrategy) string {
+				return "Validate: " + strategy.String()
+			}),
+			onValidate)
+	}
+
+	return container.NewBorder(
+		widget.NewLabelWithData(w.infoData),
+		container.NewBorder(nil, nil, nil,
+			validateBtn,
+		),
+		nil, nil,
+		mainContent,
+	)
+}
+
 func (w *DirectoryPreview) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
 	strategies := w.preview.AvailableStrategies()
+	if len(strategies) == 0 {
+		panic("no strategies available")
+	}
+
+	w.selectedStrategy.Set(strategies[0]) //nolint:errcheck
 	if len(strategies) == 1 {
-		return widget.NewSimpleRenderer(container.NewBorder(
-			widget.NewLabelWithData(w.infoData), nil, nil, nil,
+		return widget.NewSimpleRenderer(w.makeContent(
 			w.makeTree(strategies[0]),
-		))
+			"Validate"))
 	}
 
 	var tis []*container.TabItem
@@ -62,14 +100,12 @@ func (w *DirectoryPreview) CreateRenderer() fyne.WidgetRenderer {
 	tabs := container.NewAppTabs(
 		tis...,
 	)
-	tabs.OnSelected = func(*container.TabItem) {
-		w.infoData.Set("")
+	tabs.OnSelected = func(item *container.TabItem) {
+		w.infoData.Set("")                                       //nolint:errcheck
+		w.selectedStrategy.Set(strategies[tabs.SelectedIndex()]) //nolint:errcheck
 	}
 
-	return widget.NewSimpleRenderer(container.NewBorder(
-		widget.NewLabelWithData(w.infoData), nil, nil, nil,
-		tabs,
-	))
+	return widget.NewSimpleRenderer(w.makeContent(tabs, ""))
 }
 
 func (w *DirectoryPreview) makeTree(strategy directory.MaterializeStrategy) *widget.Tree {
@@ -92,9 +128,23 @@ func (w *DirectoryPreview) makeTree(strategy directory.MaterializeStrategy) *wid
 			infoBtn := object.(*fyne.Container).Objects[2].(*widget.Button)
 
 			if ni.IsDir() {
-				icon.SetResource(theme.FolderIcon())
-				dirName := ni.Preview.Directory().Name()
-				label.SetText(dirName)
+				dir := ni.Preview.Directory()
+				if dir.Path() == directory.RootPath {
+					icon.SetResource(theme.StorageIcon())
+					label.SetText("Bucket root")
+				} else {
+					icon.SetResource(theme.FolderIcon())
+					if dir.Is(ni.Preview.MountPoint()) {
+						label.SetText(dir.Path().String())
+					} else {
+						val := dir.Name()
+						status := ni.Preview.DirStatus()
+						if status != "" {
+							val += " (" + status + ")"
+						}
+						label.SetText(val)
+					}
+				}
 				infoBtn.Hide()
 			} else {
 				icon.SetResource(theme.FileIcon())
@@ -112,7 +162,7 @@ func (w *DirectoryPreview) makeTree(strategy directory.MaterializeStrategy) *wid
 				if desc != "" {
 					infoBtn.Show()
 					infoBtn.OnTapped = func() {
-						w.infoData.Set(desc)
+						w.infoData.Set(desc) //nolint:errcheck
 					}
 				} else {
 					infoBtn.Hide()

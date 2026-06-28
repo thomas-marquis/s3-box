@@ -61,3 +61,24 @@ func GetUntypedList[T any](data binding.UntypedList) ([]T, error) {
 
 	return values, nil
 }
+
+type BindingItemFormatter[T any] struct {
+	binding.String
+
+	original   binding.Item[T]
+	formatFunc func(T) string
+}
+
+func NewBindingItemFormatter[T any](original binding.Item[T], formatFunc func(T) string) binding.String {
+	b := &BindingItemFormatter[T]{
+		String:     binding.NewString(),
+		original:   original,
+		formatFunc: formatFunc,
+	}
+
+	original.AddListener(binding.NewDataListener(func() {
+		item, _ := b.original.Get()
+		b.String.Set(b.formatFunc(item)) //nolint:errcheck
+	}))
+	return b
+}

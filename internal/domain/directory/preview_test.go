@@ -59,10 +59,10 @@ func TestPreview_Materialize(t *testing.T) {
 
 		require.NoError(t, prevGo.AddFile("file6.go", 0, time.Now()))
 
-		mat := directory.NewSkipUploadMaterializer(prev, "/home/user/data/")
+		mat := directory.NewUploadMaterializer(prev, "/home/user/data/")
 
 		// When
-		res := mat.Materialize()
+		res := mat.Materialize(directory.MaterializeSkip)
 
 		// Then
 		eventest.IsType(t, res, carrier.SequenceType)
@@ -137,10 +137,10 @@ func TestPreview_Materialize(t *testing.T) {
 
 		require.NoError(t, prevGo.AddFile("file6.go", 0, time.Now()))
 
-		mat := directory.NewSkipUploadMaterializer(prev, "/home/user/data/")
+		mat := directory.NewUploadMaterializer(prev, "/home/user/data/")
 
 		// When
-		res := mat.Materialize()
+		res := mat.Materialize(directory.MaterializeSkip)
 
 		// Then
 		eventest.IsType(t, res, carrier.SequenceType)

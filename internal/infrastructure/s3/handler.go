@@ -59,10 +59,10 @@ func (h *EventHandler) Listen() {
 		On(event.IsOneOf(
 			connection_deck.RemoveConnectionSucceededType,
 			connection_deck.UpdateConnectionSucceededType,
-		), h.handleConnectionChanged).
-		On(event.Is(directory.UploadTriggeredType), h.handleUploadTriggered)
+		), h.handleConnectionChanged)
+	//On(event.Is(directory.UploadTriggeredType), h.handleUploadTriggered)
 
-	h.subscriber.ListenNonBlocking() // TODO: set a limit of simultaneous tasks
+	h.subscriber.ListenWithWorkers(20)
 }
 
 func (h *EventHandler) Destroy() {

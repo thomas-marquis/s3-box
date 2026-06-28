@@ -52,7 +52,7 @@ func newPreview(mount, dir *Directory) *Preview {
 
 func (p *Preview) AddSubDirectory(name string) (*Preview, error) {
 	for _, sd := range p.children {
-		if sd.mountPoint.Name() == name {
+		if sd.dir.Name() == name {
 			return nil, errors.New("sub directory preview already exists in the preview")
 		}
 	}
@@ -76,6 +76,7 @@ func (p *Preview) AddSubDirectory(name string) (*Preview, error) {
 
 	newPrev := newPreview(p.mountPoint, subDir)
 	p.children = append(p.children, newPrev)
+	newPrev.parent = p
 	return newPrev, nil
 }
 
@@ -109,6 +110,10 @@ func (p *Preview) AddFile(name string, sizeBytes int, lastModified time.Time) er
 
 func (p *Preview) Directory() *Directory {
 	return p.dir
+}
+
+func (p *Preview) MountPoint() *Directory {
+	return p.mountPoint
 }
 
 func (p *Preview) Files() []*File {
@@ -156,6 +161,13 @@ func (p *Preview) FileStatus(strategy MaterializeStrategy, fileName string) (str
 	panic("invalid materialize strategy")
 }
 
+func (p *Preview) DirStatus() string {
+	if p.dir.Parent().IsSubDirectoryExists(p.dir.Name()) {
+		return ""
+	}
+	return "New"
+}
+
 func (p *Preview) GetByPath(path Path) (*Preview, error) {
 	if p.dir.Path() == path {
 		return p, nil
@@ -169,19 +181,19 @@ func (p *Preview) GetByPath(path Path) (*Preview, error) {
 }
 
 type Materializer interface {
-	Materialize() event.Event
+	Materialize(strategy MaterializeStrategy) event.Event
 }
 
-type materializeUploadSkip struct {
+type materializeUpload struct {
 	preview     *Preview
 	srcBasePath string
 }
 
-func NewSkipUploadMaterializer(preview *Preview, srcBasePath string) Materializer {
-	return &materializeUploadSkip{preview: preview, srcBasePath: srcBasePath}
+func NewUploadMaterializer(preview *Preview, srcBasePath string) Materializer {
+	return &materializeUpload{preview: preview, srcBasePath: srcBasePath}
 }
 
-func (m *materializeUploadSkip) Materialize() event.Event {
+func (m *materializeUpload) Materialize(strategy MaterializeStrategy) event.Event {
 	var (
 		layerEvts      []event.Event
 		currLayerPrevs []*Preview
@@ -189,22 +201,20 @@ func (m *materializeUploadSkip) Materialize() event.Event {
 
 	currLayerPrevs = append(currLayerPrevs, m.preview)
 
-	for {
-		if len(currLayerPrevs) == 0 {
-			break
-		}
-
+	for len(currLayerPrevs) > 0 {
 		var evts []event.Event
 		for _, prev := range currLayerPrevs {
 			for _, f := range prev.files {
-				if prev.dir.IsFileExists(f.Name()) {
+				if strategy == MaterializeSkip && prev.dir.IsFileExists(f.Name()) {
 					continue // skip when file already exists
 				}
+
 				fileRelPath, err := prev.dir.Path().RelativeTo(prev.mountPoint.Path())
 				if err != nil {
 					panic(err) // should never happen
 				}
 				uploadPath := filepath.Join(m.srcBasePath, fileRelPath.String(), f.Name().String())
+
 				evts = append(evts, event.New(UploadFileTriggered{
 					Directory: prev.dir,
 					SrcPath:   uploadPath,
@@ -213,7 +223,7 @@ func (m *materializeUploadSkip) Materialize() event.Event {
 
 			for _, sd := range prev.children {
 				if prev.dir.IsSubDirectoryExists(sd.dir.Name()) {
-					continue // skip when sub directory already exists
+					continue // skip when subdirectory already exists, whatever the strategy
 				}
 				evts = append(evts, event.New(CreateTriggered{
 					ParentDirectory: sd.parent.dir,
@@ -222,13 +232,15 @@ func (m *materializeUploadSkip) Materialize() event.Event {
 			}
 		}
 
-		layerEvts = append(layerEvts, carrier.NewAll(evts,
-			func(evtCarrier event.Event, received []event.Event) event.Event {
-				return evtCarrier.NewFollowup(event.ItHappened{})
-			},
-			nil,
-			carrier.WithTimeout(time.Second*120),
-		))
+		if len(evts) != 0 {
+			layerEvts = append(layerEvts, carrier.NewAll(evts,
+				func(evtCarrier event.Event, received []event.Event) event.Event {
+					return evtCarrier.NewFollowup(event.ItHappened{})
+				},
+				nil,
+				carrier.WithTimeout(time.Second*120),
+			))
+		}
 		tmpLay := make([]*Preview, 0)
 		for _, sd := range currLayerPrevs {
 			if sd.children == nil {
@@ -252,14 +264,16 @@ func (m *materializeUploadSkip) Materialize() event.Event {
 }
 
 type materializeLoad struct {
-	preview *Preview
+	preview             *Preview
+	doneEventPayload    event.Payload
+	timeoutEventPayload event.Payload
 }
 
-func NewLoadMaterializer(preview *Preview) Materializer {
-	return &materializeLoad{preview: preview}
+func NewLoadMaterializer(preview *Preview, doneEventPayload, timeoutEventPayload event.Payload) Materializer {
+	return &materializeLoad{preview: preview, doneEventPayload: doneEventPayload, timeoutEventPayload: timeoutEventPayload}
 }
 
-func (m *materializeLoad) Materialize() event.Event {
+func (m *materializeLoad) Materialize(MaterializeStrategy) event.Event {
 	return m.makeNextEvent(nil, []*Directory{m.preview.Directory()})
 }
 
@@ -280,9 +294,9 @@ func (m *materializeLoad) makeNextEvent(carrierEvt event.Event, dirs []*Director
 
 	if len(nextEvts) == 0 {
 		if carrierEvt != nil {
-			return carrierEvt.NewFollowup(LoadManySucceeded{})
+			return carrierEvt.NewFollowup(m.doneEventPayload)
 		}
-		return event.New(LoadManySucceeded{})
+		return event.New(m.doneEventPayload)
 	}
 
 	return carrier.NewAll(nextEvts,
@@ -303,8 +317,6 @@ func (m *materializeLoad) makeNextEvent(carrierEvt event.Event, dirs []*Director
 			}
 			return m.makeNextEvent(evtCarrier, nexDirs)
 		},
-		event.New(LoadManyFailed{
-			Err: errors.New("timeout"),
-		}),
+		event.New(m.timeoutEventPayload),
 	)
 }

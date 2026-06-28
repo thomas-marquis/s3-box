@@ -71,18 +71,11 @@ func (s *loadedState) UploadOLD(items []*FsItem) (event.Event, error) {
 		}
 	}
 
-	return event.New(UploadTriggered{
-		Directory: s.d,
-		Items:     items,
-	}), nil
-}
-
-func (s *loadedState) ConfirmUploadOLD(items []*FsItem, mode UploadMode) (event.Event, error) { // TODO: necessary???
-	return event.New(UploadConfirmed{
-		Directory:       s.d,
-		SelectedMode:    mode,
-		UploadableItems: items,
-	}), nil
+	//return event.New(UploadTriggered{
+	//	Directory: s.d,
+	//	Items:     items,
+	//}), nil
+	return nil, nil
 }
 
 func (s *loadedState) Rename(newName string) (event.Event, error) {

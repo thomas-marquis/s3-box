@@ -70,8 +70,8 @@ const (
 	LoadSucceededType event.Type = "event.directory.load.succeeded"
 	LoadFailedType    event.Type = "event.directory.load.failed"
 
-	LoadManyFailedType    event.Type = "event.directory.load.many.failed"
-	LoadManySucceededType event.Type = "event.directory.load.many.succeeded"
+	//LoadManyFailedType    event.Type = "event.directory.load.many.failed"
+	//LoadManySucceededType event.Type = "event.directory.load.many.succeeded"
 )
 
 type LoadTriggered struct {
@@ -101,19 +101,21 @@ func (e LoadFailed) EventType() event.Type {
 	return LoadFailedType
 }
 
-type LoadManyFailed struct {
-	Err error
-}
-
-func (e LoadManyFailed) EventType() event.Type {
-	return LoadManyFailedType
-}
-
-type LoadManySucceeded struct{}
-
-func (e LoadManySucceeded) EventType() event.Type {
-	return LoadManySucceededType
-}
+//type LoadManyFailed struct {
+//	Err error
+//}
+//
+//func (e LoadManyFailed) EventType() event.Type {
+//	return LoadManyFailedType
+//}
+//
+//type LoadManySucceeded struct {
+//	SrcDir *Directory
+//}
+//
+//func (e LoadManySucceeded) EventType() event.Type {
+//	return LoadManySucceededType
+//}
 
 const (
 	RenameTriggeredType event.Type = "event.directory.rename.triggered"
@@ -198,50 +200,50 @@ func (e UserValidationRefused) EventType() event.Type {
 }
 
 const (
-	UploadTriggeredType event.Type = "event.directory.upload.triggered"
-	UploadPreviewedType event.Type = "event.directory.upload.previewed"
-	UploadConfirmedType event.Type = "event.directory.upload.confirmed"
-	UploadAbortedType   event.Type = "event.directory.upload.aborted"
+	UploadReadyType event.Type = "event.directory.upload.ready"
+	//UploadPreviewedType event.Type = "event.directory.upload.previewed"
 	UploadFailedType    event.Type = "event.directory.upload.failed"
 	UploadSucceededType event.Type = "event.directory.upload.succeeded"
+	//UploadConfirmedType event.Type = "event.directory.upload.confirmed"
+	//UploadAbortedType   event.Type = "event.directory.upload.aborted"
 )
 
-type UploadTriggered struct {
+type UploadReady struct {
 	Directory *Directory
-	Items     []*FsItem
+	SrcPaths  []string
 }
 
-func (e UploadTriggered) EventType() event.Type {
-	return UploadTriggeredType
+func (e UploadReady) EventType() event.Type {
+	return UploadReadyType
 }
 
-type UploadPreviewed struct {
-	Directory       *Directory
-	Previews        map[UploadMode][]any
-	UploadableItems []*FsItem
-}
+//type UploadPreviewed struct {
+//	Directory       *Directory
+//	Previews        map[UploadMode][]any
+//	UploadableItems []*FsItem
+//}
+//
+//func (e UploadPreviewed) EventType() event.Type {
+//	return UploadPreviewedType
+//}
 
-func (e UploadPreviewed) EventType() event.Type {
-	return UploadPreviewedType
-}
+//type UploadConfirmed struct {
+//	Directory       *Directory
+//	SelectedMode    UploadMode
+//	UploadableItems []*FsItem
+//}
+//
+//func (e UploadConfirmed) EventType() event.Type {
+//	return UploadConfirmedType
+//}
 
-type UploadConfirmed struct {
-	Directory       *Directory
-	SelectedMode    UploadMode
-	UploadableItems []*FsItem
-}
-
-func (e UploadConfirmed) EventType() event.Type {
-	return UploadConfirmedType
-}
-
-type UploadAborted struct {
-	Directory *Directory
-}
-
-func (e UploadAborted) EventType() event.Type {
-	return UploadAbortedType
-}
+//type UploadAborted struct {
+//	Directory *Directory
+//}
+//
+//func (e UploadAborted) EventType() event.Type {
+//	return UploadAbortedType
+//}
 
 type UploadFailed struct {
 	Err       error

@@ -3,6 +3,7 @@ package widget
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -36,7 +37,9 @@ type DirectoryDetails struct {
 	reloadAction       *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
 
-	dropZone *DropZone
+	dropZone      *DropZone
+	mu            sync.Mutex
+	isPreviewOpen bool
 }
 
 func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
@@ -47,8 +50,8 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	actionRequiredBtn.Hide()
 
 	reloadAction := NewToolbarButton("Reload", theme.ViewRefreshIcon(), func() {})
-	createDirAction := NewToolbarButton("New empty directory", theme.FolderNewIcon(), func() {})
-	createFileAction := NewToolbarButton("New empty file", theme.ContentAddIcon(), func() {})
+	createDirAction := NewToolbarButton("Create directory", theme.FolderNewIcon(), func() {})
+	createFileAction := NewToolbarButton("Create file", theme.ContentAddIcon(), func() {})
 	renameAction := NewToolbarButton("Rename", theme.FileTextIcon(), func() {})
 	toolbar := widget.NewToolbar(
 		reloadAction,
@@ -199,23 +202,43 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 
 	w.dropZone.Reset()
 	w.dropZone.OnFilesDropped = func(uris []fyne.URI) {
-		prev, err := vm.Upload(uris, dir)
-		if err != nil {
+		if err := vm.PrepareUpload(uris, dir); err != nil {
 			dialog.ShowError(err, w.appCtx.Window())
 			return
 		}
-		dial := dialog.NewCustom(
-			fmt.Sprintf("Uploading %d files - preview", len(uris)),
-			"Cancel",
-			container.NewScroll(
-				NewDirectoryPreview(w.appCtx, prev),
-			),
-			w.appCtx.Window())
-		dial.Resize(fyne.NewSize(800, 600))
-		dial.SetOnClosed(w.dropZone.Reset)
-		dial.Show()
 	}
 	w.dropZone.OnClick = w.makeOnUpload(vm, dir)
+
+	vm.CurrentPreview().AddListener(binding.NewDataListener(func() {
+		prev, err := vm.CurrentPreview().Get()
+		w.mu.Lock()
+		if err != nil || (prev == viewmodel.UploadPreviewState{}) || w.isPreviewOpen {
+			w.mu.Unlock()
+			return
+		}
+		w.isPreviewOpen = true
+		w.mu.Unlock()
+
+		dirPreview := NewDirectoryPreview(w.appCtx, prev.Preview)
+		dirPreview.OnValidate = func(selectedStrategy directory.MaterializeStrategy) {
+			vm.DoUpload(prev.BaseUri, prev.Preview, selectedStrategy)
+		}
+
+		dial := dialog.NewCustom(
+			"Upload previewer",
+			"Cancel",
+			container.NewScroll(dirPreview),
+			w.appCtx.Window())
+		dial.Resize(fyne.NewSize(800, 600))
+		dial.SetOnClosed(func() {
+			w.dropZone.Reset()
+			vm.CurrentPreview().Set(viewmodel.UploadPreviewState{}) //nolint:errcheck
+			w.mu.Lock()
+			w.isPreviewOpen = false
+			w.mu.Unlock()
+		})
+		dial.Show()
+	}))
 }
 
 func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func(bool) {
@@ -233,14 +256,14 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 			}
 
 			localDestFilePath := reader.URI().Path()
-			if err := vm.UploadFile(localDestFilePath, dir, false); err != nil {
+			if err := vm.UploadOne(localDestFilePath, dir, false); err != nil {
 				if errors.Is(err, directory.ErrAlreadyExists) {
 					dialog.ShowConfirm(
 						"This file already exists",
 						"Do you want to overwrite it?",
 						func(b bool) {
 							if b {
-								if err := vm.UploadFile(localDestFilePath, dir, true); err != nil {
+								if err := vm.UploadOne(localDestFilePath, dir, true); err != nil {
 									dialog.ShowError(err, w.appCtx.Window())
 								}
 							}

@@ -23,8 +23,6 @@ type state interface {
 	UploadFile(localPath string, overwrite bool) (event.Event, error)
 	// Deprecated: use Upload instead
 	UploadOLD(items []*FsItem) (event.Event, error)
-	// Deprecated: use Upload instead
-	ConfirmUploadOLD(items []*FsItem, mode UploadMode) (event.Event, error)
 
 	Preview() (*Preview, error)
 
@@ -56,10 +54,6 @@ func (s *baseState) UploadFile(string, bool) (event.Event, error) {
 }
 
 func (s *baseState) UploadOLD([]*FsItem) (event.Event, error) {
-	return nil, ErrNotLoaded
-}
-
-func (s *baseState) ConfirmUploadOLD([]*FsItem, UploadMode) (event.Event, error) {
 	return nil, ErrNotLoaded
 }
 
