@@ -199,32 +199,21 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 
 	w.dropZone.Reset()
 	w.dropZone.OnFilesDropped = func(uris []fyne.URI) {
-		w.dropZone.Text = fmt.Sprintf("Uploading %d files...", len(uris))
-		dialog.ShowConfirm(
-			fmt.Sprintf("Uploading %d files", len(uris)),
-			"Are you sure you want to upload these files?",
-			func(confirmed bool) {
-				if !confirmed {
-					return
-				}
-				prev, err := vm.Upload(uris, dir)
-				if err != nil {
-					dialog.ShowError(err, w.appCtx.Window())
-					return
-				}
-				dial := dialog.NewCustom("Upload preview", "Cancel",
-					container.NewScroll(
-						NewDirectoryPreview(w.appCtx, prev),
-					),
-					w.appCtx.Window())
-				dial.Resize(fyne.NewSize(800, 600))
-				dial.SetOnClosed(func() {
-					w.dropZone.Reset()
-				})
-				dial.Show()
-			},
-			w.appCtx.Window(),
-		)
+		prev, err := vm.Upload(uris, dir)
+		if err != nil {
+			dialog.ShowError(err, w.appCtx.Window())
+			return
+		}
+		dial := dialog.NewCustom(
+			fmt.Sprintf("Uploading %d files - preview", len(uris)),
+			"Cancel",
+			container.NewScroll(
+				NewDirectoryPreview(w.appCtx, prev),
+			),
+			w.appCtx.Window())
+		dial.Resize(fyne.NewSize(800, 600))
+		dial.SetOnClosed(w.dropZone.Reset)
+		dial.Show()
 	}
 	w.dropZone.OnClick = w.makeOnUpload(vm, dir)
 }

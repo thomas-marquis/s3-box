@@ -26,7 +26,7 @@ type state interface {
 	// Deprecated: use Upload instead
 	ConfirmUploadOLD(items []*FsItem, mode UploadMode) (event.Event, error)
 
-	//Upload() error
+	Preview() (*Preview, error)
 
 	Rename(newName string) (event.Event, error)
 	Notify(event.Event) error
@@ -73,4 +73,8 @@ func (s *baseState) Status() Status {
 
 func (s *baseState) Recover(RecoveryChoice) (event.Event, error) {
 	return nil, ErrNotResumable
+}
+
+func (s *baseState) Preview() (*Preview, error) {
+	return nil, ErrNotLoaded
 }

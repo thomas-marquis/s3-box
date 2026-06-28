@@ -185,6 +185,7 @@ func (v *editorViewModelImpl) handleFileSave(e event.Event) {
 			}))
 			return
 		}
+		pl.File.SetSizeBytes(len(pl.Content))
 		v.bus.Publish(e.NewFollowup(fileeditor.SaveSucceeded(pl)))
 	}()
 

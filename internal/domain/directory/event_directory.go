@@ -69,6 +69,9 @@ const (
 	LoadTriggeredType event.Type = "event.directory.load.triggered"
 	LoadSucceededType event.Type = "event.directory.load.succeeded"
 	LoadFailedType    event.Type = "event.directory.load.failed"
+
+	LoadManyFailedType    event.Type = "event.directory.load.many.failed"
+	LoadManySucceededType event.Type = "event.directory.load.many.succeeded"
 )
 
 type LoadTriggered struct {
@@ -96,6 +99,20 @@ type LoadFailed struct {
 
 func (e LoadFailed) EventType() event.Type {
 	return LoadFailedType
+}
+
+type LoadManyFailed struct {
+	Err error
+}
+
+func (e LoadManyFailed) EventType() event.Type {
+	return LoadManyFailedType
+}
+
+type LoadManySucceeded struct{}
+
+func (e LoadManySucceeded) EventType() event.Type {
+	return LoadManySucceededType
 }
 
 const (

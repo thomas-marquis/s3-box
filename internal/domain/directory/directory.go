@@ -330,8 +330,8 @@ func (d *Directory) Status() Status {
 	return d.currentState.Status()
 }
 
-func (d *Directory) Preview() *Preview {
-	return newPreview(d, d)
+func (d *Directory) Preview() (*Preview, error) {
+	return d.currentState.Preview()
 }
 
 func (d *Directory) setState(state state) {

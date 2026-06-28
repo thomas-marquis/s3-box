@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/it-happened/carrier"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/it-happened/eventest"
@@ -41,21 +42,22 @@ func TestPreview_Materialize(t *testing.T) {
 		dirHtml, _ := directory.New(connID, "html", dirMd)
 		dirGo, _ := directory.New(connID, "go", dirMd)
 
-		prev := dir.Preview()
-		assert.NoError(t, prev.AddFile("file1.txt", 0, time.Now()))
-		assert.NoError(t, prev.AddFile("file2.txt", 0, time.Now()))
+		prev, err := dir.Preview()
+		require.NoError(t, err)
+		require.NoError(t, prev.AddFile("file1.txt", 0, time.Now()))
+		require.NoError(t, prev.AddFile("file2.txt", 0, time.Now()))
 		prevMd, err := prev.AddSubDirectory("md")
-		assert.NoError(t, err)
-		assert.NoError(t, prevMd.AddFile("file3.md", 0, time.Now()))
+		require.NoError(t, err)
+		require.NoError(t, prevMd.AddFile("file3.md", 0, time.Now()))
 		prevHtml, err := prevMd.AddSubDirectory("html")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		prevGo, err := prevMd.AddSubDirectory("go")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		assert.NoError(t, prevHtml.AddFile("file4.html", 0, time.Now()))
-		assert.NoError(t, prevHtml.AddFile("file5.html", 0, time.Now()))
+		require.NoError(t, prevHtml.AddFile("file4.html", 0, time.Now()))
+		require.NoError(t, prevHtml.AddFile("file5.html", 0, time.Now()))
 
-		assert.NoError(t, prevGo.AddFile("file6.go", 0, time.Now()))
+		require.NoError(t, prevGo.AddFile("file6.go", 0, time.Now()))
 
 		mat := directory.NewSkipUploadMaterializer(prev, "/home/user/data/")
 
@@ -118,21 +120,22 @@ func TestPreview_Materialize(t *testing.T) {
 		dirMd, _ := dir.GetSubDirectoryByName("md")
 		dirHtml, _ := dirMd.GetSubDirectoryByName("html")
 
-		prev := dir.Preview()
-		assert.NoError(t, prev.AddFile("file1.txt", 0, time.Now()))
-		assert.NoError(t, prev.AddFile("file2.txt", 0, time.Now()))
+		prev, err := dir.Preview()
+		require.NoError(t, err)
+		require.NoError(t, prev.AddFile("file1.txt", 0, time.Now()))
+		require.NoError(t, prev.AddFile("file2.txt", 0, time.Now()))
 		prevMd, err := prev.AddSubDirectory("md")
-		assert.NoError(t, err)
-		assert.NoError(t, prevMd.AddFile("file3.md", 0, time.Now()))
+		require.NoError(t, err)
+		require.NoError(t, prevMd.AddFile("file3.md", 0, time.Now()))
 		prevHtml, err := prevMd.AddSubDirectory("html")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		prevGo, err := prevMd.AddSubDirectory("go")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		assert.NoError(t, prevHtml.AddFile("file4.html", 0, time.Now()))
-		assert.NoError(t, prevHtml.AddFile("file5.html", 0, time.Now()))
+		require.NoError(t, prevHtml.AddFile("file4.html", 0, time.Now()))
+		require.NoError(t, prevHtml.AddFile("file5.html", 0, time.Now()))
 
-		assert.NoError(t, prevGo.AddFile("file6.go", 0, time.Now()))
+		require.NoError(t, prevGo.AddFile("file6.go", 0, time.Now()))
 
 		mat := directory.NewSkipUploadMaterializer(prev, "/home/user/data/")
 
@@ -169,4 +172,49 @@ func TestPreview_Materialize(t *testing.T) {
 			directory.UploadFileTriggered{Directory: prevGo.Directory(), SrcPath: "/home/user/data/md/go/file6.go"},
 		)
 	})
+}
+
+func TestPreview_GetByPath(t *testing.T) {
+	// Given
+	connID := connection_deck.NewConnectionID()
+
+	dir := testutil.MakeDirectory(t, "project",
+		testutil.WithRootParent(),
+		testutil.WithConnectionId(connID),
+		testutil.IsLoaded(),
+		testutil.WithSubDirectory("src",
+			testutil.IsLoaded(),
+			testutil.WithSubDirectory("html",
+				testutil.IsLoaded(),
+			),
+			testutil.WithSubDirectory("go"),
+		),
+	)
+
+	prev, err := dir.Preview()
+	require.NoError(t, err)
+	prevSrc, err := prev.AddSubDirectory("src")
+	require.NoError(t, err)
+	prevHtml, err := prevSrc.AddSubDirectory("html")
+	require.NoError(t, err)
+	_, err = prevSrc.AddSubDirectory("go")
+	require.NoError(t, err)
+
+	t.Run("should return the directory for the given path when found", func(t *testing.T) {
+		// When
+		res, err := prev.GetByPath("/project/src/html/")
+
+		// Then
+		require.NoError(t, err)
+		assert.Equal(t, prevHtml, res)
+	})
+
+	t.Run("should return an error when directory not found", func(t *testing.T) {
+		// When
+		_, err := prev.GetByPath("/project/src/js/")
+
+		// Then
+		assert.ErrorIs(t, err, directory.ErrNotFound)
+	})
+
 }

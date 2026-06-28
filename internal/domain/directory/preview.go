@@ -156,6 +156,18 @@ func (p *Preview) FileStatus(strategy MaterializeStrategy, fileName string) (str
 	panic("invalid materialize strategy")
 }
 
+func (p *Preview) GetByPath(path Path) (*Preview, error) {
+	if p.dir.Path() == path {
+		return p, nil
+	}
+	for _, child := range p.children {
+		if found, err := child.GetByPath(path); err == nil {
+			return found, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
 type Materializer interface {
 	Materialize() event.Event
 }
@@ -230,11 +242,69 @@ func (m *materializeUploadSkip) Materialize() event.Event {
 	return carrier.NewSequence(
 		layerEvts,
 		func(evtCarrier event.Event, received []event.Event) event.Event {
-			return event.New(nil)
+			return evtCarrier.NewFollowup(event.ItHappened{})
 		},
 		event.New(CreateFileFailed{
 			Err:       errors.New("timeout"),
 			Directory: nil,
+		}),
+	)
+}
+
+type materializeLoad struct {
+	preview *Preview
+}
+
+func NewLoadMaterializer(preview *Preview) Materializer {
+	return &materializeLoad{preview: preview}
+}
+
+func (m *materializeLoad) Materialize() event.Event {
+	return m.makeNextEvent(nil, []*Directory{m.preview.Directory()})
+}
+
+func (m *materializeLoad) makeNextEvent(carrierEvt event.Event, dirs []*Directory) event.Event {
+	var nextEvts []event.Event
+
+	for _, dir := range dirs {
+		_, err := m.preview.GetByPath(dir.Path())
+		if err != nil {
+			continue
+		}
+		evt, err := dir.Load()
+		if err != nil {
+			continue
+		}
+		nextEvts = append(nextEvts, evt)
+	}
+
+	if len(nextEvts) == 0 {
+		if carrierEvt != nil {
+			return carrierEvt.NewFollowup(LoadManySucceeded{})
+		}
+		return event.New(LoadManySucceeded{})
+	}
+
+	return carrier.NewAll(nextEvts,
+		func(evtCarrier event.Event, received []event.Event) event.Event {
+			var nexDirs []*Directory
+			for _, rcv := range received {
+				switch pl := rcv.Payload().(type) {
+				case LoadSucceeded:
+					for _, sd := range pl.Directory.SubDirectories() {
+						if _, err := m.preview.GetByPath(sd.Path()); err == nil {
+							nexDirs = append(nexDirs, sd)
+						}
+					}
+				case LoadFailed:
+					// ignoring failures, for now...
+					continue
+				}
+			}
+			return m.makeNextEvent(evtCarrier, nexDirs)
+		},
+		event.New(LoadManyFailed{
+			Err: errors.New("timeout"),
 		}),
 	)
 }

@@ -86,6 +86,10 @@ func (f *File) SizeBytes() int {
 	return f.sizeBytes
 }
 
+func (f *File) SetSizeBytes(sizeBytes int) {
+	f.sizeBytes = sizeBytes
+}
+
 func (f *File) LastModified() time.Time {
 	return f.lastModified
 }

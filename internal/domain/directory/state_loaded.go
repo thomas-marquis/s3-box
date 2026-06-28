@@ -16,6 +16,12 @@ var _ state = (*loadedState)(nil)
 
 func newLoadedState(previous baseState, subDirs []*Directory, files []*File) *loadedState {
 	bs := previous.Clone()
+	if subDirs == nil {
+		bs.subDirs = []*Directory{}
+	}
+	if files == nil {
+		bs.files = []*File{}
+	}
 	bs.subDirs = subDirs
 	bs.files = files
 	return &loadedState{bs}
@@ -69,26 +75,6 @@ func (s *loadedState) UploadOLD(items []*FsItem) (event.Event, error) {
 		Directory: s.d,
 		Items:     items,
 	}), nil
-	//stats, err := os.Stat(srcPath)
-	//if err != nil {
-	//	return event.Event{}, err
-	//}
-	//if !stats.IsDir() {
-	//	return event.Event{}, fmt.Errorf("%s is not a directory", srcPath)
-	//}
-	//name := filepath.Base(srcPath)
-	//
-	//if !overwrite && s.d.IsSubDirectoryExists(name) {
-	//	return event.Event{}, errors.Join(
-	//		ErrAlreadyExists,
-	//		fmt.Errorf("subdirectory %s already exists in directory %s", name, s.d.path))
-	//}
-	//
-	//uploadEvt := event.New(UploadTriggered{
-	//	Directory: s.d,
-	//	SrcPath:   srcPath,
-	//})
-	//return uploadEvt, nil
 }
 
 func (s *loadedState) ConfirmUploadOLD(items []*FsItem, mode UploadMode) (event.Event, error) { // TODO: necessary???
@@ -121,6 +107,10 @@ func (s *loadedState) Rename(newName string) (event.Event, error) {
 		Directory: s.d,
 		NewName:   newName,
 	}), nil
+}
+
+func (s *loadedState) Preview() (*Preview, error) {
+	return newPreview(s.d, s.d), nil
 }
 
 func (s *loadedState) Notify(evt event.Event) error {
@@ -159,6 +149,7 @@ func (s *loadedState) Notify(evt event.Event) error {
 		return fmt.Errorf("file %s not found in directory", pl.File.Name())
 
 	case CreateSucceeded:
+		pl.Directory.setState(newLoadedState(baseState{d: pl.Directory}, nil, nil))
 		s.subDirs = append(s.subDirs, pl.Directory)
 
 	case UploadFileSucceeded:

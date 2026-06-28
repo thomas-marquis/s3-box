@@ -292,14 +292,6 @@ func (v *explorerViewModelImpl) ReloadDirectory(dir *directory.Directory) error 
 		return err
 	}
 
-	var subNodePaths []string
-	for _, sd := range dir.SubDirectories() {
-		subNodePaths = append(subNodePaths, sd.Path().String())
-	}
-	for _, f := range dir.Files() {
-		subNodePaths = append(subNodePaths, f.FullPath())
-	}
-
 	evt, err := dir.Load()
 	if err != nil {
 		wErr := fmt.Errorf("impossible to (re)load the directory: %w", err)
@@ -310,13 +302,6 @@ func (v *explorerViewModelImpl) ReloadDirectory(dir *directory.Directory) error 
 
 	v.isSelectedDirLoading.Set(true) // nolint:errcheck
 
-	for _, p := range subNodePaths {
-		if err := v.tree.Remove(p); err != nil {
-			v.notifier.NotifyError(fmt.Errorf("error removing directory node: %w", err))
-			return nil
-		}
-	}
-
 	return nil
 }
 
@@ -326,6 +311,20 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 	if err := dir.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
+	}
+
+	var subNodePaths []string
+	for _, sd := range dir.SubDirectories() {
+		subNodePaths = append(subNodePaths, sd.Path().String())
+	}
+	for _, f := range dir.Files() {
+		subNodePaths = append(subNodePaths, f.FullPath())
+	}
+
+	for _, p := range subNodePaths {
+		if err := v.tree.Remove(p); err != nil {
+			continue
+		}
 	}
 
 	if err := v.fillSubTree(dir); err != nil {
@@ -426,7 +425,10 @@ func (v *explorerViewModelImpl) Upload(uris []fyne.URI, dir *directory.Directory
 		return nil, nil
 	}
 
-	prev := dir.Preview()
+	prev, err := dir.Preview()
+	if err != nil {
+		return nil, err
+	}
 	prevsByPath := make(map[string]*directory.Preview)
 
 	for _, uri := range uris {
@@ -477,6 +479,9 @@ func (v *explorerViewModelImpl) Upload(uris []fyne.URI, dir *directory.Directory
 			}
 		}
 	}
+
+	loadMat := directory.NewLoadMaterializer(prev)
+	v.bus.Publish(loadMat.Materialize())
 
 	return prev, nil
 }
@@ -894,6 +899,10 @@ func (v *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection
 }
 
 func (v *explorerViewModelImpl) fillSubTree(dir *directory.Directory) error {
+	if dir.Path().String() == "/demo202/applications/norfund/" {
+		println("filling sub tree")
+	}
+
 	files := dir.Files()
 	subDirs := dir.SubDirectories()
 
