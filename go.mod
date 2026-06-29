@@ -12,7 +12,7 @@ require (
 	github.com/aws/smithy-go v1.27.1
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.43.0
-	github.com/thomas-marquis/it-happened v0.1.0
+	github.com/thomas-marquis/it-happened v0.2.1
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
 )
@@ -77,8 +77,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.41.0 // indirect
 	golang.org/x/crypto v0.51.0 // indirect
 )
-
-replace github.com/thomas-marquis/it-happened => ../it-happened
 
 require (
 	fyne.io/systray v1.12.0 // indirect

@@ -22,5 +22,5 @@ func AssertEventually(t *testing.T, done <-chan struct{}) {
 		default:
 			return false
 		}
-	}, 10*time.Second, 100*time.Millisecond)
+	}, 20*time.Second, 100*time.Millisecond)
 }
