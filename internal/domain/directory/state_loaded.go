@@ -62,22 +62,6 @@ func (s *loadedState) UploadFile(localPath string, overwrite bool) (event.Event,
 	return uploadedEvt, nil
 }
 
-func (s *loadedState) UploadOLD(items []*FsItem) (event.Event, error) {
-	for _, i := range items {
-		if s.d.IsSubDirectoryExists(i.Name) {
-			return nil, errors.Join(
-				ErrAlreadyExists,
-				fmt.Errorf("subdirectory %s already exists in directory %s", i.Name, s.d.path))
-		}
-	}
-
-	//return event.New(UploadTriggered{
-	//	Directory: s.d,
-	//	Items:     items,
-	//}), nil
-	return nil, nil
-}
-
 func (s *loadedState) Rename(newName string) (event.Event, error) {
 	if s.d.name == RootDirName {
 		return nil, errors.New("cannot rename root directory")

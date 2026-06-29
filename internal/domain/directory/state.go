@@ -19,10 +19,7 @@ type state interface {
 	Files() []*File
 	SubDirectories() []*Directory
 
-	// Deprecated: use Upload instead
 	UploadFile(localPath string, overwrite bool) (event.Event, error)
-	// Deprecated: use Upload instead
-	UploadOLD(items []*FsItem) (event.Event, error)
 
 	Preview() (*Preview, error)
 
@@ -48,12 +45,7 @@ func (s *baseState) Files() []*File {
 	return make([]*File, 0)
 }
 
-// UploadFile is deprecated
 func (s *baseState) UploadFile(string, bool) (event.Event, error) {
-	return nil, ErrNotLoaded
-}
-
-func (s *baseState) UploadOLD([]*FsItem) (event.Event, error) {
 	return nil, ErrNotLoaded
 }
 

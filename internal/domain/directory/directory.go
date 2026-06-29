@@ -220,14 +220,8 @@ func (d *Directory) Rename(newName string) (event.Event, error) {
 	return d.currentState.Rename(newName)
 }
 
-// UploadFile
-// Deprecated: use Upload instead
 func (d *Directory) UploadFile(localPath string, overwrite bool) (event.Event, error) {
 	return d.currentState.UploadFile(localPath, overwrite)
-}
-
-func (d *Directory) Upload(items []*FsItem) (event.Event, error) {
-	return d.currentState.UploadOLD(items)
 }
 
 // Notify processes of various event types and updates the state of the directory accordingly.
