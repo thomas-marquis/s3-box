@@ -35,7 +35,7 @@ func SetupS3testContainer(ctx context.Context, t *testing.T) (string, func()) {
 		},
 		WaitingFor: wait.ForHTTP("/_ministack/health").
 			WithPort("4566/tcp").
-			WithStartupTimeout(60 * time.Second),
+			WithStartupTimeout(60 * 5 * time.Second),
 	}
 	lsContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
