@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
 	"go.uber.org/mock/gomock"
@@ -29,7 +29,10 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{})
 		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		dir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
+		dir := testutil.MakeDirectory(t, "mydir",
+			testutil.WithRootParent(),
+			testutil.WithConnectionId(testutil.FakeAwsConnectionId),
+		)
 		newFile, err := directory.NewFile("new_file.txt", dir)
 		require.NoError(t, err)
 
@@ -41,7 +44,7 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				pl, ok := evt.Payload.(directory.CreateFileSucceeded)
+				pl, ok := evt.Payload().(directory.CreateFileSucceeded)
 				res := assert.True(t, ok) &&
 					assert.Equal(t, "new_file.txt", pl.File.Name().String())
 				close(done)
@@ -52,7 +55,11 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
-		fakeEventChan <- event.New(directory.CreateFileTriggered{ConnectionID: testutil.FakeAwsConnectionId, Directory: dir, File: newFile})
+		fakeEventChan <- event.New(directory.CreateFileTriggered{
+			ConnectionID: testutil.FakeAwsConnectionId,
+			Directory:    dir,
+			File:         newFile,
+		})
 		testutil.AssertEventually(t, done)
 
 		testutil.AssertObjectContent(t, client, bucket, "mydir/new_file.txt", "")

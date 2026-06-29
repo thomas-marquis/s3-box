@@ -1,6 +1,6 @@
 package directory
 
-import "github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+import "github.com/thomas-marquis/it-happened/event"
 
 type StateType int
 
@@ -18,7 +18,11 @@ type state interface {
 	Recover(choice RecoveryChoice) (event.Event, error)
 	Files() []*File
 	SubDirectories() []*Directory
+
 	UploadFile(localPath string, overwrite bool) (event.Event, error)
+
+	Preview() (*Preview, error)
+
 	Rename(newName string) (event.Event, error)
 	Notify(event.Event) error
 }
@@ -42,11 +46,11 @@ func (s *baseState) Files() []*File {
 }
 
 func (s *baseState) UploadFile(string, bool) (event.Event, error) {
-	return event.Event{}, ErrNotLoaded
+	return nil, ErrNotLoaded
 }
 
 func (s *baseState) Rename(string) (event.Event, error) {
-	return event.Event{}, ErrNotLoaded
+	return nil, ErrNotLoaded
 }
 
 func (s *baseState) Status() Status {
@@ -54,5 +58,9 @@ func (s *baseState) Status() Status {
 }
 
 func (s *baseState) Recover(RecoveryChoice) (event.Event, error) {
-	return event.Event{}, ErrNotResumable
+	return nil, ErrNotResumable
+}
+
+func (s *baseState) Preview() (*Preview, error) {
+	return nil, ErrNotLoaded
 }

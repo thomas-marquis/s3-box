@@ -13,6 +13,7 @@ import (
 	reflect "reflect"
 
 	binding "fyne.io/fyne/v2/data/binding"
+	notification "github.com/thomas-marquis/s3-box/internal/domain/notification"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,10 +42,10 @@ func (m *MockNotificationViewModel) EXPECT() *MockNotificationViewModelMockRecor
 }
 
 // Notifications mocks base method.
-func (m *MockNotificationViewModel) Notifications() binding.StringList {
+func (m *MockNotificationViewModel) Notifications() binding.List[notification.Notification] {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Notifications")
-	ret0, _ := ret[0].(binding.StringList)
+	ret0, _ := ret[0].(binding.List[notification.Notification])
 	return ret0
 }
 
@@ -52,28 +53,4 @@ func (m *MockNotificationViewModel) Notifications() binding.StringList {
 func (mr *MockNotificationViewModelMockRecorder) Notifications() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Notifications", reflect.TypeOf((*MockNotificationViewModel)(nil).Notifications))
-}
-
-// SendError mocks base method.
-func (m *MockNotificationViewModel) SendError(arg0 error) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SendError", arg0)
-}
-
-// SendError indicates an expected call of SendError.
-func (mr *MockNotificationViewModelMockRecorder) SendError(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendError", reflect.TypeOf((*MockNotificationViewModel)(nil).SendError), arg0)
-}
-
-// SendInfo mocks base method.
-func (m *MockNotificationViewModel) SendInfo(arg0 string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SendInfo", arg0)
-}
-
-// SendInfo indicates an expected call of SendInfo.
-func (mr *MockNotificationViewModelMockRecorder) SendInfo(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendInfo", reflect.TypeOf((*MockNotificationViewModel)(nil).SendInfo), arg0)
 }

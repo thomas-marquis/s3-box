@@ -6,9 +6,9 @@ import (
 	"io"
 
 	"fyne.io/fyne/v2/data/binding"
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
@@ -169,7 +169,7 @@ func (v *connectionViewModelImpl) Select(conn *connection_deck.Connection) {
 }
 
 func (v *connectionViewModelImpl) handleUpdate(evt event.Event) {
-	cg := evt.Payload.(connection_deck.ConnectionGetter)
+	cg := evt.Payload().(connection_deck.ConnectionGetter)
 	v.updateConnectionBinding(evt, cg.Connection())
 	v.deck.Notify(evt)
 	v.loading.Set(false) //nolint:errcheck
@@ -189,7 +189,7 @@ func (v *connectionViewModelImpl) Delete(conn *connection_deck.Connection) {
 }
 
 func (v *connectionViewModelImpl) handleDelete(evt event.Event) {
-	pl := evt.Payload.(connection_deck.RemoveConnectionSucceeded)
+	pl := evt.Payload().(connection_deck.RemoveConnectionSucceeded)
 	if err := v.deleteFromBinding(evt, pl.Connection()); err != nil {
 		return
 	}
@@ -203,7 +203,7 @@ func (v *connectionViewModelImpl) Create(name, accessKey, secretKey, bucket stri
 }
 
 func (v *connectionViewModelImpl) handleCreate(evt event.Event) {
-	pl := evt.Payload.(connection_deck.CreateConnectionSucceeded)
+	pl := evt.Payload().(connection_deck.CreateConnectionSucceeded)
 	v.connBindings.Append(pl.Connection()) //nolint:errcheck
 	v.deck.Notify(evt)
 	v.loading.Set(false) //nolint:errcheck
@@ -237,7 +237,7 @@ func (v *connectionViewModelImpl) deleteFromBinding(evt event.Event, deletedConn
 	}
 
 	if !found {
-		v.bus.Publish(event.NewFollowup(evt, connection_deck.RemoveConnectionFailed{
+		v.bus.Publish(evt.NewFollowup(connection_deck.RemoveConnectionFailed{
 			ConnectionPayload: connection_deck.ConnectionPayload{Conn: deletedConn},
 			Err:               errConnNotInBinding,
 			RemovedIndex:      len(allConnections),
@@ -270,7 +270,7 @@ func (v *connectionViewModelImpl) updateConnectionBinding(evt event.Event, c *co
 			found = true
 			updatedConn := *c // Create a copy to have a new ref in the binding
 			if err := v.connBindings.SetValue(i, &updatedConn); err != nil {
-				v.bus.Publish(event.NewFollowup(evt, connection_deck.UpdateConnectionFailed{
+				v.bus.Publish(evt.NewFollowup(connection_deck.UpdateConnectionFailed{
 					ConnectionPayload: connection_deck.ConnectionPayload{Conn: v.findConnectionInBinding(c.ID())},
 					Err:               err,
 				}))
@@ -285,7 +285,7 @@ func (v *connectionViewModelImpl) updateConnectionBinding(evt event.Event, c *co
 	}
 
 	if !found {
-		v.bus.Publish(event.NewFollowup(evt, connection_deck.UpdateConnectionFailed{
+		v.bus.Publish(evt.NewFollowup(connection_deck.UpdateConnectionFailed{
 			ConnectionPayload: connection_deck.ConnectionPayload{Conn: nil},
 			Err:               errConnNotInBinding,
 		}))
@@ -307,7 +307,7 @@ func (v *connectionViewModelImpl) handleOnLoading(_ event.Event) {
 }
 
 func (v *connectionViewModelImpl) handleFailure(evt event.Event) {
-	pl := evt.Payload.(connection_deck.ErrorGetter)
+	pl := evt.Payload().(connection_deck.ErrorGetter)
 	v.errorMessage.Set(pl.Error().Error()) //nolint:errcheck
 	v.deck.Notify(evt)
 	v.loading.Set(false) //nolint:errcheck

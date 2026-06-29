@@ -1,6 +1,6 @@
 package connection_deck
 
-import "github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+import "github.com/thomas-marquis/it-happened/event"
 
 // Deck represents a collection of connections and maintains a currently selected connection by its ID.
 // There is only one deck per user. The deck ensures the consistency of all operations performed over connections.
@@ -65,7 +65,7 @@ func (d *Deck) Select(connID ConnectionID) (event.Event, error) {
 		}
 	}
 
-	return event.Event{}, ErrNotFound
+	return nil, ErrNotFound
 }
 
 // RemoveAConnection removes a connection with the given ID from the deck.
@@ -88,7 +88,7 @@ func (d *Deck) RemoveAConnection(connID ConnectionID) (event.Event, error) {
 		}
 	}
 
-	return event.Event{}, ErrNotFound
+	return nil, ErrNotFound
 }
 
 // SelectedConnection returns the currently selected connection or nil if no connection is selected.
@@ -117,7 +117,7 @@ func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (event.E
 		}
 	}
 	if !found {
-		return event.Event{}, ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	for _, opt := range options {
@@ -133,7 +133,7 @@ func (d *Deck) Update(connID ConnectionID, options ...ConnectionOption) (event.E
 }
 
 func (d *Deck) Notify(evt event.Event) {
-	switch pl := evt.Payload.(type) {
+	switch pl := evt.Payload().(type) {
 	case CreateConnectionFailed:
 		for i, c := range d.connections {
 			if c.Is(pl.Connection()) {

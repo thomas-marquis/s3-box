@@ -3,8 +3,8 @@ package s3_test
 import (
 	"testing"
 
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
 	mocks_connection_deck "github.com/thomas-marquis/s3-box/mocks/connection_deck"
 	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
@@ -20,7 +20,7 @@ func setupMocks(t *testing.T, deck *connection_deck.Deck, events chan event.Even
 	mockConnRepo := mocks_connection_deck.NewMockRepository(ctrl)
 	mockNotifRepo := mocks_notification.NewMockRepository(ctrl)
 
-	mockNotifRepo.EXPECT().NotifyDebug(gomock.Any()).AnyTimes()
+	mockNotifRepo.EXPECT().NotifyDebug(gomock.Any(), gomock.Any()).AnyTimes()
 
 	mockBus.EXPECT().
 		Subscribe().

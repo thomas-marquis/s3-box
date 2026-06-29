@@ -1,7 +1,6 @@
 package widget
 
 import (
-	"fmt"
 	"image/color"
 
 	"fyne.io/fyne/v2"
@@ -48,7 +47,6 @@ func NewDropZone(text string, win fyne.Window) *DropZone {
 		dzAbsPos := d.AbsolutePositionForObject(w)
 
 		if position.X > dzAbsPos.X && position.X < dzAbsPos.X+dzSize.Width && position.Y > dzAbsPos.Y && position.Y < dzAbsPos.Y+dzSize.Height {
-			fmt.Println("DZ is in the drop zone")
 			w.dropAnimation()
 			if w.OnFilesDropped != nil {
 				w.OnFilesDropped(uris)

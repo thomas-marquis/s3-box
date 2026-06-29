@@ -3,7 +3,7 @@ package directory
 import (
 	"errors"
 
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/it-happened/event"
 )
 
 type loadingState struct {
@@ -21,11 +21,11 @@ func (s *loadingState) Type() StateType {
 }
 
 func (s *loadingState) Load() (event.Event, error) {
-	return event.Event{}, NewError(s.d, "loading is still in progress")
+	return nil, NewError(s.d, "loading is still in progress")
 }
 
 func (s *loadingState) Notify(evt event.Event) error {
-	switch pl := evt.Payload.(type) {
+	switch pl := evt.Payload().(type) {
 	case LoadSucceeded:
 		s.d.setState(newLoadedState(s.baseState, pl.SubDirectories, pl.Files))
 
@@ -76,7 +76,7 @@ func (s *loadingState) Notify(evt event.Event) error {
 			status := RenameFailedStatus{
 				CurrentDirectory: s.d,
 				IsSourceDir:      true,
-				OtherDirPath:     s.d.ParentPath().NewSubPath(pl.NewName),
+				OtherDirPath:     s.d.Parent().Path().NewSubPath(pl.NewName),
 			}
 			s.d.setState(newErrorState(s.baseState, status))
 		}

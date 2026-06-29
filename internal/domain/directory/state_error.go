@@ -3,7 +3,7 @@ package directory
 import (
 	"errors"
 
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/it-happened/event"
 )
 
 type errorState struct {
@@ -28,11 +28,11 @@ func (s *errorState) Load() (event.Event, error) {
 }
 
 func (s *errorState) UploadFile(localPtah string, overwrite bool) (event.Event, error) {
-	return event.Event{}, errors.New("you can't upload files to a resumable directory")
+	return nil, errors.New("you can't upload files to a resumable directory")
 }
 
 func (s *errorState) Notify(evt event.Event) error {
-	switch pl := evt.Payload.(type) {
+	switch pl := evt.Payload().(type) {
 
 	case RenameSucceeded:
 		s.d.name = pl.NewName
@@ -47,7 +47,7 @@ func (s *errorState) Notify(evt event.Event) error {
 			status := RenameFailedStatus{
 				CurrentDirectory: s.d,
 				IsSourceDir:      true,
-				OtherDirPath:     s.d.ParentPath().NewSubPath(pl.NewName),
+				OtherDirPath:     s.d.Parent().Path().NewSubPath(pl.NewName),
 			}
 			s.d.setState(newErrorState(s.baseState, status))
 		}
@@ -82,7 +82,7 @@ func (s *errorState) Recover(choice RecoveryChoice) (event.Event, error) {
 					Choice:    choice,
 				}), nil
 			}
-			return event.Event{}, err
+			return nil, err
 		}
 
 		if status.IsSourceDir {
@@ -99,5 +99,5 @@ func (s *errorState) Recover(choice RecoveryChoice) (event.Event, error) {
 			Choice:    choice,
 		}), nil
 	}
-	return event.Event{}, errors.New("nothing to recover")
+	return nil, errors.New("nothing to recover")
 }

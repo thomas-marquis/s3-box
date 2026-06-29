@@ -7,27 +7,25 @@ import (
 	"io"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
 type baseApiImpl struct {
-	client     *s3.Client
-	bucket     string
-	downloader *manager.Downloader
-	uploader   *manager.Uploader
+	client   *s3.Client
+	bucket   string
+	tmClient *transfermanager.Client
 }
 
 var _ BaseAPI = (*baseApiImpl)(nil)
 
 func newBaseApiImpl(client *s3.Client, bucket string) *baseApiImpl {
 	return &baseApiImpl{
-		client:     client,
-		bucket:     bucket,
-		downloader: manager.NewDownloader(client),
-		uploader:   manager.NewUploader(client),
+		client:   client,
+		bucket:   bucket,
+		tmClient: transfermanager.New(client),
 	}
 }
 
@@ -123,19 +121,20 @@ func (c *baseApiImpl) GetObjectGrants(ctx context.Context, key string, opts ...O
 }
 
 func (c *baseApiImpl) Download(ctx context.Context, key string, writer io.WriterAt, opts ...Option) error {
-	in := &s3.GetObjectInput{
-		Bucket: aws.String(c.bucket),
-		Key:    aws.String(key),
+	in := &transfermanager.DownloadObjectInput{
+		Bucket:   aws.String(c.bucket),
+		Key:      aws.String(key),
+		WriterAt: writer,
 	}
 	for _, opt := range opts {
 		opt(in)
 	}
-	_, err := c.downloader.Download(ctx, writer, in)
+	_, err := c.tmClient.DownloadObject(ctx, in)
 	return c.handleS3SdkError(err, key)
 }
 
 func (c *baseApiImpl) Upload(ctx context.Context, key string, body io.Reader, opts ...Option) error {
-	in := &s3.PutObjectInput{
+	in := &transfermanager.UploadObjectInput{
 		Bucket: aws.String(c.bucket),
 		Key:    aws.String(key),
 		Body:   body,
@@ -143,7 +142,7 @@ func (c *baseApiImpl) Upload(ctx context.Context, key string, body io.Reader, op
 	for _, opt := range opts {
 		opt(in)
 	}
-	_, err := c.uploader.Upload(ctx, in)
+	_, err := c.tmClient.UploadObject(ctx, in)
 	return c.handleS3SdkError(err, key)
 }
 

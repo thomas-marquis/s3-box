@@ -20,7 +20,7 @@ func TestConnectionForm(t *testing.T) {
 
 	deck := connection_deck.New()
 	conn := deck.New("Test", "ak", "sk", "bucket").
-		Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		Payload().(connection_deck.CreateConnectionTriggered).Connection()
 
 	t.Run("should display AWS form by default", func(t *testing.T) {
 		// When

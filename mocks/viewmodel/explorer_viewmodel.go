@@ -17,6 +17,7 @@ import (
 	connection_deck "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
 	node "github.com/thomas-marquis/s3-box/internal/ui/node"
+	viewmodel "github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -94,6 +95,20 @@ func (mr *MockExplorerViewModelMockRecorder) CreateEmptyFile(parent, name any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEmptyFile", reflect.TypeOf((*MockExplorerViewModel)(nil).CreateEmptyFile), parent, name)
 }
 
+// CurrentPreview mocks base method.
+func (m *MockExplorerViewModel) CurrentPreview() binding.Item[viewmodel.UploadPreviewState] {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CurrentPreview")
+	ret0, _ := ret[0].(binding.Item[viewmodel.UploadPreviewState])
+	return ret0
+}
+
+// CurrentPreview indicates an expected call of CurrentPreview.
+func (mr *MockExplorerViewModelMockRecorder) CurrentPreview() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentPreview", reflect.TypeOf((*MockExplorerViewModel)(nil).CurrentPreview))
+}
+
 // CurrentSelectedConnection mocks base method.
 func (m *MockExplorerViewModel) CurrentSelectedConnection() *connection_deck.Connection {
 	m.ctrl.T.Helper()
@@ -118,6 +133,18 @@ func (m *MockExplorerViewModel) DeleteFile(file *directory.File) {
 func (mr *MockExplorerViewModelMockRecorder) DeleteFile(file any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFile", reflect.TypeOf((*MockExplorerViewModel)(nil).DeleteFile), file)
+}
+
+// DoUpload mocks base method.
+func (m *MockExplorerViewModel) DoUpload(localBasePath string, preview *directory.Preview, strategy directory.MaterializeStrategy) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DoUpload", localBasePath, preview, strategy)
+}
+
+// DoUpload indicates an expected call of DoUpload.
+func (mr *MockExplorerViewModelMockRecorder) DoUpload(localBasePath, preview, strategy any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoUpload", reflect.TypeOf((*MockExplorerViewModel)(nil).DoUpload), localBasePath, preview, strategy)
 }
 
 // DownloadFile mocks base method.
@@ -256,6 +283,20 @@ func (m *MockExplorerViewModel) PendingUserValidations() <-chan directory.UserVa
 func (mr *MockExplorerViewModelMockRecorder) PendingUserValidations() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PendingUserValidations", reflect.TypeOf((*MockExplorerViewModel)(nil).PendingUserValidations))
+}
+
+// PrepareUpload mocks base method.
+func (m *MockExplorerViewModel) PrepareUpload(uris []fyne.URI, dir *directory.Directory) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PrepareUpload", uris, dir)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PrepareUpload indicates an expected call of PrepareUpload.
+func (mr *MockExplorerViewModelMockRecorder) PrepareUpload(uris, dir any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareUpload", reflect.TypeOf((*MockExplorerViewModel)(nil).PrepareUpload), uris, dir)
 }
 
 // ReloadDirectory mocks base method.
@@ -404,18 +445,18 @@ func (mr *MockExplorerViewModelMockRecorder) UpdateLastUploadLocation(filePath a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLastUploadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).UpdateLastUploadLocation), filePath)
 }
 
-// UploadFile mocks base method.
-func (m *MockExplorerViewModel) UploadFile(localPath string, dir *directory.Directory, overwrite bool) error {
+// UploadOne mocks base method.
+func (m *MockExplorerViewModel) UploadOne(localPath string, dir *directory.Directory, overwrite bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UploadFile", localPath, dir, overwrite)
+	ret := m.ctrl.Call(m, "UploadOne", localPath, dir, overwrite)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// UploadFile indicates an expected call of UploadFile.
-func (mr *MockExplorerViewModelMockRecorder) UploadFile(localPath, dir, overwrite any) *gomock.Call {
+// UploadOne indicates an expected call of UploadOne.
+func (mr *MockExplorerViewModelMockRecorder) UploadOne(localPath, dir, overwrite any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadFile", reflect.TypeOf((*MockExplorerViewModel)(nil).UploadFile), localPath, dir, overwrite)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadOne", reflect.TypeOf((*MockExplorerViewModel)(nil).UploadOne), localPath, dir, overwrite)
 }
 
 // Validate mocks base method.

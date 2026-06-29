@@ -1,7 +1,7 @@
 package appcontext
 
 import (
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 

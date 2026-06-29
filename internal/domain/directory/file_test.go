@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
 )
 
@@ -24,7 +24,7 @@ func TestFile_Rename(t *testing.T) {
 		// Then
 		require.NoError(t, err)
 		assert.Equal(t, directory.RenameFileTriggeredType, evt.Type())
-		pl := evt.Payload.(directory.RenameFileTriggered)
+		pl := evt.Payload().(directory.RenameFileTriggered)
 		assert.Equal(t, directory.FileName("oldname.txt"), file.Name())
 		assert.Equal(t, "newname.txt", pl.NewName)
 	})

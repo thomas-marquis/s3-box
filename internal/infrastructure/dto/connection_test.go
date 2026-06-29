@@ -31,9 +31,9 @@ func TestNewConnectionsDTO(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
 		c1 := deck.New("conn 1", "ak1", "sk1", "b1", connection_deck.AsAWS("us-east-1")).
-			Payload.(connection_deck.CreateConnectionTriggered).Connection()
+			Payload().(connection_deck.CreateConnectionTriggered).Connection()
 		c2 := deck.New("conn 2", "ak2", "sk2", "b2", connection_deck.AsS3Like("http://localhost:9000", true)).
-			Payload.(connection_deck.CreateConnectionTriggered).Connection()
+			Payload().(connection_deck.CreateConnectionTriggered).Connection()
 		_, _ = deck.Select(c2.ID())
 
 		// When
@@ -191,7 +191,7 @@ func TestConnectionsDTO_MarshalJSON(t *testing.T) {
 		// Given
 		deck := connection_deck.New()
 		c1 := deck.New("conn 1", "ak1", "sk1", "b1", connection_deck.AsAWS("us-east-1")).
-			Payload.(connection_deck.CreateConnectionTriggered).Connection()
+			Payload().(connection_deck.CreateConnectionTriggered).Connection()
 		d := dto.NewConnectionsDTO(deck)
 
 		// When

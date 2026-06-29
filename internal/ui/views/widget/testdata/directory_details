@@ -1,8 +1,8 @@
-<canvas padded size="548x154">
+<canvas padded size="480x154">
 	<content>
-		<widget pos="4,4" size="540x146" type="*widget.DirectoryDetails">
-			<container size="540x146">
-				<container size="540x36">
+		<widget pos="4,4" size="472x146" type="*widget.DirectoryDetails">
+			<container size="472x146">
+				<container size="472x36">
 					<container size="45x36">
 						<widget size="20x36" type="*widget.Icon">
 							<image fillMode="contain" rsc="folderIcon" size="20x36" themed="foreground"/>
@@ -15,19 +15,19 @@
 							</widget>
 						</widget>
 					</container>
-					<widget pos="504,0" size="36x36" type="*widget.Button">
+					<widget pos="436,0" size="36x36" type="*widget.Button">
 						<rectangle fillColor="button" radius="4" size="36x36"/>
 						<rectangle size="36x36"/>
 						<image fillMode="contain" pos="8,8" rsc="contentCopyIcon" size="iconInlineSize" themed="foreground"/>
 					</widget>
 				</container>
-				<container pos="0,40" size="540x31">
-					<widget pos="0,10" size="540x1" type="*widget.Separator">
-						<rectangle fillColor="separator" size="540x1"/>
+				<container pos="0,40" size="472x31">
+					<widget pos="0,10" size="472x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="472x1"/>
 					</widget>
 				</container>
-				<container pos="0,75" size="540x36">
-					<widget pos="5,0" size="530x36" type="*widget.Toolbar">
+				<container pos="0,75" size="472x36">
+					<widget pos="5,0" size="462x36" type="*widget.Toolbar">
 						<widget size="87x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="87x36"/>
 							<rectangle size="87x36"/>
@@ -36,23 +36,23 @@
 							</widget>
 							<image fillMode="contain" pos="8,8" rsc="viewRefreshIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
-						<widget pos="91,0" size="187x36" type="*widget.Button">
-							<rectangle fillColor="disabled button" radius="4" size="187x36"/>
-							<rectangle size="187x36"/>
-							<widget pos="32,8" size="147x20" type="*widget.RichText">
-								<text alignment="center" bold color="disabled" size="147x19">New empty directory</text>
+						<widget pos="91,0" size="153x36" type="*widget.Button">
+							<rectangle fillColor="disabled button" radius="4" size="153x36"/>
+							<rectangle size="153x36"/>
+							<widget pos="32,8" size="113x20" type="*widget.RichText">
+								<text alignment="center" bold color="disabled" size="113x19">Create directory</text>
 							</widget>
 							<image fillMode="contain" pos="8,8" rsc="folderNewIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
-						<widget pos="283,0" size="145x36" type="*widget.Button">
-							<rectangle fillColor="disabled button" radius="4" size="145x36"/>
-							<rectangle size="145x36"/>
-							<widget pos="32,8" size="105x20" type="*widget.RichText">
-								<text alignment="center" bold color="disabled" size="105x19">New empty file</text>
+						<widget pos="249,0" size="111x36" type="*widget.Button">
+							<rectangle fillColor="disabled button" radius="4" size="111x36"/>
+							<rectangle size="111x36"/>
+							<widget pos="32,8" size="71x20" type="*widget.RichText">
+								<text alignment="center" bold color="disabled" size="71x19">Create file</text>
 							</widget>
 							<image fillMode="contain" pos="8,8" rsc="contentAddIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
-						<widget pos="432,0" size="97x36" type="*widget.Button">
+						<widget pos="365,0" size="97x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="97x36"/>
 							<rectangle size="97x36"/>
 							<widget pos="32,8" size="57x20" type="*widget.RichText">
@@ -62,9 +62,9 @@
 						</widget>
 					</widget>
 				</container>
-				<container pos="0,115" size="540x31">
-					<widget pos="0,10" size="540x1" type="*widget.Separator">
-						<rectangle fillColor="separator" size="540x1"/>
+				<container pos="0,115" size="472x31">
+					<widget pos="0,10" size="472x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="472x1"/>
 					</widget>
 				</container>
 			</container>

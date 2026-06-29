@@ -3,17 +3,17 @@ package s3
 import (
 	"fmt"
 
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 func (h *EventHandler) handleDeleteFile(evt event.Event) {
-	ctx := evt.Context
-	pl := evt.Payload.(directory.DeleteFileTriggered)
+	ctx := evt.Context()
+	pl := evt.Payload().(directory.DeleteFileTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed deleting file: %w", err))
-		h.bus.Publish(event.NewFollowup(evt,
+		h.bus.Publish(evt.NewFollowup(
 			directory.DeleteFileFailed{Err: err, ParentDirectory: pl.ParentDirectory}))
 	}
 
@@ -37,13 +37,13 @@ func (h *EventHandler) handleDeleteFile(evt event.Event) {
 	}
 
 	h.bus.Publish(
-		event.NewFollowup(evt, directory.DeleteFileSucceeded{File: pl.File, ParentDirectory: pl.ParentDirectory}))
+		evt.NewFollowup(directory.DeleteFileSucceeded{File: pl.File, ParentDirectory: pl.ParentDirectory}))
 }
 
 func (h *EventHandler) handleDeleteDirectory(evt event.Event) {
 	err := fmt.Errorf("deleting directories is not yet implemented")
 	h.notifier.NotifyError(err)
-	h.bus.Publish(event.NewFollowup(evt, directory.DeleteFailed{
+	h.bus.Publish(evt.NewFollowup(directory.DeleteFailed{
 		Err: err,
 	}))
 }

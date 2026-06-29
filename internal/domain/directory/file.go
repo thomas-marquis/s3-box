@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 // FileName is a value object representing a file name.
@@ -86,6 +86,10 @@ func (f *File) SizeBytes() int {
 	return f.sizeBytes
 }
 
+func (f *File) SetSizeBytes(sizeBytes int) {
+	f.sizeBytes = sizeBytes
+}
+
 func (f *File) LastModified() time.Time {
 	return f.lastModified
 }
@@ -116,7 +120,7 @@ func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) e
 func (f *File) Rename(newName string) (event.Event, error) {
 	_, err := NewFileName(newName)
 	if err != nil {
-		return event.Event{}, err
+		return nil, err
 	}
 
 	return event.New(RenameFileTriggered{

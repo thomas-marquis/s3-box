@@ -36,14 +36,14 @@ func (p *notificationPublisher) NotifyError(err error) {
 	}
 }
 
-func (p *notificationPublisher) NotifyInfo(message string) {
+func (p *notificationPublisher) NotifyInfo(title, message string) {
 	if notification.LevelInfo.LowerOrEqual(p.level) {
-		p.Notify(notification.NewInfo(message))
+		p.Notify(notification.NewInfo(title, message))
 	}
 }
 
-func (p *notificationPublisher) NotifyDebug(message string) {
+func (p *notificationPublisher) NotifyDebug(title, message string) {
 	if notification.LevelDebug.LowerOrEqual(p.level) {
-		p.Notify(notification.NewDebug(message))
+		p.Notify(notification.NewDebug(title, message))
 	}
 }

@@ -1,10 +1,13 @@
 package views
 
 import (
+	"fmt"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	fyne_widget "fyne.io/fyne/v2/widget"
+	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 )
@@ -15,16 +18,36 @@ func GetNotificationView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 		notifications,
 		func() fyne.CanvasObject {
 			label := widget.NewOpenableLabel("", appCtx.Window())
-			label.Alignment = fyne.TextAlignLeading
-			label.Truncation = fyne.TextTruncateEllipsis
-			label.TextStyle = fyne.TextStyle{Monospace: true}
-			label.Selectable = false
+			label.Label.Alignment = fyne.TextAlignLeading
+			label.Label.Truncation = fyne.TextTruncateEllipsis
+			label.Label.TextStyle = fyne.TextStyle{Monospace: true}
+			label.Label.Selectable = false
 			return label
 		},
 		func(di binding.DataItem, obj fyne.CanvasObject) {
-			value, _ := di.(binding.String)
+			item, _ := di.(binding.Item[notification.Notification])
+			notif, err := item.Get()
+			if err != nil {
+				panic(err)
+			}
+			formattedDt := notif.Time().Format("2006-01-02 15:04:05")
+			var title, detail string
+			switch notif.Type() {
+			case notification.LevelError:
+				title = fmt.Sprintf("%s: Error: %s", //nolint:errcheck
+					formattedDt, notif.(notification.ErrorNotification).Error().Error())
+			case notification.LevelInfo:
+				title = fmt.Sprintf("%s: Info: %s", //nolint:errcheck
+					formattedDt, notif.(notification.LogNotification).Title())
+				detail = notif.(notification.LogNotification).Message()
+			case notification.LevelDebug:
+				title = fmt.Sprintf("%s: Debug: %s", //nolint:errcheck
+					formattedDt, notif.(notification.LogNotification).Title())
+				detail = notif.(notification.LogNotification).Message()
+			}
 			label := obj.(*widget.OpenableLabel)
-			label.Bind(value)
+			label.Label.Bind(binding.BindString(&title))
+			label.Detail.Bind(binding.BindString(&detail))
 		},
 	)
 

@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 func (h *EventHandler) handleDownloadFile(e event.Event) {
-	ctx := e.Context
-	pl := e.Payload.(directory.DownloadFileTriggered)
+	ctx := e.Context()
+	pl := e.Payload().(directory.DownloadFileTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed downloading file: %w", err))
-		h.bus.Publish(event.NewFollowup(e, directory.DownloadFileFailed{Err: err}))
+		h.bus.Publish(e.NewFollowup(directory.DownloadFileFailed{Err: err}))
 	}
 
 	client, err := h.clientFactory.Get(ctx, pl.ConnectionID)
@@ -35,5 +35,5 @@ func (h *EventHandler) handleDownloadFile(e event.Event) {
 		return
 	}
 
-	h.bus.Publish(event.NewFollowup(e, directory.DownloadFileSucceeded{File: pl.File}))
+	h.bus.Publish(e.NewFollowup(directory.DownloadFileSucceeded{File: pl.File}))
 }

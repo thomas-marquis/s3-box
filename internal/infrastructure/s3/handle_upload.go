@@ -5,17 +5,17 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 func (h *EventHandler) handleUploadFile(e event.Event) {
-	ctx := e.Context
-	pl := e.Payload.(directory.UploadFileTriggered)
+	ctx := e.Context()
+	pl := e.Payload().(directory.UploadFileTriggered)
 
 	handleError := func(err error) {
 		h.notifier.NotifyError(fmt.Errorf("failed uploading file: %w", err))
-		h.bus.Publish(event.NewFollowup(e, directory.UploadFileFailed{Err: err, Directory: pl.Directory}))
+		h.bus.Publish(e.NewFollowup(directory.UploadFileFailed{Err: err, Directory: pl.Directory}))
 	}
 
 	client, err := h.clientFactory.Get(ctx, pl.Directory.ConnectionID())
@@ -55,5 +55,5 @@ func (h *EventHandler) handleUploadFile(e event.Event) {
 		return
 	}
 
-	h.bus.Publish(event.NewFollowup(e, directory.UploadFileSucceeded{File: newFile, Directory: pl.Directory}))
+	h.bus.Publish(e.NewFollowup(directory.UploadFileSucceeded{File: newFile, Directory: pl.Directory}))
 }

@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
 	"go.uber.org/mock/gomock"
@@ -49,7 +49,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				pl, ok := evt.Payload.(directory.LoadSucceeded)
+				pl, ok := evt.Payload().(directory.LoadSucceeded)
 				res := assert.True(t, ok) &&
 					assert.Len(t, pl.SubDirectories, 1) &&
 					assert.Equal(t, "/mydir/", pl.SubDirectories[0].Path().String()) &&
@@ -60,7 +60,9 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 			})).
 			Times(1)
 
-		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
+		eh := s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo)
+		defer eh.Destroy()
+		eh.Listen()
 
 		// When
 		fakeEventChan <- event.New(directory.LoadTriggered{Directory: rootDir})
@@ -93,7 +95,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				pl, ok := evt.Payload.(directory.LoadSucceeded)
+				pl, ok := evt.Payload().(directory.LoadSucceeded)
 				res := assert.True(t, ok) &&
 					assert.Len(t, pl.SubDirectories, 2) &&
 					assert.Len(t, pl.Files, 1) &&
@@ -136,7 +138,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				pl, ok := evt.Payload.(directory.LoadFailed)
+				pl, ok := evt.Payload().(directory.LoadFailed)
 				res := assert.True(t, ok) &&
 					assert.Error(t, pl.Err) &&
 					assert.Contains(t, pl.Err.Error(),
@@ -182,7 +184,7 @@ func TestS3DirectoryRepository_loadDirectory(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				pl, ok := evt.Payload.(directory.LoadFailed)
+				pl, ok := evt.Payload().(directory.LoadFailed)
 				var expErr directory.UncompletedRename
 				res := assert.True(t, ok) &&
 					assert.ErrorAs(t, pl.Err, &expErr) &&

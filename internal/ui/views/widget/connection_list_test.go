@@ -21,9 +21,9 @@ func TestConnectionList(t *testing.T) {
 
 	deck := connection_deck.New()
 	conn1 := deck.New("Conn 1", "ak1", "sk1", "b1").
-		Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		Payload().(connection_deck.CreateConnectionTriggered).Connection()
 	conn2 := deck.New("Conn 2", "ak2", "sk2", "b2").
-		Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		Payload().(connection_deck.CreateConnectionTriggered).Connection()
 
 	connections := binding.NewUntypedList()
 	_ = connections.Append(conn1)

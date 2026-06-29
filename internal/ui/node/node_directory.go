@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
@@ -21,16 +22,12 @@ var (
 )
 
 func NewDirectoryNode(dir *directory.Directory, opts ...Option) DirectoryNode {
-	var icon = theme.FolderIcon()
 	path := dir.Path()
-	if path == directory.RootPath {
-		icon = theme.StorageIcon()
-	}
 
 	b := baseNode{
 		id:          path.String(),
 		displayName: path.DirectoryName(),
-		icon:        icon,
+		icon:        theme.FolderIcon(),
 	}
 
 	for _, opt := range opts {
@@ -41,6 +38,16 @@ func NewDirectoryNode(dir *directory.Directory, opts ...Option) DirectoryNode {
 		baseNode: b,
 		dir:      dir,
 	}
+}
+
+func (n *directoryNodeImpl) Icon() fyne.Resource {
+	if n.dir.Path() == directory.RootPath {
+		return theme.StorageIcon()
+	}
+	if n.dir.IsLoaded() {
+		return theme.FolderOpenIcon()
+	}
+	return theme.FolderIcon()
 }
 
 func (n *directoryNodeImpl) Directory() *directory.Directory {

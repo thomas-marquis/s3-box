@@ -78,7 +78,7 @@ func TestNewInfo(t *testing.T) {
 		now := time.Now()
 
 		// When
-		n := notification.NewInfo(msg)
+		n := notification.NewInfo("title", msg)
 
 		// Then
 		assert.Equal(t, notification.LevelInfo, n.Type())
@@ -94,7 +94,7 @@ func TestNewDebug(t *testing.T) {
 		now := time.Now()
 
 		// When
-		n := notification.NewDebug(msg)
+		n := notification.NewDebug("title", msg)
 
 		// Then
 		assert.Equal(t, notification.LevelDebug, n.Type())

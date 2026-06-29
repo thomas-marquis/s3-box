@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	"github.com/thomas-marquis/it-happened/event"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 )
@@ -82,6 +82,16 @@ func (d *Directory) IsFileExists(name FileName) bool {
 	return false
 }
 
+func (d *Directory) IsSubDirectoryExists(name string) bool {
+	subDirs := d.currentState.SubDirectories()
+	for _, subDir := range subDirs {
+		if subDir.Name() == name {
+			return true
+		}
+	}
+	return false
+}
+
 func (d *Directory) IsRoot() bool {
 	return d.parent.Path() == NilParentPath && d.path == RootPath
 }
@@ -115,8 +125,8 @@ func (d *Directory) Name() string {
 	return d.name
 }
 
-func (d *Directory) ParentPath() Path {
-	return d.parent.Path()
+func (d *Directory) Parent() *Directory {
+	return d.parent
 }
 
 func (d *Directory) SubDirectories() []*Directory {
@@ -137,12 +147,12 @@ func (d *Directory) NewSubDirectory(name string) (event.Event, error) {
 	path := d.path.NewSubPath(name)
 	for _, subDir := range d.currentState.SubDirectories() {
 		if subDir.Path() == path {
-			return event.Event{}, fmt.Errorf("subdirectory %s already exists", path)
+			return nil, fmt.Errorf("subdirectory %s already exists", path)
 		}
 	}
 	newDir, err := New(d.connectionID, name, d)
 	if err != nil {
-		return event.Event{}, fmt.Errorf("failed to create subdirectory: %w", err)
+		return nil, fmt.Errorf("failed to create subdirectory: %w", err)
 	}
 
 	return event.New(CreateTriggered{
@@ -156,11 +166,11 @@ func (d *Directory) NewSubDirectory(name string) (event.Event, error) {
 func (d *Directory) NewFile(name string, overwrite bool, opts ...FileOption) (event.Event, error) {
 	file, err := NewFile(name, d, opts...)
 	if err != nil {
-		return event.Event{}, fmt.Errorf("failed to create file: %w", err)
+		return nil, fmt.Errorf("failed to create file: %w", err)
 	}
 
 	if !overwrite && d.IsFileExists(file.Name()) {
-		return event.Event{}, errors.Join(
+		return nil, errors.Join(
 			ErrAlreadyExists,
 			fmt.Errorf("file %s already exists in directory %s", name, d.path))
 	}
@@ -183,7 +193,7 @@ func (d *Directory) RemoveFile(name FileName) (event.Event, error) {
 			}), nil
 		}
 	}
-	return event.Event{}, ErrNotFound
+	return nil, ErrNotFound
 }
 
 func (d *Directory) RemoveSubDirectory(name string) (event.Event, error) {
@@ -197,7 +207,7 @@ func (d *Directory) RemoveSubDirectory(name string) (event.Event, error) {
 			}), nil
 		}
 	}
-	return event.Event{}, ErrNotFound
+	return nil, ErrNotFound
 }
 
 // Rename triggers an event to change the name of the directory.
@@ -307,6 +317,10 @@ func (d *Directory) Recover(choice RecoveryChoice) (event.Event, error) {
 // Could be nil if the directory hasn't any status.
 func (d *Directory) Status() Status {
 	return d.currentState.Status()
+}
+
+func (d *Directory) Preview() (*Preview, error) {
+	return d.currentState.Preview()
 }
 
 func (d *Directory) setState(state state) {

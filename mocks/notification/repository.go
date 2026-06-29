@@ -53,15 +53,15 @@ func (mr *MockRepositoryMockRecorder) Notify(arg0 any) *gomock.Call {
 }
 
 // NotifyDebug mocks base method.
-func (m *MockRepository) NotifyDebug(message string) {
+func (m *MockRepository) NotifyDebug(title, message string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "NotifyDebug", message)
+	m.ctrl.Call(m, "NotifyDebug", title, message)
 }
 
 // NotifyDebug indicates an expected call of NotifyDebug.
-func (mr *MockRepositoryMockRecorder) NotifyDebug(message any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) NotifyDebug(title, message any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NotifyDebug", reflect.TypeOf((*MockRepository)(nil).NotifyDebug), message)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NotifyDebug", reflect.TypeOf((*MockRepository)(nil).NotifyDebug), title, message)
 }
 
 // NotifyError mocks base method.
@@ -77,15 +77,15 @@ func (mr *MockRepositoryMockRecorder) NotifyError(err any) *gomock.Call {
 }
 
 // NotifyInfo mocks base method.
-func (m *MockRepository) NotifyInfo(message string) {
+func (m *MockRepository) NotifyInfo(title, message string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "NotifyInfo", message)
+	m.ctrl.Call(m, "NotifyInfo", title, message)
 }
 
 // NotifyInfo indicates an expected call of NotifyInfo.
-func (mr *MockRepositoryMockRecorder) NotifyInfo(message any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) NotifyInfo(title, message any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NotifyInfo", reflect.TypeOf((*MockRepository)(nil).NotifyInfo), message)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NotifyInfo", reflect.TypeOf((*MockRepository)(nil).NotifyInfo), title, message)
 }
 
 // Subscribe mocks base method.

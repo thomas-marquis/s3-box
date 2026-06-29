@@ -1,12 +1,13 @@
 package testutil
 
 import (
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 )
 
 // FakeNotLoadedRootDirectory creates a new root directory (not loaded) with FakeS3LikeConnectionId
@@ -22,8 +23,14 @@ func FakeNotLoadedRootDirectory(t *testing.T) *directory.Directory {
 // FakeLoadedRootDirectory creates a new root directory (loaded) with FakeS3LikeConnectionId
 func FakeLoadedRootDirectory(t *testing.T) *directory.Directory {
 	t.Helper()
+	return FakeLoadedRootDirectoryWithConn(t, FakeS3LikeConnectionId)
+}
 
-	dir, err := directory.NewRoot(FakeS3LikeConnectionId)
+// FakeLoadedRootDirectoryWithConn creates a new root directory (loaded) with connection ID
+func FakeLoadedRootDirectoryWithConn(t *testing.T, connId connection_deck.ConnectionID) *directory.Directory {
+	t.Helper()
+
+	dir, err := directory.NewRoot(connId)
 	require.NoError(t, err)
 
 	_, err = dir.Load()
@@ -124,7 +131,7 @@ func AddFileToDirectory(t *testing.T, dir *directory.Directory, name string) *di
 	require.NoError(t, err)
 	require.Equal(t, directory.CreateFileTriggeredType, fEvt.Type())
 
-	f := fEvt.Payload.(directory.CreateFileTriggered).File
+	f := fEvt.Payload().(directory.CreateFileTriggered).File
 
 	err = dir.Notify(event.New(directory.CreateFileSucceeded{
 		File:      f,
@@ -161,7 +168,7 @@ func AddSubNotLoadedDirectoryToDirectory(t *testing.T, dir *directory.Directory,
 	require.NoError(t, err)
 	require.Equal(t, directory.CreateTriggeredType, newEvt.Type())
 
-	nd := newEvt.Payload.(directory.CreateTriggered).Directory
+	nd := newEvt.Payload().(directory.CreateTriggered).Directory
 
 	err = dir.Notify(event.New(directory.CreateSucceeded{
 		ParentDirectory: dir,
@@ -170,4 +177,161 @@ func AddSubNotLoadedDirectoryToDirectory(t *testing.T, dir *directory.Directory,
 	require.NoError(t, err)
 
 	return nd
+}
+
+type directoryBuilderConfig struct {
+	name          string
+	loaded        bool
+	subDirConfigs []*directoryBuilderConfig
+	files         []string
+	connectionId  connection_deck.ConnectionID
+	parentConfig  *directoryBuilderConfig
+	parent        *directory.Directory
+	hasRootParent bool
+	isRoot        bool
+}
+
+type DirectoryBuilderOption func(*directoryBuilderConfig)
+
+func IsLoaded() DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.loaded = true
+	}
+}
+
+func WithConnectionId(connId connection_deck.ConnectionID) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.connectionId = connId
+	}
+}
+
+func WithFiles(fileNames ...string) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.files = fileNames
+	}
+}
+
+func WithSubDirectory(name string, opts ...DirectoryBuilderOption) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		sdCfg := directoryBuilderConfig{
+			name:         name,
+			connectionId: cfg.connectionId,
+		}
+		for _, opt := range opts {
+			opt(&sdCfg)
+		}
+		sdCfg.connectionId = cfg.connectionId
+		sdCfg.isRoot = false
+		sdCfg.hasRootParent = cfg.isRoot
+		cfg.subDirConfigs = append(cfg.subDirConfigs, &sdCfg)
+	}
+}
+
+func WithParent(name string, opts ...DirectoryBuilderOption) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		pCfg := directoryBuilderConfig{
+			name:         name,
+			connectionId: cfg.connectionId,
+		}
+		for _, opt := range opts {
+			opt(&pCfg)
+		}
+		pCfg.loaded = true
+		if cfg.hasRootParent {
+			pCfg.isRoot = true
+		}
+		pCfg.connectionId = cfg.connectionId
+		cfg.parentConfig = &pCfg
+	}
+}
+
+func WithRootParent() DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.hasRootParent = true
+	}
+}
+
+func AsRoot() DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.isRoot = true
+	}
+}
+
+func withDirectoryBuilderConfig(newCfg *directoryBuilderConfig) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		*cfg = *newCfg
+	}
+}
+
+func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *directory.Directory {
+	t.Helper()
+
+	cfg := directoryBuilderConfig{
+		connectionId: FakeAwsConnectionId,
+		name:         name,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	var dir *directory.Directory
+	var err error
+	if cfg.isRoot {
+		dir, err = directory.NewRoot(cfg.connectionId)
+	} else if cfg.hasRootParent {
+		root, errRoot := directory.NewRoot(cfg.connectionId)
+		require.NoError(t, errRoot)
+		_, errRoot = root.Load()
+		require.NoError(t, errRoot)
+		errRoot = root.Notify(event.New(directory.LoadSucceeded{
+			Directory: root,
+		}))
+		require.NoError(t, errRoot)
+		dir, err = directory.New(cfg.connectionId, cfg.name, root)
+	} else if cfg.parentConfig != nil {
+		parent := MakeDirectory(t, cfg.parentConfig.name, withDirectoryBuilderConfig(cfg.parentConfig))
+		dir, err = directory.New(cfg.connectionId, cfg.name, parent)
+	} else if cfg.parent != nil {
+		evt, err2 := cfg.parent.NewSubDirectory(cfg.name)
+		require.NoError(t, err2)
+		dir = evt.Payload().(directory.CreateTriggered).Directory
+		err = cfg.parent.Notify(event.New(directory.CreateSucceeded{
+			ParentDirectory: cfg.parent,
+			Directory:       dir,
+		}))
+	} else {
+		log.Fatalf("no parent directory provided for '%s', please one of the following options: AsRoot or WithParent\n", name)
+	}
+	require.NoError(t, err)
+
+	shouldBeLoaded := cfg.loaded || len(cfg.files) > 0 || len(cfg.subDirConfigs) > 0
+	if shouldBeLoaded {
+		_, err = dir.Load()
+		require.NoError(t, err)
+		err = dir.Notify(event.New(directory.LoadSucceeded{
+			Directory: dir,
+		}))
+		require.NoError(t, err)
+	}
+
+	if len(cfg.files) > 0 {
+		for _, fileName := range cfg.files {
+			fEvt, err := dir.NewFile(fileName, false)
+			require.NoError(t, err)
+			f := fEvt.Payload().(directory.CreateFileTriggered).File
+			require.NoError(t, dir.Notify(event.New(directory.CreateFileSucceeded{
+				File:      f,
+				Directory: dir,
+			})))
+		}
+	}
+
+	if len(cfg.subDirConfigs) > 0 {
+		for _, sdCfg := range cfg.subDirConfigs {
+			sdCfg.parent = dir
+			MakeDirectory(t, sdCfg.name, withDirectoryBuilderConfig(sdCfg))
+		}
+	}
+
+	return dir
 }

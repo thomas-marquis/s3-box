@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
 	"go.uber.org/mock/gomock"
@@ -42,7 +42,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.Payload.(directory.DownloadFileSucceeded)
+				e, ok := evt.Payload().(directory.DownloadFileSucceeded)
 				res := assert.True(t, ok) &&
 					assert.Equal(t, "file_in_dir.txt", e.File.Name().String())
 				close(done)
@@ -90,7 +90,7 @@ func TestS3DirectoryRepository_downloadFile(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Cond(func(evt event.Event) bool {
 				// Then
-				e, ok := evt.Payload.(directory.DownloadFileFailed)
+				e, ok := evt.Payload().(directory.DownloadFileFailed)
 				res := assert.True(t, ok) &&
 					assert.Error(t, e.Err) &&
 					assert.ErrorIs(t, e.Err, directory.ErrNotFound)

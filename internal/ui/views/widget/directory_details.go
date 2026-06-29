@@ -3,6 +3,7 @@ package widget
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -15,6 +16,10 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
+)
+
+const (
+	dropZoneInitialText = "Drop files here to upload"
 )
 
 type DirectoryDetails struct {
@@ -32,7 +37,9 @@ type DirectoryDetails struct {
 	reloadAction       *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
 
-	dropZone *DropZone
+	dropZone      *DropZone
+	mu            sync.Mutex
+	isPreviewOpen bool
 }
 
 func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
@@ -43,8 +50,8 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	actionRequiredBtn.Hide()
 
 	reloadAction := NewToolbarButton("Reload", theme.ViewRefreshIcon(), func() {})
-	createDirAction := NewToolbarButton("New empty directory", theme.FolderNewIcon(), func() {})
-	createFileAction := NewToolbarButton("New empty file", theme.ContentAddIcon(), func() {})
+	createDirAction := NewToolbarButton("Create directory", theme.FolderNewIcon(), func() {})
+	createFileAction := NewToolbarButton("Create file", theme.ContentAddIcon(), func() {})
 	renameAction := NewToolbarButton("Rename", theme.FileTextIcon(), func() {})
 	toolbar := widget.NewToolbar(
 		reloadAction,
@@ -65,7 +72,7 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 		reloadAction:       reloadAction,
 		loadingBar:         loadingBar,
 		renameErrContent:   newRenameFailedPanel(appCtx.Window()),
-		dropZone:           NewDropZone("Drop files here to upload", appCtx.Window()),
+		dropZone:           NewDropZone(dropZoneInitialText, appCtx.Window()),
 	}
 	w.ExtendBaseWidget(w)
 
@@ -195,13 +202,43 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 
 	w.dropZone.Reset()
 	w.dropZone.OnFilesDropped = func(uris []fyne.URI) {
-		w.dropZone.Text = fmt.Sprintf("Uploading %d files...", len(uris))
-		dialog.ShowInformation("Drop files",
-			fmt.Sprintf("Dropped %d files in directory %s", len(uris), dir.Name()),
-			w.appCtx.Window())
-		// TODO: implement uploading here
+		if err := vm.PrepareUpload(uris, dir); err != nil {
+			dialog.ShowError(err, w.appCtx.Window())
+			return
+		}
 	}
 	w.dropZone.OnClick = w.makeOnUpload(vm, dir)
+
+	vm.CurrentPreview().AddListener(binding.NewDataListener(func() {
+		prev, err := vm.CurrentPreview().Get()
+		w.mu.Lock()
+		if err != nil || (prev == viewmodel.UploadPreviewState{}) || w.isPreviewOpen {
+			w.mu.Unlock()
+			return
+		}
+		w.isPreviewOpen = true
+		w.mu.Unlock()
+
+		dirPreview := NewDirectoryPreview(w.appCtx, prev.Preview)
+		dirPreview.OnValidate = func(selectedStrategy directory.MaterializeStrategy) {
+			vm.DoUpload(prev.BaseUri, prev.Preview, selectedStrategy)
+		}
+
+		dial := dialog.NewCustom(
+			"Upload previewer",
+			"Cancel",
+			container.NewScroll(dirPreview),
+			w.appCtx.Window())
+		dial.Resize(fyne.NewSize(800, 600))
+		dial.SetOnClosed(func() {
+			w.dropZone.Reset()
+			vm.CurrentPreview().Set(viewmodel.UploadPreviewState{}) //nolint:errcheck
+			w.mu.Lock()
+			w.isPreviewOpen = false
+			w.mu.Unlock()
+		})
+		dial.Show()
+	}))
 }
 
 func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func(bool) {
@@ -219,14 +256,14 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 			}
 
 			localDestFilePath := reader.URI().Path()
-			if err := vm.UploadFile(localDestFilePath, dir, false); err != nil {
+			if err := vm.UploadOne(localDestFilePath, dir, false); err != nil {
 				if errors.Is(err, directory.ErrAlreadyExists) {
 					dialog.ShowConfirm(
 						"This file already exists",
 						"Do you want to overwrite it?",
 						func(b bool) {
 							if b {
-								if err := vm.UploadFile(localDestFilePath, dir, true); err != nil {
+								if err := vm.UploadOne(localDestFilePath, dir, true); err != nil {
 									dialog.ShowError(err, w.appCtx.Window())
 								}
 							}
@@ -394,10 +431,10 @@ func (w *renameFailedPanel) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
 	statusLabel := NewOpenableLabel("", w.window)
-	statusLabel.Selectable = false
-	statusLabel.Alignment = fyne.TextAlignLeading
-	statusLabel.Truncation = fyne.TextTruncateEllipsis
-	statusLabel.TextStyle = fyne.TextStyle{Bold: true}
+	statusLabel.Label.Selectable = false
+	statusLabel.Label.Alignment = fyne.TextAlignLeading
+	statusLabel.Label.Truncation = fyne.TextTruncateEllipsis
+	statusLabel.Label.TextStyle = fyne.TextStyle{Bold: true}
 
 	w.resumeBtn = widget.NewButton("Resume", func() {})
 	w.rollbackBtn = widget.NewButton("Rollback", func() {})
@@ -422,7 +459,7 @@ func (w *renameFailedPanel) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (w *renameFailedPanel) SetMessage(msg string) {
-	w.statusLabel.SetText(msg)
+	w.statusLabel.Label.SetText(msg)
 }
 
 func (w *renameFailedPanel) SetCallbacks(resume, rollback, abort func()) {

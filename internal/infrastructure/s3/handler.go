@@ -5,8 +5,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
-	"github.com/thomas-marquis/s3-box/internal/domain/shared/event"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -23,6 +23,7 @@ type EventHandler struct {
 	s3ClientOptions      []func(*s3.Options)
 
 	clientFactory s3client.Factory
+	subscriber    *event.Subscriber
 }
 
 func NewS3EventHandler(
@@ -42,7 +43,7 @@ func NewS3EventHandler(
 }
 
 func (h *EventHandler) Listen() {
-	h.bus.Subscribe().
+	h.subscriber = h.bus.Subscribe().
 		On(event.Is(directory.CreateTriggeredType), h.handleCreateDirectory).
 		On(event.Is(directory.DeleteTriggeredType), h.handleDeleteDirectory).
 		On(event.Is(directory.CreateFileTriggeredType), h.handleCreateFile).
@@ -58,12 +59,20 @@ func (h *EventHandler) Listen() {
 		On(event.IsOneOf(
 			connection_deck.RemoveConnectionSucceededType,
 			connection_deck.UpdateConnectionSucceededType,
-		), h.handleConnectionChanged).
-		ListenNonBlocking() // TODO: set a limit of simultaneous tasks
+		), h.handleConnectionChanged)
+
+	h.subscriber.ListenWithWorkers(20)
+}
+
+func (h *EventHandler) Destroy() {
+	if h.subscriber == nil {
+		return
+	}
+	h.subscriber.Detach()
 }
 
 func (h *EventHandler) handleConnectionChanged(evt event.Event) {
-	if pl, ok := evt.Payload.(connection_deck.ConnectionGetter); ok {
+	if pl, ok := evt.Payload().(connection_deck.ConnectionGetter); ok {
 		cId := pl.Connection().ID()
 		h.clientFactory.Remove(cId)
 	}

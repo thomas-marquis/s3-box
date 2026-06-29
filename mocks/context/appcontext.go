@@ -13,7 +13,7 @@ import (
 	reflect "reflect"
 
 	fyne "fyne.io/fyne/v2"
-	event "github.com/thomas-marquis/s3-box/internal/domain/shared/event"
+	event "github.com/thomas-marquis/it-happened/event"
 	navigation "github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	viewmodel "github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	gomock "go.uber.org/mock/gomock"
