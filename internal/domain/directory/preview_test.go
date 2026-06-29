@@ -51,7 +51,7 @@ func TestPreview_Materialize(t *testing.T) {
 		res := mat.Materialize(directory.MaterializeSkip)
 
 		// Then
-		eventest.IsType(t, res, carrier.SequenceType)
+		eventest.AssertIsType(t, res, carrier.SequenceType)
 		cs := res.Payload().(*carrier.Sequence)
 		assert.Len(t, cs.Carried, 3)
 
@@ -59,26 +59,26 @@ func TestPreview_Materialize(t *testing.T) {
 		ca2 := cs.Carried[1]
 		ca3 := cs.Carried[2]
 
-		eventest.IsType(t, ca1, carrier.AllType)
-		eventest.IsType(t, ca2, carrier.AllType)
-		eventest.IsType(t, ca3, carrier.AllType)
+		eventest.AssertIsType(t, ca1, carrier.AllType)
+		eventest.AssertIsType(t, ca2, carrier.AllType)
+		eventest.AssertIsType(t, ca3, carrier.AllType)
 
 		// layer 1
-		eventest.ContainsExactlyAllPayloads(t, ca1.Payload().(*carrier.All).Carried,
+		eventest.AssertContainsExactlyAllPayloads(t, ca1.Payload().(*carrier.All).Carried,
 			directory.UploadFileTriggered{Directory: dir, SrcPath: "/home/user/data/file1.txt"},
 			directory.UploadFileTriggered{Directory: dir, SrcPath: "/home/user/data/file2.txt"},
 			directory.CreateTriggered{ParentDirectory: dir, Directory: dirMd},
 		)
 
 		// layer 2
-		eventest.ContainsExactlyAllPayloads(t, ca2.Payload().(*carrier.All).Carried,
+		eventest.AssertContainsExactlyAllPayloads(t, ca2.Payload().(*carrier.All).Carried,
 			directory.UploadFileTriggered{Directory: dirMd, SrcPath: "/home/user/data/md/file3.md"},
 			directory.CreateTriggered{ParentDirectory: dirMd, Directory: dirHtml},
 			directory.CreateTriggered{ParentDirectory: dirMd, Directory: dirGo},
 		)
 
 		// layer 3
-		eventest.ContainsExactlyAllPayloads(t, ca3.Payload().(*carrier.All).Carried,
+		eventest.AssertContainsExactlyAllPayloads(t, ca3.Payload().(*carrier.All).Carried,
 			directory.UploadFileTriggered{Directory: dirHtml, SrcPath: "/home/user/data/md/html/file4.html"},
 			directory.UploadFileTriggered{Directory: dirHtml, SrcPath: "/home/user/data/md/html/file5.html"},
 			directory.UploadFileTriggered{Directory: dirGo, SrcPath: "/home/user/data/md/go/file6.go"},
@@ -129,7 +129,7 @@ func TestPreview_Materialize(t *testing.T) {
 		res := mat.Materialize(directory.MaterializeSkip)
 
 		// Then
-		eventest.IsType(t, res, carrier.SequenceType)
+		eventest.AssertIsType(t, res, carrier.SequenceType)
 		cs := res.Payload().(*carrier.Sequence)
 		assert.Len(t, cs.Carried, 3)
 
@@ -137,23 +137,23 @@ func TestPreview_Materialize(t *testing.T) {
 		ca2 := cs.Carried[1]
 		ca3 := cs.Carried[2]
 
-		eventest.IsType(t, ca1, carrier.AllType)
-		eventest.IsType(t, ca2, carrier.AllType)
-		eventest.IsType(t, ca3, carrier.AllType)
+		eventest.AssertIsType(t, ca1, carrier.AllType)
+		eventest.AssertIsType(t, ca2, carrier.AllType)
+		eventest.AssertIsType(t, ca3, carrier.AllType)
 
 		// layer 1
-		eventest.ContainsExactlyAllPayloads(t, ca1.Payload().(*carrier.All).Carried,
+		eventest.AssertContainsExactlyAllPayloads(t, ca1.Payload().(*carrier.All).Carried,
 			directory.UploadFileTriggered{Directory: dir, SrcPath: "/home/user/data/file2.txt"},
 		)
 
 		// layer 2
-		eventest.ContainsExactlyAllPayloads(t, ca2.Payload().(*carrier.All).Carried,
+		eventest.AssertContainsExactlyAllPayloads(t, ca2.Payload().(*carrier.All).Carried,
 			directory.UploadFileTriggered{Directory: dirMd, SrcPath: "/home/user/data/md/file3.md"},
 			directory.CreateTriggered{ParentDirectory: dirMd, Directory: prevGo.Directory()},
 		)
 
 		// layer 3
-		eventest.ContainsExactlyAllPayloads(t, ca3.Payload().(*carrier.All).Carried,
+		eventest.AssertContainsExactlyAllPayloads(t, ca3.Payload().(*carrier.All).Carried,
 			directory.UploadFileTriggered{Directory: dirHtml, SrcPath: "/home/user/data/md/html/file4.html"},
 			directory.UploadFileTriggered{Directory: prevGo.Directory(), SrcPath: "/home/user/data/md/go/file6.go"},
 		)

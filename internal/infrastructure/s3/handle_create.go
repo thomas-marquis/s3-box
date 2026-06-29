@@ -26,7 +26,7 @@ func (h *EventHandler) handleCreateFile(evt event.Event) {
 		handleError(err)
 		return
 	}
-	if _, err := obj.Write([]byte{}); err != nil {
+	if _, err := obj.Write([]byte("")); err != nil {
 		handleError(err)
 		return
 	}

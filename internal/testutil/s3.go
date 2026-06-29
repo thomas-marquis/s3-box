@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -12,7 +13,8 @@ import (
 	awsHttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go/modules/localstack"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type FakeS3Object struct {
@@ -23,7 +25,21 @@ type FakeS3Object struct {
 func SetupS3testContainer(ctx context.Context, t *testing.T) (string, func()) {
 	t.Helper()
 
-	lsContainer, err := localstack.Run(ctx, "localstack/localstack:3.0")
+	req := testcontainers.ContainerRequest{
+		Image:        "ministackorg/ministack:latest",
+		ExposedPorts: []string{"4566/tcp"},
+		Env: map[string]string{
+			"GATEWAY_PORT": "4566",
+			"LOG_LEVEL":    "DEBUG",
+		},
+		WaitingFor: wait.ForHTTP("/_ministack/health").
+			WithPort("4566/tcp").
+			WithStartupTimeout(60 * time.Second),
+	}
+	lsContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
 	require.NoError(t, err)
 
 	endpoint, err := lsContainer.PortEndpoint(ctx, "4566", "")

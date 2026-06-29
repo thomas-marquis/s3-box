@@ -29,7 +29,10 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		testutil.SetupS3Bucket(ctx, t, client, bucket, []testutil.FakeS3Object{})
 		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		dir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
+		dir := testutil.MakeDirectory(t, "mydir",
+			testutil.WithRootParent(),
+			testutil.WithConnectionId(testutil.FakeAwsConnectionId),
+		)
 		newFile, err := directory.NewFile("new_file.txt", dir)
 		require.NoError(t, err)
 
@@ -52,7 +55,11 @@ func TestNewS3DirectoryRepository_createFile(t *testing.T) {
 		s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 		// When
-		fakeEventChan <- event.New(directory.CreateFileTriggered{ConnectionID: testutil.FakeAwsConnectionId, Directory: dir, File: newFile})
+		fakeEventChan <- event.New(directory.CreateFileTriggered{
+			ConnectionID: testutil.FakeAwsConnectionId,
+			Directory:    dir,
+			File:         newFile,
+		})
 		testutil.AssertEventually(t, done)
 
 		testutil.AssertObjectContent(t, client, bucket, "mydir/new_file.txt", "")

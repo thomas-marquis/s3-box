@@ -10,8 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/it-happened/eventest"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
+	"github.com/thomas-marquis/s3-box/internal/testutil"
 	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
 	mocks_fyne "github.com/thomas-marquis/s3-box/mocks/fyne"
 	"go.uber.org/mock/gomock"
@@ -129,10 +131,13 @@ func TestFyneConnectionsRepository_select(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			Publish(gomock.Eq(event.New(connection_deck.SelectConnectionSucceeded{
-				ConnectionPayload: connection_deck.ConnectionPayload{Conn: c1},
-				Deck:              deck,
-			}, event.WithRef(evt.ChainRef())))).
+			Publish(gomock.All(
+				eventest.PayloadEq(connection_deck.SelectConnectionSucceeded{
+					ConnectionPayload: connection_deck.ConnectionPayload{Conn: c1},
+					Deck:              deck,
+				}),
+				eventest.IsFollowupOf(evt),
+			)).
 			Do(func(e event.Event) {
 				close(done)
 			}).
@@ -140,7 +145,9 @@ func TestFyneConnectionsRepository_select(t *testing.T) {
 
 		// When
 		events <- evt
-		<-done
+
+		// Then
+		testutil.AssertEventually(t, done)
 	})
 }
 
@@ -171,16 +178,19 @@ func TestFyneConnectionsRepository_create(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			Publish(gomock.Eq(event.New(connection_deck.CreateConnectionSucceeded{
-				ConnectionPayload: connection_deck.ConnectionPayload{Conn: c1},
-				Deck:              deck,
-			}, event.WithRef(evt.ChainRef())))).
+			Publish(gomock.All(
+				eventest.PayloadEq(connection_deck.CreateConnectionSucceeded{
+					ConnectionPayload: connection_deck.ConnectionPayload{Conn: c1},
+					Deck:              deck,
+				}),
+				eventest.IsFollowupOf(evt),
+			)).
 			Do(func(e event.Event) { close(done) }).
 			Times(1)
 
 		// When
 		events <- evt
-		<-done
+		testutil.AssertEventually(t, done)
 	})
 }
 
@@ -213,10 +223,13 @@ func TestFyneConnectionsRepository_remove(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			Publish(gomock.Eq(event.New(connection_deck.RemoveConnectionSucceeded{
-				ConnectionPayload: connection_deck.ConnectionPayload{Conn: c1},
-				Deck:              deck,
-			}, event.WithRef(evt.ChainRef())))).
+			Publish(gomock.All(
+				eventest.PayloadEq(connection_deck.RemoveConnectionSucceeded{
+					Deck:              deck,
+					ConnectionPayload: connection_deck.ConnectionPayload{Conn: c1},
+				}),
+				eventest.IsFollowupOf(evt),
+			)).
 			Do(func(e event.Event) { close(done) }).
 			Times(1)
 
@@ -256,16 +269,19 @@ func TestFyneConnectionsRepository_update(t *testing.T) {
 			Times(1)
 
 		mockBus.EXPECT().
-			Publish(gomock.Eq(event.New(connection_deck.UpdateConnectionSucceeded{
-				ConnectionPayload: connection_deck.ConnectionPayload{Conn: c2},
-				Deck:              deck,
-			}, event.WithRef(evt.ChainRef())))).
+			Publish(gomock.All(
+				eventest.PayloadEq(connection_deck.UpdateConnectionSucceeded{
+					ConnectionPayload: connection_deck.ConnectionPayload{Conn: c2},
+					Deck:              deck,
+				}),
+				eventest.IsFollowupOf(evt),
+			)).
 			Do(func(e event.Event) { close(done) }).
 			Times(1)
 
 		// When
 		events <- evt
-		<-done
+		testutil.AssertEventually(t, done)
 	})
 }
 
