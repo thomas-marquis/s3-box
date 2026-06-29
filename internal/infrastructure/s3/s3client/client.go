@@ -46,6 +46,11 @@ func newClientImpl(client *s3.Client, bucket string, api BaseAPI) *clientImpl {
 	}
 }
 
+// WeiredEscape for OVH...
+func WeiredEscape(bucket, key string) string {
+	return strings.ReplaceAll(url.QueryEscape(bucket+"/"+key), "+", " ")
+}
+
 func (c *clientImpl) RenameObject(ctx context.Context, oldKey, newKey string, opts ...Option) error {
 	hIn := &s3.HeadObjectInput{
 		Bucket: aws.String(c.bucket),
@@ -66,7 +71,7 @@ func (c *clientImpl) RenameObject(ctx context.Context, oldKey, newKey string, op
 
 	cpyInput := &s3.CopyObjectInput{
 		Bucket:                         aws.String(c.bucket),
-		CopySource:                     aws.String(strings.ReplaceAll(url.QueryEscape(c.bucket+"/"+oldKey), "+", " ")), // weired escape for OVH...
+		CopySource:                     aws.String(WeiredEscape(c.bucket, oldKey)),
 		Key:                            aws.String(newKey),
 		CacheControl:                   headRes.CacheControl,
 		ContentDisposition:             headRes.ContentDisposition,
