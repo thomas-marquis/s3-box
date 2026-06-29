@@ -7,25 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/it-happened/carrier"
-	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/it-happened/eventest"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
 )
-
-func assertContainsEvents(t *testing.T, events []event.Event, expectedPayloads ...event.Payload) {
-	t.Helper()
-
-	payloads := make([]event.Payload, len(events))
-	for i, e := range events {
-		payloads[i] = e.Payload()
-	}
-
-	for _, e := range expectedPayloads {
-		assert.Contains(t, payloads, e)
-	}
-}
 
 func TestPreview_Materialize(t *testing.T) {
 	t.Run("should return a sequence of All carriers with an empty directory", func(t *testing.T) {

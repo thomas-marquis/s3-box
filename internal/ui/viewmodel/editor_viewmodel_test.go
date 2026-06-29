@@ -31,7 +31,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 	conn := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, false),
 		connection_deck.WithID(fakeConnID)).
-		Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		Payload().(connection_deck.CreateConnectionTriggered).Connection()
 
 	t.Run("should open the editor and then load the file content", func(t *testing.T) {
 		// Given
@@ -236,7 +236,7 @@ func TestEditorViewModelImpl_IsOpened(t *testing.T) {
 	conn := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, false),
 		connection_deck.WithID(fakeConnID)).
-		Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		Payload().(connection_deck.CreateConnectionTriggered).Connection()
 
 	t.Run("should return true when the file is opened, false otherwise", func(t *testing.T) {
 		// Given
@@ -287,7 +287,7 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 	conn := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, false),
 		connection_deck.WithID(fakeConnID)).
-		Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		Payload().(connection_deck.CreateConnectionTriggered).Connection()
 
 	t.Run("should close opened file", func(t *testing.T) {
 		// Given
@@ -337,18 +337,18 @@ func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
 	conn1 := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, false),
 		connection_deck.WithID(fakeConnID1)).
-		Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		Payload().(connection_deck.CreateConnectionTriggered).Connection()
 
 	conn1updated := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, false),
 		connection_deck.WithID(fakeConnID1)).
-		Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		Payload().(connection_deck.CreateConnectionTriggered).Connection()
 
 	fakeConnID2 := connection_deck.NewConnectionID()
 	conn2 := fakeDeck.New("New connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
 		connection_deck.AsS3Like(fakeEndpoint, true),
 		connection_deck.WithID(fakeConnID2)).
-		Payload.(connection_deck.CreateConnectionTriggered).Connection()
+		Payload().(connection_deck.CreateConnectionTriggered).Connection()
 
 	t.Run("should set the new connection when selected", func(t *testing.T) {
 		// Given

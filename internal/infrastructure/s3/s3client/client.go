@@ -7,7 +7,8 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
+
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -31,19 +32,17 @@ type Client interface {
 type clientImpl struct {
 	api BaseAPI
 
-	client     *s3.Client
-	bucket     string
-	downloader *manager.Downloader
-	uploader   *manager.Uploader
+	client   *s3.Client
+	bucket   string
+	tmClient *transfermanager.Client
 }
 
 func newClientImpl(client *s3.Client, bucket string, api BaseAPI) *clientImpl {
 	return &clientImpl{
-		api:        api,
-		client:     client,
-		bucket:     bucket,
-		downloader: manager.NewDownloader(client),
-		uploader:   manager.NewUploader(client),
+		api:      api,
+		client:   client,
+		bucket:   bucket,
+		tmClient: transfermanager.New(client),
 	}
 }
 
@@ -136,12 +135,3 @@ func (c *clientImpl) Upload(ctx context.Context, key string, body io.Reader, opt
 }
 
 type Option func(any)
-
-func WithContentLength(length int64) Option {
-	return func(in any) {
-		switch i := in.(type) {
-		case *s3.PutObjectInput:
-			i.ContentLength = aws.Int64(length)
-		}
-	}
-}

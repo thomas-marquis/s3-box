@@ -155,9 +155,9 @@ func (w *DirectoryPreview) makeTree(strategy directory.MaterializeStrategy) *wid
 
 				status, desc, err := ni.Preview.FileStatus(strategy, fileName)
 				if err != nil {
-					fileLabelBuilder.WriteString(fmt.Sprintf(" (%s)", err))
+					fmt.Fprintf(&fileLabelBuilder, " (%s)", err) //nolint:errcheck
 				}
-				fileLabelBuilder.WriteString(fmt.Sprintf(" (%s)", status))
+				fmt.Fprintf(&fileLabelBuilder, " (%s)", status) //nolint:errcheck
 
 				if desc != "" {
 					infoBtn.Show()
@@ -190,12 +190,12 @@ func (i *previewNodeItem) IsDir() bool {
 
 func initPreviewData(data binding.Tree[previewNodeItem], preview *directory.Preview, parentPath string) {
 	currPath := parentPath + preview.Directory().Name() + "/"
-	data.Append(parentPath, currPath, previewNodeItem{
+	data.Append(parentPath, currPath, previewNodeItem{ // nolint:errcheck
 		Preview: preview,
 		File:    nil,
 	})
 	for _, f := range preview.Files() {
-		data.Append(currPath, currPath+f.Name().String(), previewNodeItem{
+		data.Append(currPath, currPath+f.Name().String(), previewNodeItem{ // nolint:errcheck
 			Preview: preview,
 			File:    f,
 		})

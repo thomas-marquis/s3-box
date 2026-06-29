@@ -78,7 +78,7 @@ func NewBindingItemFormatter[T any](original binding.Item[T], formatFunc func(T)
 
 	original.AddListener(binding.NewDataListener(func() {
 		item, _ := b.original.Get()
-		b.String.Set(b.formatFunc(item)) //nolint:errcheck
+		b.Set(b.formatFunc(item)) //nolint:errcheck
 	}))
 	return b
 }
