@@ -78,6 +78,8 @@ func (p Path) Split() []string {
 		"/")
 }
 
+// RelativeTo returns the path relative to the base path.
+// The base path must be a parent of the path.
 func (p Path) RelativeTo(basePath Path) (Path, error) {
 	if basePath == RootPath || basePath == NilParentPath {
 		return "", nil

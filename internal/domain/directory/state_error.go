@@ -47,7 +47,7 @@ func (s *errorState) Notify(evt event.Event) error {
 			status := RenameFailedStatus{
 				CurrentDirectory: s.d,
 				IsSourceDir:      true,
-				OtherDirPath:     s.d.ParentPath().NewSubPath(pl.NewName),
+				OtherDirPath:     s.d.Parent().Path().NewSubPath(pl.NewName),
 			}
 			s.d.setState(newErrorState(s.baseState, status))
 		}

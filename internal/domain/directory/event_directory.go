@@ -69,9 +69,6 @@ const (
 	LoadTriggeredType event.Type = "event.directory.load.triggered"
 	LoadSucceededType event.Type = "event.directory.load.succeeded"
 	LoadFailedType    event.Type = "event.directory.load.failed"
-
-	//LoadManyFailedType    event.Type = "event.directory.load.many.failed"
-	//LoadManySucceededType event.Type = "event.directory.load.many.succeeded"
 )
 
 type LoadTriggered struct {
@@ -100,22 +97,6 @@ type LoadFailed struct {
 func (e LoadFailed) EventType() event.Type {
 	return LoadFailedType
 }
-
-//type LoadManyFailed struct {
-//	Err error
-//}
-//
-//func (e LoadManyFailed) EventType() event.Type {
-//	return LoadManyFailedType
-//}
-//
-//type LoadManySucceeded struct {
-//	SrcDir *Directory
-//}
-//
-//func (e LoadManySucceeded) EventType() event.Type {
-//	return LoadManySucceededType
-//}
 
 const (
 	RenameTriggeredType event.Type = "event.directory.rename.triggered"
@@ -200,12 +181,9 @@ func (e UserValidationRefused) EventType() event.Type {
 }
 
 const (
-	UploadReadyType event.Type = "event.directory.upload.ready"
-	//UploadPreviewedType event.Type = "event.directory.upload.previewed"
+	UploadReadyType     event.Type = "event.directory.upload.ready"
 	UploadFailedType    event.Type = "event.directory.upload.failed"
 	UploadSucceededType event.Type = "event.directory.upload.succeeded"
-	//UploadConfirmedType event.Type = "event.directory.upload.confirmed"
-	//UploadAbortedType   event.Type = "event.directory.upload.aborted"
 )
 
 type UploadReady struct {
@@ -216,34 +194,6 @@ type UploadReady struct {
 func (e UploadReady) EventType() event.Type {
 	return UploadReadyType
 }
-
-//type UploadPreviewed struct {
-//	Directory       *Directory
-//	Previews        map[UploadMode][]any
-//	UploadableItems []*FsItem
-//}
-//
-//func (e UploadPreviewed) EventType() event.Type {
-//	return UploadPreviewedType
-//}
-
-//type UploadConfirmed struct {
-//	Directory       *Directory
-//	SelectedMode    UploadMode
-//	UploadableItems []*FsItem
-//}
-//
-//func (e UploadConfirmed) EventType() event.Type {
-//	return UploadConfirmedType
-//}
-
-//type UploadAborted struct {
-//	Directory *Directory
-//}
-//
-//func (e UploadAborted) EventType() event.Type {
-//	return UploadAbortedType
-//}
 
 type UploadFailed struct {
 	Err       error
@@ -259,9 +209,3 @@ type UploadSucceeded LoadSucceeded
 func (e UploadSucceeded) EventType() event.Type {
 	return UploadSucceededType
 }
-
-// on refera un double check côté infra plus tard dés fois que l'état remote ait changé entre temps
-// On ne retourne une preview et on ne demande une confirmation que si il y a plus de 1 fichier et/ou plus de 1 dossier
-// On ne demande l'avis de l'utilisateur sur le mode d'upload que s'il y a conflit. On utilise celui par défaut sinon.
-// Mais on lui montre la preview dans tous les cas et on lui demande confirmation
-// On ne charge que le premier niveau si l'upload fonctionne

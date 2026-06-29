@@ -60,7 +60,6 @@ func (h *EventHandler) Listen() {
 			connection_deck.RemoveConnectionSucceededType,
 			connection_deck.UpdateConnectionSucceededType,
 		), h.handleConnectionChanged)
-	//On(event.Is(directory.UploadTriggeredType), h.handleUploadTriggered)
 
 	h.subscriber.ListenWithWorkers(20)
 }

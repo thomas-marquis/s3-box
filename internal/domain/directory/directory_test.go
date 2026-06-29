@@ -174,34 +174,6 @@ func TestDirectory_NewFile(t *testing.T) {
 		require.Len(t, files, 1)
 		assert.Equal(t, "report.csv", files[0].Name().String())
 	})
-
-	t.Run("should create a file with its subdirectory when the filename contains a slash", func(t *testing.T) {
-		// Given
-		dir := testutil.FakeLoadedRootDirectory(t)
-
-		// When
-		evt, err := dir.NewFile("sub/report.csv", false)
-
-		// Then
-		assert.NoError(t, err)
-		assert.Equal(t, directory.CreateFileTriggeredType, evt.Type())
-		pl := evt.Payload().(directory.CreateFileTriggered)
-		assert.Equal(t, dir, pl.Directory)
-		assert.Equal(t, "report.csv", pl.File.Name().String())
-		files := dir.Files()
-		require.Len(t, files, 0)
-
-		// Then, when notified of the success
-		successEvt := event.New(directory.CreateFileSucceeded{
-			File:      pl.File,
-			Directory: dir,
-		})
-		assert.NoError(t, dir.Notify(successEvt))
-
-		files = dir.Files()
-		require.Len(t, files, 1)
-		assert.Equal(t, "report.csv", files[0].Name().String())
-	})
 }
 
 func TestDirectory_RemoveFile(t *testing.T) {

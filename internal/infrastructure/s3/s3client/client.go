@@ -67,7 +67,7 @@ func (c *clientImpl) RenameObject(ctx context.Context, oldKey, newKey string, op
 
 	cpyInput := &s3.CopyObjectInput{
 		Bucket:                         aws.String(c.bucket),
-		CopySource:                     aws.String(strings.ReplaceAll(url.QueryEscape(c.bucket+"/"+oldKey), "+", " ")), // TODO: weired escape for OVH...
+		CopySource:                     aws.String(strings.ReplaceAll(url.QueryEscape(c.bucket+"/"+oldKey), "+", " ")), // weired escape for OVH...
 		Key:                            aws.String(newKey),
 		CacheControl:                   headRes.CacheControl,
 		ContentDisposition:             headRes.ContentDisposition,
