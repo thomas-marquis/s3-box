@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 	awsHttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +22,7 @@ import (
 type FakeS3Object struct {
 	Key  string
 	Body io.Reader
+	ACL  types.ObjectCannedACL
 }
 
 func SetupS3testContainer(ctx context.Context, t *testing.T) (string, func()) {
@@ -37,17 +39,17 @@ func SetupS3testContainer(ctx context.Context, t *testing.T) (string, func()) {
 			WithPort("4566/tcp").
 			WithStartupTimeout(60 * 5 * time.Second),
 	}
-	lsContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	s3Container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
 	require.NoError(t, err)
 
-	endpoint, err := lsContainer.PortEndpoint(ctx, "4566", "")
+	endpoint, err := s3Container.PortEndpoint(ctx, "4566", "")
 	require.NoError(t, err)
 
 	return "http://" + endpoint, func() {
-		_ = lsContainer.Terminate(ctx)
+		_ = s3Container.Terminate(ctx)
 	}
 }
 
@@ -72,6 +74,12 @@ func SetupS3Bucket(ctx context.Context, t *testing.T, client *s3.Client, bucketN
 	})
 	require.NoError(t, err)
 
+	FillBucket(t, ctx, client, bucketName, content)
+}
+
+func FillBucket(t *testing.T, ctx context.Context, client *s3.Client, bucketName string, content []FakeS3Object) {
+	t.Helper()
+
 	workload := make(chan *s3.PutObjectInput)
 	defer close(workload)
 	var wg sync.WaitGroup
@@ -92,6 +100,7 @@ func SetupS3Bucket(ctx context.Context, t *testing.T, client *s3.Client, bucketN
 			Bucket: aws.String(bucketName),
 			Key:    aws.String(obj.Key),
 			Body:   obj.Body,
+			ACL:    obj.ACL,
 		}
 	}
 	wg.Wait()
