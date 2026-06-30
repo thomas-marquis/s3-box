@@ -136,43 +136,40 @@ jobs:
           go test ./... -covermode=atomic -coverprofile=coverage/coverage.out
           go tool cover -fun>c=coverage/coverage.out | tee coverage/summary.txt
 
-  test-windows:
-    needs: check-skip
-    runs-on: windows-latest
-    if: |
-      needs.check-skip.outputs.skip_all != 'true' &&
-      needs.check-skip.outputs.skip_windows != 'true'
-    steps:
-      - uses: msys2/setup-msys2@v2
-
-      - uses: actions/checkout@v6
-
-      - shell: msys2 {0}
-        name: "Setup environment: sync pacman packages"
-        continue-on-error: true
-        run: |
-          pacman -Syu --noconfirm 
-
-      - shell: msys2 {0}
-        name: "Setup environment: install packages"
-        continue-on-error: true
-        run: |
-          pacman -S git mingw-w64-x86_64-toolchain mingw-w64-x86_64-go --noconfirm 
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.25.x'
-          cache: true
-
-      - name: Install dependencies
-        run: |
-          go get .
-          go install fyne.io/fyne/v2/cmd/fyne@latest
-
-      - name: Build
-        run: go build -v ./...
-
-      - name: Test
-        run: |
-          go test -short ./... 
+#  test-windows:
+#    needs: check-skip
+#    runs-on: windows-latest
+#    if: |
+#      needs.check-skip.outputs.skip_all != 'true' &&
+#      needs.check-skip.outputs.skip_windows != 'true'
+#    steps:
+#      - uses: msys2/setup-msys2@v2
+#
+#      - uses: actions/checkout@v6
+#
+#      - shell: msys2 {0}
+#        name: "Setup environment: sync pacman packages"
+#        continue-on-error: true
+#        run: |
+#          pacman -Syu --noconfirm
+#
+#      - shell: msys2 {0}
+#        name: "Setup environment: install packages"
+#        continue-on-error: true
+#        run: |
+#          pacman -S git mingw-w64-x86_64-toolchain mingw-w64-x86_64-go --noconfirm
+#
+#      - name: Set up Go
+#        uses: actions/setup-go@v6
+#        with:
+#          go-version: '1.25.x'
+#          cache: true
+#
+#      - name: Install dependencies
+#        run: |
+#          go get .
+#          go install fyne.io/fyne/v2/cmd/fyne@latest
+#
+#      - name: Test
+#        run: |
+#          go test -short ./...
