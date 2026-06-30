@@ -127,9 +127,6 @@ jobs:
             exit 1
           fi
 
-      - name: Build
-        run: go build -v ./...
-
       - name: Test
         run: |
           mkdir -p coverage
