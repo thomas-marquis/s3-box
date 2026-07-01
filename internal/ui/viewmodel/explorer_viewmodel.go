@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 
 	"fmt"
@@ -72,7 +73,7 @@ type ExplorerViewModel interface {
 
 	// LoadDirectory sync a directory with the actual s3 one and load its files and children.
 	// If the directory is already open, it will do nothing.
-	LoadDirectory(dirNode node.DirectoryNode) error
+	LoadDirectory(dir *directory.Directory) error
 
 	ReloadDirectory(dir *directory.Directory) error
 
@@ -115,8 +116,6 @@ type explorerViewModelImpl struct {
 	baseViewModel
 	sync.Mutex
 
-	tree binding.Tree[node.Node]
-
 	selectedConnection    binding.Untyped
 	selectedConnectionVal *connection_deck.Connection
 
@@ -134,6 +133,8 @@ type explorerViewModelImpl struct {
 
 	notifier notification.Repository
 	bus      event.Bus
+
+	state *state.State
 }
 
 func NewExplorerViewModel(
@@ -141,6 +142,7 @@ func NewExplorerViewModel(
 	notifier notification.Repository,
 	initialConnection *connection_deck.Connection,
 	bus event.Bus,
+	// TODO: inject state here
 ) ExplorerViewModel {
 	v := &explorerViewModelImpl{
 		baseViewModel: baseViewModel{
@@ -156,6 +158,8 @@ func NewExplorerViewModel(
 		isSelectedDirLoading:   binding.NewBool(),
 		pendingUserValidations: make(chan directory.UserValidationAsked, maxPendingUserValidations),
 		stateListeners:         make([]func(), 0),
+
+		state: state.New(),
 	}
 
 	if err := v.initializeTreeData(initialConnection); err != nil {
@@ -252,7 +256,7 @@ func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) Tree() binding.Tree[node.Node] {
-	return v.tree
+	return v.state.Explorer().FileTree()
 }
 
 func (v *explorerViewModelImpl) SelectedConnection() binding.Untyped {
@@ -277,14 +281,14 @@ func (v *explorerViewModelImpl) IsSelectedDirectoryLoading() binding.Bool {
 	return v.isSelectedDirLoading
 }
 
-func (v *explorerViewModelImpl) LoadDirectory(dirNode node.DirectoryNode) error {
+func (v *explorerViewModelImpl) LoadDirectory(dir *directory.Directory) error {
 	if v.selectedConnectionVal == nil {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
 		return err
 	}
 
-	evt, err := dirNode.Directory().Load()
+	evt, err := dir.Load()
 	if err != nil {
 		wErr := fmt.Errorf("impossible to (re)load the directory: %w", err)
 		v.notifier.NotifyError(wErr)
@@ -324,23 +328,7 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 		return
 	}
 
-	var subNodePaths []string
-	for _, sd := range dir.SubDirectories() {
-		subNodePaths = append(subNodePaths, sd.Path().String())
-	}
-	for _, f := range dir.Files() {
-		subNodePaths = append(subNodePaths, f.FullPath())
-	}
-
-	for _, p := range subNodePaths {
-		if err := v.tree.Remove(p); err != nil {
-			continue
-		}
-	}
-
-	if err := v.fillSubTree(dir); err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error filling sub tree: %w", err))
-	}
+	v.state.Explorer().UpdateChildren(dir)
 
 	if dir.Is(v.selectedDirectory) {
 		v.isSelectedDirLoading.Set(false) // nolint:errcheck
@@ -410,7 +398,7 @@ func (v *explorerViewModelImpl) UploadOne(localPath string, dir *directory.Direc
 
 func (v *explorerViewModelImpl) handleFileUploadSuccess(evt event.Event) {
 	pl := evt.Payload().(directory.UploadFileSucceeded)
-	if err := v.addNewFileToTree(pl.File); err != nil {
+	if err := v.state.Explorer().UpdateOrAppendFile(pl.File); err != nil {
 		v.bus.Publish(evt.NewFollowup(directory.UploadFileFailed{
 			Err:       err,
 			Directory: pl.Directory,
@@ -535,16 +523,9 @@ func (v *explorerViewModelImpl) handleUploadReady(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) DeleteFile(file *directory.File) {
-	dirNodeItem, err := v.tree.GetValue(file.DirectoryPath().String())
+	dirNode, err := v.state.Explorer().GetDirectoryNode(file.DirectoryPath())
 	if err != nil {
-		panic(
-			fmt.Sprintf("impossible to retrieve the directory you want to refresh: %s",
-				file.DirectoryPath().String()))
-	}
-
-	dirNode, ok := dirNodeItem.(node.DirectoryNode)
-	if !ok {
-		panic(fmt.Sprintf("impossible to cast the item to TreeNode: %s", file.DirectoryPath().String()))
+		panic(fmt.Errorf("failed deleting file: %w", err))
 	}
 
 	parent := dirNode.Directory()
@@ -563,7 +544,7 @@ func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
 		return
 	}
 
-	if err := v.tree.Remove(pl.File.FullPath()); err != nil {
+	if err := v.state.Explorer().RemoveNode(pl.File.FullPath()); err != nil {
 		v.bus.Publish(evt.NewFollowup(directory.DeleteFileFailed{
 			Err:             err,
 			ParentDirectory: pl.ParentDirectory,
@@ -639,7 +620,7 @@ func (v *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory
 
 func (v *explorerViewModelImpl) handleCreateDirSuccess(evt event.Event) {
 	pl := evt.Payload().(directory.CreateSucceeded)
-	if err := v.addNewDirectoryToTree(pl.Directory); err != nil {
+	if err := v.state.Explorer().PrependDirectory(pl.Directory); err != nil {
 		v.bus.Publish(
 			evt.NewFollowup(directory.CreateFailed{
 				Err:             err,
@@ -684,7 +665,7 @@ func (v *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, nam
 
 func (v *explorerViewModelImpl) handleCreateFileSuccess(evt event.Event) {
 	pl := evt.Payload().(directory.CreateFileSucceeded)
-	if err := v.addNewFileToTree(pl.File); err != nil {
+	if err := v.state.Explorer().UpdateOrAppendFile(pl.File); err != nil {
 		v.bus.Publish(evt.NewFollowup(directory.CreateFileFailed{
 			Err:       err,
 			Directory: pl.Directory,
@@ -744,28 +725,17 @@ func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 		return
 	}
 
-	if err := v.tree.Remove(oldPath); err != nil {
+	if err := v.state.Explorer().RemoveNode(oldPath); err != nil {
 		v.notifier.NotifyError(fmt.Errorf("error removing old directory node: %w", err))
 		return
 	}
 
-	var (
-		n   node.Node
-		err error
-	)
-	_, err = v.tree.GetValue(dir.Path().String())
-	n = node.NewDirectoryNode(dir)
-	if err != nil {
-		if err := v.tree.Prepend(dir.Parent().Path().String(), n.ID(), n); err != nil {
-			v.notifier.NotifyError(fmt.Errorf("error adding new directory node: %w", err))
-			return
-		}
-	} else {
-		v.tree.SetValue(dir.Path().String(), n) //nolint:errcheck
+	if err := v.state.Explorer().UpdateOrPrepend(dir); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("error updating directory node: %w", err))
+		return
 	}
-	newDirNode := n.(node.DirectoryNode)
 
-	if err := v.LoadDirectory(newDirNode); err != nil {
+	if err := v.LoadDirectory(dir); err != nil {
 		v.notifier.NotifyError(fmt.Errorf("error loading the renamed directory: %w", err))
 	}
 
@@ -847,22 +817,18 @@ func (v *explorerViewModelImpl) handleRenameFileSuccess(evt event.Event) {
 
 	oldFullPath := file.FullPath()
 
-	// Update the parent directory's state
 	if err := parentDir.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}
 
-	// Remove the old file node from the tree
-	if err := v.tree.Remove(oldFullPath); err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error removing old file node: %w", err))
+	if err := v.state.Explorer().RemoveNode(oldFullPath); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("handle rename success: %w", err))
 		return
 	}
 
-	// Add the new file node to the tree
-	newFileNode := node.NewFileNode(file)
-	if err := v.tree.Append(file.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
-		v.notifier.NotifyError(fmt.Errorf("error adding new file node: %w", err))
+	if err := v.state.Explorer().AppendFile(file); err != nil {
+		v.notifier.NotifyError(fmt.Errorf("handle rename success: %w", err))
 		return
 	}
 
@@ -884,17 +850,11 @@ func (v *explorerViewModelImpl) handleRenameFileFailure(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection) error {
-	v.tree = binding.NewTree[node.Node](func(n1 node.Node, n2 node.Node) bool {
-		return n1.ID() == n2.ID()
-	})
-
 	if c == nil {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
 		return err
 	}
-
-	displayLabel := "Bucket: " + c.Bucket()
 
 	rootDir, err := directory.NewRoot(c.ID())
 	if err != nil {
@@ -902,72 +862,18 @@ func (v *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection
 		v.notifier.NotifyError(newErr)
 		return newErr
 	}
-	rootNode := node.NewDirectoryNode(rootDir, node.WithDisplayName(displayLabel))
-	if err := v.tree.Append("", rootNode.ID(), rootNode); err != nil {
-		newErr := fmt.Errorf("error appending directory to tree: %w", err)
-		v.notifier.NotifyError(newErr)
-		return newErr
+
+	if err := v.state.Explorer().InitFileTree(rootDir, c.Bucket()); err != nil {
+		v.notifier.NotifyError(err)
+		return err
 	}
 
-	if err := v.LoadDirectory(rootNode); err != nil {
+	if err := v.LoadDirectory(rootDir); err != nil {
 		newErr := fmt.Errorf("error loading root directory: %w", err)
 		v.notifier.NotifyError(newErr)
 		return newErr
 	}
 
-	return nil
-}
-
-func (v *explorerViewModelImpl) fillSubTree(dir *directory.Directory) error {
-	files := dir.Files()
-	subDirs := dir.SubDirectories()
-
-	for _, subDir := range subDirs {
-		subDirNode := node.NewDirectoryNode(subDir)
-		if err := v.tree.Append(dir.Path().String(), subDirNode.ID(), subDirNode); err != nil {
-			v.notifier.NotifyError(fmt.Errorf("error appending subdirectory to tree: %w", err))
-			continue
-		}
-		if err := v.fillSubTree(subDir); err != nil {
-			return err
-		}
-	}
-
-	for _, file := range files {
-		fileNode := node.NewFileNode(file)
-		if err := v.tree.Append(dir.Path().String(), fileNode.ID(), fileNode); err != nil {
-			v.notifier.NotifyError(fmt.Errorf("error appending file to tree: %w", err))
-			continue
-		}
-	}
-
-	return nil
-}
-
-func (v *explorerViewModelImpl) addNewDirectoryToTree(dirToAdd *directory.Directory) error {
-	parentPath := dirToAdd.Path().ParentPath()
-	parentNodeItem, err := v.tree.GetValue(parentPath.String())
-	if err != nil {
-		return fmt.Errorf("impossible to retrieve the parent directory from path: %s", parentPath)
-	}
-	childNode := node.NewDirectoryNode(dirToAdd)
-	if err := v.tree.Prepend(parentNodeItem.(node.DirectoryNode).ID(), childNode.ID(), childNode); err != nil {
-		return fmt.Errorf("error appending directory to tree: %w", err)
-	}
-	return nil
-}
-
-func (v *explorerViewModelImpl) addNewFileToTree(fileToAdd *directory.File) error {
-	fileNodePath := fileToAdd.FullPath()
-	if _, err := v.tree.GetValue(fileNodePath); err == nil {
-		v.tree.SetValue(fileNodePath, node.NewFileNode(fileToAdd)) //nolint:errcheck
-		return nil
-	}
-
-	newFileNode := node.NewFileNode(fileToAdd)
-	if err := v.tree.Append(fileToAdd.DirectoryPath().String(), newFileNode.ID(), newFileNode); err != nil {
-		return fmt.Errorf("error appending file to the tree: %w", err)
-	}
 	return nil
 }
 

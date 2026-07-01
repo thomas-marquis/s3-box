@@ -189,6 +189,8 @@ type directoryBuilderConfig struct {
 	parent        *directory.Directory
 	hasRootParent bool
 	isRoot        bool
+	ref           **directory.Directory
+	fileRefs      map[string]**directory.File
 }
 
 type DirectoryBuilderOption func(*directoryBuilderConfig)
@@ -257,6 +259,21 @@ func AsRoot() DirectoryBuilderOption {
 	}
 }
 
+func To(ptr **directory.Directory) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		cfg.ref = ptr
+	}
+}
+
+func FileTo(name string, ptr **directory.File) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		if cfg.fileRefs == nil {
+			cfg.fileRefs = make(map[string]**directory.File)
+		}
+		cfg.fileRefs[name] = ptr
+	}
+}
+
 func withDirectoryBuilderConfig(newCfg *directoryBuilderConfig) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
 		*cfg = *newCfg
@@ -278,7 +295,7 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 	var err error
 	if cfg.isRoot {
 		dir, err = directory.NewRoot(cfg.connectionId)
-	} else if cfg.hasRootParent {
+	} else if cfg.hasRootParent && cfg.parent == nil {
 		root, errRoot := directory.NewRoot(cfg.connectionId)
 		require.NoError(t, errRoot)
 		_, errRoot = root.Load()
@@ -288,7 +305,7 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 		}))
 		require.NoError(t, errRoot)
 		dir, err = directory.New(cfg.connectionId, cfg.name, root)
-	} else if cfg.parentConfig != nil {
+	} else if cfg.parentConfig != nil && cfg.parent == nil {
 		parent := MakeDirectory(t, cfg.parentConfig.name, withDirectoryBuilderConfig(cfg.parentConfig))
 		dir, err = directory.New(cfg.connectionId, cfg.name, parent)
 	} else if cfg.parent != nil {
@@ -303,6 +320,9 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 		log.Fatalf("no parent directory provided for '%s', please one of the following options: AsRoot or WithParent\n", name)
 	}
 	require.NoError(t, err)
+	if cfg.ref != nil {
+		*cfg.ref = dir
+	}
 
 	shouldBeLoaded := cfg.loaded || len(cfg.files) > 0 || len(cfg.subDirConfigs) > 0
 	if shouldBeLoaded {
@@ -323,6 +343,10 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 				File:      f,
 				Directory: dir,
 			})))
+
+			if ptr, ok := cfg.fileRefs[fileName]; ok {
+				*ptr = f
+			}
 		}
 	}
 
