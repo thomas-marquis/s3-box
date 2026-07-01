@@ -95,20 +95,6 @@ func (mr *MockExplorerViewModelMockRecorder) CreateEmptyFile(parent, name any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEmptyFile", reflect.TypeOf((*MockExplorerViewModel)(nil).CreateEmptyFile), parent, name)
 }
 
-// CurrentPreview mocks base method.
-func (m *MockExplorerViewModel) CurrentPreview() binding.Item[viewmodel.UploadPreviewState] {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CurrentPreview")
-	ret0, _ := ret[0].(binding.Item[viewmodel.UploadPreviewState])
-	return ret0
-}
-
-// CurrentPreview indicates an expected call of CurrentPreview.
-func (mr *MockExplorerViewModelMockRecorder) CurrentPreview() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentPreview", reflect.TypeOf((*MockExplorerViewModel)(nil).CurrentPreview))
-}
-
 // CurrentSelectedConnection mocks base method.
 func (m *MockExplorerViewModel) CurrentSelectedConnection() *connection_deck.Connection {
 	m.ctrl.T.Helper()
@@ -269,6 +255,18 @@ func (m *MockExplorerViewModel) Loading() binding.Bool {
 func (mr *MockExplorerViewModelMockRecorder) Loading() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Loading", reflect.TypeOf((*MockExplorerViewModel)(nil).Loading))
+}
+
+// OnUploadReady mocks base method.
+func (m *MockExplorerViewModel) OnUploadReady(arg0 func(viewmodel.UploadPreviewState)) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "OnUploadReady", arg0)
+}
+
+// OnUploadReady indicates an expected call of OnUploadReady.
+func (mr *MockExplorerViewModelMockRecorder) OnUploadReady(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnUploadReady", reflect.TypeOf((*MockExplorerViewModel)(nil).OnUploadReady), arg0)
 }
 
 // PendingUserValidations mocks base method.

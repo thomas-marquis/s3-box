@@ -3,7 +3,6 @@ package widget
 import (
 	"errors"
 	"fmt"
-	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -37,9 +36,7 @@ type DirectoryDetails struct {
 	reloadAction       *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
 
-	dropZone      *DropZone
-	mu            sync.Mutex
-	isPreviewOpen bool
+	dropZone *DropZone
 }
 
 func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
@@ -209,20 +206,8 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	}
 	w.dropZone.OnClick = w.makeOnUpload(vm, dir)
 
-	vm.CurrentPreview().AddListener(binding.NewDataListener(func() {
-		prev, err := vm.CurrentPreview().Get()
-		w.mu.Lock()
-		if err != nil || (prev == viewmodel.UploadPreviewState{}) || w.isPreviewOpen {
-			w.mu.Unlock()
-			return
-		}
-		w.isPreviewOpen = true
-		w.mu.Unlock()
-
+	vm.OnUploadReady(func(prev viewmodel.UploadPreviewState) {
 		dirPreview := NewDirectoryPreview(w.appCtx, prev.Preview)
-		dirPreview.OnValidate = func(selectedStrategy directory.MaterializeStrategy) {
-			vm.DoUpload(prev.BaseUri, prev.Preview, selectedStrategy)
-		}
 
 		dial := dialog.NewCustom(
 			"Upload previewer",
@@ -230,15 +215,15 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 			container.NewScroll(dirPreview),
 			w.appCtx.Window())
 		dial.Resize(fyne.NewSize(800, 600))
-		dial.SetOnClosed(func() {
-			w.dropZone.Reset()
-			vm.CurrentPreview().Set(viewmodel.UploadPreviewState{}) //nolint:errcheck
-			w.mu.Lock()
-			w.isPreviewOpen = false
-			w.mu.Unlock()
-		})
+		dial.SetOnClosed(w.dropZone.Reset)
+
+		dirPreview.OnValidate = func(selectedStrategy directory.MaterializeStrategy) {
+			vm.DoUpload(prev.BaseUri, prev.Preview, selectedStrategy)
+			dial.Dismiss()
+		}
+
 		dial.Show()
-	}))
+	})
 }
 
 func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func(bool) {

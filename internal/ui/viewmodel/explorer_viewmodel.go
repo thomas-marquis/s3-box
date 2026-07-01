@@ -57,12 +57,14 @@ type ExplorerViewModel interface {
 	SelectedDirectory() *directory.Directory
 	SetSelectedDirectory(dir *directory.Directory)
 	IsSelectedDirectoryLoading() binding.Bool
-	CurrentPreview() binding.Item[UploadPreviewState]
 
 	PendingUserValidations() <-chan directory.UserValidationAsked
 
 	// AddStateListener registers a callback function to be notified of any changes in directories or files.
 	AddStateListener(func())
+
+	// OnUploadReady registers a callback function to be notified when the upload is ready.
+	OnUploadReady(func(previewState UploadPreviewState))
 
 	////////////////////////
 	// Action methods
@@ -124,11 +126,11 @@ type explorerViewModelImpl struct {
 
 	selectedDirectory    *directory.Directory
 	isSelectedDirLoading binding.Bool
-	preview              binding.Item[UploadPreviewState]
 
 	pendingUserValidations chan directory.UserValidationAsked
 
 	stateListeners []func()
+	onUploadReady  func(previewState UploadPreviewState)
 
 	notifier notification.Repository
 	bus      event.Bus
@@ -154,9 +156,6 @@ func NewExplorerViewModel(
 		isSelectedDirLoading:   binding.NewBool(),
 		pendingUserValidations: make(chan directory.UserValidationAsked, maxPendingUserValidations),
 		stateListeners:         make([]func(), 0),
-		preview: binding.NewItem[UploadPreviewState](func(a, b UploadPreviewState) bool {
-			return a == b
-		}),
 	}
 
 	if err := v.initializeTreeData(initialConnection); err != nil {
@@ -197,12 +196,12 @@ func NewExplorerViewModel(
 	return v
 }
 
-func (v *explorerViewModelImpl) CurrentPreview() binding.Item[UploadPreviewState] {
-	return v.preview
-}
-
 func (v *explorerViewModelImpl) AddStateListener(listener func()) {
 	v.stateListeners = append(v.stateListeners, listener)
+}
+
+func (v *explorerViewModelImpl) OnUploadReady(listener func(previewState UploadPreviewState)) {
+	v.onUploadReady = listener
 }
 
 func (v *explorerViewModelImpl) triggerStateListeners() {
@@ -443,8 +442,6 @@ func (v *explorerViewModelImpl) PrepareUpload(uris []fyne.URI, dir *directory.Di
 		return err
 	}
 
-	v.preview.Set(UploadPreviewState{}) //nolint:errcheck
-
 	loadMat := directory.NewLoadMaterializer(prev, directory.UploadReady{
 		Directory: dir,
 		SrcPaths:  uiutils.FromFyneUrisToPaths(uris),
@@ -529,10 +526,12 @@ func (v *explorerViewModelImpl) handleUploadReady(evt event.Event) {
 		v.notifier.NotifyError(err)
 		return
 	}
-	v.preview.Set(UploadPreviewState{ //nolint:errcheck
-		Preview: prev,
-		BaseUri: localParentDirUri,
-	})
+	if v.onUploadReady != nil {
+		v.onUploadReady(UploadPreviewState{ //nolint:errcheck
+			Preview: prev,
+			BaseUri: localParentDirUri,
+		})
+	}
 }
 
 func (v *explorerViewModelImpl) DeleteFile(file *directory.File) {

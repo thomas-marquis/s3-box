@@ -6,7 +6,6 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	fyne_test "fyne.io/fyne/v2/test"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
-	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 	mocks_appcontext "github.com/thomas-marquis/s3-box/mocks/context"
 	mocks_viewmodel "github.com/thomas-marquis/s3-box/mocks/viewmodel"
@@ -29,9 +28,7 @@ func TestDirectoryDetails(t *testing.T) {
 
 		fakeIsLoadingBinding := binding.NewBool()
 		mockExplorerVM.EXPECT().IsSelectedDirectoryLoading().Return(fakeIsLoadingBinding).AnyTimes()
-		mockExplorerVM.EXPECT().CurrentPreview().Return(binding.NewItem[viewmodel.UploadPreviewState](func(a, b viewmodel.UploadPreviewState) bool {
-			return a == b
-		})).AnyTimes()
+		mockExplorerVM.EXPECT().OnUploadReady(gomock.Any()).AnyTimes()
 
 		dir := testutil.FakeNotLoadedRootDirectory(t)
 
@@ -59,9 +56,7 @@ func TestDirectoryDetails(t *testing.T) {
 
 		fakeIsLoadingBinding := binding.NewBool()
 		mockExplorerVM.EXPECT().IsSelectedDirectoryLoading().Return(fakeIsLoadingBinding).AnyTimes()
-		mockExplorerVM.EXPECT().CurrentPreview().Return(binding.NewItem[viewmodel.UploadPreviewState](func(a, b viewmodel.UploadPreviewState) bool {
-			return a == b
-		})).AnyTimes()
+		mockExplorerVM.EXPECT().OnUploadReady(gomock.Any()).AnyTimes()
 
 		dir := testutil.FakeNotLoadedRootDirectory(t)
 
