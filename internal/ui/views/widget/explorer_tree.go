@@ -44,7 +44,7 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 	vm := w.appCtx.ExplorerViewModel()
 
-	treeData := vm.Tree()
+	treeData := w.appCtx.State().Explorer().FileTree()
 
 	tree := widget.NewTreeWithData(
 		treeData,
@@ -114,7 +114,7 @@ func (w *ExplorerTree) CreateRenderer() fyne.WidgetRenderer {
 		switch n := nodeItem.(type) {
 		case node.DirectoryNode:
 			if !n.Directory().IsLoaded() && !n.Directory().IsLoading() && !n.Directory().HasError() {
-				if err := vm.LoadDirectory(n); err != nil {
+				if err := vm.LoadDirectory(n.Directory()); err != nil {
 					dialog.ShowError(err, w.appCtx.Window())
 					return
 				}
@@ -140,9 +140,7 @@ func (w *ExplorerTree) Refresh() {
 }
 
 func (w *ExplorerTree) reopenOpenedDirectories(tree *widget.Tree) {
-	vm := w.appCtx.ExplorerViewModel()
-
-	_, treeContent, err := vm.Tree().Get()
+	_, treeContent, err := w.appCtx.State().Explorer().FileTree().Get()
 	if err != nil {
 		return
 	}

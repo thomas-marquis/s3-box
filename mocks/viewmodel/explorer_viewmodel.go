@@ -16,7 +16,6 @@ import (
 	binding "fyne.io/fyne/v2/data/binding"
 	connection_deck "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
-	node "github.com/thomas-marquis/s3-box/internal/ui/node"
 	viewmodel "github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -230,17 +229,17 @@ func (mr *MockExplorerViewModelMockRecorder) LastUploadLocation() *gomock.Call {
 }
 
 // LoadDirectory mocks base method.
-func (m *MockExplorerViewModel) LoadDirectory(dirNode node.DirectoryNode) error {
+func (m *MockExplorerViewModel) LoadDirectory(dir *directory.Directory) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LoadDirectory", dirNode)
+	ret := m.ctrl.Call(m, "LoadDirectory", dir)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // LoadDirectory indicates an expected call of LoadDirectory.
-func (mr *MockExplorerViewModelMockRecorder) LoadDirectory(dirNode any) *gomock.Call {
+func (mr *MockExplorerViewModelMockRecorder) LoadDirectory(dir any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).LoadDirectory), dirNode)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).LoadDirectory), dir)
 }
 
 // Loading mocks base method.
@@ -401,20 +400,6 @@ func (m *MockExplorerViewModel) SetSelectedDirectory(dir *directory.Directory) {
 func (mr *MockExplorerViewModelMockRecorder) SetSelectedDirectory(dir any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSelectedDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).SetSelectedDirectory), dir)
-}
-
-// Tree mocks base method.
-func (m *MockExplorerViewModel) Tree() binding.Tree[node.Node] {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Tree")
-	ret0, _ := ret[0].(binding.Tree[node.Node])
-	return ret0
-}
-
-// Tree indicates an expected call of Tree.
-func (mr *MockExplorerViewModelMockRecorder) Tree() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Tree", reflect.TypeOf((*MockExplorerViewModel)(nil).Tree))
 }
 
 // UpdateLastDownloadLocation mocks base method.
