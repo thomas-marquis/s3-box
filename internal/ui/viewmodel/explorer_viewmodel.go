@@ -13,14 +13,12 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
-	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/notification"
-	"github.com/thomas-marquis/s3-box/internal/ui/node"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/storage"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 )
 
 const (
@@ -41,9 +39,6 @@ type ExplorerViewModel interface {
 	////////////////////////
 	// State methods
 	////////////////////////
-
-	// Tree returns the binding for the directory/file tree structure
-	Tree() binding.Tree[node.Node]
 
 	SelectedConnection() binding.Untyped
 
@@ -142,7 +137,7 @@ func NewExplorerViewModel(
 	notifier notification.Repository,
 	initialConnection *connection_deck.Connection,
 	bus event.Bus,
-	// TODO: inject state here
+	st *state.State,
 ) ExplorerViewModel {
 	v := &explorerViewModelImpl{
 		baseViewModel: baseViewModel{
@@ -158,8 +153,7 @@ func NewExplorerViewModel(
 		isSelectedDirLoading:   binding.NewBool(),
 		pendingUserValidations: make(chan directory.UserValidationAsked, maxPendingUserValidations),
 		stateListeners:         make([]func(), 0),
-
-		state: state.New(),
+		state:                  st,
 	}
 
 	if err := v.initializeTreeData(initialConnection); err != nil {
@@ -253,10 +247,6 @@ func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
 	}
 
 	v.triggerStateListeners()
-}
-
-func (v *explorerViewModelImpl) Tree() binding.Tree[node.Node] {
-	return v.state.Explorer().FileTree()
 }
 
 func (v *explorerViewModelImpl) SelectedConnection() binding.Untyped {

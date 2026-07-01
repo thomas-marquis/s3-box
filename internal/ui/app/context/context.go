@@ -3,6 +3,7 @@ package appcontext
 import (
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 
 	"fyne.io/fyne/v2"
@@ -25,6 +26,7 @@ type AppContext interface {
 	AppContent() fyne.CanvasObject
 
 	Bus() event.Bus
+	State() *state.State
 }
 
 type AppContextImpl struct {
@@ -41,7 +43,8 @@ type AppContextImpl struct {
 	currentRoute navigation.Route
 	menu         map[navigation.Route]Menu
 
-	bus event.Bus
+	bus      event.Bus
+	appState *state.State
 
 	mainWidget *AppWidget
 }
@@ -61,6 +64,7 @@ func New(
 	logger *zap.Logger,
 	settings fyne.Settings,
 	bus event.Bus,
+	appState *state.State,
 ) *AppContextImpl {
 
 	menuList := make([]Menu, len(menu))
@@ -80,6 +84,7 @@ func New(
 		fyneSettings:          settings,
 		bus:                   bus,
 		menu:                  menu,
+		appState:              appState,
 	}
 
 	ctx.mainWidget = newAppWidget(appName, menuList, ctx.Navigate)
@@ -145,4 +150,8 @@ func (ctx *AppContextImpl) CurrentRoute() navigation.Route {
 
 func (ctx *AppContextImpl) Bus() event.Bus {
 	return ctx.bus
+}
+
+func (ctx *AppContextImpl) State() *state.State {
+	return ctx.appState
 }

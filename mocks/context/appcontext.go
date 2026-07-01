@@ -15,6 +15,7 @@ import (
 	fyne "fyne.io/fyne/v2"
 	event "github.com/thomas-marquis/it-happened/event"
 	navigation "github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	state "github.com/thomas-marquis/s3-box/internal/ui/state"
 	viewmodel "github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	gomock "go.uber.org/mock/gomock"
 	zap "go.uber.org/zap"
@@ -197,6 +198,20 @@ func (m *MockAppContext) SettingsViewModel() viewmodel.SettingsViewModel {
 func (mr *MockAppContextMockRecorder) SettingsViewModel() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SettingsViewModel", reflect.TypeOf((*MockAppContext)(nil).SettingsViewModel))
+}
+
+// State mocks base method.
+func (m *MockAppContext) State() *state.State {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "State")
+	ret0, _ := ret[0].(*state.State)
+	return ret0
+}
+
+// State indicates an expected call of State.
+func (mr *MockAppContextMockRecorder) State() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "State", reflect.TypeOf((*MockAppContext)(nil).State))
 }
 
 // Window mocks base method.
