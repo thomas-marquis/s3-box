@@ -60,6 +60,7 @@ func NewSettingsV3() *SettingsV3 {
 	return &SettingsV3{
 		registered: make(map[string]SType),
 		values:     make(map[SType]map[string]any),
+		observers:  make(map[string]map[int]func(value any)),
 	}
 }
 
@@ -207,7 +208,7 @@ func (s *SettingsV3) Save() event.Event {
 func (s *SettingsV3) Notify(evt event.Event) error {
 	switch pl := evt.Payload().(type) {
 	case LoadSucceeded:
-		s.mu.RLock()
+		s.mu.Lock()
 
 		s.isReady = true
 
@@ -217,10 +218,16 @@ func (s *SettingsV3) Notify(evt event.Event) error {
 				continue
 			}
 			if newVal, found := pl.Values[name]; found {
+				// Convert int64 to time.Duration for duration types
+				if sType == DurationType {
+					if ns, ok := newVal.(int64); ok {
+						newVal = time.Duration(ns)
+					}
+				}
 				s.values[sType][name] = newVal
 			}
 		}
-		s.mu.RUnlock()
+		s.mu.Unlock()
 
 	case SaveFailed:
 		s.mu.Lock()
@@ -231,11 +238,6 @@ func (s *SettingsV3) Notify(evt event.Event) error {
 	case SaveSucceeded:
 		s.mu.Lock()
 		s.isReady = true
-		s.mu.Unlock()
-
-	case RegisterSucceeded:
-		s.mu.Lock()
-		s.registered[pl.Name] = pl.Type
 		s.mu.Unlock()
 
 	case WriteSucceeded:

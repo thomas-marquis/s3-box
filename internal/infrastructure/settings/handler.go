@@ -25,7 +25,6 @@ func FyneSettingsHandler(bus event.Bus, prefs fyne.Preferences) {
 	h := &handler{bus: bus, prefs: prefs}
 
 	bus.Subscribe().
-		On(event.Is(settings.RegisterTriggeredType), h.handleRegister).
 		On(event.Is(settings.LoadTriggeredType), h.handleLoad).
 		On(event.Is(settings.WriteTriggeredType), h.handleWrite).
 		ListenWithWorkers(1)
@@ -99,58 +98,6 @@ func (h *handler) handleLoad(evt event.Event) {
 	h.bus.Publish(evt.NewFollowup(settings.LoadSucceeded{
 		Values:     values,
 		Registered: registered,
-	}))
-}
-
-func (h *handler) handleRegister(evt event.Event) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	pl := evt.Payload().(settings.RegisterTriggered)
-
-	handleErr := func(err error) {
-		h.bus.Publish(evt.NewFollowup(settings.RegisterFailed{
-			Err: err,
-		}))
-	}
-
-	settingsDtos, err := fromJson[map[string]settingDTO](h.prefs.String(storageV2Key))
-	if err != nil {
-		handleErr(err)
-		return
-	}
-
-	if _, exists := settingsDtos[pl.Name]; exists {
-		handleErr(settings.ErrAlreadyExists)
-		return
-	}
-
-	var newDto settingDTO
-	switch pl.Type {
-	case settings.StringType:
-		newDto = newDtoFromString(pl.Name, "")
-	case settings.Uint64Type:
-		newDto = newDtoFromUint64(pl.Name, 0)
-	case settings.DurationType:
-		newDto = newDtoFromDuration(pl.Name, 0)
-	default:
-		handleErr(fmt.Errorf("unsupported setting type: %d", pl.Type))
-		return
-	}
-
-	settingsDtos[pl.Name] = newDto
-
-	bytes, err := json.Marshal(settingsDtos)
-	if err != nil {
-		handleErr(err)
-		return
-	}
-
-	h.prefs.SetString(storageV2Key, string(bytes))
-
-	h.bus.Publish(evt.NewFollowup(settings.RegisterSucceeded{
-		Name: pl.Name,
-		Type: pl.Type,
 	}))
 }
 

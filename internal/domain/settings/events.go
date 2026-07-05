@@ -52,38 +52,6 @@ func (SaveFailed) EventType() event.Type {
 }
 
 const (
-	RegisterTriggeredType event.Type = "event.settings.registered.triggered"
-	RegisterSucceededType event.Type = "event.settings.registered.succeeded"
-	RegisterFailedType    event.Type = "event.settings.registered.failed"
-)
-
-type RegisterTriggered struct {
-	Name string
-	Type SType
-}
-
-func (RegisterTriggered) EventType() event.Type {
-	return RegisterTriggeredType
-}
-
-type RegisterSucceeded struct {
-	Name string
-	Type SType
-}
-
-func (RegisterSucceeded) EventType() event.Type {
-	return RegisterSucceededType
-}
-
-type RegisterFailed struct {
-	Err error
-}
-
-func (RegisterFailed) EventType() event.Type {
-	return RegisterFailedType
-}
-
-const (
 	WriteTriggeredType event.Type = "event.settings.write.triggered"
 	WriteSucceededType event.Type = "event.settings.write.succeeded"
 	WriteFailedType    event.Type = "event.settings.write.failed"
