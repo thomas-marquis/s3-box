@@ -13,7 +13,7 @@ import (
 func TestSettings_Register(t *testing.T) {
 	t.Run("should register a new string setting", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When
 		err := s.Register(settings.AString("app.theme", "dark"))
@@ -27,7 +27,7 @@ func TestSettings_Register(t *testing.T) {
 
 	t.Run("should register a new uint64 setting", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When
 		err := s.Register(settings.AUint64("app.maxRetries", 5))
@@ -41,7 +41,7 @@ func TestSettings_Register(t *testing.T) {
 
 	t.Run("should register a new duration setting", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When
 		err := s.Register(settings.ADuration("app.timeout", 30))
@@ -55,7 +55,7 @@ func TestSettings_Register(t *testing.T) {
 
 	t.Run("should register multiple settings at once", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When
 		err := s.Register(
@@ -76,7 +76,7 @@ func TestSettings_Register(t *testing.T) {
 
 	t.Run("should fail when registering a duplicate setting", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		// When
@@ -90,7 +90,7 @@ func TestSettings_Register(t *testing.T) {
 
 	t.Run("should fail when registering with empty name", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When
 		err := s.Register(settings.AString("", "dark"))
@@ -102,7 +102,7 @@ func TestSettings_Register(t *testing.T) {
 
 	t.Run("should fail when registering with whitespace-only name", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When
 		err := s.Register(settings.AString("   ", "dark"))
@@ -114,7 +114,7 @@ func TestSettings_Register(t *testing.T) {
 
 	t.Run("should fail when registering during load", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		_, err := s.Load()
 		require.NoError(t, err)
 		assert.IsType(t, settings.LoadingState{}, s.State())
@@ -129,7 +129,7 @@ func TestSettings_Register(t *testing.T) {
 
 	t.Run("should allow registration after load completes", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		loadEvt, err := s.Load()
 		require.NoError(t, err)
 
@@ -154,7 +154,7 @@ func TestSettings_Register(t *testing.T) {
 func TestSettings_Write(t *testing.T) {
 	t.Run("should add write event to pending events", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		// When
@@ -167,7 +167,7 @@ func TestSettings_Write(t *testing.T) {
 
 	t.Run("should fail when writing to unregistered setting", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When
 		err := s.Write("app.theme", "light")
@@ -180,7 +180,7 @@ func TestSettings_Write(t *testing.T) {
 
 	t.Run("should fail when writing with wrong type", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		// When
@@ -194,7 +194,7 @@ func TestSettings_Write(t *testing.T) {
 
 	t.Run("should fail when writing during load", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 		_, err := s.Load()
 		require.NoError(t, err)
@@ -210,7 +210,7 @@ func TestSettings_Write(t *testing.T) {
 
 	t.Run("should allow writing during save", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 		require.NoError(t, s.Write("app.theme", "pending"))
 		_, err := s.Save()
@@ -229,7 +229,7 @@ func TestSettings_Write(t *testing.T) {
 func TestSettings_Read(t *testing.T) {
 	t.Run("should panic when reading unregistered string", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When & Then
 		assert.Panics(t, func() {
@@ -239,7 +239,7 @@ func TestSettings_Read(t *testing.T) {
 
 	t.Run("should panic when reading unregistered uint64", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When & Then
 		assert.Panics(t, func() {
@@ -249,7 +249,7 @@ func TestSettings_Read(t *testing.T) {
 
 	t.Run("should panic when reading unregistered duration", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When & Then
 		assert.Panics(t, func() {
@@ -259,7 +259,7 @@ func TestSettings_Read(t *testing.T) {
 
 	t.Run("should return default value for string when not loaded yet", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		// When & Then
@@ -268,7 +268,7 @@ func TestSettings_Read(t *testing.T) {
 
 	t.Run("should return default value for uint64 when not loaded yet", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AUint64("app.maxRetries", 5)))
 
 		// When & Then
@@ -277,7 +277,7 @@ func TestSettings_Read(t *testing.T) {
 
 	t.Run("should return default value for duration when not loaded yet", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.ADuration("app.timeout", 30)))
 
 		// When & Then
@@ -286,7 +286,7 @@ func TestSettings_Read(t *testing.T) {
 
 	t.Run("should allow read during load", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 		_, err := s.Load()
 		require.NoError(t, err)
@@ -298,7 +298,7 @@ func TestSettings_Read(t *testing.T) {
 
 	t.Run("should allow read during save", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 		require.NoError(t, s.Write("app.theme", "light"))
 		_, err := s.Save()
@@ -313,7 +313,7 @@ func TestSettings_Read(t *testing.T) {
 func TestSettings_Load(t *testing.T) {
 	t.Run("should return LoadTriggered event and transition to LoadingState", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		assert.IsType(t, settings.IdleState{}, s.State())
 
 		// When
@@ -328,7 +328,7 @@ func TestSettings_Load(t *testing.T) {
 
 	t.Run("should fail when loading during load", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		_, err := s.Load()
 		require.NoError(t, err)
 		assert.IsType(t, settings.LoadingState{}, s.State())
@@ -343,7 +343,7 @@ func TestSettings_Load(t *testing.T) {
 
 	t.Run("should fail when loading during save", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 		require.NoError(t, s.Write("app.theme", "light"))
 		_, err := s.Save()
@@ -360,7 +360,7 @@ func TestSettings_Load(t *testing.T) {
 
 	t.Run("should transition to IdleState on LoadSucceeded", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(
 			settings.AString("app.colorTheme", "white"),
 			settings.AUint64("app.maxFileSizeByte", 20*1024),
@@ -402,7 +402,7 @@ func TestSettings_Load(t *testing.T) {
 
 	t.Run("should transition to IdleState on LoadFailed", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		loadEvt, err := s.Load()
 		require.NoError(t, err)
 		assert.IsType(t, settings.LoadingState{}, s.State())
@@ -422,7 +422,7 @@ func TestSettings_Load(t *testing.T) {
 func TestSettings_Save(t *testing.T) {
 	t.Run("should return SaveSucceeded when no pending events", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		assert.IsType(t, settings.IdleState{}, s.State())
 
 		// When
@@ -436,7 +436,7 @@ func TestSettings_Save(t *testing.T) {
 
 	t.Run("should return carrier event and transition to SavingState when pending events exist", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 		require.NoError(t, s.Write("app.theme", "light"))
 		assert.IsType(t, settings.IdleState{}, s.State())
@@ -452,7 +452,7 @@ func TestSettings_Save(t *testing.T) {
 
 	t.Run("should fail when saving during load", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 		require.NoError(t, s.Write("app.theme", "light"))
 		_, err := s.Load()
@@ -469,7 +469,7 @@ func TestSettings_Save(t *testing.T) {
 
 	t.Run("should fail when saving during save", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 		require.NoError(t, s.Write("app.theme", "light"))
 		_, err := s.Save()
@@ -486,7 +486,7 @@ func TestSettings_Save(t *testing.T) {
 
 	t.Run("should transition to IdleState on SaveSucceeded", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 		require.NoError(t, s.Write("app.theme", "light"))
 		_, err := s.Save()
@@ -504,7 +504,7 @@ func TestSettings_Save(t *testing.T) {
 
 	t.Run("should transition to IdleState and restore pending on SaveFailed", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 		require.NoError(t, s.Write("app.theme", "light"))
 		_, err := s.Save()
@@ -527,7 +527,7 @@ func TestSettings_Save(t *testing.T) {
 func TestSettings_Notify(t *testing.T) {
 	t.Run("should handle LoadSucceeded and merge values", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(
 			settings.AString("app.theme", "dark"),
 			settings.ADuration("app.timeout", 30*time.Nanosecond),
@@ -556,7 +556,7 @@ func TestSettings_Notify(t *testing.T) {
 
 	t.Run("should handle SaveSucceeded as a no-op", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		assert.IsType(t, settings.IdleState{}, s.State())
 
 		// When
@@ -570,7 +570,7 @@ func TestSettings_Notify(t *testing.T) {
 
 	t.Run("should handle WriteSucceeded and update value", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		// When
@@ -584,7 +584,7 @@ func TestSettings_Notify(t *testing.T) {
 
 	t.Run("should handle WriteSucceeded for unregistered setting as no-op", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When
 		writeEvt := event.New(settings.WriteSucceeded{Name: "app.theme", Value: "light"})
@@ -596,7 +596,7 @@ func TestSettings_Notify(t *testing.T) {
 
 	t.Run("should handle WriteSucceeded with wrong type", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		// When
@@ -612,7 +612,7 @@ func TestSettings_Notify(t *testing.T) {
 func TestSettings_Observe(t *testing.T) {
 	t.Run("should call observer when value changes", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		observeCalled := false
@@ -634,7 +634,7 @@ func TestSettings_Observe(t *testing.T) {
 
 	t.Run("should not call observer for different setting", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(
 			settings.AString("app.theme", "dark"),
 			settings.AString("app.color", "red"),
@@ -656,7 +656,7 @@ func TestSettings_Observe(t *testing.T) {
 
 	t.Run("should stop calling observer after unobserve", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		observeCalled := false
@@ -675,7 +675,7 @@ func TestSettings_Observe(t *testing.T) {
 
 	t.Run("should allow multiple observers for same setting", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		observeCalled1 := false
@@ -702,7 +702,7 @@ func TestSettings_Observe(t *testing.T) {
 func TestSettings_IsExists(t *testing.T) {
 	t.Run("should return false for unregistered setting", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When & Then
 		assert.False(t, s.IsExists("app.theme"))
@@ -710,7 +710,7 @@ func TestSettings_IsExists(t *testing.T) {
 
 	t.Run("should return true for registered setting", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		// When & Then
@@ -721,7 +721,7 @@ func TestSettings_IsExists(t *testing.T) {
 func TestSettings_IsExistsWithType(t *testing.T) {
 	t.Run("should return false for unregistered setting", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 
 		// When & Then
 		assert.False(t, s.IsExistsWithType("app.theme", settings.StringType))
@@ -729,7 +729,7 @@ func TestSettings_IsExistsWithType(t *testing.T) {
 
 	t.Run("should return false for wrong type", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		// When & Then
@@ -738,7 +738,7 @@ func TestSettings_IsExistsWithType(t *testing.T) {
 
 	t.Run("should return true for correct type", func(t *testing.T) {
 		// Given
-		s := settings.NewSettingsV3()
+		s := settings.NewSettings()
 		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
 
 		// When & Then

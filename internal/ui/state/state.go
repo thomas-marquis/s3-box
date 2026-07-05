@@ -30,7 +30,10 @@ func New() *State {
 			}),
 		},
 		settings: &SettingsState{
-			aggregate: &settings.SettingsV3{},
+			aggregate:  settings.NewSettings(),
+			timeout:    binding.NewInt(),
+			fileLimit:  binding.NewInt(),
+			colorTheme: binding.NewString(),
 		},
 	}
 }

@@ -19,13 +19,11 @@ type SettingsViewModel interface {
 }
 
 type settingsViewModelImpl struct {
-	loading  binding.Bool
-	notifier notification.Repository
-
+	loading      binding.Bool
+	notifier     notification.Repository
 	fyneSettings fyne.Settings
-
-	state *state.State
-	bus   event.Bus
+	state        *state.State
+	bus          event.Bus
 }
 
 func NewSettingsViewModel(
@@ -56,11 +54,45 @@ func NewSettingsViewModel(
 		panic(err)
 	}
 
+	// Set initial values from defaults and update bindings
+	// The entity already has default values from the registration, so we just need to set the bindings
+	if err := appState.Settings().TimeoutInSeconds().Set(int(30)); err != nil {
+		panic(err)
+	}
+	if err := appState.Settings().EditorFileSizeLimitKB().Set(20); err != nil {
+		panic(err)
+	}
+	if err := appState.Settings().ColorTheme().Set("white"); err != nil {
+		panic(err)
+	}
+
 	s.Observe(values.SettingColorTheme, func(value any) {
 		newTheme := value.(string)
 		fyneSettings.SetTheme(apptheme.GetByName(newTheme))
+		if err := appState.Settings().ColorTheme().Set(newTheme); err != nil {
+			vm.notifier.NotifyError(err)
+		}
 	})
 
+	s.Observe(values.SettingTimeoutSec, func(value any) {
+		duration := value.(time.Duration)
+		if err := appState.Settings().TimeoutInSeconds().Set(int(duration.Seconds())); err != nil {
+			vm.notifier.NotifyError(err)
+		}
+	})
+
+	s.Observe(values.SettingEditFileSizeLimitByte, func(value any) {
+		bytes := value.(uint64)
+		// Convert bytes to KB
+		kb := int(bytes / 1024)
+		if err := appState.Settings().EditorFileSizeLimitKB().Set(kb); err != nil {
+			vm.notifier.NotifyError(err)
+		}
+	})
+
+	// Load settings from storage
+	// We call Load() to trigger loading from persistent storage
+	// The LoadSucceeded event will be handled asynchronously
 	evt, err := s.Load()
 	if err != nil {
 		panic(err)
@@ -71,54 +103,47 @@ func NewSettingsViewModel(
 }
 
 func (v *settingsViewModelImpl) Save() {
-	v.bus.Publish(v.state.Settings().Get().Save())
+	s := v.state.Settings().Get()
+
+	// Check if the entity is ready to accept writes
+	// If it's in LoadingState, we need to wait for Load to complete
+	// For now, we just return an error if not ready
+	if !s.State().CanWrite() {
+		v.notifier.NotifyError(settings.ErrNotReady)
+		return
+	}
+
+	// Read current values from bindings and write to settings
+	if timeoutVal, err := v.state.Settings().TimeoutInSeconds().Get(); err == nil {
+		if writeErr := s.Write(values.SettingTimeoutSec, time.Duration(timeoutVal)*time.Second); writeErr != nil {
+			v.notifier.NotifyError(writeErr)
+			return
+		}
+	}
+
+	if fileLimitVal, err := v.state.Settings().EditorFileSizeLimitKB().Get(); err == nil {
+		// Convert KB to bytes
+		if writeErr := s.Write(values.SettingEditFileSizeLimitByte, uint64(fileLimitVal*1024)); writeErr != nil {
+			v.notifier.NotifyError(writeErr)
+			return
+		}
+	}
+
+	if colorThemeVal, err := v.state.Settings().ColorTheme().Get(); err == nil {
+		if writeErr := s.Write(values.SettingColorTheme, colorThemeVal); writeErr != nil {
+			v.notifier.NotifyError(writeErr)
+			return
+		}
+	}
+
+	// Now trigger the save
+	evt, err := s.Save()
+	if err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+	v.bus.Publish(evt)
 }
-
-//
-//func (v *settingsViewModelImpl) TimeoutInSeconds() binding.Int {
-//	return v.timeoutInSeconds
-//}
-//
-//func (v *settingsViewModelImpl) CurrentTimeout() time.Duration {
-//	val, err := v.timeoutInSeconds.Get()
-//	if err != nil {
-//		v.notifier.NotifyError(fmt.Errorf("error getting timeout in seconds: %w", err))
-//		return settings.DefaultTimeoutInSeconds * time.Second
-//	}
-//	return time.Duration(val) * time.Second
-//}
-//
-//func (v *settingsViewModelImpl) FileSizeLimitKB() binding.Int {
-//	return v.fileSizeLimitKB
-//}
-//
-//func (v *settingsViewModelImpl) CurrentFileSizeLimitBytes() int {
-//	val, err := v.fileSizeLimitKB.Get()
-//	if err != nil {
-//		v.notifier.NotifyError(fmt.Errorf("error getting file preview/edit size limit: %w", err))
-//		return settings.DefaultMaxFilePreviewSizeBytes
-//	}
-//	return utils.KBToBytes(val)
-//}
-
-//func (v *settingsViewModelImpl) synchronize(s settings.Settings) {
-//	ignoreErr := func(err error) {
-//		v.notifier.NotifyError(err)
-//	}
-//
-//	ignoreErr(v.state.Settings().TimeoutSec().Set(s.TimeoutInSeconds))
-//
-//	if s.MaxFilePreviewSizeBytes > math.MaxInt {
-//		v.notifier.NotifyError(
-//			fmt.Errorf("max file preview size exceeds maximum allowed value: clamping to max int"))
-//		ignoreErr(v.state.Settings().EditorFileSizeLimitKB().Set(math.MaxInt))
-//	} else {
-//		ignoreErr(v.state.Settings().EditorFileSizeLimitKB().Set(
-//			utils.BytesToKB(s.MaxFilePreviewSizeBytes)))
-//	}
-//
-//	ignoreErr(v.state.Settings().ColorTheme().Set(s.Color.String()))
-//}
 
 func (v *settingsViewModelImpl) notifySettings(evt event.Event) {
 	if err := v.state.Settings().Get().Notify(evt); err != nil {

@@ -88,10 +88,10 @@ func NewBindingItemFormatter[T any](original binding.Item[T], formatFunc func(T)
 type SettingsStringBinding struct {
 	binding.String
 
-	aggregate *settings.SettingsV3
+	aggregate *settings.Settings
 }
 
-func NewSettingsBindingString(s *settings.SettingsV3, name string) binding.String {
+func NewSettingsBindingString(s *settings.Settings, name string) binding.String {
 	bs := binding.NewString()
 	b := &SettingsStringBinding{
 		String:    bs,

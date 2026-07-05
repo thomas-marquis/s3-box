@@ -15,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
@@ -69,7 +70,7 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		currentSelectedFile: nil,
 	}
 
-	w.appCtx.State().Settings().Get().Observe("app.editFileSizeLimitBytes", func(value any) {
+	w.appCtx.State().Settings().Get().Observe("app.editFileSizeLimitByte", func(value any) {
 		val, ok := value.(uint64)
 		if !ok {
 			panic("invalid type for settings app.editFileSizeLimitBytes")
@@ -78,6 +79,11 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 			return
 		}
 	})
+	// Also set the initial value if the setting exists
+	s := w.appCtx.State().Settings().Get()
+	if s.IsExistsWithType("app.editFileSizeLimitByte", settings.Uint64Type) {
+		w.editFileSizeLimitBytes.Set(int(s.ReadUint64("app.editFileSizeLimitByte"))) //nolint:errcheck
+	}
 
 	w.actionToolbar = widget.NewToolbar(
 		w.downloadAction,

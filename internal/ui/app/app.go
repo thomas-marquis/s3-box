@@ -14,6 +14,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
+	"github.com/thomas-marquis/s3-box/internal/infrastructure/settings"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
@@ -87,6 +88,9 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		notifier,
 	).Listen()
 
+	// Initialize settings handler
+	settings.FyneSettingsHandler(eventBus, a.Preferences())
+
 	appState := state.New()
 
 	settingsViewModel := viewmodel.NewSettingsViewModel(
@@ -97,6 +101,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	connectionViewModel := viewmodel.NewConnectionViewModel(
 		connectionsRepository,
 		settingsViewModel,
+		appState,
 		notifier,
 		eventBus,
 	)

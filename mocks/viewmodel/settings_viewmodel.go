@@ -55,18 +55,18 @@ func (mr *MockSettingsViewModelMockRecorder) ColorTheme() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ColorTheme", reflect.TypeOf((*MockSettingsViewModel)(nil).ColorTheme))
 }
 
-// CurrentFileSizeLimitBytes mocks base method.
-func (m *MockSettingsViewModel) CurrentFileSizeLimitBytes() int {
+// EditorFileSizeLimitKB mocks base method.
+func (m *MockSettingsViewModel) EditorFileSizeLimitKB() binding.Int {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CurrentFileSizeLimitBytes")
-	ret0, _ := ret[0].(int)
+	ret := m.ctrl.Call(m, "EditorFileSizeLimitKB")
+	ret0, _ := ret[0].(binding.Int)
 	return ret0
 }
 
-// CurrentFileSizeLimitBytes indicates an expected call of CurrentFileSizeLimitBytes.
-func (mr *MockSettingsViewModelMockRecorder) CurrentFileSizeLimitBytes() *gomock.Call {
+// EditorFileSizeLimitKB indicates an expected call of EditorFileSizeLimitKB.
+func (mr *MockSettingsViewModelMockRecorder) EditorFileSizeLimitKB() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentFileSizeLimitBytes", reflect.TypeOf((*MockSettingsViewModel)(nil).CurrentFileSizeLimitBytes))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditorFileSizeLimitKB", reflect.TypeOf((*MockSettingsViewModel)(nil).EditorFileSizeLimitKB))
 }
 
 // CurrentTimeout mocks base method.
@@ -83,26 +83,10 @@ func (mr *MockSettingsViewModelMockRecorder) CurrentTimeout() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentTimeout", reflect.TypeOf((*MockSettingsViewModel)(nil).CurrentTimeout))
 }
 
-// FileSizeLimitKB mocks base method.
-func (m *MockSettingsViewModel) FileSizeLimitKB() binding.Int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FileSizeLimitKB")
-	ret0, _ := ret[0].(binding.Int)
-	return ret0
-}
-
-// FileSizeLimitKB indicates an expected call of FileSizeLimitKB.
-func (mr *MockSettingsViewModelMockRecorder) FileSizeLimitKB() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileSizeLimitKB", reflect.TypeOf((*MockSettingsViewModel)(nil).FileSizeLimitKB))
-}
-
 // Save mocks base method.
-func (m *MockSettingsViewModel) Save() error {
+func (m *MockSettingsViewModel) Save() {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save")
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "Save")
 }
 
 // Save indicates an expected call of Save.

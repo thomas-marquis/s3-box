@@ -19,15 +19,10 @@ import (
 // Returns the constructed fyne.Container and an error if a problem occurs during the process.
 func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	timeoutEntry := fyne_widget.NewEntryWithData(
-		binding.IntToString(ctx.SettingsViewModel().TimeoutInSeconds()))
+		binding.IntToString(ctx.State().Settings().TimeoutInSeconds()))
 
-	themeSelector := fyne_widget.NewSelect(values.AllColorThemesStr, func(s string) {
-		if err := ctx.State().Settings().ColorTheme().Set(s); err != nil {
-			dialog.ShowError(err, ctx.Window())
-		}
-	})
-	currentTheme, _ := ctx.State().Settings().ColorTheme().Get()
-	themeSelector.PlaceHolder = currentTheme
+	themeSelector := fyne_widget.NewSelectWithData(values.AllColorThemesStr, ctx.State().Settings().ColorTheme())
+	themeSelector.PlaceHolder = "Select theme"
 
 	sizeEntry := fyne_widget.NewEntryWithData(
 		binding.IntToString(ctx.State().Settings().EditorFileSizeLimitKB()))
