@@ -53,7 +53,7 @@ func newDtoFromDuration(name string, value time.Duration) settingDTO {
 	}
 }
 
-func (d settingDTO) Read() (any, settings.SType) {
+func (d settingDTO) Read() (any, settings.Type) {
 	if d.StringValue != nil {
 		return *d.StringValue, settings.StringType
 	}
@@ -64,5 +64,5 @@ func (d settingDTO) Read() (any, settings.SType) {
 		return *d.NanoSecValue, settings.DurationType
 	}
 
-	return nil, -1
+	return nil, ""
 }

@@ -16,8 +16,8 @@ type SettingsState struct {
 	fileLimit  binding.Int
 	colorTheme binding.String
 
-	saveEnabled binding.Bool
-	isReady     binding.Bool
+	isReady       binding.Bool
+	statusMessage binding.String
 }
 
 func newSettingsState() *SettingsState {
@@ -31,15 +31,15 @@ func newSettingsState() *SettingsState {
 	}
 
 	state := &SettingsState{
-		aggregate:   settingsAgg,
-		timeout:     uiutils.NewSettingsBindingIntForDuration(settingsAgg, values.SettingTimeoutSec),
-		fileLimit:   uiutils.NewSettingsBindingIntToUint64KB(settingsAgg, values.SettingEditFileSizeLimitByte),
-		colorTheme:  uiutils.NewSettingsBindingString(settingsAgg, values.SettingColorTheme),
-		saveEnabled: binding.NewBool(),
-		isReady:     binding.NewBool(),
+		aggregate:     settingsAgg,
+		timeout:       uiutils.NewSettingsBindingIntForDuration(settingsAgg, values.SettingTimeoutSec),
+		fileLimit:     uiutils.NewSettingsBindingIntToUint64KB(settingsAgg, values.SettingEditFileSizeLimitByte),
+		colorTheme:    uiutils.NewSettingsBindingString(settingsAgg, values.SettingColorTheme),
+		isReady:       binding.NewBool(),
+		statusMessage: binding.NewString(),
 	}
 
-	state.UpdateSaveEnabled()
+	state.SyncStatusMessage()
 
 	return state
 }
@@ -60,17 +60,24 @@ func (s *SettingsState) ColorTheme() binding.String {
 	return s.colorTheme
 }
 
-func (s *SettingsState) SaveEnabled() binding.Bool {
-	return s.saveEnabled
-}
-
-func (s *SettingsState) UpdateSaveEnabled() {
-	canSave := s.aggregate.State().CanSave()
-	s.saveEnabled.Set(canSave) //nolint:errcheck
-}
-
 func (s *SettingsState) IsReady() binding.Bool {
 	return s.isReady
+}
+
+func (s *SettingsState) StatusMessage() binding.String {
+	return s.statusMessage
+}
+
+func (s *SettingsState) SyncStatusMessage() {
+	state := s.aggregate.State()
+	switch state.String() {
+	case "loading":
+		s.statusMessage.Set("Loading...") //nolint:errcheck
+	case "saving":
+		s.statusMessage.Set("Saving...") //nolint:errcheck
+	default:
+		s.statusMessage.Set("") //nolint:errcheck
+	}
 }
 
 func (s *SettingsState) CurrentTimeout() time.Duration {

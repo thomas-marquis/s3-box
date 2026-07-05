@@ -174,6 +174,22 @@ The settings are stored in Fyne preferences under the key `settingsV2`.
 - The user will experience a "reset" of their settings to defaults
 - This is acceptable as a trade-off for simplicity
 
+## UI Requirements
+
+### Status Message
+
+The settings view must display a status message on the top right that reflects the current state:
+
+- **Idle**: Empty string (no message)
+- **LoadingState**: "Loading..." 
+- **SavingState**: "Saving..."
+- **Error states**: Short, generic error messages:
+  - "Loading error" when LoadFailed occurs
+  - "Saving error" when SaveFailed occurs
+  - "Write error" when WriteFailed occurs
+
+The status message must be implemented using a binding.String stored in the SettingsState.
+
 ## Implementation Notes
 
 Use a state pattern with state types implementing operation permission checks.

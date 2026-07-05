@@ -155,7 +155,7 @@ func TestFyneSettingsHandler_load(t *testing.T) {
 					"maxConcurrency": uint64(3),
 					"lang":           "en",
 				},
-				Registered: map[string]settings.SType{
+				Registered: map[string]settings.Type{
 					"timeout":        settings.DurationType,
 					"maxConcurrency": settings.Uint64Type,
 					"lang":           settings.StringType,
@@ -190,7 +190,7 @@ func TestFyneSettingsHandler_load(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(eventest.PayloadEq(settings.LoadSucceeded{
 				Values:     map[string]any{},
-				Registered: map[string]settings.SType{},
+				Registered: map[string]settings.Type{},
 			})).
 			Do(func(evt event.Event) {
 				defer close(done)
@@ -222,7 +222,7 @@ func TestFyneSettingsHandler_load(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(eventest.PayloadEq(settings.LoadSucceeded{
 				Values:     map[string]any{},
-				Registered: map[string]settings.SType{},
+				Registered: map[string]settings.Type{},
 			})).
 			Do(func(evt event.Event) {
 				defer close(done)

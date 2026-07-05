@@ -39,6 +39,9 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		SubmitText: "Save",
 		CancelText: "Cancel",
 		OnCancel: func() {
+			if !ctx.State().Settings().Get().HasPendingEvents() {
+				return
+			}
 			dialog.ShowConfirm("Cancel", "Are you sure you want to cancel all unsaved changes?", func(confirmed bool) {
 				if confirmed {
 					ctx.SettingsViewModel().Cancel()
@@ -76,17 +79,21 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	)
 	exportConnectionsBtn.Resize(fyne.NewSize(100, 100))
 
+	statusLabel := fyne_widget.NewLabelWithData(ctx.State().Settings().StatusMessage())
+
 	return container.NewBorder(
 		container.NewVBox(
 			widget.NewHeading("Settings"),
 			fyne_widget.NewSeparator(),
-		),
-		nil, nil, nil,
-		container.NewPadded(
-			container.NewGridWrap(fyne.NewSize(700, 400), container.NewVBox(
-				form,
-				container.NewHBox(exportConnectionsBtn),
-			)),
+		), nil, nil, nil,
+		container.NewVBox(
+			container.NewBorder(nil, nil, nil, statusLabel),
+			container.NewPadded(
+				container.NewGridWrap(fyne.NewSize(700, 400), container.NewVBox(
+					form,
+					container.NewHBox(exportConnectionsBtn),
+				)),
+			),
 		),
 	), nil
 }

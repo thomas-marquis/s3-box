@@ -63,10 +63,7 @@ func (h *handler) handleWrite(evt event.Event) {
 
 	h.prefs.SetString(storageV2Key, string(bytes))
 
-	h.bus.Publish(evt.NewFollowup(settings.WriteSucceeded{
-		Name:  pl.Name,
-		Value: pl.Value,
-	}))
+	h.bus.Publish(evt.NewFollowup(settings.WriteSucceeded(pl)))
 }
 
 func (h *handler) handleLoad(evt event.Event) {
@@ -86,7 +83,7 @@ func (h *handler) handleLoad(evt event.Event) {
 	}
 
 	values := make(map[string]any)
-	registered := make(map[string]settings.SType)
+	registered := make(map[string]settings.Type)
 	for name, dto := range settingsDtos {
 		val, tp := dto.Read()
 		if val == nil {

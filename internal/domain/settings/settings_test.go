@@ -135,7 +135,7 @@ func TestSettings_Register(t *testing.T) {
 
 		succEvt := loadEvt.NewFollowup(settings.LoadSucceeded{
 			Values:     map[string]any{},
-			Registered: map[string]settings.SType{},
+			Registered: map[string]settings.Type{},
 		})
 		err = s.Notify(succEvt)
 		require.NoError(t, err)
@@ -436,7 +436,7 @@ func TestSettings_Load(t *testing.T) {
 			"app.maxFileSizeByte": uint64(1024),
 			"app.other":           "value",
 		}
-		remoteRegistered := map[string]settings.SType{
+		remoteRegistered := map[string]settings.Type{
 			"app.timeout":         settings.DurationType,
 			"app.colorTheme":      settings.StringType,
 			"app.maxFileSizeByte": settings.Uint64Type,
@@ -649,7 +649,7 @@ func TestSettings_Notify(t *testing.T) {
 				"app.theme":   "light",
 				"app.timeout": int64(60000000000),
 			},
-			Registered: map[string]settings.SType{
+			Registered: map[string]settings.Type{
 				"app.theme":   settings.StringType,
 				"app.timeout": settings.DurationType,
 			},

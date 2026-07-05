@@ -16,7 +16,7 @@ func (LoadTriggered) EventType() event.Type {
 
 type LoadSucceeded struct {
 	Values     map[string]any
-	Registered map[string]SType
+	Registered map[string]Type
 }
 
 func (LoadSucceeded) EventType() event.Type {

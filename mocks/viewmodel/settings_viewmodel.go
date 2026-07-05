@@ -11,9 +11,7 @@ package mocks_viewmodel
 
 import (
 	reflect "reflect"
-	time "time"
 
-	binding "fyne.io/fyne/v2/data/binding"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,46 +39,16 @@ func (m *MockSettingsViewModel) EXPECT() *MockSettingsViewModelMockRecorder {
 	return m.recorder
 }
 
-// ColorTheme mocks base method.
-func (m *MockSettingsViewModel) ColorTheme() binding.String {
+// Cancel mocks base method.
+func (m *MockSettingsViewModel) Cancel() {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ColorTheme")
-	ret0, _ := ret[0].(binding.String)
-	return ret0
+	m.ctrl.Call(m, "Cancel")
 }
 
-// ColorTheme indicates an expected call of ColorTheme.
-func (mr *MockSettingsViewModelMockRecorder) ColorTheme() *gomock.Call {
+// Cancel indicates an expected call of Cancel.
+func (mr *MockSettingsViewModelMockRecorder) Cancel() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ColorTheme", reflect.TypeOf((*MockSettingsViewModel)(nil).ColorTheme))
-}
-
-// EditorFileSizeLimitKB mocks base method.
-func (m *MockSettingsViewModel) EditorFileSizeLimitKB() binding.Int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EditorFileSizeLimitKB")
-	ret0, _ := ret[0].(binding.Int)
-	return ret0
-}
-
-// EditorFileSizeLimitKB indicates an expected call of EditorFileSizeLimitKB.
-func (mr *MockSettingsViewModelMockRecorder) EditorFileSizeLimitKB() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditorFileSizeLimitKB", reflect.TypeOf((*MockSettingsViewModel)(nil).EditorFileSizeLimitKB))
-}
-
-// CurrentTimeout mocks base method.
-func (m *MockSettingsViewModel) CurrentTimeout() time.Duration {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CurrentTimeout")
-	ret0, _ := ret[0].(time.Duration)
-	return ret0
-}
-
-// CurrentTimeout indicates an expected call of CurrentTimeout.
-func (mr *MockSettingsViewModelMockRecorder) CurrentTimeout() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentTimeout", reflect.TypeOf((*MockSettingsViewModel)(nil).CurrentTimeout))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockSettingsViewModel)(nil).Cancel))
 }
 
 // Save mocks base method.
@@ -93,18 +61,4 @@ func (m *MockSettingsViewModel) Save() {
 func (mr *MockSettingsViewModelMockRecorder) Save() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockSettingsViewModel)(nil).Save))
-}
-
-// TimeoutInSeconds mocks base method.
-func (m *MockSettingsViewModel) TimeoutInSeconds() binding.Int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TimeoutInSeconds")
-	ret0, _ := ret[0].(binding.Int)
-	return ret0
-}
-
-// TimeoutInSeconds indicates an expected call of TimeoutInSeconds.
-func (mr *MockSettingsViewModelMockRecorder) TimeoutInSeconds() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TimeoutInSeconds", reflect.TypeOf((*MockSettingsViewModel)(nil).TimeoutInSeconds))
 }

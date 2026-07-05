@@ -20,19 +20,11 @@ var (
 	ErrNotReady      = errors.New("not ready")
 )
 
-type SType int
-
-const (
-	Uint64Type SType = iota
-	StringType
-	DurationType
-)
-
 type Settings struct {
 	pendingEvents []event.Event
 
-	registered map[string]SType
-	values     map[SType]map[string]any
+	registered map[string]Type
+	values     map[Type]map[string]any
 
 	observers  map[string]map[int]func(value any)
 	mu         sync.RWMutex
@@ -43,8 +35,8 @@ type Settings struct {
 
 func NewSettings() *Settings {
 	return &Settings{
-		registered: make(map[string]SType),
-		values:     make(map[SType]map[string]any),
+		registered: make(map[string]Type),
+		values:     make(map[Type]map[string]any),
 		observers:  make(map[string]map[int]func(value any)),
 		state:      IdleState{},
 	}
@@ -158,16 +150,13 @@ func (s *Settings) IsExists(name string) bool {
 	return false
 }
 
-func (s *Settings) IsExistsWithType(name string, tp SType) bool {
+func (s *Settings) IsExistsWithType(name string, tp Type) bool {
 	if !s.IsExists(name) {
 		return false
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if tp != s.registered[name] {
-		return false
-	}
-	return true
+	return tp == s.registered[name]
 }
 
 func (s *Settings) ReadString(name string) string {
@@ -232,9 +221,7 @@ func (s *Settings) Save() (event.Event, error) {
 	}
 
 	var evts []event.Event
-	for _, evt := range s.pendingEvents {
-		evts = append(evts, evt)
-	}
+	evts = append(evts, s.pendingEvents...)
 	s.pendingEvents = nil
 	s.transitionToState(SavingState{})
 
@@ -257,12 +244,19 @@ func (s *Settings) Cancel() {
 	s.transitionToState(IdleState{})
 }
 
+func (s *Settings) HasPendingEvents() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.pendingEvents) > 0
+}
+
 func (s *Settings) Notify(evt event.Event) error {
 	switch pl := evt.Payload().(type) {
 	case LoadSucceeded:
 		s.mu.Lock()
 		s.transitionToState(IdleState{})
 
+		toBeNotified := make(map[string]any)
 		// merge the received values with registered ones:
 		for name, sType := range s.registered {
 			if inSType, found := pl.Registered[name]; !found || inSType != sType {
@@ -279,13 +273,18 @@ func (s *Settings) Notify(evt event.Event) error {
 					s.values[sType] = make(map[string]any)
 				}
 				s.values[sType][name] = newVal
-			} else {
-				// Value not found in Values map, use default
-				if val, ok := s.values[sType][name]; ok {
-					s.values[sType][name] = val
+				toBeNotified[name] = newVal
+			}
+		}
+
+		for name, val := range toBeNotified {
+			if observers, ok := s.observers[name]; ok {
+				for _, observer := range observers {
+					observer(val)
 				}
 			}
 		}
+
 		s.mu.Unlock()
 
 	case LoadFailed:
@@ -343,7 +342,7 @@ func (s *Settings) transitionToState(newState State) {
 	s.state = newState
 }
 
-func (s *Settings) register(name string, tp SType, defaultValue any) error {
+func (s *Settings) register(name string, tp Type, defaultValue any) error {
 	if strings.TrimSpace(name) == "" {
 		return errors.Join(ErrInvalidType, errors.New("empty or whitespace setting name"))
 	}
@@ -367,7 +366,7 @@ func (s *Settings) register(name string, tp SType, defaultValue any) error {
 	return nil
 }
 
-func (s *Settings) isRegistered(name string, tp SType) bool {
+func (s *Settings) isRegistered(name string, tp Type) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -399,7 +398,7 @@ func (s *Settings) canWrite() bool {
 	return s.state.CanWrite()
 }
 
-func inferType(value any) (SType, error) {
+func inferType(value any) (Type, error) {
 	switch value.(type) {
 	case string:
 		return StringType, nil
@@ -408,6 +407,6 @@ func inferType(value any) (SType, error) {
 	case time.Duration:
 		return DurationType, nil
 	default:
-		return -1, errors.New("unsupported type")
+		return "", errors.New("unsupported type")
 	}
 }

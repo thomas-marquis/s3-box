@@ -54,7 +54,7 @@ func setupFileDetailsMocksWithLimit(t *testing.T, limitBytes uint64) fileDetails
 	m.mockAppCtx.EXPECT().State().Return(m.mockState).AnyTimes()
 
 	// Register the settings that file_details needs
-	m.mockState.Settings().Get().Register(
+	m.mockState.Settings().Get().Register( //nolint:errcheck
 		settings.AUint64(values.SettingEditFileSizeLimitByte, limitBytes),
 	)
 
