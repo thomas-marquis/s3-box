@@ -9,8 +9,8 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	fyne_widget "fyne.io/fyne/v2/widget"
-	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/ui/values"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 )
 
@@ -21,16 +21,16 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	timeoutEntry := fyne_widget.NewEntryWithData(
 		binding.IntToString(ctx.SettingsViewModel().TimeoutInSeconds()))
 
-	themeSelector := fyne_widget.NewSelect(settings.AllColorThemesStr, func(s string) {
-		if err := ctx.SettingsViewModel().ColorTheme().Set(s); err != nil {
+	themeSelector := fyne_widget.NewSelect(values.AllColorThemesStr, func(s string) {
+		if err := ctx.State().Settings().ColorTheme().Set(s); err != nil {
 			dialog.ShowError(err, ctx.Window())
 		}
 	})
-	currentTheme, _ := ctx.SettingsViewModel().ColorTheme().Get()
+	currentTheme, _ := ctx.State().Settings().ColorTheme().Get()
 	themeSelector.PlaceHolder = currentTheme
 
 	sizeEntry := fyne_widget.NewEntryWithData(
-		binding.IntToString(ctx.SettingsViewModel().FileSizeLimitKB()))
+		binding.IntToString(ctx.State().Settings().EditorFileSizeLimitKB()))
 
 	form := &fyne_widget.Form{
 		Items: []*fyne_widget.FormItem{
@@ -39,12 +39,8 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 			{Text: "Timeout (seconds)", Widget: timeoutEntry},
 		},
 		OnSubmit: func() {
-			if err := ctx.SettingsViewModel().Save(); err != nil {
-				dialog.ShowError(err, ctx.Window())
-				return
-			}
-
-			dialog.ShowInformation("Done", "Settings Saved", ctx.Window())
+			ctx.SettingsViewModel().Save()
+			//dialog.ShowInformation("Done", "Settings Saved", ctx.Window())
 		},
 		SubmitText: "Save",
 	}

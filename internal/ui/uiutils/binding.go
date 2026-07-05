@@ -2,8 +2,10 @@ package uiutils
 
 import (
 	"fmt"
+	"runtime"
 
 	"fyne.io/fyne/v2/data/binding"
+	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 )
 
 // GetString retrieves a string value from a binding.String.
@@ -76,9 +78,36 @@ func NewBindingItemFormatter[T any](original binding.Item[T], formatFunc func(T)
 		formatFunc: formatFunc,
 	}
 
-	original.AddListener(binding.NewDataListener(func() {
+	original.AddListener(binding.NewDataListener(func() { // TODO: possible leak...
 		item, _ := b.original.Get()
 		b.Set(b.formatFunc(item)) //nolint:errcheck
 	}))
+	return b
+}
+
+type SettingsStringBinding struct {
+	binding.String
+
+	aggregate *settings.SettingsV3
+}
+
+func NewSettingsBindingString(s *settings.SettingsV3, name string) binding.String {
+	bs := binding.NewString()
+	b := &SettingsStringBinding{
+		String:    bs,
+		aggregate: s,
+	}
+
+	if !s.IsExistsWithType(name, settings.StringType) {
+		return b
+	}
+
+	cancel := s.Observe(name, func(value any) {
+		bs.Set(value.(string)) //nolint:errcheck
+	})
+	runtime.AddCleanup(b, func(cancel func()) {
+		cancel()
+	}, cancel)
+
 	return b
 }

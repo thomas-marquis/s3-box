@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"fyne.io/fyne/v2/data/binding"
+	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
 )
 
@@ -13,8 +14,6 @@ var (
 )
 
 type ConnectionsState struct{}
-
-type SettingsState struct{}
 
 type State struct {
 	connections *ConnectionsState
@@ -30,7 +29,9 @@ func New() *State {
 				return n1.ID() == n2.ID()
 			}),
 		},
-		settings: &SettingsState{},
+		settings: &SettingsState{
+			aggregate: &settings.SettingsV3{},
+		},
 	}
 }
 

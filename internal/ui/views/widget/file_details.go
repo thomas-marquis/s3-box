@@ -40,8 +40,9 @@ type FileDetails struct {
 
 	actionToolbar *widget.Toolbar
 
-	fileSizeBinding     binding.String
-	lastModifiedBinding binding.String
+	fileSizeBinding        binding.String
+	lastModifiedBinding    binding.String
+	editFileSizeLimitBytes binding.Int
 
 	currentSelectedFile *directory.File
 }
@@ -56,8 +57,9 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		pathLabel: filepathLabel,
 		fileIcon:  fileIcon,
 
-		fileSizeBinding:     binding.NewString(),
-		lastModifiedBinding: binding.NewString(),
+		fileSizeBinding:        binding.NewString(),
+		lastModifiedBinding:    binding.NewString(),
+		editFileSizeLimitBytes: binding.NewInt(),
 
 		downloadAction: NewToolbarButton("Download", theme.DownloadIcon(), func() {}),
 		deleteAction:   NewToolbarButton("Delete", theme.DeleteIcon(), func() {}),
@@ -66,6 +68,16 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 
 		currentSelectedFile: nil,
 	}
+
+	w.appCtx.State().Settings().Get().Observe("app.editFileSizeLimitBytes", func(value any) {
+		val, ok := value.(uint64)
+		if !ok {
+			panic("invalid type for settings app.editFileSizeLimitBytes")
+		}
+		if err := w.editFileSizeLimitBytes.Set(int(val)); err != nil {
+			return
+		}
+	})
 
 	w.actionToolbar = widget.NewToolbar(
 		w.downloadAction,
@@ -145,8 +157,9 @@ func (w *FileDetails) Select(file *directory.File) {
 	w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05")) //nolint:errcheck
 	w.fileSizeBinding.Set(utils.FormatSizeBytes(file.SizeBytes()))               //nolint:errcheck
 
-	w.appCtx.SettingsViewModel().FileSizeLimitKB().AddListener(binding.NewDataListener(func() {
-		if file.SizeBytes() > w.appCtx.SettingsViewModel().CurrentFileSizeLimitBytes() {
+	w.editFileSizeLimitBytes.AddListener(binding.NewDataListener(func() {
+		val, _ := w.editFileSizeLimitBytes.Get()
+		if file.SizeBytes() > val {
 			w.editAction.Disable()
 		} else {
 			if w.appCtx.ConnectionViewModel().IsReadOnly() {

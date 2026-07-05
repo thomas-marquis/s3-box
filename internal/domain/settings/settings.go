@@ -2,51 +2,8 @@ package settings
 
 import "errors"
 
-type ColorTheme int
-
-const (
-	ColorThemeLight ColorTheme = iota
-	ColorThemeDark
-	ColorThemeSystem
-)
-
-const (
-	ColorThemeLightStr  = "light"
-	ColorThemeDarkStr   = "dark"
-	ColorThemeSystemStr = "system"
-)
-
-var AllColorThemesStr = []string{ColorThemeLightStr, ColorThemeDarkStr, ColorThemeSystemStr}
-
-func (c ColorTheme) String() string {
-	switch c {
-	case ColorThemeLight:
-		return ColorThemeLightStr
-	case ColorThemeDark:
-		return ColorThemeDarkStr
-	case ColorThemeSystem:
-		return ColorThemeSystemStr
-	default:
-		return "unknown"
-	}
-}
-
-func NewColorThemeFromString(s string) (ColorTheme, error) {
-	switch s {
-	case ColorThemeLightStr:
-		return ColorThemeLight, nil
-	case ColorThemeDarkStr:
-		return ColorThemeDark, nil
-	case ColorThemeSystemStr:
-		return ColorThemeSystem, nil
-	default:
-		return -1, errors.New("invalid color theme")
-	}
-}
-
 type Settings struct {
 	TimeoutInSeconds        int
-	Color                   ColorTheme
 	MaxFilePreviewSizeBytes int
 }
 

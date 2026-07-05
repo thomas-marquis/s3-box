@@ -12,7 +12,7 @@ require (
 	github.com/aws/smithy-go v1.27.1
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.43.0
-	github.com/thomas-marquis/it-happened v0.2.1
+	github.com/thomas-marquis/it-happened v0.3.0
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
 )
