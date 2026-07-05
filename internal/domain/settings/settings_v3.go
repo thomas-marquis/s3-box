@@ -56,6 +56,10 @@ func (s *SettingsV3) State() State {
 	return s.state
 }
 
+// Observe registers a callback function to be called when the specified setting's value changes.
+// The callback is invoked synchronously when a WriteSucceeded event is received for this setting.
+// WARNING: The callback function MUST be non-blocking and short-running.
+// Panics in the callback will propagate to the caller of Notify() and are NOT recovered by the entity.
 func (s *SettingsV3) Observe(name string, f func(value any)) func() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
