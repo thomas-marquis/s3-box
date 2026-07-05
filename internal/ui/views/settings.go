@@ -35,9 +35,16 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		},
 		OnSubmit: func() {
 			ctx.SettingsViewModel().Save()
-			//dialog.ShowInformation("Done", "Settings Saved", ctx.Window())
 		},
 		SubmitText: "Save",
+		CancelText: "Cancel",
+		OnCancel: func() {
+			dialog.ShowConfirm("Cancel", "Are you sure you want to cancel all unsaved changes?", func(confirmed bool) {
+				if confirmed {
+					ctx.SettingsViewModel().Cancel()
+				}
+			}, ctx.Window())
+		},
 	}
 
 	exportConnectionsBtn := fyne_widget.NewButtonWithIcon(

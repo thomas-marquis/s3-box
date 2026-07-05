@@ -80,6 +80,44 @@ func TestFyneSettingsHandler_write(t *testing.T) {
 		// Then
 		testutil.AssertEventually(t, done)
 	})
+
+	t.Run("should handle write when preferences are empty", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+
+		// Empty preferences string
+		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return("").Times(1)
+		mockPrefs.EXPECT().
+			SetString(gomock.Eq("settingsV2"), gomock.Any()).
+			Times(1)
+
+		events := make(chan event.Event)
+		defer close(events)
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(events)).Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(eventest.PayloadEq(settings.WriteSucceeded{
+				Name:  "lang",
+				Value: "fr",
+			})).
+			Do(func(evt event.Event) {
+				defer close(done)
+			}).
+			Times(1)
+
+		// When
+		infra.FyneSettingsHandler(mockBus, mockPrefs)
+		events <- event.New(settings.WriteTriggered{
+			Name:  "lang",
+			Value: "fr",
+		})
+
+		// Then
+		testutil.AssertEventually(t, done)
+	})
 }
 
 func TestFyneSettingsHandler_load(t *testing.T) {
@@ -143,6 +181,38 @@ func TestFyneSettingsHandler_load(t *testing.T) {
 		mockBus := mocks_event.NewMockBus(ctrl)
 
 		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return("{}").Times(1)
+
+		events := make(chan event.Event)
+		defer close(events)
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(events)).Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(eventest.PayloadEq(settings.LoadSucceeded{
+				Values:     map[string]any{},
+				Registered: map[string]settings.SType{},
+			})).
+			Do(func(evt event.Event) {
+				defer close(done)
+			}).
+			Times(1)
+
+		// When
+		infra.FyneSettingsHandler(mockBus, mockPrefs)
+		events <- event.New(settings.LoadTriggered{})
+
+		// Then
+		testutil.AssertEventually(t, done)
+	})
+
+	t.Run("should handle empty string from prefs and return empty maps", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+
+		// Empty string (no settings stored yet)
+		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return("").Times(1)
 
 		events := make(chan event.Event)
 		defer close(events)

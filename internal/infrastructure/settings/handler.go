@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	storageV1Key = "settings"
 	storageV2Key = "settingsV2"
 )
 
@@ -42,14 +41,16 @@ func (h *handler) handleWrite(evt event.Event) {
 		}))
 	}
 
-	settingsDtos, err := fromJson[map[string]settingDTO](h.prefs.String(storageV2Key))
+	settingsDtos, err := h.getSettingsDto()
 	if err != nil {
 		handleErr(err)
+		return
 	}
 
 	newVal, err := newDto(pl.Name, pl.Value)
 	if err != nil {
 		handleErr(err)
+		return
 	}
 
 	settingsDtos[pl.Name] = newVal
@@ -57,6 +58,7 @@ func (h *handler) handleWrite(evt event.Event) {
 	bytes, err := json.Marshal(settingsDtos)
 	if err != nil {
 		handleErr(err)
+		return
 	}
 
 	h.prefs.SetString(storageV2Key, string(bytes))
@@ -77,7 +79,7 @@ func (h *handler) handleLoad(evt event.Event) {
 		}))
 	}
 
-	settingsDtos, err := fromJson[map[string]settingDTO](h.prefs.String(storageV2Key))
+	settingsDtos, err := h.getSettingsDto()
 	if err != nil {
 		handleErr(err)
 		return
@@ -99,6 +101,26 @@ func (h *handler) handleLoad(evt event.Event) {
 		Values:     values,
 		Registered: registered,
 	}))
+}
+
+func (h *handler) getSettingsDto() (map[string]settingDTO, error) {
+	var settingsDtos map[string]settingDTO
+	prefsStr := h.prefs.String(storageV2Key)
+	if prefsStr == "" {
+		settingsDtos = make(map[string]settingDTO)
+	} else {
+		var err error
+		settingsDtos, err = fromJson[map[string]settingDTO](prefsStr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if settingsDtos == nil {
+		settingsDtos = make(map[string]settingDTO)
+	}
+
+	return settingsDtos, nil
 }
 
 func fromJson[T any](content string) (T, error) {

@@ -117,8 +117,26 @@ func (s *Settings) Write(name string, value any) error {
 		return errors.Join(ErrInvalidType, fmt.Errorf("writing %s with wrong type", name))
 	}
 
-	s.pendingEvents = append(s.pendingEvents, event.New(WriteTriggered{Name: name, Value: value}))
+	newEvt := event.New(WriteTriggered{Name: name, Value: value})
+
+	for i, evt := range s.pendingEvents {
+		if pl, ok := evt.Payload().(WriteTriggered); ok && pl.Name == name {
+			s.pendingEvents[i] = newEvt
+			return nil
+		}
+	}
+
+	s.pendingEvents = append(s.pendingEvents, newEvt)
 	return nil
+}
+
+func (s *Settings) GetPendingEvents() []event.Event {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	result := make([]event.Event, len(s.pendingEvents))
+	copy(result, s.pendingEvents)
+	return result
 }
 
 func (s *Settings) IsExists(name string) bool {
@@ -219,6 +237,14 @@ func (s *Settings) Save() (event.Event, error) {
 			Events: evts,
 		}),
 	), nil
+}
+
+func (s *Settings) Cancel() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.pendingEvents = nil
+	s.transitionToState(IdleState{})
 }
 
 func (s *Settings) Notify(evt event.Event) error {

@@ -88,10 +88,11 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		notifier,
 	).Listen()
 
-	// Initialize settings handler
 	settings.FyneSettingsHandler(eventBus, a.Preferences())
 
 	appState := state.New()
+
+	notificationsViewModel := viewmodel.NewNotificationViewModel(ctx, notifier)
 
 	settingsViewModel := viewmodel.NewSettingsViewModel(
 		fyneSettings,
@@ -112,8 +113,6 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		eventBus,
 		appState,
 	)
-
-	notificationsViewModel := viewmodel.NewNotificationViewModel(ctx, notifier)
 
 	editorViewModel := viewmodel.NewEditorViewModel(eventBus, notifier,
 		connectionViewModel.Deck().SelectedConnection())

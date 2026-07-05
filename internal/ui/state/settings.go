@@ -15,6 +15,9 @@ type SettingsState struct {
 	timeout    binding.Int
 	fileLimit  binding.Int
 	colorTheme binding.String
+
+	saveEnabled binding.Bool
+	isReady     binding.Bool
 }
 
 func newSettingsState() *SettingsState {
@@ -27,12 +30,18 @@ func newSettingsState() *SettingsState {
 		panic(err)
 	}
 
-	return &SettingsState{
-		aggregate:  settingsAgg,
-		timeout:    uiutils.NewSettingsBindingIntForDuration(settingsAgg, values.SettingTimeoutSec),
-		fileLimit:  uiutils.NewSettingsBindingIntToUint64KB(settingsAgg, values.SettingEditFileSizeLimitByte),
-		colorTheme: uiutils.NewSettingsBindingString(settingsAgg, values.SettingColorTheme),
+	state := &SettingsState{
+		aggregate:   settingsAgg,
+		timeout:     uiutils.NewSettingsBindingIntForDuration(settingsAgg, values.SettingTimeoutSec),
+		fileLimit:   uiutils.NewSettingsBindingIntToUint64KB(settingsAgg, values.SettingEditFileSizeLimitByte),
+		colorTheme:  uiutils.NewSettingsBindingString(settingsAgg, values.SettingColorTheme),
+		saveEnabled: binding.NewBool(),
+		isReady:     binding.NewBool(),
 	}
+
+	state.UpdateSaveEnabled()
+
+	return state
 }
 
 func (s *SettingsState) Get() *settings.Settings {
@@ -49,6 +58,19 @@ func (s *SettingsState) EditorFileSizeLimitKB() binding.Int {
 
 func (s *SettingsState) ColorTheme() binding.String {
 	return s.colorTheme
+}
+
+func (s *SettingsState) SaveEnabled() binding.Bool {
+	return s.saveEnabled
+}
+
+func (s *SettingsState) UpdateSaveEnabled() {
+	canSave := s.aggregate.State().CanSave()
+	s.saveEnabled.Set(canSave) //nolint:errcheck
+}
+
+func (s *SettingsState) IsReady() binding.Bool {
+	return s.isReady
 }
 
 func (s *SettingsState) CurrentTimeout() time.Duration {

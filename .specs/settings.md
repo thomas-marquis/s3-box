@@ -86,6 +86,7 @@ err := s.Write("app.theme", "light")
 
 - Returns `ErrUnregistered`, `ErrInvalidType`, or `ErrNotReady` (LoadingState)
 - Permitted in `IdleState` and `SavingState`
+- **Duplicate writes**: When `Write()` is called multiple times for the same setting name, only the latest value is kept in pending events. Previous pending events for the same setting are replaced.
 
 ### 7. Saving
 
@@ -101,6 +102,16 @@ bus.Publish(evt)
 - Returns `ErrNotReady` if in `LoadingState` or `SavingState`
 - Returns `SaveSucceeded` if no pending events
 - Returns `carrier.All` event and transitions to `SavingState` if pending events
+
+### 8. Canceling
+
+```go
+s.Cancel()
+```
+
+- Clears all pending write events
+- Transitions to `IdleState`
+- Permitted in all states
 
 ### 8. Observer Pattern
 
@@ -147,6 +158,20 @@ SavingState:
 - `ErrInvalidType` - type mismatch or empty name
 - `ErrNotReady` - operation not permitted in current state
 - `ErrTimeout` - timeout (in infrastructure events)
+
+## Storage and Migration
+
+The settings are stored in Fyne preferences under the key `settingsV2`. 
+
+**V1 Format**: The legacy format stored settings as a simple struct with fields like `TimeoutInSeconds`, `MaxFilePreviewSizeBytes`, and `ColorTheme`.
+
+**V2 Format**: The current format stores settings as a map of setting names to `settingDTO` objects, which include both the value and type information.
+
+**Migration Strategy**: When a user upgrades from a V1 version:
+- If the `settingsV2` key doesn't exist or is empty, the handler should initialize an empty map
+- No automatic migration from V1 to V2 is performed
+- The user will experience a "reset" of their settings to defaults
+- This is acceptable as a trade-off for simplicity
 
 ## Implementation Notes
 

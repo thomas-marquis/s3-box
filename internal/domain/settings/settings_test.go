@@ -208,6 +208,24 @@ func TestSettings_Write(t *testing.T) {
 		assert.ErrorIs(t, err, settings.ErrNotReady)
 	})
 
+	t.Run("should replace previous pending event when writing same setting twice", func(t *testing.T) {
+		// Given
+		s := settings.NewSettings()
+		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
+
+		// When
+		err := s.Write("app.theme", "light")
+		require.NoError(t, err)
+		err = s.Write("app.theme", "white")
+		require.NoError(t, err)
+
+		// Then
+		assert.Len(t, s.GetPendingEvents(), 1)
+		lastEvent := s.GetPendingEvents()[0]
+		pl := lastEvent.Payload().(settings.WriteTriggered)
+		assert.Equal(t, "white", pl.Value)
+	})
+
 	t.Run("should allow writing during save", func(t *testing.T) {
 		// Given
 		s := settings.NewSettings()
@@ -521,6 +539,57 @@ func TestSettings_Save(t *testing.T) {
 		// Then
 		assert.NoError(t, err)
 		assert.IsType(t, settings.IdleState{}, s.State())
+	})
+}
+
+func TestSettings_Cancel(t *testing.T) {
+	t.Run("should clear pending events and transition to IdleState", func(t *testing.T) {
+		// Given
+		s := settings.NewSettings()
+		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
+		require.NoError(t, s.Write("app.theme", "light"))
+		assert.Len(t, s.GetPendingEvents(), 1)
+
+		// When
+		s.Cancel()
+
+		// Then
+		assert.IsType(t, settings.IdleState{}, s.State())
+		assert.Len(t, s.GetPendingEvents(), 0)
+	})
+
+	t.Run("should clear pending events when called during LoadingState", func(t *testing.T) {
+		// Given
+		s := settings.NewSettings()
+		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
+		require.NoError(t, s.Write("app.theme", "light"))
+		_, err := s.Load()
+		require.NoError(t, err)
+		assert.IsType(t, settings.LoadingState{}, s.State())
+
+		// When
+		s.Cancel()
+
+		// Then
+		assert.IsType(t, settings.IdleState{}, s.State())
+		assert.Len(t, s.GetPendingEvents(), 0)
+	})
+
+	t.Run("should clear pending events when called during SavingState", func(t *testing.T) {
+		// Given
+		s := settings.NewSettings()
+		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
+		require.NoError(t, s.Write("app.theme", "light"))
+		_, err := s.Save()
+		require.NoError(t, err)
+		assert.IsType(t, settings.SavingState{}, s.State())
+
+		// When
+		s.Cancel()
+
+		// Then
+		assert.IsType(t, settings.IdleState{}, s.State())
+		assert.Len(t, s.GetPendingEvents(), 0)
 	})
 }
 
