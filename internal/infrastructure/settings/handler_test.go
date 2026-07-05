@@ -1,7 +1,6 @@
 package settings_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,21 +13,6 @@ import (
 	mocks_fyne "github.com/thomas-marquis/s3-box/mocks/fyne"
 	"go.uber.org/mock/gomock"
 )
-
-type jsonEqMatcher struct {
-	expectedJson string
-	t            *testing.T
-}
-
-var _ gomock.Matcher = (*jsonEqMatcher)(nil)
-
-func (m jsonEqMatcher) Matches(val any) bool {
-	return assert.JSONEq(m.t, m.expectedJson, val.(string))
-}
-
-func (m jsonEqMatcher) String() string {
-	return fmt.Sprintf("JSON is equal to %s", m.expectedJson)
-}
 
 func TestFyneSettingsHandler_write(t *testing.T) {
 	t.Run("should write the new settings when it exists", func(t *testing.T) {
@@ -68,7 +52,7 @@ func TestFyneSettingsHandler_write(t *testing.T) {
 			}
 		}`
 		mockPrefs.EXPECT().
-			SetString(gomock.Eq("settingsV2"), jsonEqMatcher{t: t, expectedJson: newPrefs}).
+			SetString(gomock.Eq("settingsV2"), testutil.JsonEqMatcher(t, newPrefs)).
 			Times(1)
 
 		events := make(chan event.Event)
@@ -92,6 +76,363 @@ func TestFyneSettingsHandler_write(t *testing.T) {
 			Name:  "lang",
 			Value: "fr",
 		})
+
+		// Then
+		testutil.AssertEventually(t, done)
+	})
+}
+
+func TestFyneSettingsHandler_register(t *testing.T) {
+	t.Run("should register a new string setting", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+
+		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return("{}").Times(1)
+
+		newPrefs := `{
+			"newSetting": {
+				"name": "newSetting",
+				"strValue": ""
+			}
+		}`
+		mockPrefs.EXPECT().
+			SetString(gomock.Eq("settingsV2"), testutil.JsonEqMatcher(t, newPrefs)).
+			Times(1)
+
+		events := make(chan event.Event)
+		defer close(events)
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(events)).Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(eventest.PayloadEq(settings.RegisterSucceeded{
+				Name: "newSetting",
+				Type: settings.StringType,
+			})).
+			Do(func(evt event.Event) {
+				defer close(done)
+			}).
+			Times(1)
+
+		// When
+		infra.FyneSettingsHandler(mockBus, mockPrefs)
+		events <- event.New(settings.RegisterTriggered{
+			Name: "newSetting",
+			Type: settings.StringType,
+		})
+
+		// Then
+		testutil.AssertEventually(t, done)
+	})
+
+	t.Run("should register a new uint64 setting", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+
+		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return("{}").Times(1)
+
+		newPrefs := `{
+			"maxRetries": {
+				"name": "maxRetries",
+				"u64Value": 0
+			}
+		}`
+		mockPrefs.EXPECT().
+			SetString(gomock.Eq("settingsV2"), testutil.JsonEqMatcher(t, newPrefs)).
+			Times(1)
+
+		events := make(chan event.Event)
+		defer close(events)
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(events)).Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(eventest.PayloadEq(settings.RegisterSucceeded{
+				Name: "maxRetries",
+				Type: settings.Uint64Type,
+			})).
+			Do(func(evt event.Event) {
+				defer close(done)
+			}).
+			Times(1)
+
+		// When
+		infra.FyneSettingsHandler(mockBus, mockPrefs)
+		events <- event.New(settings.RegisterTriggered{
+			Name: "maxRetries",
+			Type: settings.Uint64Type,
+		})
+
+		// Then
+		testutil.AssertEventually(t, done)
+	})
+
+	t.Run("should register a new duration setting", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+
+		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return("{}").Times(1)
+
+		newPrefs := `{
+			"timeout": {
+				"name": "timeout",
+				"nsValue": 0
+			}
+		}`
+		mockPrefs.EXPECT().
+			SetString(gomock.Eq("settingsV2"), testutil.JsonEqMatcher(t, newPrefs)).
+			Times(1)
+
+		events := make(chan event.Event)
+		defer close(events)
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(events)).Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(eventest.PayloadEq(settings.RegisterSucceeded{
+				Name: "timeout",
+				Type: settings.DurationType,
+			})).
+			Do(func(evt event.Event) {
+				defer close(done)
+			}).
+			Times(1)
+
+		// When
+		infra.FyneSettingsHandler(mockBus, mockPrefs)
+		events <- event.New(settings.RegisterTriggered{
+			Name: "timeout",
+			Type: settings.DurationType,
+		})
+
+		// Then
+		testutil.AssertEventually(t, done)
+	})
+
+	t.Run("should fail when setting already exists", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+
+		existingPrefs := `{
+			"timeout": {
+				"name": "timeout",
+				"nsValue": 10000000
+			}
+		}`
+		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return(existingPrefs).Times(1)
+
+		events := make(chan event.Event)
+		defer close(events)
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(events)).Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(eventest.PayloadEq(settings.RegisterFailed{
+				Err: settings.ErrAlreadyExists,
+			})).
+			Do(func(evt event.Event) {
+				defer close(done)
+			}).
+			Times(1)
+
+		// When
+		infra.FyneSettingsHandler(mockBus, mockPrefs)
+		events <- event.New(settings.RegisterTriggered{
+			Name: "timeout",
+			Type: settings.DurationType,
+		})
+
+		// Then
+		testutil.AssertEventually(t, done)
+	})
+
+	t.Run("should fail when preferences cannot be read", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+
+		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return("invalid json").Times(1)
+
+		events := make(chan event.Event)
+		defer close(events)
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(events)).Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(gomock.Any()).
+			Do(func(evt event.Event) {
+				pl := evt.Payload().(settings.RegisterFailed)
+				assert.ErrorContains(t, pl.Err, "fromJson")
+				defer close(done)
+			}).
+			Times(1)
+
+		// When
+		infra.FyneSettingsHandler(mockBus, mockPrefs)
+		events <- event.New(settings.RegisterTriggered{
+			Name: "timeout",
+			Type: settings.DurationType,
+		})
+
+		// Then
+		testutil.AssertEventually(t, done)
+	})
+}
+
+func TestFyneSettingsHandler_load(t *testing.T) {
+	t.Run("should load existing settings", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+
+		existingPrefs := `{
+			"timeout": {
+				"name": "timeout",
+				"nsValue": 10000000
+			},
+			"maxConcurrency": {
+				"name": "maxConcurrency",
+				"u64Value": 3
+			},
+			"lang": {
+				"name": "lang",
+				"strValue": "en"
+			}
+		}`
+		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return(existingPrefs).Times(1)
+
+		events := make(chan event.Event)
+		defer close(events)
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(events)).Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(eventest.PayloadEq(settings.LoadSucceeded{
+				Values: map[string]any{
+					"timeout":        int64(10000000),
+					"maxConcurrency": uint64(3),
+					"lang":           "en",
+				},
+				Registered: map[string]settings.SType{
+					"timeout":        settings.DurationType,
+					"maxConcurrency": settings.Uint64Type,
+					"lang":           settings.StringType,
+				},
+			})).
+			Do(func(evt event.Event) {
+				defer close(done)
+			}).
+			Times(1)
+
+		// When
+		infra.FyneSettingsHandler(mockBus, mockPrefs)
+		events <- event.New(settings.LoadTriggered{})
+
+		// Then
+		testutil.AssertEventually(t, done)
+	})
+
+	t.Run("should return empty maps when no settings exist", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+
+		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return("{}").Times(1)
+
+		events := make(chan event.Event)
+		defer close(events)
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(events)).Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(eventest.PayloadEq(settings.LoadSucceeded{
+				Values:     map[string]any{},
+				Registered: map[string]settings.SType{},
+			})).
+			Do(func(evt event.Event) {
+				defer close(done)
+			}).
+			Times(1)
+
+		// When
+		infra.FyneSettingsHandler(mockBus, mockPrefs)
+		events <- event.New(settings.LoadTriggered{})
+
+		// Then
+		testutil.AssertEventually(t, done)
+	})
+
+	t.Run("should fail when preferences cannot be read", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+
+		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return("invalid json").Times(1)
+
+		events := make(chan event.Event)
+		defer close(events)
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(events)).Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(gomock.Any()).
+			Do(func(evt event.Event) {
+				pl := evt.Payload().(settings.LoadFailed)
+				assert.ErrorContains(t, pl.Err, "fromJson")
+				defer close(done)
+			}).
+			Times(1)
+
+		// When
+		infra.FyneSettingsHandler(mockBus, mockPrefs)
+		events <- event.New(settings.LoadTriggered{})
+
+		// Then
+		testutil.AssertEventually(t, done)
+	})
+
+	t.Run("should fail when DTO has invalid configuration type", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockPrefs := mocks_fyne.NewMockPreferences(ctrl)
+		mockBus := mocks_event.NewMockBus(ctrl)
+
+		existingPrefs := `{
+			"invalidSetting": {
+				"name": "invalidSetting"
+			}
+		}`
+		mockPrefs.EXPECT().String(gomock.Eq("settingsV2")).Return(existingPrefs).Times(1)
+
+		events := make(chan event.Event)
+		defer close(events)
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(events)).Times(1)
+
+		done := make(chan struct{})
+		mockBus.EXPECT().
+			Publish(gomock.Any()).
+			Do(func(evt event.Event) {
+				pl := evt.Payload().(settings.LoadFailed)
+				assert.ErrorContains(t, pl.Err, "invalid configuration type")
+				defer close(done)
+			}).
+			Times(1)
+
+		// When
+		infra.FyneSettingsHandler(mockBus, mockPrefs)
+		events <- event.New(settings.LoadTriggered{})
 
 		// Then
 		testutil.AssertEventually(t, done)

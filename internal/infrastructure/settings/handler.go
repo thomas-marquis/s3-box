@@ -81,6 +81,7 @@ func (h *handler) handleLoad(evt event.Event) {
 	settingsDtos, err := fromJson[map[string]settingDTO](h.prefs.String(storageV2Key))
 	if err != nil {
 		handleErr(err)
+		return
 	}
 
 	values := make(map[string]any)
@@ -116,12 +117,41 @@ func (h *handler) handleRegister(evt event.Event) {
 	settingsDtos, err := fromJson[map[string]settingDTO](h.prefs.String(storageV2Key))
 	if err != nil {
 		handleErr(err)
+		return
 	}
 
-	if _, exists := settingsDtos[pl.Name]; !exists {
-
+	if _, exists := settingsDtos[pl.Name]; exists {
+		handleErr(settings.ErrAlreadyExists)
+		return
 	}
 
+	var newDto settingDTO
+	switch pl.Type {
+	case settings.StringType:
+		newDto = newDtoFromString(pl.Name, "")
+	case settings.Uint64Type:
+		newDto = newDtoFromUint64(pl.Name, 0)
+	case settings.DurationType:
+		newDto = newDtoFromDuration(pl.Name, 0)
+	default:
+		handleErr(fmt.Errorf("unsupported setting type: %d", pl.Type))
+		return
+	}
+
+	settingsDtos[pl.Name] = newDto
+
+	bytes, err := json.Marshal(settingsDtos)
+	if err != nil {
+		handleErr(err)
+		return
+	}
+
+	h.prefs.SetString(storageV2Key, string(bytes))
+
+	h.bus.Publish(evt.NewFollowup(settings.RegisterSucceeded{
+		Name: pl.Name,
+		Type: pl.Type,
+	}))
 }
 
 func fromJson[T any](content string) (T, error) {

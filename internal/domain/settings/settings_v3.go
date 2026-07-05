@@ -16,21 +16,21 @@ var (
 	ErrUnregistered  = errors.New("setting not registered")
 )
 
-type Option func(*SettingsV3) error
+type Registration func(*SettingsV3) error
 
-func AString(name, defaultValue string) Option {
+func AString(name, defaultValue string) Registration {
 	return func(s *SettingsV3) error {
 		return s.register(name, StringType, defaultValue)
 	}
 }
 
-func AUint64(name string, defaultValue uint64) Option {
+func AUint64(name string, defaultValue uint64) Registration {
 	return func(s *SettingsV3) error {
 		return s.register(name, Uint64Type, defaultValue)
 	}
 }
 
-func ADuration(name string, defaultValue time.Duration) Option {
+func ADuration(name string, defaultValue time.Duration) Registration {
 	return func(s *SettingsV3) error {
 		return s.register(name, DurationType, defaultValue)
 	}
@@ -91,9 +91,9 @@ func (s *SettingsV3) Observe(name string, f func(value any)) func() {
 	}
 }
 
-func (s *SettingsV3) Register(opts ...Option) error {
-	for _, opt := range opts {
-		if err := opt(s); err != nil {
+func (s *SettingsV3) Register(regs ...Registration) error {
+	for _, reg := range regs {
+		if err := reg(s); err != nil {
 			return err
 		}
 	}
