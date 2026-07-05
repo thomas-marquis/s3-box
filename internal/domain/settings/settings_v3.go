@@ -3,6 +3,7 @@ package settings
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,27 +15,9 @@ var (
 	ErrTimeout       = errors.New("settings timeout")
 	ErrAlreadyExists = errors.New("setting already exists")
 	ErrUnregistered  = errors.New("setting not registered")
+	ErrInvalidType   = errors.New("invalid type")
+	ErrNotReady      = errors.New("not ready")
 )
-
-type Registration func(*SettingsV3) error
-
-func AString(name, defaultValue string) Registration {
-	return func(s *SettingsV3) error {
-		return s.register(name, StringType, defaultValue)
-	}
-}
-
-func AUint64(name string, defaultValue uint64) Registration {
-	return func(s *SettingsV3) error {
-		return s.register(name, Uint64Type, defaultValue)
-	}
-}
-
-func ADuration(name string, defaultValue time.Duration) Registration {
-	return func(s *SettingsV3) error {
-		return s.register(name, DurationType, defaultValue)
-	}
-}
 
 type SType int
 
@@ -49,11 +32,12 @@ type SettingsV3 struct {
 
 	registered map[string]SType
 	values     map[SType]map[string]any
-	isReady    bool
 
 	observers  map[string]map[int]func(value any)
 	mu         sync.RWMutex
 	currObsIdx int
+
+	state State
 }
 
 func NewSettingsV3() *SettingsV3 {
@@ -61,13 +45,15 @@ func NewSettingsV3() *SettingsV3 {
 		registered: make(map[string]SType),
 		values:     make(map[SType]map[string]any),
 		observers:  make(map[string]map[int]func(value any)),
+		state:      IdleState{},
 	}
 }
 
-func (s *SettingsV3) IsReady() bool {
+// State returns the current state of the entity
+func (s *SettingsV3) State() State {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.isReady
+	return s.state
 }
 
 func (s *SettingsV3) Observe(name string, f func(value any)) func() {
@@ -93,6 +79,10 @@ func (s *SettingsV3) Observe(name string, f func(value any)) func() {
 }
 
 func (s *SettingsV3) Register(regs ...Registration) error {
+	if !s.canRegister() {
+		return ErrNotReady
+	}
+
 	for _, reg := range regs {
 		if err := reg(s); err != nil {
 			return err
@@ -102,17 +92,28 @@ func (s *SettingsV3) Register(regs ...Registration) error {
 }
 
 func (s *SettingsV3) Write(name string, value any) error {
+	if !s.canWrite() {
+		return ErrNotReady
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	tp, err := inferType(value)
 	if err != nil {
 		return err
 	}
-	if !s.isRegistered(name, tp) {
+
+	registeredType, exists := s.registered[name]
+	if !exists {
 		return errors.Join(ErrUnregistered, fmt.Errorf("writing %s", name))
 	}
 
-	s.mu.Lock()
+	if tp != registeredType {
+		return errors.Join(ErrInvalidType, fmt.Errorf("writing %s with wrong type", name))
+	}
+
 	s.pendingEvents = append(s.pendingEvents, event.New(WriteTriggered{Name: name, Value: value}))
-	s.mu.Unlock()
 	return nil
 }
 
@@ -175,16 +176,27 @@ func (s *SettingsV3) ReadDuration(name string) time.Duration {
 }
 
 func (s *SettingsV3) Load() (event.Event, error) {
-	s.isReady = false
+	if !s.canLoad() {
+		return nil, ErrNotReady
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.transitionToState(LoadingState{})
 	return event.New(LoadTriggered{}), nil
 }
 
-func (s *SettingsV3) Save() event.Event {
+func (s *SettingsV3) Save() (event.Event, error) {
+	if !s.canSave() {
+		return nil, ErrNotReady
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if len(s.pendingEvents) == 0 {
-		return event.New(SaveSucceeded{})
+		return event.New(SaveSucceeded{}), nil
 	}
 
 	var evts []event.Event
@@ -192,7 +204,7 @@ func (s *SettingsV3) Save() event.Event {
 		evts = append(evts, evt)
 	}
 	s.pendingEvents = nil
-	s.isReady = false
+	s.transitionToState(SavingState{})
 
 	return carrier.NewAll(evts,
 		func(evtCarrier event.Event, received []event.Event) event.Event {
@@ -202,15 +214,14 @@ func (s *SettingsV3) Save() event.Event {
 			Err:    ErrTimeout,
 			Events: evts,
 		}),
-	)
+	), nil
 }
 
 func (s *SettingsV3) Notify(evt event.Event) error {
 	switch pl := evt.Payload().(type) {
 	case LoadSucceeded:
 		s.mu.Lock()
-
-		s.isReady = true
+		s.transitionToState(IdleState{})
 
 		// merge the received values with registered ones:
 		for name, sType := range s.registered {
@@ -224,44 +235,90 @@ func (s *SettingsV3) Notify(evt event.Event) error {
 						newVal = time.Duration(ns)
 					}
 				}
+				if _, valueMapExists := s.values[sType]; !valueMapExists {
+					s.values[sType] = make(map[string]any)
+				}
 				s.values[sType][name] = newVal
+			} else {
+				// Value not found in Values map, use default
+				if val, ok := s.values[sType][name]; ok {
+					s.values[sType][name] = val
+				}
 			}
 		}
 		s.mu.Unlock()
 
+	case LoadFailed:
+		s.mu.Lock()
+		s.transitionToState(IdleState{})
+		s.mu.Unlock()
+
 	case SaveFailed:
 		s.mu.Lock()
-		s.isReady = true
+		s.transitionToState(IdleState{})
 		s.pendingEvents = append(s.pendingEvents, pl.Events...)
 		s.mu.Unlock()
 
 	case SaveSucceeded:
 		s.mu.Lock()
-		s.isReady = true
+		s.transitionToState(IdleState{})
 		s.mu.Unlock()
 
 	case WriteSucceeded:
-		if err := s.storeValue(pl.Name, pl.Value); err != nil {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+
+		// Validate the setting is registered and type matches
+		registeredType, exists := s.registered[pl.Name]
+		if !exists {
+			return nil // Silent no-op for unregistered settings
+		}
+
+		// Validate type matches
+		inferredType, err := inferType(pl.Value)
+		if err != nil {
 			return err
 		}
-		s.mu.RLock()
+		if inferredType != registeredType {
+			return errors.Join(ErrInvalidType, fmt.Errorf("WriteSucceeded for %s with wrong type", pl.Name))
+		}
+
+		// Store the value
+		if _, valueMapExists := s.values[registeredType]; !valueMapExists {
+			s.values[registeredType] = make(map[string]any)
+		}
+		s.values[registeredType][pl.Name] = pl.Value
+
 		if observers, ok := s.observers[pl.Name]; ok {
 			for _, observer := range observers {
 				observer(pl.Value)
 			}
 		}
-		s.mu.RUnlock()
 	}
 
 	return nil
 }
 
+func (s *SettingsV3) transitionToState(newState State) {
+	s.state = newState
+}
+
 func (s *SettingsV3) register(name string, tp SType, defaultValue any) error {
-	if s.IsExists(name) {
-		return errors.Join(ErrAlreadyExists, errors.New(name))
+	if strings.TrimSpace(name) == "" {
+		return errors.Join(ErrInvalidType, errors.New("empty or whitespace setting name"))
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Check if we're in a state that allows registration
+	if !s.state.CanRegister() {
+		return ErrNotReady
+	}
+
+	if _, exists := s.registered[name]; exists {
+		return errors.Join(ErrAlreadyExists, errors.New(name))
+	}
+
 	if _, ok := s.values[tp]; !ok {
 		s.values[tp] = make(map[string]any)
 	}
@@ -278,21 +335,28 @@ func (s *SettingsV3) isRegistered(name string, tp SType) bool {
 	return ok && val == tp
 }
 
-func (s *SettingsV3) storeValue(name string, value any) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *SettingsV3) canRegister() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state.CanRegister()
+}
 
-	if _, ok := s.registered[name]; !ok {
-		return errors.Join(ErrUnregistered, errors.New(name))
-	}
+func (s *SettingsV3) canSave() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state.CanSave()
+}
 
-	tp, err := inferType(value)
-	if err != nil {
-		return err
-	}
-	s.values[tp][name] = value
+func (s *SettingsV3) canLoad() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state.CanLoad()
+}
 
-	return nil
+func (s *SettingsV3) canWrite() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state.CanWrite()
 }
 
 func inferType(value any) (SType, error) {
