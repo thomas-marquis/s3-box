@@ -3,6 +3,7 @@ package settings
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -115,6 +116,15 @@ func (s *Settings) Write(name string, value any) error {
 
 	if tp != registeredType {
 		return errors.Join(ErrInvalidType, fmt.Errorf("writing %s with wrong type", name))
+	}
+
+	// Check if the value is the same as the current value
+	if valMap, ok := s.values[registeredType]; ok {
+		if currentVal, exists := valMap[name]; exists {
+			if reflect.DeepEqual(currentVal, value) {
+				return nil
+			}
+		}
 	}
 
 	newEvt := event.New(WriteTriggered{Name: name, Value: value})

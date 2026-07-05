@@ -87,6 +87,7 @@ err := s.Write("app.theme", "light")
 - Returns `ErrUnregistered`, `ErrInvalidType`, or `ErrNotReady` (LoadingState)
 - Permitted in `IdleState` and `SavingState`
 - **Duplicate writes**: When `Write()` is called multiple times for the same setting name, only the latest value is kept in pending events. Previous pending events for the same setting are replaced.
+- **No-op writes**: When `Write()` is called with a value that is the same as the current value (after type conversion), it returns `nil` and no event is added to pending events. This prevents unnecessary save operations.
 
 ### 7. Saving
 

@@ -226,6 +226,46 @@ func TestSettings_Write(t *testing.T) {
 		assert.Equal(t, "white", pl.Value)
 	})
 
+	t.Run("should return nil when writing same value", func(t *testing.T) {
+		// Given
+		s := settings.NewSettings()
+		require.NoError(t, s.Register(settings.AString("app.theme", "dark")))
+
+		// When
+		err := s.Write("app.theme", "dark")
+
+		// Then
+		assert.Nil(t, err)
+		assert.Len(t, s.GetPendingEvents(), 0)
+	})
+
+	t.Run("should return nil when writing same uint64 value", func(t *testing.T) {
+		// Given
+		s := settings.NewSettings()
+		require.NoError(t, s.Register(settings.AUint64("app.maxRetries", 5)))
+
+		// When
+		err := s.Write("app.maxRetries", uint64(5))
+
+		// Then
+		assert.Nil(t, err)
+		assert.Len(t, s.GetPendingEvents(), 0)
+	})
+
+	t.Run("should return nil when writing same duration value", func(t *testing.T) {
+		// Given
+		s := settings.NewSettings()
+		timeout := 30 * time.Second
+		require.NoError(t, s.Register(settings.ADuration("app.timeout", timeout)))
+
+		// When
+		err := s.Write("app.timeout", timeout)
+
+		// Then
+		assert.Nil(t, err)
+		assert.Len(t, s.GetPendingEvents(), 0)
+	})
+
 	t.Run("should allow writing during save", func(t *testing.T) {
 		// Given
 		s := settings.NewSettings()
