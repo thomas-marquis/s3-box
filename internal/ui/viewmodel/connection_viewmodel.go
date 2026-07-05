@@ -9,6 +9,7 @@ import (
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
@@ -55,6 +56,7 @@ type connectionViewModelImpl struct {
 
 	connectionRepository connection_deck.Repository
 	settingsViewModel    SettingsViewModel
+	appState             *state.State
 	connBindings         binding.UntypedList
 	deck                 *connection_deck.Deck
 	notifier             notification.Repository
@@ -65,12 +67,13 @@ type connectionViewModelImpl struct {
 func NewConnectionViewModel(
 	connectionRepository connection_deck.Repository,
 	settingsViewModel SettingsViewModel,
+	appState *state.State,
 	notifier notification.Repository,
 	bus event.Bus,
 ) ConnectionViewModel {
 	c := binding.NewUntypedList()
 
-	ctx, cancel := context.WithTimeout(context.Background(), settingsViewModel.CurrentTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), appState.Settings().CurrentTimeout())
 	defer cancel()
 
 	deck, err := connectionRepository.Get(ctx)
@@ -93,6 +96,7 @@ func NewConnectionViewModel(
 		},
 		connectionRepository: connectionRepository,
 		settingsViewModel:    settingsViewModel,
+		appState:             appState,
 		connBindings:         c,
 		deck:                 deck,
 		notifier:             notifier,
@@ -210,7 +214,7 @@ func (v *connectionViewModelImpl) handleCreate(evt event.Event) {
 }
 
 func (v *connectionViewModelImpl) ExportAsJSON(writer io.Writer) error {
-	ctx, cancel := context.WithTimeout(context.Background(), v.settingsViewModel.CurrentTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), v.appState.Settings().CurrentTimeout())
 	defer cancel()
 	if err := v.connectionRepository.Export(ctx, writer); err != nil {
 		v.notifier.NotifyError(err)

@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"fyne.io/fyne/v2/data/binding"
-	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
 )
 
@@ -29,12 +28,7 @@ func New() *State {
 				return n1.ID() == n2.ID()
 			}),
 		},
-		settings: &SettingsState{
-			aggregate:  settings.NewSettings(),
-			timeout:    binding.NewInt(),
-			fileLimit:  binding.NewInt(),
-			colorTheme: binding.NewString(),
-		},
+		settings: newSettingsState(),
 	}
 }
 

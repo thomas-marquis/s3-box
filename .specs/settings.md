@@ -1,8 +1,8 @@
-# SettingsV3 Entity Specification
+# Settings Entity Specification
 
 ## Overview
 
-The `SettingsV3` entity manages application settings with type safety and event-driven persistence. It follows a clear lifecycle that separates registration, loading, reading, and saving operations.
+The `Settings` entity manages application settings with type safety and event-driven persistence. It follows a clear lifecycle that separates registration, loading, reading, and saving operations.
 
 **Thread Safety:** All public methods are thread-safe. The entity uses internal mutex locks and a state pattern to protect its state from concurrent access.
 
@@ -25,7 +25,7 @@ The entity transitions between states as follows:
 ### 1. Instantiation
 
 ```go
-s := settings.NewSettingsV3()
+s := settings.NewSettings()
 ```
 
 ### 2. Registration
