@@ -4,7 +4,7 @@ import "time"
 
 type FileOption func(*File)
 
-func WithFileSize(sizeBytes int) FileOption {
+func WithFileSize(sizeBytes uint64) FileOption {
 	return func(f *File) {
 		f.sizeBytes = sizeBytes
 	}

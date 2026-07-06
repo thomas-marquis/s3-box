@@ -4,10 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/data/binding"
 	fyne_test "fyne.io/fyne/v2/test"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/domain/settings"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
+	"github.com/thomas-marquis/s3-box/internal/ui/values"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 	mocks_appcontext "github.com/thomas-marquis/s3-box/mocks/context"
 	mocks_viewmodel "github.com/thomas-marquis/s3-box/mocks/viewmodel"
@@ -24,21 +26,24 @@ type fileDetailsMocks struct {
 	mockConnVM     *mocks_viewmodel.MockConnectionViewModel
 	mockSettingsVM *mocks_viewmodel.MockSettingsViewModel
 	mockEditorVM   *mocks_viewmodel.MockEditorViewModel
-
-	sizeLimitBinding binding.Int
+	mockState      *state.State
 }
 
 func setupFileDetailsMocks(t *testing.T) fileDetailsMocks {
+	return setupFileDetailsMocksWithLimit(t, 20*1024)
+}
+
+func setupFileDetailsMocksWithLimit(t *testing.T, limitBytes uint64) fileDetailsMocks {
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
 	m := fileDetailsMocks{
-		mockAppCtx:       mocks_appcontext.NewMockAppContext(ctrl),
-		mockExplorerVM:   mocks_viewmodel.NewMockExplorerViewModel(ctrl),
-		mockConnVM:       mocks_viewmodel.NewMockConnectionViewModel(ctrl),
-		mockSettingsVM:   mocks_viewmodel.NewMockSettingsViewModel(ctrl),
-		mockEditorVM:     mocks_viewmodel.NewMockEditorViewModel(ctrl),
-		sizeLimitBinding: binding.NewInt(),
+		mockAppCtx:     mocks_appcontext.NewMockAppContext(ctrl),
+		mockExplorerVM: mocks_viewmodel.NewMockExplorerViewModel(ctrl),
+		mockConnVM:     mocks_viewmodel.NewMockConnectionViewModel(ctrl),
+		mockSettingsVM: mocks_viewmodel.NewMockSettingsViewModel(ctrl),
+		mockEditorVM:   mocks_viewmodel.NewMockEditorViewModel(ctrl),
+		mockState:      state.New(),
 	}
 
 	m.mockAppCtx.EXPECT().ExplorerViewModel().Return(m.mockExplorerVM).AnyTimes()
@@ -46,9 +51,12 @@ func setupFileDetailsMocks(t *testing.T) fileDetailsMocks {
 	m.mockAppCtx.EXPECT().SettingsViewModel().Return(m.mockSettingsVM).AnyTimes()
 	m.mockAppCtx.EXPECT().EditorViewModel().Return(m.mockEditorVM).AnyTimes()
 	m.mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
+	m.mockAppCtx.EXPECT().State().Return(m.mockState).AnyTimes()
 
-	m.sizeLimitBinding.Set(fakeFileSizeLimitKB) // nolint:errcheck
-	m.mockSettingsVM.EXPECT().FileSizeLimitKB().Return(m.sizeLimitBinding).AnyTimes()
+	// Register the settings that file_details needs
+	m.mockState.Settings().Get().Register( //nolint:errcheck
+		settings.AUint64(values.SettingEditFileSizeLimitByte, limitBytes),
+	)
 
 	return m
 }
@@ -67,7 +75,6 @@ func TestFileDetails(t *testing.T) {
 		// Given
 		m := setupFileDetailsMocks(t)
 		m.mockConnVM.EXPECT().IsReadOnly().Return(false).AnyTimes()
-		m.mockSettingsVM.EXPECT().CurrentFileSizeLimitBytes().Return(fakeFileSizeLimitKB)
 
 		// When
 		res := widget.NewFileDetails(m.mockAppCtx)
@@ -80,9 +87,8 @@ func TestFileDetails(t *testing.T) {
 
 	t.Run("should disable preview if file is too large", func(t *testing.T) {
 		// Given
-		m := setupFileDetailsMocks(t)
+		m := setupFileDetailsMocksWithLimit(t, 512)
 		m.mockConnVM.EXPECT().IsReadOnly().Return(false).AnyTimes()
-		m.mockSettingsVM.EXPECT().CurrentFileSizeLimitBytes().Return(512)
 
 		// When
 		res := widget.NewFileDetails(m.mockAppCtx)
@@ -97,7 +103,6 @@ func TestFileDetails(t *testing.T) {
 		// Given
 		m := setupFileDetailsMocks(t)
 		m.mockConnVM.EXPECT().IsReadOnly().Return(true).AnyTimes()
-		m.mockSettingsVM.EXPECT().CurrentFileSizeLimitBytes().Return(2048)
 
 		// When
 		res := widget.NewFileDetails(m.mockAppCtx)

@@ -14,8 +14,6 @@ var (
 
 type ConnectionsState struct{}
 
-type SettingsState struct{}
-
 type State struct {
 	connections *ConnectionsState
 	explorer    *ExplorerState
@@ -30,7 +28,7 @@ func New() *State {
 				return n1.ID() == n2.ID()
 			}),
 		},
-		settings: &SettingsState{},
+		settings: newSettingsState(),
 	}
 }
 

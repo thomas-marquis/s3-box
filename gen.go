@@ -4,7 +4,6 @@ import _ "go.uber.org/mock/gomock"
 
 // Domain
 //go:generate mockgen -package mocks_connection_deck -destination mocks/connection_deck/repository.go github.com/thomas-marquis/s3-box/internal/domain/connection_deck Repository
-//go:generate mockgen -package mocks_settings -destination mocks/settings/repository.go github.com/thomas-marquis/s3-box/internal/domain/settings Repository
 //go:generate mockgen -package mocks_notification -destination mocks/notification/repository.go github.com/thomas-marquis/s3-box/internal/domain/notification Repository
 
 // View Model

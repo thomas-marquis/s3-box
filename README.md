@@ -7,13 +7,8 @@
   <img src="resources/logo-wbg.png" width="220" alt="genkit-mistral logo">
 </p>
 
-A lightweight desktop application for seamless S3 objects management.
-
-S3-Box is designed for anyone who needs quick, intuitive access to S3 buckets
-—whether on AWS or any S3-compatible storage. 
-With a clean interface and essential features, it simplifies browsing, editing, 
-and managing your cloud storage directly from your desktop.
-
+Managing S3-like storage (AWS S3, MinIO, GCS, etc.) locally is cumbersome.
+s3-box provides a lightweight, cross-platform desktop client for all your object storage needs.
 
 ## Features
 

@@ -38,12 +38,12 @@
 							<image fillMode="contain" pos="8,8" rsc="downloadIcon" size="iconInlineSize" themed="foreground"/>
 						</widget>
 						<widget pos="114,0" size="67x36" type="*widget.Button">
-							<rectangle fillColor="disabled button" radius="4" size="67x36"/>
+							<rectangle fillColor="button" radius="4" size="67x36"/>
 							<rectangle size="67x36"/>
 							<widget pos="32,8" size="27x20" type="*widget.RichText">
-								<text alignment="center" bold color="disabled" size="27x19">Edit</text>
+								<text alignment="center" bold size="27x19">Edit</text>
 							</widget>
-							<image fillMode="contain" pos="8,8" rsc="documentCreateIcon" size="iconInlineSize" themed="disabled"/>
+							<image fillMode="contain" pos="8,8" rsc="documentCreateIcon" size="iconInlineSize" themed="foreground"/>
 						</widget>
 						<widget pos="185,0" size="97x36" type="*widget.Button">
 							<rectangle fillColor="button" radius="4" size="97x36"/>
@@ -74,7 +74,7 @@
 							<widget size="184x35" type="*widget.focusSelectable">
 							</widget>
 							<widget size="184x35" type="*widget.RichText">
-								<text pos="8,8" size="49x19">2.00 KB</text>
+								<text pos="8,8" size="39x19">2.0 kB</text>
 							</widget>
 						</widget>
 						<widget pos="0,39" size="184x35" type="*widget.Label">

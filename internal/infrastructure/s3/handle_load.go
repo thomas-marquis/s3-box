@@ -54,7 +54,7 @@ func (h *EventHandler) loadDirectory(ctx context.Context, client s3client.Client
 				continue
 			}
 			f, err := directory.NewFile(mapKeyToObjectName(key), dir,
-				directory.WithFileSize(int(*obj.Size)),
+				directory.WithFileSize(uint64(*obj.Size)),
 				directory.WithFileLastModified(*obj.LastModified))
 			if err != nil {
 				return fmt.Errorf("error while creating a file: %w", err)

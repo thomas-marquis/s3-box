@@ -14,11 +14,11 @@ import (
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/dustin/go-humanize"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
-	"github.com/thomas-marquis/s3-box/internal/utils"
 )
 
 const (
@@ -42,6 +42,7 @@ type FileDetails struct {
 
 	fileSizeBinding     binding.String
 	lastModifiedBinding binding.String
+	maxFileSizeListener binding.DataListener
 
 	currentSelectedFile *directory.File
 }
@@ -58,6 +59,7 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 
 		fileSizeBinding:     binding.NewString(),
 		lastModifiedBinding: binding.NewString(),
+		maxFileSizeListener: binding.NewDataListener(func() {}),
 
 		downloadAction: NewToolbarButton("Download", theme.DownloadIcon(), func() {}),
 		deleteAction:   NewToolbarButton("Delete", theme.DeleteIcon(), func() {}),
@@ -143,10 +145,11 @@ func (w *FileDetails) Select(file *directory.File) {
 	w.fileIcon.SetURI(fileURI)
 
 	w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05")) //nolint:errcheck
-	w.fileSizeBinding.Set(utils.FormatSizeBytes(file.SizeBytes()))               //nolint:errcheck
+	w.fileSizeBinding.Set(humanize.Bytes(file.SizeBytes()))                      //nolint:errcheck
 
-	w.appCtx.SettingsViewModel().FileSizeLimitKB().AddListener(binding.NewDataListener(func() {
-		if file.SizeBytes() > w.appCtx.SettingsViewModel().CurrentFileSizeLimitBytes() {
+	w.appCtx.State().Settings().EditorFileSizeLimitBytes().RemoveListener(w.maxFileSizeListener)
+	dl := binding.NewDataListener(func() {
+		if file.SizeBytes() > w.appCtx.State().Settings().EditorFileSizeLimitBytesValue() {
 			w.editAction.Disable()
 		} else {
 			if w.appCtx.ConnectionViewModel().IsReadOnly() {
@@ -155,7 +158,9 @@ func (w *FileDetails) Select(file *directory.File) {
 				w.editAction.Enable()
 			}
 		}
-	}))
+	})
+	w.appCtx.State().Settings().EditorFileSizeLimitBytes().AddListener(dl)
+	w.maxFileSizeListener = dl
 
 	w.editAction.SetOnTapped(func() {
 		ctx, cancel := context.WithCancel(context.Background())

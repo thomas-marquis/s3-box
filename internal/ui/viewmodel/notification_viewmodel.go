@@ -1,6 +1,8 @@
 package viewmodel
 
 import (
+	"context"
+
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 )
@@ -14,7 +16,7 @@ type notificationViewModelImpl struct {
 	notifier      notification.Repository
 }
 
-func NewNotificationViewModel(notifier notification.Repository, terminated <-chan struct{}) NotificationViewModel {
+func NewNotificationViewModel(ctx context.Context, notifier notification.Repository) NotificationViewModel {
 	notifications := binding.NewList[notification.Notification](func(n notification.Notification, n2 notification.Notification) bool {
 		return n.Id() == n2.Id()
 	})
@@ -25,7 +27,7 @@ func NewNotificationViewModel(notifier notification.Repository, terminated <-cha
 	go func() {
 		for {
 			select {
-			case <-terminated:
+			case <-ctx.Done():
 				return
 			case notif := <-notifStream:
 				notifications.Prepend(notif) //nolint:errcheck

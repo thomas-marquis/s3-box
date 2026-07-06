@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
+	"github.com/thomas-marquis/s3-box/internal/infrastructure/settings"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
@@ -71,16 +73,14 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 
 	w := a.NewWindow(appName)
 
-	terminated := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
 	notifier := infrastructure.NewNotificationPublisher(notification.LevelDebug)
 
-	eventBus := inmemory.NewBus(terminated, &notifierAdapter{notifier})
+	eventBus := inmemory.NewBus(ctx, inmemory.WithNotifier(&notifierAdapter{notifier: notifier}))
 
 	fyneSettings := a.Settings()
 
 	connectionsRepository := infrastructure.NewFyneConnectionsRepository(a.Preferences(), eventBus)
-
-	settingsRepository := infrastructure.NewSettingsRepository(a.Preferences())
 
 	s3.NewS3EventHandler(
 		connectionsRepository,
@@ -88,12 +88,21 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		notifier,
 	).Listen()
 
+	settings.FyneSettingsHandler(eventBus, a.Preferences())
+
 	appState := state.New()
 
-	settingsViewModel := viewmodel.NewSettingsViewModel(settingsRepository, fyneSettings, notifier)
+	notificationsViewModel := viewmodel.NewNotificationViewModel(ctx, notifier)
+
+	settingsViewModel := viewmodel.NewSettingsViewModel(
+		fyneSettings,
+		notifier,
+		appState,
+		eventBus)
 	connectionViewModel := viewmodel.NewConnectionViewModel(
 		connectionsRepository,
 		settingsViewModel,
+		appState,
 		notifier,
 		eventBus,
 	)
@@ -104,8 +113,6 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		eventBus,
 		appState,
 	)
-
-	notificationsViewModel := viewmodel.NewNotificationViewModel(notifier, terminated)
 
 	editorViewModel := viewmodel.NewEditorViewModel(eventBus, notifier,
 		connectionViewModel.Deck().SelectedConnection())
@@ -129,7 +136,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	var one sync.Once
 	w.SetOnClosed(func() {
 		one.Do(func() {
-			close(terminated)
+			cancel()
 		})
 	})
 
@@ -151,10 +158,11 @@ func (a *Go2S3App) Start() error {
 }
 
 type notifierAdapter struct {
+	event.NopNotifier
 	notifier notification.Repository
 }
 
-func (n *notifierAdapter) Notify(evt event.Event) {
+func (n *notifierAdapter) NotifyPublished(evt event.Event) {
 	content, err := json.MarshalIndent(evt, "", "  ")
 	if err != nil {
 		n.notifier.NotifyError(err)

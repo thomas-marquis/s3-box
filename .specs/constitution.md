@@ -20,6 +20,7 @@
 - write short functions or methods. No more than 100 lines.
 - use design patterns when it's relevant
 - only a root entity can be notified by an event.
+- all the code you write or update MUST be production-ready
 
 ## Testing Guidelines
 

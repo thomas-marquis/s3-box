@@ -498,7 +498,7 @@ func TestDirectory_UploadFile(t *testing.T) {
 		files := dir.Files()
 		require.Len(t, files, 1)
 		assert.True(t, files[0].Equal(file))
-		assert.Equal(t, 1337, files[0].SizeBytes())
+		assert.Equal(t, uint64(1337), files[0].SizeBytes())
 		assert.Equal(t, "report.csv", files[0].Name().String())
 	})
 

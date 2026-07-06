@@ -43,7 +43,7 @@ func (h *EventHandler) handleUploadFile(e event.Event) {
 
 	fileName := filepath.Base(pl.SrcPath)
 	newFile, err := directory.NewFile(fileName, pl.Directory,
-		directory.WithFileSize(int(info.Size())),
+		directory.WithFileSize(uint64(info.Size())),
 		directory.WithFileLastModified(info.ModTime()))
 	if err != nil {
 		handleError(err)
