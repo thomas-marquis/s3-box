@@ -477,7 +477,7 @@ func makePreviewFromUris(paths []string, dir *directory.Directory) (*directory.P
 					if err != nil {
 						return err
 					}
-					if err := parentPrev.AddFile(d.Name(), int(fii.Size()), fii.ModTime()); err != nil {
+					if err := parentPrev.AddFile(d.Name(), uint64(fii.Size()), fii.ModTime()); err != nil {
 						return err
 					}
 				}
@@ -486,7 +486,7 @@ func makePreviewFromUris(paths []string, dir *directory.Directory) (*directory.P
 				return nil, err
 			}
 		} else {
-			if err := prev.AddFile(fi.Name(), int(fi.Size()), fi.ModTime()); err != nil {
+			if err := prev.AddFile(fi.Name(), uint64(fi.Size()), fi.ModTime()); err != nil {
 				return nil, err
 			}
 		}

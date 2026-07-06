@@ -14,12 +14,11 @@ import (
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/dustin/go-humanize"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
-	"github.com/thomas-marquis/s3-box/internal/utils"
 )
 
 const (
@@ -41,9 +40,9 @@ type FileDetails struct {
 
 	actionToolbar *widget.Toolbar
 
-	fileSizeBinding        binding.String
-	lastModifiedBinding    binding.String
-	editFileSizeLimitBytes binding.Int
+	fileSizeBinding     binding.String
+	lastModifiedBinding binding.String
+	maxFileSizeListener binding.DataListener
 
 	currentSelectedFile *directory.File
 }
@@ -58,9 +57,9 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		pathLabel: filepathLabel,
 		fileIcon:  fileIcon,
 
-		fileSizeBinding:        binding.NewString(),
-		lastModifiedBinding:    binding.NewString(),
-		editFileSizeLimitBytes: binding.NewInt(),
+		fileSizeBinding:     binding.NewString(),
+		lastModifiedBinding: binding.NewString(),
+		maxFileSizeListener: binding.NewDataListener(func() {}),
 
 		downloadAction: NewToolbarButton("Download", theme.DownloadIcon(), func() {}),
 		deleteAction:   NewToolbarButton("Delete", theme.DeleteIcon(), func() {}),
@@ -68,21 +67,6 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		renameAction:   NewToolbarButton("Rename", theme.FileTextIcon(), func() {}),
 
 		currentSelectedFile: nil,
-	}
-
-	w.appCtx.State().Settings().Get().Observe("app.editFileSizeLimitByte", func(value any) {
-		val, ok := value.(uint64)
-		if !ok {
-			panic("invalid type for settings app.editFileSizeLimitBytes")
-		}
-		if err := w.editFileSizeLimitBytes.Set(int(val)); err != nil {
-			return
-		}
-	})
-	// Also set the initial value if the setting exists
-	s := w.appCtx.State().Settings().Get()
-	if s.IsExistsWithType("app.editFileSizeLimitByte", settings.Uint64Type) {
-		w.editFileSizeLimitBytes.Set(int(s.ReadUint64("app.editFileSizeLimitByte"))) //nolint:errcheck
 	}
 
 	w.actionToolbar = widget.NewToolbar(
@@ -161,10 +145,11 @@ func (w *FileDetails) Select(file *directory.File) {
 	w.fileIcon.SetURI(fileURI)
 
 	w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05")) //nolint:errcheck
-	w.fileSizeBinding.Set(utils.FormatSizeBytes(file.SizeBytes()))               //nolint:errcheck
+	w.fileSizeBinding.Set(humanize.Bytes(file.SizeBytes()))                      //nolint:errcheck
 
-	w.editFileSizeLimitBytes.AddListener(binding.NewDataListener(func() {
-		val, _ := w.editFileSizeLimitBytes.Get()
+	w.appCtx.State().Settings().EditorFileSizeLimitBytes().RemoveListener(w.maxFileSizeListener)
+	dl := binding.NewDataListener(func() {
+		val, _ := w.appCtx.State().Settings().EditorFileSizeLimitBytes().Get()
 		if file.SizeBytes() > val {
 			w.editAction.Disable()
 		} else {
@@ -174,7 +159,9 @@ func (w *FileDetails) Select(file *directory.File) {
 				w.editAction.Enable()
 			}
 		}
-	}))
+	})
+	w.appCtx.State().Settings().EditorFileSizeLimitBytes().AddListener(dl)
+	w.maxFileSizeListener = dl
 
 	w.editAction.SetOnTapped(func() {
 		ctx, cancel := context.WithCancel(context.Background())

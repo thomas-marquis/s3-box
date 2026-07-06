@@ -13,7 +13,7 @@ type SettingsState struct {
 	aggregate *settings.Settings
 
 	timeout    binding.Int
-	fileLimit  binding.Int
+	fileLimit  binding.Item[uint64]
 	colorTheme binding.String
 
 	isReady       binding.Bool
@@ -33,7 +33,7 @@ func newSettingsState() *SettingsState {
 	state := &SettingsState{
 		aggregate:     settingsAgg,
 		timeout:       uiutils.NewSettingsBindingIntForDuration(settingsAgg, values.SettingTimeoutSec),
-		fileLimit:     uiutils.NewSettingsBindingIntToUint64KB(settingsAgg, values.SettingEditFileSizeLimitByte),
+		fileLimit:     uiutils.NewSettingsBindingIntToUint64(settingsAgg, values.SettingEditFileSizeLimitByte),
 		colorTheme:    uiutils.NewSettingsBindingString(settingsAgg, values.SettingColorTheme),
 		isReady:       binding.NewBool(),
 		statusMessage: binding.NewString(),
@@ -52,7 +52,7 @@ func (s *SettingsState) TimeoutInSeconds() binding.Int {
 	return s.timeout
 }
 
-func (s *SettingsState) EditorFileSizeLimitKB() binding.Int {
+func (s *SettingsState) EditorFileSizeLimitBytes() binding.Item[uint64] {
 	return s.fileLimit
 }
 

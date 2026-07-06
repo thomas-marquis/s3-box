@@ -80,7 +80,7 @@ func (p *Preview) AddSubDirectory(name string) (*Preview, error) {
 	return newPrev, nil
 }
 
-func (p *Preview) AddFile(name string, sizeBytes int, lastModified time.Time) error {
+func (p *Preview) AddFile(name string, sizeBytes uint64, lastModified time.Time) error {
 	for _, f := range p.files {
 		if f.Name().String() == name {
 			return fmt.Errorf("file %s already exists in the preview", name)

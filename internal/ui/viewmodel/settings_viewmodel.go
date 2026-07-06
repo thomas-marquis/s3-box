@@ -79,16 +79,7 @@ func NewSettingsViewModel(
 func (v *settingsViewModelImpl) Save() {
 	s := v.state.Settings().Get()
 
-	// Check if the entity is ready to accept writes
-	if !s.State().CanWrite() {
-		v.notifier.NotifyError(settings.ErrNotReady)
-		v.state.Settings().StatusMessage().Set("Error: not ready") //nolint:errcheck
-		return
-	}
-
-	// Check if there are pending events
-	if len(s.GetPendingEvents()) == 0 {
-		// No changes to save
+	if !s.HasPendingEvents() {
 		v.state.Settings().StatusMessage().Set("No changes to save") //nolint:errcheck
 		go func() {
 			time.Sleep(2 * time.Second)
@@ -97,14 +88,12 @@ func (v *settingsViewModelImpl) Save() {
 		return
 	}
 
-	// Now trigger the save
 	evt, err := s.Save()
 	if err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}
 	v.bus.Publish(evt)
-	// The state has transitioned to SavingState, update the status message
 	v.state.Settings().SyncStatusMessage()
 }
 

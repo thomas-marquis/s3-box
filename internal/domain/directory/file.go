@@ -32,7 +32,7 @@ func (name FileName) String() string {
 type File struct {
 	name         FileName
 	parent       *Directory
-	sizeBytes    int
+	sizeBytes    uint64
 	lastModified time.Time
 }
 
@@ -82,11 +82,11 @@ func (f *File) Parent() *Directory {
 	return f.parent
 }
 
-func (f *File) SizeBytes() int {
+func (f *File) SizeBytes() uint64 {
 	return f.sizeBytes
 }
 
-func (f *File) SetSizeBytes(sizeBytes int) {
+func (f *File) SetSizeBytes(sizeBytes uint64) {
 	f.sizeBytes = sizeBytes
 }
 

@@ -86,6 +86,32 @@ func NewBindingItemFormatter[T any](original binding.Item[T], formatFunc func(T)
 	return b
 }
 
+type baseSettingsBinding[T any] struct {
+	binding.Item[T]
+	cancel func()
+}
+
+func (b *baseSettingsBinding[T]) bind(s *settings.Settings, name string) {
+	b.cancel = s.Observe(name, func(value any) {
+		if val, ok := value.(T); ok {
+			b.Set(val) //nolint:errcheck
+		}
+	})
+	runtime.AddCleanup(b, func(cancel func()) {
+		cancel()
+	}, b.cancel)
+
+	b.AddListener(binding.NewDataListener(func() {
+		val, err := b.Get()
+		if err != nil {
+			return
+		}
+		if writeErr := s.Write(name, val); writeErr != nil {
+			return
+		}
+	}))
+}
+
 // SettingsBindingString provides two-way synchronization between a string binding and a string setting.
 type SettingsBindingString struct {
 	binding.String
@@ -126,49 +152,6 @@ func NewSettingsBindingString(s *settings.Settings, name string) binding.String 
 	}))
 
 	return bs
-}
-
-// SettingsBindingInt provides two-way synchronization between an int binding and a uint64 setting.
-type SettingsBindingInt struct {
-	binding.Int
-	cancel func()
-}
-
-// NewSettingsBindingInt creates a two-way binding between an int binding and a uint64 setting.
-// The binding stores int values, but they are converted to/from uint64 for the setting.
-func NewSettingsBindingInt(s *settings.Settings, name string) binding.Int {
-	bi := &SettingsBindingInt{}
-	bi.Int = binding.NewInt()
-
-	if !s.IsExistsWithType(name, settings.Uint64Type) {
-		return bi
-	}
-
-	initialValue := s.ReadUint64(name)
-	bi.Set(int(initialValue)) //nolint:errcheck
-
-	bi.cancel = s.Observe(name, func(value any) {
-		uintVal, ok := value.(uint64)
-		if ok {
-			bi.Set(int(uintVal)) //nolint:errcheck
-		}
-	})
-	runtime.AddCleanup(bi, func(cancel func()) {
-		cancel()
-	}, bi.cancel)
-
-	bi.AddListener(binding.NewDataListener(func() {
-		val, err := bi.Get()
-		if err != nil {
-			return
-		}
-		if writeErr := s.Write(name, uint64(val)); writeErr != nil {
-			// Setting not ready - could retry or notify user
-			return
-		}
-	}))
-
-	return bi
 }
 
 // SettingsBindingDuration provides two-way synchronization between a float binding and a duration setting.
@@ -258,46 +241,80 @@ func NewSettingsBindingIntForDuration(s *settings.Settings, name string) binding
 	return bi
 }
 
-// SettingsBindingIntToUint64KB provides two-way synchronization between an int binding (in KB) and a uint64 setting (in bytes).
+// SettingsBindingIntToUint64 provides two-way synchronization between an int binding (in KB) and a uint64 setting (in bytes).
 // The binding stores int values (representing KB), but they are converted to/from uint64 bytes for the setting.
-type SettingsBindingIntToUint64KB struct {
-	binding.Int
-	cancel func()
+type SettingsBindingIntToUint64 struct {
+	baseSettingsBinding[uint64]
 }
 
-// NewSettingsBindingIntToUint64KB creates a two-way binding between an int binding (in KB) and a uint64 setting (in bytes).
-// The binding stores int values (KB), which are converted to/from uint64 bytes for the setting.
-func NewSettingsBindingIntToUint64KB(s *settings.Settings, name string) binding.Int {
-	bi := &SettingsBindingIntToUint64KB{}
-	bi.Int = binding.NewInt()
+// NewSettingsBindingIntToUint64 creates a two-way binding between an int binding (in KB) and a uint64 setting (in bytes).
+// The binding stores int values, which are converted to/from uint64 bytes for the setting.
+func NewSettingsBindingIntToUint64(s *settings.Settings, name string) binding.Item[uint64] {
+	bi := &SettingsBindingIntToUint64{
+		baseSettingsBinding[uint64]{
+			Item: binding.NewItem[uint64](func(u1, u2 uint64) bool {
+				return u1 == u2
+			}),
+		},
+	}
 
 	if !s.IsExistsWithType(name, settings.Uint64Type) {
 		return bi
 	}
 
 	initialValue := s.ReadUint64(name)
-	bi.Set(int(initialValue / 1024)) //nolint:errcheck
+	bi.Set(initialValue) //nolint:errcheck
 
-	bi.cancel = s.Observe(name, func(value any) {
-		uintVal, ok := value.(uint64)
-		if ok {
-			bi.Set(int(uintVal / 1024)) //nolint:errcheck
-		}
-	})
-	runtime.AddCleanup(bi, func(cancel func()) {
-		cancel()
-	}, bi.cancel)
+	bi.bind(s, name)
 
-	bi.AddListener(binding.NewDataListener(func() {
-		val, err := bi.Get()
+	return bi
+}
+
+type BindMapper[S, T any] struct {
+	binding.Item[T]
+	src binding.Item[S]
+}
+
+func NewBindMapper[S, T any](src binding.Item[S],
+	sToT func(S) T,
+	tToS func(T) S,
+	comparator func(S, T) bool,
+) *BindMapper[S, T] {
+	b := &BindMapper[S, T]{
+		Item: binding.NewItem(func(x, y T) bool {
+			return comparator(tToS(x), y)
+		}),
+		src: src,
+	}
+
+	srcDl := binding.NewDataListener(func() {
+		newVal, err := src.Get()
 		if err != nil {
 			return
 		}
-		if writeErr := s.Write(name, uint64(val*1024)); writeErr != nil {
-			// Setting not ready - could retry or notify user
+		curr, err := b.Get()
+		if err != nil || comparator(newVal, curr) {
 			return
 		}
+		b.Set(sToT(newVal)) //nolint:errcheck
+	})
+	src.AddListener(srcDl)
+
+	runtime.AddCleanup(b, func(s binding.Item[S]) {
+		s.RemoveListener(srcDl)
+	}, src)
+
+	b.AddListener(binding.NewDataListener(func() {
+		newVal, err := b.Get()
+		if err != nil {
+			return
+		}
+		curr, err := src.Get()
+		if err != nil || comparator(curr, newVal) {
+			return
+		}
+		src.Set(tToS(newVal)) //nolint:errcheck
 	}))
 
-	return bi
+	return b
 }

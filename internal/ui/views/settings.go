@@ -24,8 +24,8 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 	themeSelector := fyne_widget.NewSelectWithData(values.AllColorThemesStr, ctx.State().Settings().ColorTheme())
 	themeSelector.PlaceHolder = "Select theme"
 
-	sizeEntry := fyne_widget.NewEntryWithData(
-		binding.IntToString(ctx.State().Settings().EditorFileSizeLimitKB()))
+	sizeEntry := widget.NewDataSizeEntry(values.KiB)
+	sizeEntry.Bind(ctx.State().Settings().EditorFileSizeLimitBytes())
 
 	form := &fyne_widget.Form{
 		Items: []*fyne_widget.FormItem{
@@ -33,10 +33,8 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 			{Text: "Preview/edit file size limit (KB)", Widget: sizeEntry},
 			{Text: "Timeout (seconds)", Widget: timeoutEntry},
 		},
-		OnSubmit: func() {
-			ctx.SettingsViewModel().Save()
-		},
 		SubmitText: "Save",
+		OnSubmit:   ctx.SettingsViewModel().Save,
 		CancelText: "Cancel",
 		OnCancel: func() {
 			if !ctx.State().Settings().Get().HasPendingEvents() {
