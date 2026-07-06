@@ -2,10 +2,10 @@ package views
 
 import (
 	"fmt"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	fyne_widget "fyne.io/fyne/v2/widget"
@@ -18,13 +18,14 @@ import (
 // It implements the navigation.View signature type.
 // Returns the constructed fyne.Container and an error if a problem occurs during the process.
 func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
-	timeoutEntry := fyne_widget.NewEntryWithData(
-		binding.IntToString(ctx.State().Settings().TimeoutInSeconds()))
+	timeoutEntry := widget.NewNumericalEntry[time.Duration](time.Second)
+	timeoutEntry.Bind(ctx.State().Settings().Timeout())
 
-	themeSelector := fyne_widget.NewSelectWithData(values.AllColorThemesStr, ctx.State().Settings().ColorTheme())
+	themeSelector := fyne_widget.NewSelectWithData(
+		values.AllColorThemesStr, ctx.State().Settings().ColorTheme())
 	themeSelector.PlaceHolder = "Select theme"
 
-	sizeEntry := widget.NewDataSizeEntry(values.KiB)
+	sizeEntry := widget.NewNumericalEntry[uint64](values.KiB)
 	sizeEntry.Bind(ctx.State().Settings().EditorFileSizeLimitBytes())
 
 	form := &fyne_widget.Form{

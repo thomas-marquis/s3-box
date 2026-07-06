@@ -12,7 +12,7 @@ import (
 type SettingsState struct {
 	aggregate *settings.Settings
 
-	timeout    binding.Int
+	timeout    binding.Item[time.Duration]
 	fileLimit  binding.Item[uint64]
 	colorTheme binding.String
 
@@ -23,16 +23,16 @@ type SettingsState struct {
 func newSettingsState() *SettingsState {
 	settingsAgg := settings.NewSettings()
 	if err := settingsAgg.Register(
-		settings.AString(values.SettingColorTheme, values.ColorThemeSystem),
-		settings.AUint64(values.SettingEditFileSizeLimitByte, 20*1024),
-		settings.ADuration(values.SettingTimeoutSec, 30*time.Second),
+		settings.AString(values.SettingColorTheme, values.DefaultColorTheme),
+		settings.AUint64(values.SettingEditFileSizeLimitByte, values.DefaultMaxFileSizeEditBytes),
+		settings.ADuration(values.SettingTimeoutSec, values.DefaultTimeout),
 	); err != nil {
 		panic(err)
 	}
 
 	state := &SettingsState{
 		aggregate:     settingsAgg,
-		timeout:       uiutils.NewSettingsBindingIntForDuration(settingsAgg, values.SettingTimeoutSec),
+		timeout:       uiutils.NewSettingsBindingDuration(settingsAgg, values.SettingTimeoutSec),
 		fileLimit:     uiutils.NewSettingsBindingIntToUint64(settingsAgg, values.SettingEditFileSizeLimitByte),
 		colorTheme:    uiutils.NewSettingsBindingString(settingsAgg, values.SettingColorTheme),
 		isReady:       binding.NewBool(),
@@ -48,8 +48,17 @@ func (s *SettingsState) Get() *settings.Settings {
 	return s.aggregate
 }
 
-func (s *SettingsState) TimeoutInSeconds() binding.Int {
+func (s *SettingsState) Timeout() binding.Item[time.Duration] {
 	return s.timeout
+}
+
+func (s *SettingsState) TimeoutValue() time.Duration {
+	val, err := s.timeout.Get()
+	if err != nil {
+		logger.Printf("Error reading timeout value from state: %s. Falling back to default value", err)
+		return values.DefaultTimeout
+	}
+	return val
 }
 
 func (s *SettingsState) EditorFileSizeLimitBytes() binding.Item[uint64] {
@@ -78,11 +87,4 @@ func (s *SettingsState) SyncStatusMessage() {
 	default:
 		s.statusMessage.Set("") //nolint:errcheck
 	}
-}
-
-func (s *SettingsState) CurrentTimeout() time.Duration {
-	if s.aggregate.IsExistsWithType(values.SettingTimeoutSec, settings.DurationType) {
-		return s.aggregate.ReadDuration(values.SettingTimeoutSec)
-	}
-	return 30 * time.Second
 }

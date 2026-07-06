@@ -79,10 +79,16 @@ func NewBindingItemFormatter[T any](original binding.Item[T], formatFunc func(T)
 		formatFunc: formatFunc,
 	}
 
-	original.AddListener(binding.NewDataListener(func() { // TODO: possible leak...
+	dl := binding.NewDataListener(func() {
 		item, _ := b.original.Get()
 		b.Set(b.formatFunc(item)) //nolint:errcheck
-	}))
+	})
+	original.AddListener(dl)
+
+	runtime.AddCleanup(b, func(originalBinding binding.Item[T]) {
+		originalBinding.RemoveListener(dl)
+	}, original)
+
 	return b
 }
 
@@ -156,99 +162,36 @@ func NewSettingsBindingString(s *settings.Settings, name string) binding.String 
 
 // SettingsBindingDuration provides two-way synchronization between a float binding and a duration setting.
 type SettingsBindingDuration struct {
-	binding.Float
-	cancel func()
+	baseSettingsBinding[time.Duration]
 }
 
-// NewSettingsBindingDuration creates a two-way binding between a float64 binding (representing seconds)
-// and a duration setting. This is useful for UI elements that work with numeric time values.
-func NewSettingsBindingDuration(s *settings.Settings, name string) binding.Float {
-	bf := &SettingsBindingDuration{}
-	bf.Float = binding.NewFloat()
+// NewSettingsBindingDuration creates a two-way binding between a time.Duration binding and a duration setting.
+func NewSettingsBindingDuration(s *settings.Settings, name string) binding.Item[time.Duration] {
+	bf := &SettingsBindingDuration{
+		baseSettingsBinding[time.Duration]{
+			Item: binding.NewItem(func(d1, d2 time.Duration) bool {
+				return d1 == d2
+			}),
+		},
+	}
 
 	if !s.IsExistsWithType(name, settings.DurationType) {
 		return bf
 	}
 
-	initialValue := s.ReadDuration(name)
-	bf.Set(initialValue.Seconds()) //nolint:errcheck
-
-	bf.cancel = s.Observe(name, func(value any) {
-		durationVal, ok := value.(time.Duration)
-		if ok {
-			bf.Set(durationVal.Seconds()) //nolint:errcheck
-		}
-	})
-	runtime.AddCleanup(bf, func(cancel func()) {
-		cancel()
-	}, bf.cancel)
-
-	bf.AddListener(binding.NewDataListener(func() {
-		val, err := bf.Get()
-		if err != nil {
-			return
-		}
-		if writeErr := s.Write(name, time.Duration(val)*time.Second); writeErr != nil {
-			// Setting not ready
-			return
-		}
-	}))
+	bf.Set(s.ReadDuration(name)) //nolint:errcheck
+	bf.bind(s, name)
 
 	return bf
 }
 
-// SettingsBindingIntForDuration provides two-way synchronization between an int binding and a duration setting.
-// The binding stores int values (representing whole seconds), but they are converted to/from time.Duration for the setting.
-type SettingsBindingIntForDuration struct {
-	binding.Int
-	cancel func()
-}
-
-// NewSettingsBindingIntForDuration creates a two-way binding between an int binding and a duration setting.
-// The binding stores int values (whole seconds), which are converted to/from time.Duration for the setting.
-func NewSettingsBindingIntForDuration(s *settings.Settings, name string) binding.Int {
-	bi := &SettingsBindingIntForDuration{}
-	bi.Int = binding.NewInt()
-
-	if !s.IsExistsWithType(name, settings.DurationType) {
-		return bi
-	}
-
-	initialValue := s.ReadDuration(name)
-	bi.Set(int(initialValue.Seconds())) //nolint:errcheck
-
-	bi.cancel = s.Observe(name, func(value any) {
-		durationVal, ok := value.(time.Duration)
-		if ok {
-			bi.Set(int(durationVal.Seconds())) //nolint:errcheck
-		}
-	})
-	runtime.AddCleanup(bi, func(cancel func()) {
-		cancel()
-	}, bi.cancel)
-
-	bi.AddListener(binding.NewDataListener(func() {
-		val, err := bi.Get()
-		if err != nil {
-			return
-		}
-		if writeErr := s.Write(name, time.Duration(val)*time.Second); writeErr != nil {
-			// Setting not ready - could retry or notify user
-			return
-		}
-	}))
-
-	return bi
-}
-
-// SettingsBindingIntToUint64 provides two-way synchronization between an int binding (in KB) and a uint64 setting (in bytes).
-// The binding stores int values (representing KB), but they are converted to/from uint64 bytes for the setting.
+// SettingsBindingIntToUint64 provides two-way synchronization between an uint64 binding and a uint64 setting.
 type SettingsBindingIntToUint64 struct {
 	baseSettingsBinding[uint64]
 }
 
-// NewSettingsBindingIntToUint64 creates a two-way binding between an int binding (in KB) and a uint64 setting (in bytes).
-// The binding stores int values, which are converted to/from uint64 bytes for the setting.
+// NewSettingsBindingIntToUint64 creates a two-way binding between an uint64 binding and a uint64 setting.
+// The binding stores uint64 values, which are synchronized to/from uint64 for the setting.
 func NewSettingsBindingIntToUint64(s *settings.Settings, name string) binding.Item[uint64] {
 	bi := &SettingsBindingIntToUint64{
 		baseSettingsBinding[uint64]{
@@ -275,6 +218,7 @@ type BindMapper[S, T any] struct {
 	src binding.Item[S]
 }
 
+// NewBindMapper return a new binding that maps in two-way the data form a source binding.
 func NewBindMapper[S, T any](src binding.Item[S],
 	sToT func(S) T,
 	tToS func(T) S,

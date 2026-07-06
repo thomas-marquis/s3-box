@@ -73,7 +73,7 @@ func NewConnectionViewModel(
 ) ConnectionViewModel {
 	c := binding.NewUntypedList()
 
-	ctx, cancel := context.WithTimeout(context.Background(), appState.Settings().CurrentTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), appState.Settings().TimeoutValue())
 	defer cancel()
 
 	deck, err := connectionRepository.Get(ctx)
@@ -214,7 +214,7 @@ func (v *connectionViewModelImpl) handleCreate(evt event.Event) {
 }
 
 func (v *connectionViewModelImpl) ExportAsJSON(writer io.Writer) error {
-	ctx, cancel := context.WithTimeout(context.Background(), v.appState.Settings().CurrentTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), v.appState.Settings().TimeoutValue())
 	defer cancel()
 	if err := v.connectionRepository.Export(ctx, writer); err != nil {
 		v.notifier.NotifyError(err)

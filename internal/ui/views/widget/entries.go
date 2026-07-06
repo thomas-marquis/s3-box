@@ -3,6 +3,7 @@ package widget
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -11,24 +12,24 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
-type DataSizeEntry struct {
+type NumericalEntry[T uint64 | time.Duration] struct {
 	widget.Entry
-	baseUnit uint64
+	baseUnit T
 }
 
-func NewDataSizeEntry(baseUnit uint64) *DataSizeEntry {
-	e := &DataSizeEntry{baseUnit: baseUnit}
+func NewNumericalEntry[T uint64 | time.Duration](baseUnit T) *NumericalEntry[T] {
+	e := &NumericalEntry[T]{baseUnit: baseUnit}
 	e.ExtendBaseWidget(e)
 	return e
 }
 
-func (e *DataSizeEntry) TypedRune(r rune) {
+func (e *NumericalEntry[T]) TypedRune(r rune) {
 	if r >= '0' && r <= '9' {
 		e.Entry.TypedRune(r)
 	}
 }
 
-func (e *DataSizeEntry) TypedShortcut(shortcut fyne.Shortcut) {
+func (e *NumericalEntry[T]) TypedShortcut(shortcut fyne.Shortcut) {
 	paste, ok := shortcut.(*fyne.ShortcutPaste)
 	if !ok {
 		e.Entry.TypedShortcut(shortcut)
@@ -41,30 +42,33 @@ func (e *DataSizeEntry) TypedShortcut(shortcut fyne.Shortcut) {
 	}
 }
 
-func (e *DataSizeEntry) Keyboard() mobile.KeyboardType {
+func (e *NumericalEntry[T]) Keyboard() mobile.KeyboardType {
 	return mobile.NumberKeyboard
 }
 
-func (e *DataSizeEntry) Bind(data binding.Item[uint64]) {
+func (e *NumericalEntry[T]) Bind(data binding.Item[T]) {
 	e.Entry.Bind(
-		uiutils.NewBindMapper[uint64, string](data,
-			func(sizeBytes uint64) string {
+		uiutils.NewBindMapper[T, string](data,
+			func(sizeBytes T) string {
 				inUint := sizeBytes / e.baseUnit
 				return fmt.Sprintf("%d", inUint)
 			},
-			func(inUnitLabel string) uint64 {
-				inUnit, err := strconv.ParseUint(inUnitLabel, 10, 64)
+			func(inNumLabel string) T {
+				val, err := strconv.Atoi(inNumLabel)
 				if err != nil {
 					return 0
 				}
-				return inUnit * e.baseUnit
+				parsed := T(val)
+
+				return parsed * e.baseUnit
 			},
-			func(sizeByte uint64, inUnitLabel string) bool {
-				inUnit, err := strconv.ParseUint(inUnitLabel, 10, 64)
+			func(sizeByte T, inNumLabel string) bool {
+				val, err := strconv.Atoi(inNumLabel)
 				if err != nil {
 					return false
 				}
-				return inUnit*e.baseUnit == sizeByte
+				parsed := T(val)
+				return parsed*e.baseUnit == sizeByte
 			},
 		),
 	)
