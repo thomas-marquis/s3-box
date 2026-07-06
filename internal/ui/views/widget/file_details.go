@@ -149,8 +149,7 @@ func (w *FileDetails) Select(file *directory.File) {
 
 	w.appCtx.State().Settings().EditorFileSizeLimitBytes().RemoveListener(w.maxFileSizeListener)
 	dl := binding.NewDataListener(func() {
-		val, _ := w.appCtx.State().Settings().EditorFileSizeLimitBytes().Get()
-		if file.SizeBytes() > val {
+		if file.SizeBytes() > w.appCtx.State().Settings().EditorFileSizeLimitBytesValue() {
 			w.editAction.Disable()
 		} else {
 			if w.appCtx.ConnectionViewModel().IsReadOnly() {

@@ -65,6 +65,15 @@ func (s *SettingsState) EditorFileSizeLimitBytes() binding.Item[uint64] {
 	return s.fileLimit
 }
 
+func (s *SettingsState) EditorFileSizeLimitBytesValue() uint64 {
+	val, err := s.fileLimit.Get()
+	if err != nil {
+		logger.Printf("Error reading file size limit from state: %s. Falling back to default value", err)
+		return values.DefaultMaxFileSizeEditBytes
+	}
+	return val
+}
+
 func (s *SettingsState) ColorTheme() binding.String {
 	return s.colorTheme
 }
