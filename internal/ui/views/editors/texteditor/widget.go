@@ -17,7 +17,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/it-happened/event"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/fileeditor"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
 
 type textContentEntry struct {
@@ -59,7 +59,7 @@ func newTextEditorEntry(onValidate func(string), onCLose func()) *textContentEnt
 type TextEditor struct {
 	widget.BaseWidget
 
-	state                *fileeditor.State
+	state                *editor.State
 	contentHash          string
 	stateLabel           binding.String
 	shouldCloseWhenSaved bool
@@ -71,7 +71,7 @@ type TextEditor struct {
 	saveBtn    *widget.ToolbarAction
 }
 
-func NewTextEditor(state *fileeditor.State) *TextEditor {
+func NewTextEditor(state *editor.State) *TextEditor {
 	w := &TextEditor{
 		state:      state,
 		stateLabel: binding.NewString(),
@@ -102,8 +102,8 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 	}))
 
 	sub := w.state.Bus.Subscribe().
-		On(event.Is(fileeditor.SaveTriggeredType), func(e event.Event) {
-			pl := e.Payload().(fileeditor.SaveTriggered)
+		On(event.Is(editor.SaveTriggeredType), func(e event.Event) {
+			pl := e.Payload().(editor.SaveTriggered)
 			if !pl.File.Is(state.File) {
 				return
 			}
@@ -111,8 +111,8 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 			state.IsLoaded.Set(false)     // nolint:errcheck
 			w.stateLabel.Set("Saving...") // nolint:errcheck
 		}).
-		On(event.Is(fileeditor.SaveSucceededType), func(e event.Event) {
-			pl := e.Payload().(fileeditor.SaveSucceeded)
+		On(event.Is(editor.SaveSucceededType), func(e event.Event) {
+			pl := e.Payload().(editor.SaveSucceeded)
 			if !pl.File.Is(state.File) {
 				return
 			}
@@ -132,8 +132,8 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 				})
 			}
 		}).
-		On(event.Is(fileeditor.SaveFailedType), func(e event.Event) {
-			pl := e.Payload().(fileeditor.SaveFailed)
+		On(event.Is(editor.SaveFailedType), func(e event.Event) {
+			pl := e.Payload().(editor.SaveFailed)
 			if !pl.File.Is(state.File) {
 				return
 			}
@@ -211,7 +211,7 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 func (w *TextEditor) save(content string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	w.cancelFunc = cancel
-	w.state.Bus.Publish(event.New(fileeditor.SaveTriggered{
+	w.state.Bus.Publish(event.New(editor.SaveTriggered{
 		File:    w.state.File,
 		Content: content,
 	}, event.WithContext(ctx)))

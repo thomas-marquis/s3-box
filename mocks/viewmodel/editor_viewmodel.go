@@ -16,7 +16,7 @@ import (
 	binding "fyne.io/fyne/v2/data/binding"
 	connection_deck "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
-	fileeditor "github.com/thomas-marquis/s3-box/internal/ui/views/editors/fileeditor"
+	fileeditor "github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	gomock "go.uber.org/mock/gomock"
 )
 

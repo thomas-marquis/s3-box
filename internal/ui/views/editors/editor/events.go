@@ -1,4 +1,4 @@
-package fileeditor
+package editor
 
 import (
 	"github.com/thomas-marquis/it-happened/event"

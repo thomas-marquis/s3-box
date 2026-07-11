@@ -11,7 +11,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/fileeditor"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
 	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
 	"go.uber.org/mock/gomock"
@@ -43,7 +43,7 @@ func TestFileEditor_loading(t *testing.T) {
 
 		w := fyne_test.NewWindow(nil)
 		w.Resize(fyne.NewSize(500, 300))
-		es := &fileeditor.State{
+		es := &editor.State{
 			Window:   w,
 			File:     file,
 			Content:  binding.NewString(),
@@ -70,7 +70,7 @@ func TestFileEditor_loading(t *testing.T) {
 
 		w := fyne_test.NewWindow(nil)
 		w.Resize(fyne.NewSize(500, 300))
-		es := &fileeditor.State{
+		es := &editor.State{
 			Window:   w,
 			File:     file,
 			Content:  binding.NewString(),
@@ -100,7 +100,7 @@ func TestFileEditor_loading(t *testing.T) {
 
 		w := fyne_test.NewWindow(nil)
 		w.Resize(fyne.NewSize(500, 300))
-		es := &fileeditor.State{
+		es := &editor.State{
 			Window:   w,
 			File:     file,
 			Content:  binding.NewString(),

@@ -1,4 +1,4 @@
-package fileeditor
+package editor
 
 import (
 	"fyne.io/fyne/v2"
