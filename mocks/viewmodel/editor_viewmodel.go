@@ -10,13 +10,12 @@
 package mocks_viewmodel
 
 import (
-	context "context"
 	reflect "reflect"
 
 	binding "fyne.io/fyne/v2/data/binding"
 	connection_deck "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
-	fileeditor "github.com/thomas-marquis/s3-box/internal/ui/views/editors/fileeditor"
+	editor "github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -98,18 +97,18 @@ func (mr *MockEditorViewModelMockRecorder) IsLoading() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsLoading", reflect.TypeOf((*MockEditorViewModel)(nil).IsLoading))
 }
 
-// IsOpened mocks base method.
-func (m *MockEditorViewModel) IsOpened(file *directory.File) bool {
+// IsOpen mocks base method.
+func (m *MockEditorViewModel) IsOpen(file *directory.File) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsOpened", file)
+	ret := m.ctrl.Call(m, "IsOpen", file)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// IsOpened indicates an expected call of IsOpened.
-func (mr *MockEditorViewModelMockRecorder) IsOpened(file any) *gomock.Call {
+// IsOpen indicates an expected call of IsOpen.
+func (mr *MockEditorViewModelMockRecorder) IsOpen(file any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsOpened", reflect.TypeOf((*MockEditorViewModel)(nil).IsOpened), file)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsOpen", reflect.TypeOf((*MockEditorViewModel)(nil).IsOpen), file)
 }
 
 // Loading mocks base method.
@@ -127,18 +126,30 @@ func (mr *MockEditorViewModelMockRecorder) Loading() *gomock.Call {
 }
 
 // Open mocks base method.
-func (m *MockEditorViewModel) Open(ctx context.Context, file *directory.File) (*fileeditor.State, error) {
+func (m *MockEditorViewModel) Open(file *directory.File) (editor.Editor, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Open", ctx, file)
-	ret0, _ := ret[0].(*fileeditor.State)
+	ret := m.ctrl.Call(m, "Open", file)
+	ret0, _ := ret[0].(editor.Editor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Open indicates an expected call of Open.
-func (mr *MockEditorViewModelMockRecorder) Open(ctx, file any) *gomock.Call {
+func (mr *MockEditorViewModelMockRecorder) Open(file any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockEditorViewModel)(nil).Open), ctx, file)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockEditorViewModel)(nil).Open), file)
+}
+
+// RegisterEditorFactory mocks base method.
+func (m *MockEditorViewModel) RegisterEditorFactory(initializer editor.Initializer) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RegisterEditorFactory", initializer)
+}
+
+// RegisterEditorFactory indicates an expected call of RegisterEditorFactory.
+func (mr *MockEditorViewModelMockRecorder) RegisterEditorFactory(initializer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterEditorFactory", reflect.TypeOf((*MockEditorViewModel)(nil).RegisterEditorFactory), initializer)
 }
 
 // SelectedConnection mocks base method.

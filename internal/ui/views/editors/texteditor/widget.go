@@ -1,153 +1,39 @@
 package texteditor
 
 import (
-	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"errors"
-	"fmt"
-	"sync"
-	"time"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/thomas-marquis/it-happened/event"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/fileeditor"
 )
-
-type textContentEntry struct {
-	widget.Entry
-
-	onValidate func(string)
-	onClose    func()
-}
-
-var (
-	_ fyne.Shortcutable = (*textContentEntry)(nil)
-)
-
-func (e *textContentEntry) TypedShortcut(s fyne.Shortcut) {
-	if val, ok := s.(*desktop.CustomShortcut); ok {
-		if val.KeyName == fyne.KeyS && val.Modifier == fyne.KeyModifierControl {
-			e.onValidate(e.Text)
-		} else if val.KeyName == fyne.KeyQ && val.Modifier == fyne.KeyModifierControl {
-			e.onClose()
-		}
-	} else {
-		e.Entry.TypedShortcut(s)
-	}
-}
-
-func newTextEditorEntry(onValidate func(string), onCLose func()) *textContentEntry {
-	e := &textContentEntry{
-		Entry: widget.Entry{
-			MultiLine: true,
-			Wrapping:  fyne.TextWrap(fyne.TextTruncateClip),
-		},
-		onValidate: onValidate,
-		onClose:    onCLose,
-	}
-	e.ExtendBaseWidget(e)
-	return e
-}
 
 type TextEditor struct {
 	widget.BaseWidget
 
-	state                *fileeditor.State
-	contentHash          string
-	stateLabel           binding.String
-	shouldCloseWhenSaved bool
-	cancelFunc           func()
-	subscriber           *event.Subscriber
+	editor *textEditor
 
-	// put as struct attributes to be used in tests (meh...):
-	textEditor *textContentEntry
-	saveBtn    *widget.ToolbarAction
+	TextEntry *textContentEntry
+	SaveBtn   *widget.ToolbarAction
 }
 
-func NewTextEditor(state *fileeditor.State) *TextEditor {
+func newWidget(e *textEditor) fyne.CanvasObject {
 	w := &TextEditor{
-		state:      state,
-		stateLabel: binding.NewString(),
+		editor: e,
 	}
 	w.ExtendBaseWidget(w)
 
-	once := sync.Once{}
-
-	state.Content.AddListener(binding.NewDataListener(func() {
-		loaded, _ := state.IsLoaded.Get()
-		if !loaded {
+	e.Err.AddListener(binding.NewDataListener(func() {
+		err, _ := e.Err.Get()
+		if err == nil {
 			return
 		}
-		once.Do(func() {
-			val, _ := state.Content.Get()
-			w.contentHash = sha256Hex(val)
-		})
+		dialog.ShowError(err, e.Window())
+		e.Err.Set(nil) //nolint:errcheck
 	}))
 
-	state.Window.SetCloseIntercept(w.close)
-
-	state.ErrorMsg.AddListener(binding.NewDataListener(func() {
-		msg, _ := state.ErrorMsg.Get()
-		if msg == "" {
-			return
-		}
-		dialog.ShowError(errors.New(msg), state.Window)
-	}))
-
-	sub := w.state.Bus.Subscribe().
-		On(event.Is(fileeditor.SaveTriggeredType), func(e event.Event) {
-			pl := e.Payload().(fileeditor.SaveTriggered)
-			if !pl.File.Is(state.File) {
-				return
-			}
-
-			state.IsLoaded.Set(false)     // nolint:errcheck
-			w.stateLabel.Set("Saving...") // nolint:errcheck
-		}).
-		On(event.Is(fileeditor.SaveSucceededType), func(e event.Event) {
-			pl := e.Payload().(fileeditor.SaveSucceeded)
-			if !pl.File.Is(state.File) {
-				return
-			}
-			w.contentHash = sha256Hex(pl.Content)
-			w.stateLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
-			state.IsLoaded.Set(true)                                                 // nolint:errcheck
-			if w.cancelFunc != nil {
-				w.cancelFunc()
-			}
-			w.cancelFunc = nil
-			if w.shouldCloseWhenSaved {
-				if w.subscriber != nil {
-					w.subscriber.Detach()
-				}
-				fyne.Do(func() {
-					state.Window.Close()
-				})
-			}
-		}).
-		On(event.Is(fileeditor.SaveFailedType), func(e event.Event) {
-			pl := e.Payload().(fileeditor.SaveFailed)
-			if !pl.File.Is(state.File) {
-				return
-			}
-			state.IsLoaded.Set(true)            // nolint:errcheck
-			w.stateLabel.Set("error (unsaved)") // nolint:errcheck
-			dialog.ShowError(pl.Err, w.state.Window)
-			w.shouldCloseWhenSaved = false
-			if w.cancelFunc != nil {
-				w.cancelFunc()
-			}
-			w.cancelFunc = nil
-		})
-	sub.ListenWithWorkers(1)
-	w.subscriber = sub
+	e.Window().SetCloseIntercept(w.onClose)
 
 	return w
 }
@@ -155,23 +41,22 @@ func NewTextEditor(state *fileeditor.State) *TextEditor {
 func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
-	editor := newTextEditorEntry(w.save, w.close)
-	w.textEditor = editor
-	editor.Bind(w.state.Content)
+	textEntry := newTextEditorEntry(w.editor.Save, w.onClose)
+	w.TextEntry = textEntry
+	textEntry.Bind(w.editor.Content)
 
-	w.saveBtn = widget.NewToolbarAction(theme.DocumentSaveIcon(), func() {
-		w.save(editor.Text)
+	var cancelBtn *widget.Button
+	w.SaveBtn = widget.NewToolbarAction(theme.DocumentSaveIcon(), func() {
+		cancelBtn.Enable()
+		w.editor.Save(textEntry.Text)
 	})
-	toolbar := widget.NewToolbar(w.saveBtn)
+	toolbar := widget.NewToolbar(w.SaveBtn)
 
 	loader := widget.NewProgressBarInfinite()
-	var cancelBtn *widget.Button
 	cancelBtn = widget.NewButton("Cancel", func() {
-		if w.cancelFunc != nil {
-			w.stateLabel.Set("cancelling...") // nolint:errcheck
-			cancelBtn.Disable()
-			w.cancelFunc()
-		}
+		cancelBtn.Disable()
+		w.editor.StatusLabel.Set("cancelling...") //nolint:errcheck
+		w.editor.Cancel()
 	})
 	loaderContainer := container.NewBorder(
 		nil, nil, nil,
@@ -180,72 +65,45 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 	loader.Stop()
 	loaderContainer.Hide()
 
-	w.state.IsLoaded.AddListener(binding.NewDataListener(func() {
-		loaded, _ := w.state.IsLoaded.Get()
-		if loaded {
-			loaderContainer.Hide()
-			loader.Stop()
-		} else {
+	w.editor.IsLoading.AddListener(binding.NewDataListener(func() {
+		isLoading, _ := w.editor.IsLoading.Get()
+		if isLoading {
 			loaderContainer.Show()
 			loader.Start()
+		} else {
+			loaderContainer.Hide()
+			loader.Stop()
 		}
 	}))
 
-	btns := container.NewBorder(nil, nil,
+	bottomBar := container.NewBorder(nil, nil,
 		widget.NewButtonWithIcon("Save & Exit", theme.DocumentSaveIcon(), func() {
-			w.save(editor.Text)
-			w.shouldCloseWhenSaved = true
+			w.editor.SaveThenExit(textEntry.Text)
 		}), nil,
 		loaderContainer,
 	)
 
 	c := container.NewBorder(
-		container.NewBorder(nil, nil, toolbar, widget.NewLabelWithData(w.stateLabel)),
-		btns,
+		container.NewBorder(nil, nil,
+			toolbar,
+			widget.NewLabelWithData(w.editor.StatusLabel)),
+		bottomBar,
 		nil, nil,
-		editor)
+		textEntry)
 
 	return widget.NewSimpleRenderer(c)
 }
 
-func (w *TextEditor) save(content string) {
-	ctx, cancel := context.WithCancel(context.Background())
-	w.cancelFunc = cancel
-	w.state.Bus.Publish(event.New(fileeditor.SaveTriggered{
-		File:    w.state.File,
-		Content: content,
-	}, event.WithContext(ctx)))
-}
-
-func (w *TextEditor) close() {
-	val, _ := w.state.Content.Get()
-	if w.hasChanged(val) {
-		dialog.ShowConfirm("Discard changes?", "Do you want to discard your changes?", func(confirmed bool) {
-			if confirmed {
-				if w.subscriber != nil {
-					w.subscriber.Detach()
+func (w *TextEditor) onClose() {
+	if w.editor.HasChanged() {
+		dialog.ShowConfirm("Discard changes?",
+			"Do you want to discard your changes?",
+			func(confirmed bool) {
+				if confirmed {
+					w.editor.Window().Close()
 				}
-				w.state.Window.Close()
-			}
-		}, w.state.Window)
+			}, w.editor.Window())
 	} else {
-		if w.subscriber != nil {
-			w.subscriber.Detach()
-		}
-		w.state.Window.Close()
+		w.editor.Window().Close()
 	}
-}
-
-func (w *TextEditor) hasChanged(newContent string) bool {
-	newHash := sha256Hex(newContent)
-	if w.contentHash != newHash {
-		w.contentHash = newHash
-		return true
-	}
-	return false
-}
-
-func sha256Hex(s string) string {
-	sum := sha256.Sum256([]byte(s)) // [32]byte
-	return hex.EncodeToString(sum[:])
 }
