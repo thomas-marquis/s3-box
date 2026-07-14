@@ -1,7 +1,6 @@
 package widget
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -18,7 +17,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
 )
 
 const (
@@ -163,28 +161,17 @@ func (w *FileDetails) Select(file *directory.File) {
 	w.maxFileSizeListener = dl
 
 	w.editAction.SetOnTapped(func() {
-		ctx, cancel := context.WithCancel(context.Background())
-
-		es, err := edVm.Open(ctx, file)
-		if err != nil {
-			if !errors.Is(err, viewmodel.ErrEditorAlreadyOpened) {
-				dialog.ShowError(err, w.appCtx.Window())
-			}
-			cancel()
-			return
+		ed, err := edVm.Open(file)
+		if err != nil && !errors.Is(err, viewmodel.ErrEditorAlreadyOpened) {
+			dialog.ShowError(err, w.appCtx.Window())
 		}
-		editor := texteditor.NewTextEditor(es)
 
-		es.Window.SetOnClosed(func() {
-			cancel()
-			edVm.Close(file)
-		})
-		es.Window.SetContent(editor)
-		es.Window.SetFixedSize(false)
-		es.Window.Resize(fyne.NewSize(700, 500))
-		es.Window.Show()
+		ed.Window().SetContent(ed.CreateWidget())
+		ed.Window().SetFixedSize(false)
+		ed.Window().Resize(fyne.NewSize(700, 500))
+		ed.Window().Show()
 
-		es.Window.RequestFocus()
+		ed.Window().RequestFocus()
 	})
 
 	w.downloadAction.SetOnTapped(func() {
