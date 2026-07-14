@@ -297,6 +297,7 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockBus := mocks_event.NewMockBus(ctrl)
 		mockNotifier := mocks_notification.NewMockRepository(ctrl)
+		mockNotifier.EXPECT().NotifyInfo(gomock.Any(), gomock.Any()).AnyTimes()
 
 		mockEditorFactory := func(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 			mockEditor := mock_editor.NewMockEditor(ctrl)
