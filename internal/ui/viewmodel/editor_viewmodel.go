@@ -164,6 +164,8 @@ func (v *editorViewModelImpl) Close(file *directory.File) {
 		return
 	}
 	if !ed.Close() {
+		v.notifier.NotifyInfo("Editor hasn't been closed",
+			fmt.Sprintf("File %s has unsaved changes.", file.Name()))
 		return
 	}
 	delete(v.openedEditors, path)
@@ -270,7 +272,7 @@ func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {
 	if hasChanged {
 		v.mu.Lock()
 		for _, oe := range v.openedEditors {
-			v.Close(oe.File())
+			v.Close(oe.File()) // TODO: move this when the connection change is triggered and warn the user for unsaved changes before closing the editors
 		}
 		v.selectedConnection = conn
 		v.mu.Unlock()
