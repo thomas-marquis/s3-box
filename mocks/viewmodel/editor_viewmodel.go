@@ -97,18 +97,18 @@ func (mr *MockEditorViewModelMockRecorder) IsLoading() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsLoading", reflect.TypeOf((*MockEditorViewModel)(nil).IsLoading))
 }
 
-// IsOpened mocks base method.
-func (m *MockEditorViewModel) IsOpened(file *directory.File) bool {
+// IsOpen mocks base method.
+func (m *MockEditorViewModel) IsOpen(file *directory.File) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsOpened", file)
+	ret := m.ctrl.Call(m, "IsOpen", file)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// IsOpened indicates an expected call of IsOpened.
-func (mr *MockEditorViewModelMockRecorder) IsOpened(file any) *gomock.Call {
+// IsOpen indicates an expected call of IsOpen.
+func (mr *MockEditorViewModelMockRecorder) IsOpen(file any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsOpened", reflect.TypeOf((*MockEditorViewModel)(nil).IsOpened), file)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsOpen", reflect.TypeOf((*MockEditorViewModel)(nil).IsOpen), file)
 }
 
 // Loading mocks base method.
@@ -138,6 +138,18 @@ func (m *MockEditorViewModel) Open(file *directory.File) (editor.Editor, error) 
 func (mr *MockEditorViewModelMockRecorder) Open(file any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockEditorViewModel)(nil).Open), file)
+}
+
+// RegisterEditorFactory mocks base method.
+func (m *MockEditorViewModel) RegisterEditorFactory(initializer editor.Initializer) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RegisterEditorFactory", initializer)
+}
+
+// RegisterEditorFactory indicates an expected call of RegisterEditorFactory.
+func (mr *MockEditorViewModelMockRecorder) RegisterEditorFactory(initializer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterEditorFactory", reflect.TypeOf((*MockEditorViewModel)(nil).RegisterEditorFactory), initializer)
 }
 
 // SelectedConnection mocks base method.

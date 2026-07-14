@@ -117,6 +117,15 @@ func (e *textEditor) OnSaved(newContent string, err error) {
 	e.mu.Unlock()
 }
 
+func (e *textEditor) Close() bool {
+	if e.HasChanged() {
+		return false
+	}
+	e.Cancel()
+	e.Window().Close() // force close
+	return true
+}
+
 func (e *textEditor) Cancel() {
 	e.mu.Lock()
 	defer e.mu.Unlock()

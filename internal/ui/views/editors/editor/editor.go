@@ -2,8 +2,11 @@ package editor
 
 import (
 	"fyne.io/fyne/v2"
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
+
+type Initializer func(bus event.Bus, window fyne.Window, file *directory.File) Editor
 
 type Editor interface {
 	Window() fyne.Window
@@ -11,6 +14,7 @@ type Editor interface {
 	CreateWidget() fyne.CanvasObject
 	OnLoaded(fileContent directory.FileContent, err error)
 	OnSaved(newContent string, err error)
+	Close() bool
 }
 
 type Base struct {
@@ -31,4 +35,8 @@ func (b *Base) Window() fyne.Window {
 
 func (b *Base) File() *directory.File {
 	return b.file
+}
+
+func (b *Base) Close() {
+	b.window.Close()
 }

@@ -24,11 +24,13 @@ type EditorViewModel interface {
 
 	SelectedConnection() *connection_deck.Connection
 
+	RegisterEditorFactory(initializer editor.Initializer)
+
 	// Open opens the given file in a new editor window.
 	// Returns an ErrAlreadyOpened error if the file is already opened.
 	Open(file *directory.File) (editor.Editor, error)
 
-	IsOpened(file *directory.File) bool
+	IsOpen(file *directory.File) bool
 	Close(file *directory.File)
 }
 
@@ -39,6 +41,7 @@ type editorViewModelImpl struct {
 	openedEditors      map[string]editor.Editor
 	loadedContents     map[string]directory.FileContent
 	selectedConnection *connection_deck.Connection
+	editorFactory      editor.Initializer
 
 	bus      event.Bus
 	notifier notification.Repository
@@ -55,6 +58,7 @@ func NewEditorViewModel(
 		bus:                bus,
 		notifier:           notifier,
 		selectedConnection: initialConnection,
+		editorFactory:      texteditor.New,
 	}
 
 	bus.Subscribe().
@@ -79,6 +83,10 @@ func (v *editorViewModelImpl) SelectedConnection() *connection_deck.Connection {
 	return v.selectedConnection
 }
 
+func (v *editorViewModelImpl) RegisterEditorFactory(initializer editor.Initializer) {
+	v.editorFactory = initializer
+}
+
 func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) {
 	if v.selectedConnection == nil {
 		return nil, ErrNoConnectionSelected
@@ -90,7 +98,7 @@ func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) 
 	}
 
 	newWin := fyne.CurrentApp().NewWindow(file.Name().String())
-	e := texteditor.New(v.bus, newWin, file)
+	e := v.editorFactory(v.bus, newWin, file)
 	v.openedEditors[file.FullPath()] = e
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -144,13 +152,20 @@ func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
 	})
 }
 
-func (v *editorViewModelImpl) IsOpened(file *directory.File) bool {
+func (v *editorViewModelImpl) IsOpen(file *directory.File) bool {
 	_, ok := v.openedEditors[file.FullPath()]
 	return ok
 }
 
 func (v *editorViewModelImpl) Close(file *directory.File) {
 	path := file.FullPath()
+	ed, ok := v.openedEditors[path]
+	if !ok {
+		return
+	}
+	if !ed.Close() {
+		return
+	}
 	delete(v.openedEditors, path)
 	delete(v.loadedContents, path)
 }
