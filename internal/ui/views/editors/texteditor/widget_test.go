@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/driver/desktop"
 	fyne_test "fyne.io/fyne/v2/test"
 	fyne_widget "fyne.io/fyne/v2/widget"
-	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
@@ -19,14 +19,17 @@ import (
 
 // uv run ./tools/diff_images.py --folders internal/ui/views/editors/texteditor/testdata/images internal/ui/views/editors/texteditor/testdata/failed/images --color "red"
 
-func TestFileEditor_saving(t *testing.T) {
+var (
+	lastModified = time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+)
+
+func TestTextEditor_saving(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping image matching tests in short mode")
 	}
 
 	fyne_test.NewApp()
 
-	lastModified := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	rootDir, _ := directory.NewRoot(connection_deck.NewConnectionID())
 	file, _ := directory.NewFile("test.txt", rootDir,
 		directory.WithFileSize(1024),
@@ -37,8 +40,6 @@ func TestFileEditor_saving(t *testing.T) {
 		// Given
 		ctrl := gomock.NewController(t)
 		mockBus := mocks_event.NewMockBus(ctrl)
-		events := make(chan event.Event)
-		defer close(events)
 		mockBus.EXPECT().Publish(gomock.Any()).AnyTimes()
 
 		w := fyne_test.NewWindow(nil)
@@ -62,35 +63,34 @@ func TestFileEditor_saving(t *testing.T) {
 		// Given
 		ctrl := gomock.NewController(t)
 		mockBus := mocks_event.NewMockBus(ctrl)
-		events := make(chan event.Event)
-		defer close(events)
 		mockBus.EXPECT().Publish(gomock.Any()).AnyTimes()
 
 		w := fyne_test.NewWindow(nil)
 		w.Resize(fyne.NewSize(500, 300))
 		ed := texteditor.New(mockBus, w, file)
 
-		res := ed.CreateWidget().(*texteditor.TextEditor)
+		wdg := ed.CreateWidget().(*texteditor.TextEditor)
 		canvas := w.Canvas()
-		canvas.SetContent(res)
+		canvas.SetContent(wdg)
 
-		// When & Then
-		fyne_test.Type(res.TextEntry, "my new content")
-		fyne_test.Tap(res.SaveBtn.ToolbarObject().(*fyne_widget.Button))
+		// When
+		fyne_test.Type(wdg.TextEntry, "my new content")
+		fyne_test.Tap(wdg.SaveBtn.ToolbarObject().(*fyne_widget.Button))
 
 		ed.OnSaved("", errors.New("failed to save"))
+
+		// Then
 		testutil.AssertImageMatches(t, "images/saving-error.png", canvas.Capture())
 	})
 }
 
-func TestFileEditor_loading(t *testing.T) {
+func TestTextEditor_loading(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping image matching tests in short mode")
 	}
 
 	fyne_test.NewApp()
 
-	lastModified := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	rootDir, _ := directory.NewRoot(connection_deck.NewConnectionID())
 	file, _ := directory.NewFile("test.txt", rootDir,
 		directory.WithFileSize(1024),
@@ -101,8 +101,6 @@ func TestFileEditor_loading(t *testing.T) {
 		// Given
 		ctrl := gomock.NewController(t)
 		mockBus := mocks_event.NewMockBus(ctrl)
-		events := make(chan event.Event)
-		defer close(events)
 
 		w := fyne_test.NewWindow(nil)
 		w.Resize(fyne.NewSize(500, 300))
@@ -121,8 +119,6 @@ func TestFileEditor_loading(t *testing.T) {
 		// Given
 		ctrl := gomock.NewController(t)
 		mockBus := mocks_event.NewMockBus(ctrl)
-		events := make(chan event.Event)
-		defer close(events)
 
 		w := fyne_test.NewWindow(nil)
 		w.Resize(fyne.NewSize(500, 300))
@@ -147,8 +143,6 @@ func TestFileEditor_loading(t *testing.T) {
 		// Given
 		ctrl := gomock.NewController(t)
 		mockBus := mocks_event.NewMockBus(ctrl)
-		events := make(chan event.Event)
-		defer close(events)
 
 		w := fyne_test.NewWindow(nil)
 		w.Resize(fyne.NewSize(500, 300))
@@ -163,5 +157,48 @@ func TestFileEditor_loading(t *testing.T) {
 
 		// Then
 		testutil.AssertImageMatches(t, "images/loaded-with-error.png", w.Canvas().Capture())
+	})
+}
+
+func TestTextEditor_close(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping image matching tests in short mode")
+	}
+
+	fyne_test.NewApp()
+
+	rootDir, _ := directory.NewRoot(connection_deck.NewConnectionID())
+	file, _ := directory.NewFile("test.txt", rootDir,
+		directory.WithFileSize(1024),
+		directory.WithFileLastModified(lastModified),
+	)
+
+	t.Run("should warn user when file has been updated", func(t *testing.T) {
+		// Given
+		ctrl := gomock.NewController(t)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		w := fyne_test.NewWindow(nil)
+		w.Resize(fyne.NewSize(500, 300))
+
+		ed := texteditor.New(mockBus, w, file)
+		wdg := ed.CreateWidget().(*texteditor.TextEditor)
+		canvas := w.Canvas()
+		canvas.SetContent(wdg)
+
+		mockContent := &directory.InMemoryContent{
+			Data: []byte("Hello "),
+			Pos:  0,
+		}
+		ed.OnLoaded(mockContent, nil)
+
+		// When
+		fyne_test.Type(wdg.TextEntry, "World!")
+		wdg.TextEntry.TypedShortcut(&desktop.CustomShortcut{
+			KeyName:  fyne.KeyQ,
+			Modifier: fyne.KeyModifierControl,
+		})
+
+		// Then
+		testutil.AssertImageMatches(t, "images/close-with-unsave.png", w.Canvas().Capture())
 	})
 }

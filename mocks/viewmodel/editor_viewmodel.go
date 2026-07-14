@@ -10,13 +10,12 @@
 package mocks_viewmodel
 
 import (
-	context "context"
 	reflect "reflect"
 
 	binding "fyne.io/fyne/v2/data/binding"
 	connection_deck "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
-	fileeditor "github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
+	editor "github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -127,18 +126,18 @@ func (mr *MockEditorViewModelMockRecorder) Loading() *gomock.Call {
 }
 
 // Open mocks base method.
-func (m *MockEditorViewModel) Open(ctx context.Context, file *directory.File) (*fileeditor.State, error) {
+func (m *MockEditorViewModel) Open(file *directory.File) (editor.Editor, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Open", ctx, file)
-	ret0, _ := ret[0].(*fileeditor.State)
+	ret := m.ctrl.Call(m, "Open", file)
+	ret0, _ := ret[0].(editor.Editor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Open indicates an expected call of Open.
-func (mr *MockEditorViewModelMockRecorder) Open(ctx, file any) *gomock.Call {
+func (mr *MockEditorViewModelMockRecorder) Open(file any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockEditorViewModel)(nil).Open), ctx, file)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockEditorViewModel)(nil).Open), file)
 }
 
 // SelectedConnection mocks base method.
