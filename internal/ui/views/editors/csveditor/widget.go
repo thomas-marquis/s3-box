@@ -12,6 +12,8 @@ type Widget struct {
 	widget.BaseWidget
 
 	editor *csvEditor
+
+	SaveBtn *widget.ToolbarAction
 }
 
 func newWidget(editor *csvEditor) *Widget {
@@ -70,7 +72,50 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 		}
 	}))
 
-	c := container.NewBorder(nil, nil,
+	loader := widget.NewProgressBarInfinite()
+	//var cancelBtn *widget.Button // TODO
+	loaderContainer := container.NewBorder(
+		nil, nil, nil,
+		nil, loader,
+	)
+	loader.Stop()
+	loaderContainer.Hide()
+
+	if isLoading, _ := w.editor.IsLoading.Get(); isLoading {
+		loader.Start()
+		loaderContainer.Show()
+	}
+
+	w.editor.IsLoading.AddListener(binding.NewDataListener(func() {
+		isLoading, _ := w.editor.IsLoading.Get()
+		if isLoading {
+			loaderContainer.Show()
+			loader.Start()
+		} else {
+			loaderContainer.Hide()
+			loader.Stop()
+		}
+	}))
+
+	w.SaveBtn = widget.NewToolbarAction(theme.DocumentSaveIcon(), func() {
+		w.editor.Save()
+	})
+	toolbar := widget.NewToolbar(w.SaveBtn)
+
+	top := container.NewBorder(nil, nil,
+		toolbar,
+		nil,
+	)
+
+	bottom := container.NewBorder(nil, nil,
+		//widget.NewButtonWithIcon("Save & Exit", theme.DocumentSaveIcon(), func() {
+		//	w.editor.SaveThenExit(textEntry.Text)
+		//}), nil,
+		nil, nil,
+		loaderContainer,
+	)
+
+	c := container.NewBorder(top, bottom,
 		nil, nil,
 		table)
 

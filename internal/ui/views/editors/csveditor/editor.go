@@ -20,8 +20,9 @@ type csvEditor struct {
 
 	bus event.Bus
 
-	Records binding.List[[]string]
-	Columns binding.List[csvColumn]
+	Records   binding.List[[]string]
+	Columns   binding.List[csvColumn]
+	IsLoading binding.Bool
 }
 
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
@@ -42,7 +43,10 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		Columns: binding.NewList[csvColumn](func(c1, c2 csvColumn) bool {
 			return c1 == c2
 		}),
+		IsLoading: binding.NewBool(),
 	}
+
+	ed.IsLoading.Set(true) //nolint:errcheck
 
 	return ed
 }
@@ -78,7 +82,8 @@ func (e *csvEditor) OnLoaded(fileContent directory.FileContent, err error) {
 	textSize := th.Size(theme.SizeNameText)
 
 	firstRow, _ := e.Records.GetValue(0)
-	for i := range len(firstRow) {
+	nbCols := len(firstRow)
+	for i := range nbCols {
 		col := csvColumn{}
 		for j := range nbRows {
 			row, _ := e.Records.GetValue(j)
@@ -89,11 +94,25 @@ func (e *csvEditor) OnLoaded(fileContent directory.FileContent, err error) {
 		}
 		e.Columns.Append(col) //nolint:errcheck
 	}
+	e.IsLoading.Set(false) //nolint:errcheck
+}
+
+func (e *csvEditor) Save() {
+	e.IsLoading.Set(true) //nolint:errcheck
+
+	e.bus.Publish(event.New(editor.SaveSucceeded{
+		File:    e.File(),
+		Content: "",
+	}))
 }
 
 func (e *csvEditor) OnSaved(newContent string, err error) {
-	//TODO implement me
-	panic("implement me")
+	e.IsLoading.Set(false) //nolint:errcheck
+
+	if err != nil {
+		// TODO
+		return
+	}
 }
 
 func (e *csvEditor) Close() bool {
