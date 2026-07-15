@@ -8,6 +8,10 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+const (
+	cellPadding = 50
+)
+
 type Widget struct {
 	widget.BaseWidget
 
@@ -46,12 +50,16 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			return nbLines, nbCols
 		},
 		func() fyne.CanvasObject {
-			cell := widget.NewEntry()
-			cell.Scroll = fyne.ScrollNone
-			cell.MultiLine = false
+			cell := newCellEntry(w.editor.Records)
+			cell.OnSave = w.editor.Save
+			cell.OnClose = func() {
+				w.editor.Close()
+			}
 			return cell
 		}, func(id widget.TableCellID, object fyne.CanvasObject) {
-			cell := object.(*widget.Entry)
+			cell := object.(*CellEntry)
+			cell.UpdateCoords(id.Row, id.Col)
+
 			rawVal, _ := w.editor.Records.GetValue(id.Row)
 			cellVal := rawVal[id.Col]
 			cell.SetText(cellVal)
@@ -68,15 +76,22 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 	w.editor.Columns.AddListener(binding.NewDataListener(func() {
 		cols, _ := w.editor.Columns.Get()
 		for i, col := range cols {
-			table.SetColumnWidth(i, col.Width+50)
+			table.SetColumnWidth(i, col.Width)
 		}
 	}))
 
 	loader := widget.NewProgressBarInfinite()
-	//var cancelBtn *widget.Button // TODO
+
+	var cancelBtn *widget.Button
+	cancelBtn = widget.NewButton("Cancel", func() {
+		cancelBtn.Disable()
+		w.editor.StatusLabel.Set("cancelling...") //nolint:errcheck
+		w.editor.Cancel()
+	})
+
 	loaderContainer := container.NewBorder(
 		nil, nil, nil,
-		nil, loader,
+		cancelBtn, loader,
 	)
 	loader.Stop()
 	loaderContainer.Hide()
@@ -104,13 +119,10 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 
 	top := container.NewBorder(nil, nil,
 		toolbar,
-		nil,
+		widget.NewLabelWithData(w.editor.StatusLabel),
 	)
 
 	bottom := container.NewBorder(nil, nil,
-		//widget.NewButtonWithIcon("Save & Exit", theme.DocumentSaveIcon(), func() {
-		//	w.editor.SaveThenExit(textEntry.Text)
-		//}), nil,
 		nil, nil,
 		loaderContainer,
 	)

@@ -1,14 +1,35 @@
 package csveditor
 
 import (
+	"context"
 	"encoding/csv"
+	"fmt"
+	"strings"
+	"sync"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
+)
+
+const (
+	sep = ","
+)
+
+var (
+	shortcutSave = desktop.CustomShortcut{
+		KeyName:  fyne.KeyS,
+		Modifier: fyne.KeyModifierControl,
+	}
+	shortcutQuit = desktop.CustomShortcut{
+		KeyName:  fyne.KeyQ,
+		Modifier: fyne.KeyModifierControl,
+	}
 )
 
 type csvColumn struct {
@@ -18,11 +39,14 @@ type csvColumn struct {
 type csvEditor struct {
 	editor.Base
 
-	bus event.Bus
+	bus        event.Bus
+	mu         sync.Mutex
+	cancelFunc func()
 
-	Records   binding.List[[]string]
-	Columns   binding.List[csvColumn]
-	IsLoading binding.Bool
+	Records     binding.List[[]string]
+	Columns     binding.List[csvColumn]
+	IsLoading   binding.Bool
+	StatusLabel binding.String
 }
 
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
@@ -43,10 +67,18 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		Columns: binding.NewList[csvColumn](func(c1, c2 csvColumn) bool {
 			return c1 == c2
 		}),
-		IsLoading: binding.NewBool(),
+		IsLoading:   binding.NewBool(),
+		StatusLabel: binding.NewString(),
 	}
 
 	ed.IsLoading.Set(true) //nolint:errcheck
+
+	w.Canvas().AddShortcut(&shortcutQuit, func(fyne.Shortcut) {
+		ed.Close()
+	})
+	w.Canvas().AddShortcut(&shortcutSave, func(fyne.Shortcut) {
+		ed.Save()
+	})
 
 	return ed
 }
@@ -87,9 +119,9 @@ func (e *csvEditor) OnLoaded(fileContent directory.FileContent, err error) {
 		col := csvColumn{}
 		for j := range nbRows {
 			row, _ := e.Records.GetValue(j)
-			ts := fyne.MeasureText(row[i], textSize, fyne.TextStyle{})
-			if col.Width < ts.Width {
-				col.Width = ts.Width
+			cw := colWidth(row[i], textSize)
+			if col.Width < cw-cellPadding {
+				col.Width = cw
 			}
 		}
 		e.Columns.Append(col) //nolint:errcheck
@@ -98,23 +130,65 @@ func (e *csvEditor) OnLoaded(fileContent directory.FileContent, err error) {
 }
 
 func (e *csvEditor) Save() {
-	e.IsLoading.Set(true) //nolint:errcheck
+	e.IsLoading.Set(true)          //nolint:errcheck
+	e.StatusLabel.Set("Saving...") //nolint:errcheck
 
-	e.bus.Publish(event.New(editor.SaveSucceeded{
+	ctx, cancel := context.WithCancel(context.Background())
+	e.mu.Lock()
+	e.cancelFunc = cancel
+	e.mu.Unlock()
+
+	e.bus.Publish(event.New(editor.SaveTriggered{
 		File:    e.File(),
-		Content: "",
-	}))
+		Content: e.getContent(),
+	}, event.WithContext(ctx)))
 }
 
 func (e *csvEditor) OnSaved(newContent string, err error) {
 	e.IsLoading.Set(false) //nolint:errcheck
 
 	if err != nil {
-		// TODO
+		e.StatusLabel.Set("error (unsaved)") //nolint:errcheck
 		return
 	}
+
+	e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
 }
 
 func (e *csvEditor) Close() bool {
+	e.Cancel()
+	e.Window().Close() // force close
 	return true
+}
+
+func (e *csvEditor) Cancel() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if e.cancelFunc == nil {
+		return
+	}
+	e.cancelFunc()
+	e.cancelFunc = nil
+}
+
+func (e *csvEditor) getContent() string {
+	if e.Records.Length() == 0 {
+		return ""
+	}
+
+	records, _ := e.Records.Get() //nolint:errcheck
+	builder := strings.Builder{}
+	for _, row := range records {
+		for _, cell := range row {
+			builder.WriteString(cell)
+			builder.WriteString(",")
+		}
+		builder.WriteString("\n")
+	}
+	return builder.String()
+}
+
+func colWidth(text string, textSize float32) float32 {
+	return fyne.MeasureText(text, textSize, fyne.TextStyle{}).Width + cellPadding
 }
