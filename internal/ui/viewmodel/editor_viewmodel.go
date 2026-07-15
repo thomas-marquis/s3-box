@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	"fyne.io/fyne/v2"
@@ -11,6 +12,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
 )
@@ -24,7 +26,7 @@ type EditorViewModel interface {
 
 	SelectedConnection() *connection_deck.Connection
 
-	RegisterEditorFactory(initializer editor.Initializer)
+	RegisterEditorFactory(name string, initializer editor.Initializer)
 
 	// Open opens the given file in a new editor window.
 	// Returns an ErrAlreadyOpened error if the file is already opened.
@@ -41,7 +43,7 @@ type editorViewModelImpl struct {
 	openedEditors      map[string]editor.Editor
 	loadedContents     map[string]directory.FileContent
 	selectedConnection *connection_deck.Connection
-	editorFactory      editor.Initializer
+	editorFactories    map[string]editor.Initializer
 
 	bus      event.Bus
 	notifier notification.Repository
@@ -58,7 +60,10 @@ func NewEditorViewModel(
 		bus:                bus,
 		notifier:           notifier,
 		selectedConnection: initialConnection,
-		editorFactory:      texteditor.New,
+		editorFactories: map[string]editor.Initializer{
+			"text": texteditor.New,
+			"csv":  csveditor.New,
+		},
 	}
 
 	bus.Subscribe().
@@ -83,8 +88,8 @@ func (v *editorViewModelImpl) SelectedConnection() *connection_deck.Connection {
 	return v.selectedConnection
 }
 
-func (v *editorViewModelImpl) RegisterEditorFactory(initializer editor.Initializer) {
-	v.editorFactory = initializer
+func (v *editorViewModelImpl) RegisterEditorFactory(name string, initializer editor.Initializer) {
+	v.editorFactories[name] = initializer
 }
 
 func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) {
@@ -98,7 +103,14 @@ func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) 
 	}
 
 	newWin := fyne.CurrentApp().NewWindow(file.Name().String())
-	e := v.editorFactory(v.bus, newWin, file)
+
+	var e editor.Editor
+	if strings.HasSuffix(file.Name().String(), ".csv") {
+		e = v.editorFactories["csv"](v.bus, newWin, file)
+	} else {
+		e = v.editorFactories["text"](v.bus, newWin, file)
+	}
+
 	v.openedEditors[file.FullPath()] = e
 
 	ctx, cancel := context.WithCancel(context.Background())

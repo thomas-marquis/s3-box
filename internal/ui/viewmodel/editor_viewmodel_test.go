@@ -69,7 +69,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 			Times(1)
 
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
-		vm.RegisterEditorFactory(edFactory)
+		vm.RegisterEditorFactory("text", edFactory)
 
 		var file *directory.File
 		testutil.MakeDirectory(t, "",
@@ -129,7 +129,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		}).AnyTimes()
 
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
-		vm.RegisterEditorFactory(edFactory)
+		vm.RegisterEditorFactory("text", edFactory)
 
 		var file *directory.File
 		testutil.MakeDirectory(t, "",
@@ -320,7 +320,7 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 		}).AnyTimes()
 
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
-		vm.RegisterEditorFactory(mockEditorFactory)
+		vm.RegisterEditorFactory("text", mockEditorFactory)
 
 		var file1, file2, file3 *directory.File
 		testutil.MakeDirectory(t, "",
