@@ -85,7 +85,9 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 	ed.IsLoading.Set(true) //nolint:errcheck
 
 	w.Canvas().AddShortcut(&shortcutQuit, func(fyne.Shortcut) {
-		ed.closer.Close() //nolint:errcheck
+		if err := ed.closer.Close(); err != nil {
+			ed.StatusLabel.Set("error (unclosed)") //nolint:errcheck
+		}
 	})
 	w.Canvas().AddShortcut(&shortcutSave, func(fyne.Shortcut) {
 		ed.Save()

@@ -21,11 +21,12 @@ type Editor interface {
 // Closable represent an editor that can be closed properly by the main application.
 type Closable interface {
 	// BeforeClose is called right before the editor is closed externally (from click on the cross button or via the main application).
-	// The callback is called with true if the editor is ready to be closed (modifications saved, etc.), or returns false otherwise.
+	// The callback must be called with ready=true if the editor is ready to be closed (modifications saved, etc.), or with false otherwise.
 	// This method MUST NOT call Window.Close().
 	BeforeClose(cb func(ready bool))
 
 	// SetCloser register an io.Closer object that the editor can use to get closed itself.
+	// This method is called before all others on the editor initialization.
 	SetCloser(closer io.Closer)
 }
 

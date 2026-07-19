@@ -34,12 +34,12 @@ func newCellEntry(records binding.List[[]string]) *CellEntry {
 	th := e.Theme()
 	textSize := th.Size(theme.SizeNameText)
 
-	var loaded atomic.Bool
-	loaded.Store(false)
+	var initialized atomic.Bool
+	initialized.Store(false)
 
 	val.AddListener(binding.NewDataListener(func() {
-		if !loaded.Load() {
-			loaded.Store(true)
+		if !initialized.Load() {
+			initialized.Store(true)
 			return
 		}
 
