@@ -2,7 +2,9 @@ package csveditor
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/csv"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"sync"
@@ -39,15 +41,21 @@ type csvColumn struct {
 type csvEditor struct {
 	editor.Base
 
-	bus        event.Bus
-	mu         sync.Mutex
-	cancelFunc func()
+	bus         event.Bus
+	mu          sync.Mutex
+	cancelFunc  func()
+	contentHash string
 
-	Records     binding.List[[]string]
-	Columns     binding.List[csvColumn]
-	IsLoading   binding.Bool
-	StatusLabel binding.String
+	Records      binding.List[[]string]
+	Columns      binding.List[csvColumn]
+	IsLoading    binding.Bool
+	StatusLabel  binding.String
+	ConfirmClose func(onConfirm func(confirmed bool))
 }
+
+var (
+	_ editor.Closable = (*csvEditor)(nil)
+)
 
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 	ed := &csvEditor{
@@ -67,8 +75,9 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		Columns: binding.NewList[csvColumn](func(c1, c2 csvColumn) bool {
 			return c1 == c2
 		}),
-		IsLoading:   binding.NewBool(),
-		StatusLabel: binding.NewString(),
+		IsLoading:    binding.NewBool(),
+		StatusLabel:  binding.NewString(),
+		ConfirmClose: func(onConfirm func(confirmed bool)) {},
 	}
 
 	ed.IsLoading.Set(true) //nolint:errcheck
@@ -109,6 +118,8 @@ func (e *csvEditor) OnLoaded(fileContent directory.FileContent, err error) {
 	if e.Records.Length() == 0 {
 		return
 	}
+
+	e.updateContentHash(e.getContent())
 
 	th := fyne.CurrentApp().Settings().Theme()
 	textSize := th.Size(theme.SizeNameText)
@@ -152,13 +163,21 @@ func (e *csvEditor) OnSaved(newContent string, err error) {
 		return
 	}
 
+	e.updateContentHash(newContent)
 	e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
 }
 
-func (e *csvEditor) Close() bool {
+func (e *csvEditor) BeforeClose(cb func(ready bool)) {
+	if e.HasChanged() {
+		e.ConfirmClose(func(confirmed bool) {
+			e.Cancel()
+			cb(confirmed)
+		})
+		return
+	}
+
 	e.Cancel()
-	e.Window().Close() // force close
-	return true
+	cb(true)
 }
 
 func (e *csvEditor) Cancel() {
@@ -172,6 +191,12 @@ func (e *csvEditor) Cancel() {
 	e.cancelFunc = nil
 }
 
+func (e *csvEditor) HasChanged() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.contentHash != sha256Hex(e.getContent())
+}
+
 func (e *csvEditor) getContent() string {
 	if e.Records.Length() == 0 {
 		return ""
@@ -182,13 +207,24 @@ func (e *csvEditor) getContent() string {
 	for _, row := range records {
 		for _, cell := range row {
 			builder.WriteString(cell)
-			builder.WriteString(",")
+			builder.WriteString(sep)
 		}
 		builder.WriteString("\n")
 	}
 	return builder.String()
 }
 
+func (e *csvEditor) updateContentHash(newContent string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.contentHash = sha256Hex(newContent)
+}
+
 func colWidth(text string, textSize float32) float32 {
 	return fyne.MeasureText(text, textSize, fyne.TextStyle{}).Width + cellPadding
+}
+
+func sha256Hex(s string) string {
+	sum := sha256.Sum256([]byte(s)) // [32]byte
+	return hex.EncodeToString(sum[:])
 }

@@ -41,20 +41,6 @@ func (m *MockEditor) EXPECT() *MockEditorMockRecorder {
 	return m.recorder
 }
 
-// Close mocks base method.
-func (m *MockEditor) Close() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Close")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// Close indicates an expected call of Close.
-func (mr *MockEditorMockRecorder) Close() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockEditor)(nil).Close))
-}
-
 // CreateWidget mocks base method.
 func (m *MockEditor) CreateWidget() fyne.CanvasObject {
 	m.ctrl.T.Helper()

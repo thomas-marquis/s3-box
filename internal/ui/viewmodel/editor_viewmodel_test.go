@@ -28,6 +28,11 @@ const (
 	fakeBucketName      = "test-bucket"
 )
 
+type ClosableEditor interface {
+	editor.Editor
+	editor.Closable
+}
+
 func TestEditorViewModelImpl_Open(t *testing.T) {
 	fakeConnID := connection_deck.NewConnectionID()
 	fakeDeck := connection_deck.New()
@@ -289,7 +294,7 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 		connection_deck.WithID(fakeConnID)).
 		Payload().(connection_deck.CreateConnectionTriggered).Connection()
 
-	t.Run("should close opened file depending on the editor feedback", func(t *testing.T) {
+	t.Run("should close opened file depending on the editor feedback when editors are all closable", func(t *testing.T) {
 		// Given
 		fyne_test.NewApp()
 		fyne_test.NewWindow(nil)
@@ -300,13 +305,16 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 		mockNotifier.EXPECT().NotifyInfo(gomock.Any(), gomock.Any()).AnyTimes()
 
 		mockEditorFactory := func(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
-			mockEditor := mock_editor.NewMockEditor(ctrl)
-			if file.Name() == "test1.txt" {
-				mockEditor.EXPECT().Close().Return(true).Times(1)
-			} else if file.Name() == "test2.txt" {
-				mockEditor.EXPECT().Close().Return(false).Times(1)
-			} else {
-				mockEditor.EXPECT().Close().Times(0)
+			mockEditor := mock_editor.NewMockClosableEditor(ctrl)
+			mockEditor.EXPECT().Window().Return(w).AnyTimes()
+
+			switch file.Name() {
+			case "test1.txt":
+				mockEditor.EXPECT().BeforeClose().Return(true).Times(1)
+			case "test2.txt":
+				mockEditor.EXPECT().BeforeClose().Return(false).Times(1)
+			default:
+				mockEditor.EXPECT().BeforeClose().Times(0)
 			}
 			return mockEditor
 		}

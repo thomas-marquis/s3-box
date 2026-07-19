@@ -114,10 +114,17 @@ func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) 
 	v.openedEditors[file.FullPath()] = e
 
 	ctx, cancel := context.WithCancel(context.Background())
-	newWin.SetOnClosed(func() {
-		v.Close(file)
-		cancel()
-	})
+
+	if _, ok := e.(editor.Closable); ok {
+		newWin.SetCloseIntercept(func() {
+			v.closeEditor(file, cancel)
+		})
+	} else {
+		newWin.SetOnClosed(func() {
+			cancel()
+			v.unregisterEditor(file)
+		})
+	}
 
 	v.bus.Publish(file.Load(v.selectedConnection.ID(), event.WithContext(ctx)))
 
@@ -170,14 +177,33 @@ func (v *editorViewModelImpl) IsOpen(file *directory.File) bool {
 }
 
 func (v *editorViewModelImpl) Close(file *directory.File) {
-	path := file.FullPath()
-	ed, ok := v.openedEditors[path]
+	v.closeEditor(file, nil)
+}
+
+func (v *editorViewModelImpl) closeEditor(file *directory.File, onClose func()) {
+	ed, ok := v.openedEditors[file.FullPath()]
 	if !ok {
 		return
 	}
-	if !ed.Close() {
-		v.notifier.NotifyInfo("Editor hasn't been closed",
-			fmt.Sprintf("File %s has unsaved changes.", file.Name()))
+
+	if closable, ok := ed.(editor.Closable); ok {
+		closable.BeforeClose(func(ready bool) {
+			if ready {
+				if onClose != nil {
+					onClose()
+				}
+				ed.Window().Close()
+				v.unregisterEditor(file)
+			} else {
+				ed.Window().RequestFocus()
+			}
+		})
+	}
+}
+
+func (v *editorViewModelImpl) unregisterEditor(file *directory.File) {
+	path := file.FullPath()
+	if !v.IsOpen(file) {
 		return
 	}
 	delete(v.openedEditors, path)

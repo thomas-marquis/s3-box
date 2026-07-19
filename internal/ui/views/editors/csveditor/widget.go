@@ -4,6 +4,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -25,6 +26,12 @@ func newWidget(editor *csvEditor) *Widget {
 		editor: editor,
 	}
 
+	editor.ConfirmClose = func(onConfirm func(confirmed bool)) {
+		dialog.ShowConfirm("Confirm close", "Are you sure you want to close the editor?", func(ok bool) {
+			onConfirm(ok)
+		}, editor.Window())
+	}
+
 	w.ExtendBaseWidget(w)
 	return w
 }
@@ -34,7 +41,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 
 	var table *widget.Table
 	table = widget.NewTable(
-		func() (rows int, cols int) {
+		func() (int, int) {
 			nbLines := w.editor.Records.Length()
 			if nbLines == 0 {
 				return 0, 0
@@ -56,7 +63,8 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 				w.editor.Close()
 			}
 			return cell
-		}, func(id widget.TableCellID, object fyne.CanvasObject) {
+		},
+		func(id widget.TableCellID, object fyne.CanvasObject) {
 			cell := object.(*CellEntry)
 			cell.UpdateCoords(id.Row, id.Col)
 
@@ -70,6 +78,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 		})
 
 	table.HideSeparators = true
+	table.Hide()
 
 	w.editor.Records.AddListener(binding.NewDataListener(table.Refresh))
 
@@ -99,6 +108,8 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 	if isLoading, _ := w.editor.IsLoading.Get(); isLoading {
 		loader.Start()
 		loaderContainer.Show()
+	} else {
+		table.Show()
 	}
 
 	w.editor.IsLoading.AddListener(binding.NewDataListener(func() {
@@ -109,12 +120,11 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 		} else {
 			loaderContainer.Hide()
 			loader.Stop()
+			table.Show()
 		}
 	}))
 
-	w.SaveBtn = widget.NewToolbarAction(theme.DocumentSaveIcon(), func() {
-		w.editor.Save()
-	})
+	w.SaveBtn = widget.NewToolbarAction(theme.DocumentSaveIcon(), w.editor.Save)
 	toolbar := widget.NewToolbar(w.SaveBtn)
 
 	top := container.NewBorder(nil, nil,
