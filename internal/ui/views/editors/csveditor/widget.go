@@ -39,8 +39,7 @@ func newWidget(editor *csvEditor) *Widget {
 func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
-	var table *widget.Table
-	table = widget.NewTable(
+	table := widget.NewTable(
 		func() (int, int) {
 			nbLines := w.editor.Records.Length()
 			if nbLines == 0 {

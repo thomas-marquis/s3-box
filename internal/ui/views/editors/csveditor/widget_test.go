@@ -2,7 +2,6 @@ package csveditor_test
 
 import (
 	"testing"
-	"time"
 
 	"fyne.io/fyne/v2"
 	fyne_test "fyne.io/fyne/v2/test"
@@ -11,10 +10,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
 	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
 	"go.uber.org/mock/gomock"
-)
-
-var (
-	lastModified = time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 )
 
 const (
