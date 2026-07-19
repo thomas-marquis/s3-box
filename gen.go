@@ -15,6 +15,7 @@ import _ "go.uber.org/mock/gomock"
 
 // Editor
 //go:generate mockgen -package mock_editor -destination mocks/editor/editor.go github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor Editor
+//go:generate mockgen -package mock_editor -destination mocks/editor/closable.go -source internal/ui/viewmodel/editor_viewmodel_test.go ClosableEditor
 
 // Global
 //go:generate mockgen -package mocks_appcontext -destination mocks/context/appcontext.go github.com/thomas-marquis/s3-box/internal/ui/app/context AppContext

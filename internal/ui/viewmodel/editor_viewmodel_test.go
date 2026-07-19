@@ -28,6 +28,11 @@ const (
 	fakeBucketName      = "test-bucket"
 )
 
+type ClosableEditor interface {
+	editor.Editor
+	editor.Closable
+}
+
 func TestEditorViewModelImpl_Open(t *testing.T) {
 	fakeConnID := connection_deck.NewConnectionID()
 	fakeDeck := connection_deck.New()
@@ -69,7 +74,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 			Times(1)
 
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
-		vm.RegisterEditorFactory(edFactory)
+		vm.RegisterEditorFactory("text", edFactory)
 
 		var file *directory.File
 		testutil.MakeDirectory(t, "",
@@ -129,7 +134,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		}).AnyTimes()
 
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
-		vm.RegisterEditorFactory(edFactory)
+		vm.RegisterEditorFactory("text", edFactory)
 
 		var file *directory.File
 		testutil.MakeDirectory(t, "",
@@ -289,7 +294,7 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 		connection_deck.WithID(fakeConnID)).
 		Payload().(connection_deck.CreateConnectionTriggered).Connection()
 
-	t.Run("should close opened file depending on the editor feedback", func(t *testing.T) {
+	t.Run("should close opened file depending on the editor feedback when editors are all closable", func(t *testing.T) {
 		// Given
 		fyne_test.NewApp()
 		fyne_test.NewWindow(nil)
@@ -300,13 +305,17 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 		mockNotifier.EXPECT().NotifyInfo(gomock.Any(), gomock.Any()).AnyTimes()
 
 		mockEditorFactory := func(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
-			mockEditor := mock_editor.NewMockEditor(ctrl)
-			if file.Name() == "test1.txt" {
-				mockEditor.EXPECT().Close().Return(true).Times(1)
-			} else if file.Name() == "test2.txt" {
-				mockEditor.EXPECT().Close().Return(false).Times(1)
-			} else {
-				mockEditor.EXPECT().Close().Times(0)
+			mockEditor := mock_editor.NewMockClosableEditor(ctrl)
+			mockEditor.EXPECT().Window().Return(w).AnyTimes()
+			mockEditor.EXPECT().SetCloser(gomock.Any()).Times(1)
+
+			switch file.Name() {
+			case "test1.txt":
+				mockEditor.EXPECT().BeforeClose(gomock.Any()).Do(func(cb func(bool)) { cb(true) }).Times(1)
+			case "test2.txt":
+				mockEditor.EXPECT().BeforeClose(gomock.Any()).Do(func(cb func(bool)) { cb(false) }).Times(1)
+			default:
+				mockEditor.EXPECT().BeforeClose(gomock.Any()).Times(0)
 			}
 			return mockEditor
 		}
@@ -320,7 +329,7 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 		}).AnyTimes()
 
 		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
-		vm.RegisterEditorFactory(mockEditorFactory)
+		vm.RegisterEditorFactory("text", mockEditorFactory)
 
 		var file1, file2, file3 *directory.File
 		testutil.MakeDirectory(t, "",
@@ -342,6 +351,55 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 		assert.False(t, vm.IsOpen(file1))
 		assert.True(t, vm.IsOpen(file2))
 		assert.True(t, vm.IsOpen(file3))
+	})
+
+	t.Run("should close then reopen a closable editor", func(t *testing.T) {
+		fyne_test.NewApp()
+		fyne_test.NewWindow(nil)
+
+		ctrl := gomock.NewController(t)
+		mockBus := mocks_event.NewMockBus(ctrl)
+		mockNotifier := mocks_notification.NewMockRepository(ctrl)
+		mockNotifier.EXPECT().NotifyInfo(gomock.Any(), gomock.Any()).AnyTimes()
+
+		var factoryCallCount int
+		mockEditorFactory := func(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
+			factoryCallCount++
+			mockEditor := mock_editor.NewMockClosableEditor(ctrl)
+			mockEditor.EXPECT().Window().Return(w).AnyTimes()
+			mockEditor.EXPECT().SetCloser(gomock.Any()).Times(1)
+			mockEditor.EXPECT().BeforeClose(gomock.Any()).Do(func(cb func(bool)) { cb(true) }).AnyTimes()
+			return mockEditor
+		}
+
+		eventsChan := make(chan event.Event)
+		defer close(eventsChan)
+
+		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
+		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
+			eventsChan <- event
+		}).AnyTimes()
+
+		vm := viewmodel.NewEditorViewModel(mockBus, mockNotifier, conn)
+		vm.RegisterEditorFactory("text", mockEditorFactory)
+
+		var file1 *directory.File
+		testutil.MakeDirectory(t, "",
+			testutil.AsRoot(), testutil.WithConnectionId(conn.ID()),
+			testutil.WithFiles("test1.txt"),
+			testutil.FileTo("test1.txt", &file1))
+
+		// When & Then
+		vm.Open(file1) // nolint:errcheck
+		assert.True(t, vm.IsOpen(file1))
+
+		vm.Close(file1)
+		assert.False(t, vm.IsOpen(file1))
+
+		vm.Open(file1) // nolint:errcheck
+		assert.True(t, vm.IsOpen(file1))
+
+		assert.Equal(t, 2, factoryCallCount)
 	})
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	"fyne.io/fyne/v2"
@@ -11,6 +12,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
 )
@@ -24,7 +26,7 @@ type EditorViewModel interface {
 
 	SelectedConnection() *connection_deck.Connection
 
-	RegisterEditorFactory(initializer editor.Initializer)
+	RegisterEditorFactory(name string, initializer editor.Initializer)
 
 	// Open opens the given file in a new editor window.
 	// Returns an ErrAlreadyOpened error if the file is already opened.
@@ -41,7 +43,7 @@ type editorViewModelImpl struct {
 	openedEditors      map[string]editor.Editor
 	loadedContents     map[string]directory.FileContent
 	selectedConnection *connection_deck.Connection
-	editorFactory      editor.Initializer
+	editorFactories    map[string]editor.Initializer
 
 	bus      event.Bus
 	notifier notification.Repository
@@ -58,7 +60,10 @@ func NewEditorViewModel(
 		bus:                bus,
 		notifier:           notifier,
 		selectedConnection: initialConnection,
-		editorFactory:      texteditor.New,
+		editorFactories: map[string]editor.Initializer{
+			"text": texteditor.New,
+			"csv":  csveditor.New,
+		},
 	}
 
 	bus.Subscribe().
@@ -83,8 +88,19 @@ func (v *editorViewModelImpl) SelectedConnection() *connection_deck.Connection {
 	return v.selectedConnection
 }
 
-func (v *editorViewModelImpl) RegisterEditorFactory(initializer editor.Initializer) {
-	v.editorFactory = initializer
+func (v *editorViewModelImpl) RegisterEditorFactory(name string, initializer editor.Initializer) {
+	v.editorFactories[name] = initializer
+}
+
+type editorCloser struct {
+	vm      *editorViewModelImpl
+	file    *directory.File
+	onClose func()
+}
+
+func (c *editorCloser) Close() error {
+	c.vm.closeEditor(c.file, c.onClose)
+	return nil
 }
 
 func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) {
@@ -98,14 +114,29 @@ func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) 
 	}
 
 	newWin := fyne.CurrentApp().NewWindow(file.Name().String())
-	e := v.editorFactory(v.bus, newWin, file)
+
+	var e editor.Editor
+	if strings.HasSuffix(file.Name().String(), ".csv") {
+		e = v.editorFactories["csv"](v.bus, newWin, file)
+	} else {
+		e = v.editorFactories["text"](v.bus, newWin, file)
+	}
+
 	v.openedEditors[file.FullPath()] = e
 
 	ctx, cancel := context.WithCancel(context.Background())
-	newWin.SetOnClosed(func() {
-		v.Close(file)
-		cancel()
-	})
+
+	if closable, ok := e.(editor.Closable); ok {
+		newWin.SetCloseIntercept(func() {
+			v.closeEditor(file, cancel)
+		})
+		closable.SetCloser(&editorCloser{v, file, cancel})
+	} else {
+		newWin.SetOnClosed(func() {
+			cancel()
+			v.unregisterEditor(file)
+		})
+	}
 
 	v.bus.Publish(file.Load(v.selectedConnection.ID(), event.WithContext(ctx)))
 
@@ -158,14 +189,33 @@ func (v *editorViewModelImpl) IsOpen(file *directory.File) bool {
 }
 
 func (v *editorViewModelImpl) Close(file *directory.File) {
-	path := file.FullPath()
-	ed, ok := v.openedEditors[path]
+	v.closeEditor(file, nil)
+}
+
+func (v *editorViewModelImpl) closeEditor(file *directory.File, onClose func()) {
+	ed, ok := v.openedEditors[file.FullPath()]
 	if !ok {
 		return
 	}
-	if !ed.Close() {
-		v.notifier.NotifyInfo("Editor hasn't been closed",
-			fmt.Sprintf("File %s has unsaved changes.", file.Name()))
+
+	if closable, ok := ed.(editor.Closable); ok {
+		closable.BeforeClose(func(ready bool) {
+			if ready {
+				if onClose != nil {
+					onClose()
+				}
+				ed.Window().Close()
+				v.unregisterEditor(file)
+			} else {
+				ed.Window().RequestFocus()
+			}
+		})
+	}
+}
+
+func (v *editorViewModelImpl) unregisterEditor(file *directory.File) {
+	path := file.FullPath()
+	if !v.IsOpen(file) {
 		return
 	}
 	delete(v.openedEditors, path)

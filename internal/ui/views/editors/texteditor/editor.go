@@ -28,7 +28,6 @@ type textEditor struct {
 
 	mu                   sync.Mutex
 	bus                  event.Bus
-	file                 *directory.File
 	contentHash          string
 	cancelFunc           func()
 	shouldCloseWhenSaved bool
@@ -41,7 +40,6 @@ func New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor 
 		StatusLabel: binding.NewString(),
 		IsLoading:   binding.NewBool(),
 		Err:         binding.NewItem(errors.Is),
-		file:        file,
 		bus:         bus,
 	}
 
@@ -84,7 +82,7 @@ func (e *textEditor) Save(content string) {
 	e.mu.Unlock()
 
 	e.bus.Publish(event.New(editor.SaveTriggered{
-		File:    e.file,
+		File:    e.File(),
 		Content: content,
 	}, event.WithContext(ctx)))
 }
