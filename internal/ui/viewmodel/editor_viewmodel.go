@@ -92,6 +92,17 @@ func (v *editorViewModelImpl) RegisterEditorFactory(name string, initializer edi
 	v.editorFactories[name] = initializer
 }
 
+type editorCloser struct {
+	vm      *editorViewModelImpl
+	file    *directory.File
+	onClose func()
+}
+
+func (c *editorCloser) Close() error {
+	c.vm.closeEditor(c.file, c.onClose)
+	return nil
+}
+
 func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) {
 	if v.selectedConnection == nil {
 		return nil, ErrNoConnectionSelected
@@ -115,10 +126,11 @@ func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) 
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	if _, ok := e.(editor.Closable); ok {
+	if closable, ok := e.(editor.Closable); ok {
 		newWin.SetCloseIntercept(func() {
 			v.closeEditor(file, cancel)
 		})
+		closable.SetCloser(&editorCloser{v, file, cancel})
 	} else {
 		newWin.SetOnClosed(func() {
 			cancel()

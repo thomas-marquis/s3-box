@@ -2,6 +2,7 @@ package csveditor
 
 import (
 	"errors"
+	"sync/atomic"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -33,7 +34,15 @@ func newCellEntry(records binding.List[[]string]) *CellEntry {
 	th := e.Theme()
 	textSize := th.Size(theme.SizeNameText)
 
+	var loaded atomic.Bool
+	loaded.Store(false)
+
 	val.AddListener(binding.NewDataListener(func() {
+		if !loaded.Load() {
+			loaded.Store(true)
+			return
+		}
+
 		text, err := val.Get()
 		if err != nil {
 			return
@@ -71,18 +80,6 @@ func (e *CellEntry) UpdateCoords(row, col int) {
 	e.row = row
 	e.col = col
 }
-
-//func (e *CellEntry) Value() (string, error) {
-//	val, err := e.records.GetValue(e.row)
-//	if err != nil {
-//		return "", err
-//	}
-//	if len(val) <= e.col {
-//		return "", errOutOfBounds
-//	}
-//
-//	return val[e.col], nil
-//}
 
 func (e *CellEntry) updateRecord(text string) error {
 	row, err := e.records.GetValue(e.row)

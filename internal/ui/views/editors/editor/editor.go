@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"io"
+
 	"fyne.io/fyne/v2"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
@@ -22,6 +24,9 @@ type Closable interface {
 	// The callback is called with true if the editor is ready to be closed (modifications saved, etc.), or returns false otherwise.
 	// This method MUST NOT call Window.Close().
 	BeforeClose(cb func(ready bool))
+
+	// SetCloser register an io.Closer object that the editor can use to get closed itself.
+	SetCloser(closer io.Closer)
 }
 
 type Base struct {
@@ -42,8 +47,4 @@ func (b *Base) Window() fyne.Window {
 
 func (b *Base) File() *directory.File {
 	return b.file
-}
-
-func (b *Base) Close() {
-	b.window.Close()
 }

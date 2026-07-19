@@ -10,6 +10,7 @@
 package mock_editor
 
 import (
+	io "io"
 	reflect "reflect"
 
 	fyne "fyne.io/fyne/v2"
@@ -103,6 +104,18 @@ func (m *MockClosableEditor) OnSaved(newContent string, err error) {
 func (mr *MockClosableEditorMockRecorder) OnSaved(newContent, err any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnSaved", reflect.TypeOf((*MockClosableEditor)(nil).OnSaved), newContent, err)
+}
+
+// SetCloser mocks base method.
+func (m *MockClosableEditor) SetCloser(closer io.Closer) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetCloser", closer)
+}
+
+// SetCloser indicates an expected call of SetCloser.
+func (mr *MockClosableEditorMockRecorder) SetCloser(closer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCloser", reflect.TypeOf((*MockClosableEditor)(nil).SetCloser), closer)
 }
 
 // Window mocks base method.

@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"time"
@@ -51,6 +52,7 @@ type csvEditor struct {
 	IsLoading    binding.Bool
 	StatusLabel  binding.String
 	ConfirmClose func(onConfirm func(confirmed bool))
+	closer       io.Closer
 }
 
 var (
@@ -83,7 +85,7 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 	ed.IsLoading.Set(true) //nolint:errcheck
 
 	w.Canvas().AddShortcut(&shortcutQuit, func(fyne.Shortcut) {
-		ed.Close()
+		ed.closer.Close() //nolint:errcheck
 	})
 	w.Canvas().AddShortcut(&shortcutSave, func(fyne.Shortcut) {
 		ed.Save()
@@ -97,9 +99,9 @@ func (e *csvEditor) CreateWidget() fyne.CanvasObject {
 }
 
 func (e *csvEditor) OnLoaded(fileContent directory.FileContent, err error) {
+	defer e.IsLoading.Set(false) //nolint:errcheck
 	if err != nil {
-
-		// TODO
+		e.StatusLabel.Set("error (unloaded)") //nolint:errcheck
 		return
 	}
 
@@ -137,7 +139,6 @@ func (e *csvEditor) OnLoaded(fileContent directory.FileContent, err error) {
 		}
 		e.Columns.Append(col) //nolint:errcheck
 	}
-	e.IsLoading.Set(false) //nolint:errcheck
 }
 
 func (e *csvEditor) Save() {
@@ -178,6 +179,21 @@ func (e *csvEditor) BeforeClose(cb func(ready bool)) {
 
 	e.Cancel()
 	cb(true)
+}
+
+func (e *csvEditor) SetCloser(closer io.Closer) {
+	e.closer = closer
+}
+
+// Close triggers a close from within the editor
+func (e *csvEditor) Close() {
+	e.BeforeClose(func(ready bool) {
+		if ready {
+			if err := e.closer.Close(); err != nil {
+				e.StatusLabel.Set("error (unclosed)") //nolint:errcheck
+			}
+		}
+	})
 }
 
 func (e *csvEditor) Cancel() {
