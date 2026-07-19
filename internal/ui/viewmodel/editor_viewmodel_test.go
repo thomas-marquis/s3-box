@@ -310,11 +310,11 @@ func TestEditorViewModelImpl_Close(t *testing.T) {
 
 			switch file.Name() {
 			case "test1.txt":
-				mockEditor.EXPECT().BeforeClose().Return(true).Times(1)
+				mockEditor.EXPECT().BeforeClose(gomock.Any()).Do(func(cb func(bool)) { cb(true) }).Times(1)
 			case "test2.txt":
-				mockEditor.EXPECT().BeforeClose().Return(false).Times(1)
+				mockEditor.EXPECT().BeforeClose(gomock.Any()).Do(func(cb func(bool)) { cb(false) }).Times(1)
 			default:
-				mockEditor.EXPECT().BeforeClose().Times(0)
+				mockEditor.EXPECT().BeforeClose(gomock.Any()).Times(0)
 			}
 			return mockEditor
 		}
