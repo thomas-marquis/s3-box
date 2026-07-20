@@ -82,6 +82,8 @@ type ExplorerViewModel interface {
 	// DeleteFile removes a file from storage and updates the tree
 	DeleteFile(file *directory.File)
 
+	DeleteDirectory(dir *directory.Directory)
+
 	// UpdateLastDownloadLocation updates the last used save directory path
 	UpdateLastDownloadLocation(filePath string) error
 
@@ -189,7 +191,9 @@ func NewExplorerViewModel(
 		On(event.Is(directory.UserValidationAskedType), v.handleUserValidationRequest).
 		On(event.Is(directory.UserValidationRefusedType), v.handleUserValidationRefused).
 		On(event.Is(directory.UploadReadyType), v.handleUploadReady).
-		ListenWithWorkers(1)
+		On(event.Is(directory.DeleteFailedType), v.handleDeleteDirectoryFailure).
+		On(event.Is(directory.DeleteSucceededType), v.handleDeleteDirectorySuccess).
+		ListenWithWorkers(3)
 
 	return v
 }
@@ -510,6 +514,68 @@ func (v *explorerViewModelImpl) handleUploadReady(evt event.Event) {
 			BaseUri: localParentDirUri,
 		})
 	}
+}
+
+func (v *explorerViewModelImpl) DeleteDirectory(dir *directory.Directory) {
+	if directory.RootPath.Is(dir) {
+		v.errorMessage.Set("Cannot delete root directory") //nolint:errcheck
+		return
+	}
+
+	parent := dir.Parent()
+
+	evt, err := parent.RemoveSubDirectory(dir.Name())
+	if err != nil {
+		v.errorMessage.Set(err.Error()) //nolint:errcheck
+		return
+	}
+
+	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+
+	v.bus.Publish(evt)
+}
+
+func (v *explorerViewModelImpl) handleDeleteDirectorySuccess(evt event.Event) {
+	pl := evt.Payload().(directory.DeleteSucceeded)
+
+	if err := pl.Parent.Notify(evt); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+
+	if err := v.state.Explorer().RemoveNode(pl.Directory.Path().String()); err != nil {
+		v.bus.Publish(evt.NewFollowup(directory.DeleteFailed{
+			Err:       err,
+			Parent:    pl.Parent,
+			Directory: pl.Directory,
+		}))
+		return
+	}
+
+	if pl.Directory.Is(v.selectedDirectory) {
+		v.isSelectedDirLoading.Set(false) // nolint:errcheck
+	}
+
+	fyne.CurrentApp().SendNotification(fyne.NewNotification("Directory deleted",
+		fmt.Sprintf("Directory %s deleted", pl.Directory.Name())))
+	v.triggerStateListeners()
+}
+
+func (v *explorerViewModelImpl) handleDeleteDirectoryFailure(evt event.Event) {
+	pl := evt.Payload().(directory.DeleteFailed)
+	if err := pl.Parent.Notify(evt); err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+
+	if pl.Directory.Is(v.selectedDirectory) {
+		v.isSelectedDirLoading.Set(false) // nolint:errcheck
+	}
+
+	err := fmt.Errorf("error deleting directory: %w", pl.Err)
+	v.notifier.NotifyError(err)
+	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) DeleteFile(file *directory.File) {

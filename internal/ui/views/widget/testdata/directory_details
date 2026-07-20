@@ -1,8 +1,8 @@
-<canvas padded size="480x154">
+<canvas padded size="570x154">
 	<content>
-		<widget pos="4,4" size="472x146" type="*widget.DirectoryDetails">
-			<container size="472x146">
-				<container size="472x36">
+		<widget pos="4,4" size="562x146" type="*widget.DirectoryDetails">
+			<container size="562x146">
+				<container size="562x36">
 					<container size="45x36">
 						<widget size="20x36" type="*widget.Icon">
 							<image fillMode="contain" rsc="folderIcon" size="20x36" themed="foreground"/>
@@ -15,19 +15,19 @@
 							</widget>
 						</widget>
 					</container>
-					<widget pos="436,0" size="36x36" type="*widget.Button">
+					<widget pos="526,0" size="36x36" type="*widget.Button">
 						<rectangle fillColor="button" radius="4" size="36x36"/>
 						<rectangle size="36x36"/>
 						<image fillMode="contain" pos="8,8" rsc="contentCopyIcon" size="iconInlineSize" themed="foreground"/>
 					</widget>
 				</container>
-				<container pos="0,40" size="472x31">
-					<widget pos="0,10" size="472x1" type="*widget.Separator">
-						<rectangle fillColor="separator" size="472x1"/>
+				<container pos="0,40" size="562x31">
+					<widget pos="0,10" size="562x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="562x1"/>
 					</widget>
 				</container>
-				<container pos="0,75" size="472x36">
-					<widget pos="5,0" size="462x36" type="*widget.Toolbar">
+				<container pos="0,75" size="562x36">
+					<widget pos="5,0" size="552x36" type="*widget.Toolbar">
 						<widget size="87x36" type="*widget.Button">
 							<rectangle fillColor="disabled button" radius="4" size="87x36"/>
 							<rectangle size="87x36"/>
@@ -60,11 +60,19 @@
 							</widget>
 							<image fillMode="contain" pos="8,8" rsc="fileTextIcon" size="iconInlineSize" themed="disabled"/>
 						</widget>
+						<widget pos="466,0" size="85x36" type="*widget.Button">
+							<rectangle fillColor="disabled button" radius="4" size="85x36"/>
+							<rectangle size="85x36"/>
+							<widget pos="32,8" size="45x20" type="*widget.RichText">
+								<text alignment="center" bold color="disabled" size="45x19">Delete</text>
+							</widget>
+							<image fillMode="contain" pos="8,8" rsc="deleteIcon" size="iconInlineSize" themed="disabled"/>
+						</widget>
 					</widget>
 				</container>
-				<container pos="0,115" size="472x31">
-					<widget pos="0,10" size="472x1" type="*widget.Separator">
-						<rectangle fillColor="separator" size="472x1"/>
+				<container pos="0,115" size="562x31">
+					<widget pos="0,10" size="562x1" type="*widget.Separator">
+						<rectangle fillColor="separator" size="562x1"/>
 					</widget>
 				</container>
 			</container>

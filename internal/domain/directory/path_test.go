@@ -68,6 +68,7 @@ func TestPath_NewSubPath(t *testing.T) {
 		{"home/user/data", "project", "/home/user/data/project/"},
 		{"", "", "/"},
 		{directory.RootPath.String(), "user", "/user/"},
+		{"/mydir/", "subdir", "/mydir/subdir/"},
 	} {
 		t.Run(fmt.Sprintf("should append %s to %s", tc.NewSubPath, tc.In), func(t *testing.T) {
 			// Given

@@ -108,6 +108,18 @@ func (mr *MockExplorerViewModelMockRecorder) CurrentSelectedConnection() *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentSelectedConnection", reflect.TypeOf((*MockExplorerViewModel)(nil).CurrentSelectedConnection))
 }
 
+// DeleteDirectory mocks base method.
+func (m *MockExplorerViewModel) DeleteDirectory(dir *directory.Directory) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DeleteDirectory", dir)
+}
+
+// DeleteDirectory indicates an expected call of DeleteDirectory.
+func (mr *MockExplorerViewModelMockRecorder) DeleteDirectory(dir any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).DeleteDirectory), dir)
+}
+
 // DeleteFile mocks base method.
 func (m *MockExplorerViewModel) DeleteFile(file *directory.File) {
 	m.ctrl.T.Helper()
