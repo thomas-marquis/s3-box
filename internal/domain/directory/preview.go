@@ -237,7 +237,7 @@ func (m *materializeUpload) Materialize(strategy MaterializeStrategy) event.Even
 				func(evtCarrier event.Event, received []event.Event) event.Event {
 					return evtCarrier.NewFollowup(event.ItHappened{})
 				},
-				nil,
+				event.New(event.ItHappened{}),
 				carrier.WithTimeout(time.Second*120),
 			))
 		}

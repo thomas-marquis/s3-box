@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thomas-marquis/it-happened/carrier"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
@@ -314,49 +315,14 @@ func TestDirectory_RemoveFile(t *testing.T) {
 }
 
 func TestDirectory_RemoveSubDirectory(t *testing.T) {
-	t.Run("should create directory deleted event when subdirectory exists", func(t *testing.T) {
-		// Given
-		connID := testutil.FakeS3LikeConnectionId
-		dir := testutil.FakeNotLoadedRootDirectory(t)
-
-		subDir1, _ := directory.New(connID, "sub1", dir)
-		subDir2, _ := directory.New(connID, "sub2", dir)
-		loadEvt := event.New(directory.LoadSucceeded{Directory: dir, SubDirectories: []*directory.Directory{subDir1, subDir2}})
-
-		_, err := dir.Load()
-		require.NoError(t, err)
-		require.NoError(t, dir.Notify(loadEvt))
-
-		successEvt := event.New(directory.DeleteSucceeded{
-			Directory: subDir1,
-		})
-
-		// When
-		evt, err := dir.RemoveSubDirectory("sub1")
-
-		// Then
-		assert.NoError(t, err)
-		assert.Equal(t, directory.DeleteTriggeredType, evt.Type())
-		pl := evt.Payload().(directory.DeleteTriggered)
-		assert.Equal(t, dir, pl.Directory)
-		assert.Equal(t, subDir1.Path(), pl.DeletedDirPath)
-
-		assert.NoError(t, dir.Notify(successEvt))
-		resSubDirs := dir.SubDirectories()
-		assert.Len(t, resSubDirs, 1)
-	})
-
 	t.Run("should return error when subdirectory does not exist", func(t *testing.T) {
 		// Given
-		dir := testutil.FakeNotLoadedRootDirectory(t)
-
-		loadEvt := event.New(directory.LoadSucceeded{Directory: dir})
-		_, err := dir.Load()
-		require.NoError(t, err)
-		require.NoError(t, dir.Notify(loadEvt))
+		dir := testutil.MakeDirectory(t, "",
+			testutil.AsRoot(),
+			testutil.IsLoaded())
 
 		// When
-		_, err = dir.RemoveSubDirectory("missing")
+		_, err := dir.RemoveSubDirectory("missing")
 
 		// Then
 		assert.ErrorIs(t, err, directory.ErrNotFound)
@@ -365,30 +331,124 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 	t.Run("shouldn't remove the subdirectory when a failure event is emitted", func(t *testing.T) {
 		// Given
 		connID := testutil.FakeS3LikeConnectionId
-		dir := testutil.FakeNotLoadedRootDirectory(t)
 
-		subDir1, _ := directory.New(connID, "sub1", dir)
-		subDir2, _ := directory.New(connID, "sub2", dir)
-		loadEvt := event.New(directory.LoadSucceeded{Directory: dir, SubDirectories: []*directory.Directory{subDir1, subDir2}})
+		var subDir1, subDir2 *directory.Directory
+		dir := testutil.MakeDirectory(t, "",
+			testutil.AsRoot(),
+			testutil.WithConnectionId(connID),
+			testutil.WithSubDirectory("sub1",
+				testutil.To(&subDir1)),
+			testutil.WithSubDirectory("sub2",
+				testutil.To(&subDir2)))
 
-		_, err := dir.Load()
-		require.NoError(t, err)
-		require.NoError(t, dir.Notify(loadEvt))
-
-		failureEvt := event.New(directory.DeleteFailed{Err: errors.New("ckc")})
+		failureEvt := event.New(directory.DeleteFailed{
+			Err:       errors.New("ckc"),
+			Parent:    dir,
+			Directory: subDir1,
+		})
 
 		// When
-		evt, err := dir.RemoveSubDirectory("sub1")
+		assert.NoError(t, dir.Notify(failureEvt))
+
+		// Then
+		resSubDirs := dir.SubDirectories()
+		assert.Len(t, resSubDirs, 2)
+	})
+
+	t.Run("should remove the subdirectory when a success event is emitted", func(t *testing.T) {
+		// Given
+		connID := testutil.FakeS3LikeConnectionId
+
+		var subDir1, subDir2 *directory.Directory
+		dir := testutil.MakeDirectory(t, "",
+			testutil.AsRoot(),
+			testutil.WithConnectionId(connID),
+			testutil.WithSubDirectory("sub1",
+				testutil.To(&subDir1)),
+			testutil.WithSubDirectory("sub2",
+				testutil.To(&subDir2)))
+
+		successEvt := event.New(directory.DeleteSucceeded{
+			Directory: subDir1,
+			Parent:    dir,
+		})
+
+		// When
+		assert.NoError(t, dir.Notify(successEvt))
+
+		// Then
+		resSubDirs := dir.SubDirectories()
+		assert.Len(t, resSubDirs, 1)
+		assert.Equal(t, resSubDirs[0], subDir2)
+	})
+
+	t.Run("should trigger the sub directory's reload before triggering its removing", func(t *testing.T) {
+		// Given
+		connID := connection_deck.NewConnectionID()
+		var subdir *directory.Directory
+		dir := testutil.MakeDirectory(t, "mydir",
+			testutil.WithRootParent(),
+			testutil.WithConnectionId(connID),
+			testutil.WithSubDirectory("subdir",
+				testutil.To(&subdir),
+				testutil.IsLoaded()))
+
+		// When
+		evt, err := dir.RemoveSubDirectory("subdir")
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, directory.DeleteTriggeredType, evt.Type())
-		pl := evt.Payload().(directory.DeleteTriggered)
-		assert.Equal(t, dir, pl.Directory)
+		assert.IsType(t, &carrier.Pipeline{}, evt.Payload())
+		carr := evt.Payload().(*carrier.Pipeline)
+		assert.Len(t, carr.Pipeline, 1)
+		f := carr.Pipeline[0]
 
-		assert.NoError(t, dir.Notify(failureEvt))
-		resSubDirs := dir.SubDirectories()
-		assert.Len(t, resSubDirs, 2)
+		t.Run("when reload success", func(t *testing.T) {
+			reloadSuccEvt := event.New(directory.LoadSucceeded{
+				Directory: subdir,
+			})
+			next := f(reloadSuccEvt)
+
+			pl := next.Payload()
+			assert.Equal(t, directory.DeleteTriggered{
+				Directory:      dir,
+				DeletedDirPath: "/mydir/subdir/",
+			}, pl)
+		})
+
+		t.Run("when reload fails", func(t *testing.T) {
+			fakeErr := errors.New("ckc")
+			reloadFailedEvt := event.New(directory.LoadFailed{
+				Directory: subdir,
+				Err:       fakeErr,
+			})
+			next := f(reloadFailedEvt)
+
+			pl := next.Payload()
+			assert.Equal(t, directory.DeleteFailed{
+				Err:       fakeErr,
+				Parent:    dir,
+				Directory: subdir,
+			}, pl)
+		})
+
+		t.Run("when subdirectory is not empty", func(t *testing.T) {
+			f1, _ := directory.NewFile("file1.txt", subdir)
+			f2, _ := directory.NewFile("file2.txt", subdir)
+			reloadSuccEvt := event.New(directory.LoadSucceeded{
+				Directory: subdir,
+				Files:     []*directory.File{f1, f2},
+			})
+			next := f(reloadSuccEvt)
+
+			pl := next.Payload()
+			assert.Equal(t, directory.DeleteFailed{
+				Err:       directory.ErrNotEmpty,
+				Parent:    dir,
+				Directory: subdir,
+			}, pl)
+		})
+
 	})
 }
 

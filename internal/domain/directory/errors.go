@@ -12,6 +12,8 @@ var (
 	ErrAlreadyExists     = errors.New("file or directory already exists")
 	ErrNotResumable      = errors.New("no action to resume for this directory")
 	ErrRenameInterrupted = errors.New("rename interrupted")
+	ErrNotEmpty          = errors.New("directory not empty")
+	ErrTimeout           = errors.New("timeout occurred")
 )
 
 type Error struct {

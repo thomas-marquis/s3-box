@@ -41,7 +41,10 @@ const (
 )
 
 type DeleteTriggered struct {
-	Directory      *Directory
+	// Directory is the parent directory of the deleted directory
+	Directory *Directory
+	// DeletedDirPath is the path of the deleted subdirectory.
+	// The subdirectory must exists.
 	DeletedDirPath Path
 }
 
@@ -50,7 +53,10 @@ func (e DeleteTriggered) EventType() event.Type {
 }
 
 type DeleteSucceeded struct {
+	// Directory is the directory that was deleted
 	Directory *Directory
+	// Parent is the directory from which the deleted directory was removed
+	Parent *Directory
 }
 
 func (e DeleteSucceeded) EventType() event.Type {
@@ -59,6 +65,10 @@ func (e DeleteSucceeded) EventType() event.Type {
 
 type DeleteFailed struct {
 	Err error
+	// Parent is the directory from which the subdirectory would be removed
+	Parent *Directory
+	// Directory is the directory that was supposed to be deleted
+	Directory *Directory
 }
 
 func (e DeleteFailed) EventType() event.Type {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/thomas-marquis/it-happened/carrier"
 	"github.com/thomas-marquis/it-happened/event"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
@@ -197,17 +198,39 @@ func (d *Directory) RemoveFile(name FileName) (event.Event, error) {
 }
 
 func (d *Directory) RemoveSubDirectory(name string) (event.Event, error) {
-	path := d.parent.Path().NewSubPath(name)
-	subDirectories := d.currentState.SubDirectories()
-	for _, sd := range subDirectories {
-		if sd.Path() == path {
-			return event.New(DeleteTriggered{
-				Directory:      d,
-				DeletedDirPath: path,
-			}), nil
-		}
+	sd, err := d.GetSubDirectoryByName(name)
+	if err != nil {
+		return nil, err
 	}
-	return nil, ErrNotFound
+
+	stageOnLoaded := func(prev event.Event) event.Event {
+		switch pl := prev.Payload().(type) {
+		case LoadSucceeded:
+			if len(pl.Files) == 0 && len(pl.SubDirectories) == 0 {
+				return prev.NewFollowup(DeleteTriggered{
+					Directory:      d,
+					DeletedDirPath: sd.Path(),
+				})
+			}
+			return prev.NewFollowup(DeleteFailed{Err: ErrNotEmpty, Parent: d, Directory: pl.Directory})
+
+		case LoadFailed:
+			return prev.NewFollowup(DeleteFailed{Err: pl.Err, Parent: d, Directory: pl.Directory})
+		}
+		return event.New(carrier.PipelineStop{})
+	}
+
+	return carrier.NewPipeline(
+		event.New(LoadTriggered{Directory: sd}),
+		[]func(prev event.Event) event.Event{
+			stageOnLoaded,
+		},
+		event.New(DeleteFailed{Err: ErrTimeout, Parent: d}),
+	), nil
+}
+
+func (d *Directory) IsEmpty() bool {
+	return len(d.currentState.Files()) == 0 && len(d.currentState.SubDirectories()) == 0
 }
 
 // Rename triggers an event to change the name of the directory.

@@ -34,6 +34,7 @@ type DirectoryDetails struct {
 	createFileAction   *ToolbarButton
 	renameAction       *ToolbarButton
 	reloadAction       *ToolbarButton
+	deleteAction       *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
 
 	dropZone *DropZone
@@ -50,11 +51,13 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	createDirAction := NewToolbarButton("Create directory", theme.FolderNewIcon(), func() {})
 	createFileAction := NewToolbarButton("Create file", theme.ContentAddIcon(), func() {})
 	renameAction := NewToolbarButton("Rename", theme.FileTextIcon(), func() {})
+	deleteAction := NewToolbarButton("Delete", theme.DeleteIcon(), func() {})
 	toolbar := widget.NewToolbar(
 		reloadAction,
 		createDirAction,
 		createFileAction,
 		renameAction,
+		deleteAction,
 	)
 	loadingBar := widget.NewProgressBarInfinite()
 	loadingBar.Hide()
@@ -67,6 +70,7 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 		createFileAction:   createFileAction,
 		renameAction:       renameAction,
 		reloadAction:       reloadAction,
+		deleteAction:       deleteAction,
 		loadingBar:         loadingBar,
 		renameErrContent:   newRenameFailedPanel(appCtx.Window()),
 		dropZone:           NewDropZone(dropZoneInitialText, appCtx.Window()),
@@ -153,13 +157,16 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	w.createFileAction.SetOnTapped(w.makeOnCreateFile(vm, dir))
 	w.renameAction.SetOnTapped(w.makeOnRename(vm, dir))
 	w.reloadAction.SetOnTapped(w.makeOnReload(vm, dir))
+	w.deleteAction.SetOnTapped(w.makeOnDelete(vm, dir))
 
 	w.reloadAction.Enable()
 
 	if dir.IsRoot() {
 		w.renameAction.Disable()
+		w.deleteAction.Disable()
 	} else {
 		w.renameAction.Enable()
+		w.deleteAction.Enable()
 	}
 
 	if dir.HasError() {
@@ -191,6 +198,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.renameAction.Disable()
 		w.reloadAction.Disable()
 		w.dropZone.Hide()
+		w.deleteAction.Disable()
 	} else {
 		w.newDirectoryAction.Enable()
 		w.createFileAction.Enable()
@@ -347,6 +355,12 @@ func (w *DirectoryDetails) makeOnReload(vm viewmodel.ExplorerViewModel, dir *dir
 		if err := vm.ReloadDirectory(dir); err != nil {
 			dialog.ShowError(err, w.appCtx.Window())
 		}
+	}
+}
+
+func (w *DirectoryDetails) makeOnDelete(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
+	return func() {
+		vm.DeleteDirectory(dir)
 	}
 }
 
