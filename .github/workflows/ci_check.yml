@@ -101,7 +101,7 @@ jobs:
       - name: Setup environment
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev
+          sudo apt-get install -y golang gcc libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev
 
       - name: Install dependencies
         run: |

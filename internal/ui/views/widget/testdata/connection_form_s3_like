@@ -12,8 +12,8 @@
 						</widget>
 					</container>
 				</container>
-				<rectangle fillColor="shadow" pos="0,36" size="313x4"/>
-				<rectangle fillColor="primary" pos="50,36" radius="4" size="118x4"/>
+				<rectangle fillColor="shadow" pos="0,36" size="313x1"/>
+				<rectangle fillColor="primary" pos="50,36" radius="4" size="118x1"/>
 				<container pos="0,40" size="313x348">
 					<widget size="313x35" type="*widget.Label">
 						<widget size="313x35" type="*widget.RichText">
@@ -23,9 +23,9 @@
 					<widget pos="0,39" size="313x309" type="*widget.Form">
 						<container size="313x309">
 							<container size="313x269">
-								<container size="208x35">
-									<text alignment="trailing" bold pos="8,8" size="192x19">Connection name</text>
-								</container>
+								<widget size="208x35" type="*widget.RichText">
+									<text alignment="trailing" bold pos="77,8" size="123x19">Connection name</text>
+								</widget>
 								<container pos="212,0" size="100x35">
 									<widget size="100x35" type="*widget.Entry">
 										<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="96x31"/>
@@ -52,9 +52,9 @@
 									<container pos="8,39" size="100x1">
 									</container>
 								</container>
-								<container pos="0,39" size="208x35">
-									<text alignment="trailing" bold pos="8,8" size="192x19">Access key Id</text>
-								</container>
+								<widget pos="0,39" size="208x35" type="*widget.RichText">
+									<text alignment="trailing" bold pos="107,8" size="92x19">Access key Id</text>
+								</widget>
 								<container pos="212,39" size="100x35">
 									<widget size="100x35" type="*widget.Entry">
 										<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="96x31"/>
@@ -73,9 +73,9 @@
 									<container pos="8,39" size="100x1">
 									</container>
 								</container>
-								<container pos="0,78" size="208x35">
-									<text alignment="trailing" bold pos="8,8" size="192x19">Secret access key</text>
-								</container>
+								<widget pos="0,78" size="208x35" type="*widget.RichText">
+									<text alignment="trailing" bold pos="79,8" size="120x19">Secret access key</text>
+								</widget>
 								<container pos="212,78" size="100x35">
 									<widget size="100x35" type="*widget.Entry">
 										<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="96x31"/>
@@ -94,9 +94,9 @@
 									<container pos="8,39" size="100x1">
 									</container>
 								</container>
-								<container pos="0,117" size="208x35">
+								<widget pos="0,117" size="208x35" type="*widget.RichText">
 									<text alignment="trailing" bold pos="8,8" size="192x19">Server hostname (and port)</text>
-								</container>
+								</widget>
 								<container pos="212,117" size="100x35">
 									<widget size="100x35" type="*widget.Entry">
 										<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="96x31"/>
@@ -123,9 +123,9 @@
 									<container pos="8,39" size="100x1">
 									</container>
 								</container>
-								<container pos="0,156" size="208x35">
-									<text alignment="trailing" bold pos="8,8" size="192x19">Bucket name</text>
-								</container>
+								<widget pos="0,156" size="208x35" type="*widget.RichText">
+									<text alignment="trailing" bold pos="108,8" size="92x19">Bucket name</text>
+								</widget>
 								<container pos="212,156" size="100x35">
 									<widget size="100x35" type="*widget.Entry">
 										<rectangle fillColor="inputBackground" pos="2,2" radius="4" size="96x31"/>
@@ -152,18 +152,18 @@
 									<container pos="8,39" size="100x1">
 									</container>
 								</container>
-								<container pos="0,195" size="208x35">
-									<text alignment="trailing" bold pos="8,8" size="192x19">UseTls</text>
-								</container>
+								<widget pos="0,195" size="208x35" type="*widget.RichText">
+									<text alignment="trailing" bold pos="155,8" size="45x19">UseTls</text>
+								</widget>
 								<widget pos="212,195" size="100x35" type="*widget.Check">
 									<circle pos="2,3" size="28x28"/>
 									<image pos="6,7" rsc="checkButtonFillIcon" size="iconInlineSize" themed="inputBackground"/>
 									<image pos="6,7" rsc="checkButtonIcon" size="iconInlineSize" themed="inputBorder"/>
 									<text pos="32,0" size="68x35">Use TLS</text>
 								</widget>
-								<container pos="0,234" size="208x35">
-									<text alignment="trailing" bold pos="8,8" size="192x19">Read only</text>
-								</container>
+								<widget pos="0,234" size="208x35" type="*widget.RichText">
+									<text alignment="trailing" bold pos="131,8" size="68x19">Read only</text>
+								</widget>
 								<widget pos="212,234" size="100x35" type="*widget.Check">
 									<circle pos="2,3" size="28x28"/>
 									<image pos="6,7" rsc="checkButtonFillIcon" size="iconInlineSize" themed="inputBackground"/>
