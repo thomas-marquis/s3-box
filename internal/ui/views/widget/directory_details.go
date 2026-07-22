@@ -215,22 +215,37 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	w.dropZone.OnClick = w.makeOnUpload(vm, dir)
 
 	vm.OnUploadReady(func(prev viewmodel.UploadPreviewState) {
-		dirPreview := NewDirectoryPreview(w.appCtx, prev.Preview)
+		proceed := func() {
+			dirPreview := NewDirectoryPreview(w.appCtx, prev.Preview)
 
-		dial := dialog.NewCustom(
-			"Upload previewer",
-			"Cancel",
-			container.NewScroll(dirPreview),
-			w.appCtx.Window())
-		dial.Resize(fyne.NewSize(800, 600))
-		dial.SetOnClosed(w.dropZone.Reset)
+			dial := dialog.NewCustom(
+				"Confirm upload",
+				"Cancel",
+				container.NewScroll(dirPreview),
+				w.appCtx.Window())
+			dial.Resize(fyne.NewSize(800, 600))
+			dial.SetOnClosed(w.dropZone.Reset)
 
-		dirPreview.OnValidate = func(selectedStrategy directory.MaterializeStrategy) {
-			vm.DoUpload(prev.BaseUri, prev.Preview, selectedStrategy)
-			dial.Dismiss()
+			dirPreview.OnValidate = func(selectedStrategy directory.MaterializeStrategy) {
+				vm.DoUpload(prev.BaseUri, prev.Preview, selectedStrategy)
+				dial.Dismiss()
+			}
+
+			dial.Show()
 		}
 
-		dial.Show()
+		if objCount := prev.Preview.Count().Total(); objCount > 1000 {
+			dialog.ShowConfirm("Massive upload warning",
+				fmt.Sprintf("You are about to upload %d files and directories. Such a high number of objects may crash your application. Do you still want to continue?", objCount),
+				func(confirmed bool) {
+					if confirmed {
+						proceed()
+					}
+				},
+				w.appCtx.Window())
+		} else {
+			proceed()
+		}
 	})
 }
 
