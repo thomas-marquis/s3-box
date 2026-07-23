@@ -60,13 +60,16 @@ func (w *DirectoryPreview) makeContent(mainContent fyne.CanvasObject, validateLa
 	} else {
 		validateBtn = NewButtonWithData(
 			uiutils.NewBindingItemFormatter(w.selectedStrategy, func(strategy directory.MaterializeStrategy) string {
-				return "Validate: " + strategy.String()
+				return "Upload: " + strategy.String()
 			}),
 			onValidate)
 	}
 
 	return container.NewBorder(
-		widget.NewLabelWithData(w.infoData),
+		container.NewBorder(nil, nil,
+			widget.NewLabel(fmt.Sprintf("You are about to upload %d directories and %d files",
+				w.preview.Count().Directories, w.preview.Count().Files)),
+			widget.NewLabelWithData(w.infoData)),
 		container.NewBorder(nil, nil, nil,
 			validateBtn,
 		),
@@ -87,7 +90,7 @@ func (w *DirectoryPreview) CreateRenderer() fyne.WidgetRenderer {
 	if len(strategies) == 1 {
 		return widget.NewSimpleRenderer(w.makeContent(
 			w.makeTree(strategies[0]),
-			"Validate"))
+			"Upload"))
 	}
 
 	var tis []*container.TabItem

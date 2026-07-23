@@ -400,8 +400,8 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 		assert.NoError(t, err)
 		assert.IsType(t, &carrier.Pipeline{}, evt.Payload())
 		carr := evt.Payload().(*carrier.Pipeline)
-		assert.Len(t, carr.Pipeline, 1)
-		f := carr.Pipeline[0]
+		assert.Len(t, carr.Stages, 1)
+		f := carr.Stages[0]
 
 		t.Run("when reload success", func(t *testing.T) {
 			reloadSuccEvt := event.New(directory.LoadSucceeded{

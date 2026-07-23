@@ -28,6 +28,15 @@ const (
 	MaterializeReplace
 )
 
+type PreviewCounter struct {
+	Files       int
+	Directories int
+}
+
+func (c PreviewCounter) Total() int {
+	return c.Files + c.Directories
+}
+
 type Preview struct {
 	mountPoint *Directory
 	dir        *Directory
@@ -36,6 +45,7 @@ type Preview struct {
 	children            []*Preview
 	files               []*File
 	availableStrategies map[MaterializeStrategy]struct{}
+	counter             *PreviewCounter
 }
 
 func newPreview(mount, dir *Directory) *Preview {
@@ -76,8 +86,13 @@ func (p *Preview) AddSubDirectory(name string) (*Preview, error) {
 
 	newPrev := newPreview(p.mountPoint, subDir)
 	p.children = append(p.children, newPrev)
+	p.incDirCounter()
 	newPrev.parent = p
 	return newPrev, nil
+}
+
+func (p *Preview) Count() PreviewCounter {
+	return *p.counter
 }
 
 func (p *Preview) AddFile(name string, sizeBytes uint64, lastModified time.Time) error {
@@ -101,6 +116,7 @@ func (p *Preview) AddFile(name string, sizeBytes uint64, lastModified time.Time)
 		lastModified: lastModified,
 	}
 	p.files = append(p.files, f)
+	p.incFileCounter()
 
 	if p.dir.IsFileExists(fn) {
 		p.availableStrategies[MaterializeReplace] = struct{}{}
@@ -178,6 +194,31 @@ func (p *Preview) GetByPath(path Path) (*Preview, error) {
 		}
 	}
 	return nil, ErrNotFound
+}
+
+func (p *Preview) incFileCounter() {
+	c := p.getCounter()
+	c.Files++
+}
+
+func (p *Preview) incDirCounter() {
+	c := p.getCounter()
+	c.Directories++
+}
+
+func (p *Preview) getCounter() *PreviewCounter {
+	if c := p.counter; c != nil {
+		return c
+	} else if p.parent == nil {
+		c := &PreviewCounter{}
+		p.counter = c
+		return c
+	} else if c := p.parent.counter; c != nil {
+		p.counter = c
+		return c
+	}
+	// non-nil parent with no counter: not supposed to happen
+	panic("non-nil parent with no counter")
 }
 
 type Materializer interface {

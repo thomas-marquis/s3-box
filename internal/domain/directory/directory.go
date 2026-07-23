@@ -217,12 +217,12 @@ func (d *Directory) RemoveSubDirectory(name string) (event.Event, error) {
 		case LoadFailed:
 			return prev.NewFollowup(DeleteFailed{Err: pl.Err, Parent: d, Directory: pl.Directory})
 		}
-		return event.New(carrier.PipelineStop{})
+		return carrier.StopPipeline()
 	}
 
 	return carrier.NewPipeline(
 		event.New(LoadTriggered{Directory: sd}),
-		[]func(prev event.Event) event.Event{
+		[]carrier.PipelineStage{
 			stageOnLoaded,
 		},
 		event.New(DeleteFailed{Err: ErrTimeout, Parent: d}),
