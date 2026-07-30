@@ -6,13 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/dialog"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
@@ -31,6 +29,8 @@ type textEditor struct {
 	contentHash          string
 	cancelFunc           func()
 	shouldCloseWhenSaved bool
+
+	sub *event.Subscriber
 }
 
 func New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {
@@ -45,31 +45,16 @@ func New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor 
 
 	e.IsLoading.Set(true) //nolint:errcheck
 
+	e.sub = bus.Subscribe().
+		On(event.Is(editor.LoadedType), e.handleLoaded).
+		On(event.Is(editor.LoadFailedType), e.handleLoadFailed)
+	e.sub.ListenWithWorkers(1)
+
 	return e
 }
 
 func (e *textEditor) CreateWidget() fyne.CanvasObject {
 	return newWidget(e)
-}
-
-func (e *textEditor) OnLoaded(fileContent directory.FileContent, err error) {
-	e.IsLoading.Set(false) //nolint:errcheck
-
-	if err != nil {
-		e.Err.Set(err) //nolint:errcheck
-		return
-	}
-
-	contentVal, err := io.ReadAll(fileContent)
-	if err != nil {
-		dialog.ShowError(errors.New(err.Error()), e.Window())
-		return
-	}
-
-	strContent := string(contentVal)
-	e.updateContentHash(strContent)
-
-	e.Content.Set(strContent) //nolint:errcheck
 }
 
 func (e *textEditor) Save(content string) {

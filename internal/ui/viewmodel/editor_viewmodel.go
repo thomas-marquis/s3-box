@@ -154,9 +154,10 @@ func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
 
 	if _, err := pl.Content.Seek(0, io.SeekStart); err != nil {
 		v.notifier.NotifyError(err)
-		fyne.Do(func() {
-			e.OnLoaded(nil, err)
-		})
+		v.bus.Publish(evt.NewFollowup(editor.LoadFailed{
+			Editor: e,
+			Err:    err,
+		}))
 		return
 	}
 
@@ -164,9 +165,10 @@ func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
 	v.loadedContents[pl.File.FullPath()] = pl.Content
 	v.mu.Unlock()
 
-	fyne.Do(func() {
-		e.OnLoaded(pl.Content, nil)
-	})
+	v.bus.Publish(evt.NewFollowup(editor.Loaded{
+		Editor:  e,
+		Content: pl.Content,
+	}))
 }
 
 func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
@@ -178,9 +180,11 @@ func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
 		// The editor has been closed before the file was loaded. And it's okay
 		return
 	}
-	fyne.Do(func() {
-		e.OnLoaded(nil, pl.Err)
-	})
+
+	v.bus.Publish(evt.NewFollowup(editor.LoadFailed{
+		Editor: e,
+		Err:    pl.Err,
+	}))
 }
 
 func (v *editorViewModelImpl) IsOpen(file *directory.File) bool {

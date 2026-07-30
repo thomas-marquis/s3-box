@@ -14,7 +14,6 @@ type Editor interface {
 	Window() fyne.Window
 	File() *directory.File
 	CreateWidget() fyne.CanvasObject
-	OnLoaded(fileContent directory.FileContent, err error)
 	OnSaved(newContent string, err error)
 }
 

@@ -3,8 +3,8 @@ package csveditor
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/csv"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -14,7 +14,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/driver/desktop"
-	"fyne.io/fyne/v2/theme"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
@@ -47,12 +46,15 @@ type csvEditor struct {
 	cancelFunc  func()
 	contentHash string
 
+	Err          binding.Item[error]
 	Records      binding.List[[]string]
 	Columns      binding.List[csvColumn]
 	IsLoading    binding.Bool
 	StatusLabel  binding.String
 	ConfirmClose func(onConfirm func(confirmed bool))
 	closer       io.Closer
+
+	sub *event.Subscriber
 }
 
 var (
@@ -80,6 +82,7 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		IsLoading:    binding.NewBool(),
 		StatusLabel:  binding.NewString(),
 		ConfirmClose: func(onConfirm func(confirmed bool)) {},
+		Err:          binding.NewItem[error](errors.Is),
 	}
 
 	ed.IsLoading.Set(true) //nolint:errcheck
@@ -93,54 +96,16 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		ed.Save()
 	})
 
+	ed.sub = bus.Subscribe().
+		On(event.Is(editor.LoadedType), ed.handleLoaded).
+		On(event.Is(editor.LoadFailedType), ed.handleLoadFailed)
+	ed.sub.ListenWithWorkers(1)
+
 	return ed
 }
 
 func (e *csvEditor) CreateWidget() fyne.CanvasObject {
 	return newWidget(e)
-}
-
-func (e *csvEditor) OnLoaded(fileContent directory.FileContent, err error) {
-	defer e.IsLoading.Set(false) //nolint:errcheck
-	if err != nil {
-		e.StatusLabel.Set("error (unloaded)") //nolint:errcheck
-		return
-	}
-
-	r := csv.NewReader(fileContent)
-
-	nbRows := 0
-	for {
-		record, err := r.Read()
-		if err != nil {
-			break
-		}
-		e.Records.Append(record) //nolint:errcheck
-		nbRows++
-	}
-
-	if e.Records.Length() == 0 {
-		return
-	}
-
-	e.updateContentHash(e.getContent())
-
-	th := fyne.CurrentApp().Settings().Theme()
-	textSize := th.Size(theme.SizeNameText)
-
-	firstRow, _ := e.Records.GetValue(0)
-	nbCols := len(firstRow)
-	for i := range nbCols {
-		col := csvColumn{}
-		for j := range nbRows {
-			row, _ := e.Records.GetValue(j)
-			cw := colWidth(row[i], textSize)
-			if col.Width < cw-cellPadding {
-				col.Width = cw
-			}
-		}
-		e.Columns.Append(col) //nolint:errcheck
-	}
 }
 
 func (e *csvEditor) Save() {

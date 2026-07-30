@@ -21,18 +21,28 @@ type Widget struct {
 	SaveBtn *widget.ToolbarAction
 }
 
-func newWidget(editor *csvEditor) *Widget {
+func newWidget(e *csvEditor) *Widget {
 	w := &Widget{
-		editor: editor,
+		editor: e,
 	}
 
-	editor.ConfirmClose = func(onConfirm func(confirmed bool)) {
+	e.ConfirmClose = func(onConfirm func(confirmed bool)) {
 		dialog.ShowConfirm("Confirm close", "Are you sure you want to close the editor?", func(ok bool) {
 			onConfirm(ok)
-		}, editor.Window())
+		}, e.Window())
 	}
 
 	w.ExtendBaseWidget(w)
+
+	e.Err.AddListener(binding.NewDataListener(func() {
+		err, _ := e.Err.Get()
+		if err == nil {
+			return
+		}
+		dialog.ShowError(err, e.Window())
+		e.Err.Set(nil) //nolint:errcheck
+	}))
+
 	return w
 }
 
