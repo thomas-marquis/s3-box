@@ -12,12 +12,12 @@ const (
 
 	/////
 
-	LoadedType          event.Type = "event.editor.loaded"
-	LoadFailedType      event.Type = "event.editor.load.failed"
-	ClosedType          event.Type = "event.editor.closed"
-	CloseRequestedTyped event.Type = "event.editor.close.requested"
-	CloseConfirmedType  event.Type = "event.editor.close.confirmed"
-	CloseCanceledType   event.Type = "event.editor.close.canceled"
+	LoadedType         event.Type = "event.editor.loaded"
+	LoadFailedType     event.Type = "event.editor.load.failed"
+	ClosedType         event.Type = "event.editor.closed"
+	CloseRequestedType event.Type = "event.editor.close.requested"
+	CloseConfirmedType event.Type = "event.editor.close.confirmed"
+	CloseCanceledType  event.Type = "event.editor.close.canceled"
 )
 
 type Event interface {
@@ -64,10 +64,11 @@ func (p Closed) This() Editor {
 
 type CloseRequested struct {
 	Editor Editor
+	Cancel func() `json:"-"`
 }
 
 func (CloseRequested) EventType() event.Type {
-	return CloseRequestedTyped
+	return CloseRequestedType
 }
 
 func (p CloseRequested) This() Editor {

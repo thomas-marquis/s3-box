@@ -1,9 +1,12 @@
 package editor
 
 import (
+	"encoding/json"
+	"errors"
 	"io"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
@@ -32,13 +35,29 @@ type Closable interface {
 type Base struct {
 	window fyne.Window
 	file   *directory.File
+
+	Sub          *event.Subscriber
+	StatusLabel  binding.String
+	Err          binding.Item[error]
+	IsLoading    binding.Bool
+	ConfirmClose func(onConfirm func(confirmed bool))
+	Bus          event.Bus
 }
 
-func NewBase(window fyne.Window, file *directory.File) Base {
-	return Base{
-		window: window,
-		file:   file,
+func NewBase(bus event.Bus, window fyne.Window, file *directory.File) Base {
+	e := Base{
+		window:       window,
+		file:         file,
+		StatusLabel:  binding.NewString(),
+		IsLoading:    binding.NewBool(),
+		Err:          binding.NewItem(errors.Is),
+		ConfirmClose: func(onConfirm func(confirmed bool)) {},
+		Bus:          bus,
 	}
+
+	e.Sub = bus.Subscribe()
+
+	return e
 }
 
 func (b *Base) Window() fyne.Window {
@@ -47,4 +66,22 @@ func (b *Base) Window() fyne.Window {
 
 func (b *Base) File() *directory.File {
 	return b.file
+}
+
+func (b *Base) MarshalJSON() ([]byte, error) {
+	status, _ := b.StatusLabel.Get()
+	loading, _ := b.IsLoading.Get()
+	err, _ := b.Err.Get()
+
+	return json.Marshal(struct {
+		File        *directory.File
+		StatusLabel string
+		IsLoading   bool
+		Err         error
+	}{
+		File:        b.file,
+		StatusLabel: status,
+		IsLoading:   loading,
+		Err:         err,
+	})
 }

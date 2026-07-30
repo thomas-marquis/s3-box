@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -41,20 +40,13 @@ type csvColumn struct {
 type csvEditor struct {
 	editor.Base
 
-	bus         event.Bus
 	mu          sync.Mutex
 	cancelFunc  func()
 	contentHash string
 
-	Err          binding.Item[error]
-	Records      binding.List[[]string]
-	Columns      binding.List[csvColumn]
-	IsLoading    binding.Bool
-	StatusLabel  binding.String
-	ConfirmClose func(onConfirm func(confirmed bool))
-	closer       io.Closer
-
-	sub *event.Subscriber
+	Records binding.List[[]string]
+	Columns binding.List[csvColumn]
+	closer  io.Closer
 }
 
 var (
@@ -63,8 +55,8 @@ var (
 
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 	ed := &csvEditor{
-		Base: editor.NewBase(w, file),
-		bus:  bus,
+		Base: editor.NewBase(bus, w, file),
+		//bus:  bus,
 		Records: binding.NewList[[]string](func(l1, l2 []string) bool {
 			if len(l1) != len(l2) {
 				return false
@@ -79,10 +71,6 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		Columns: binding.NewList[csvColumn](func(c1, c2 csvColumn) bool {
 			return c1 == c2
 		}),
-		IsLoading:    binding.NewBool(),
-		StatusLabel:  binding.NewString(),
-		ConfirmClose: func(onConfirm func(confirmed bool)) {},
-		Err:          binding.NewItem[error](errors.Is),
 	}
 
 	ed.IsLoading.Set(true) //nolint:errcheck
@@ -96,10 +84,11 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		ed.Save()
 	})
 
-	ed.sub = bus.Subscribe().
+	ed.Sub.
 		On(event.Is(editor.LoadedType), ed.handleLoaded).
-		On(event.Is(editor.LoadFailedType), ed.handleLoadFailed)
-	ed.sub.ListenWithWorkers(1)
+		On(event.Is(editor.LoadFailedType), ed.handleLoadFailed).
+		On(event.Is(editor.CloseRequestedType), ed.handleCloseRequested)
+	ed.Sub.ListenWithWorkers(1)
 
 	return ed
 }
@@ -117,7 +106,7 @@ func (e *csvEditor) Save() {
 	e.cancelFunc = cancel
 	e.mu.Unlock()
 
-	e.bus.Publish(event.New(editor.SaveTriggered{
+	e.Bus.Publish(event.New(editor.SaveTriggered{
 		File:    e.File(),
 		Content: e.getContent(),
 	}, event.WithContext(ctx)))

@@ -30,3 +30,23 @@ func (e *textEditor) handleLoadFailed(evt event.Event) {
 	e.IsLoading.Set(false)                //nolint:errcheck
 	e.Err.Set(pl.Err)                     //nolint:errcheck
 }
+
+func (e *textEditor) handleCloseRequested(evt event.Event) {
+	pl := evt.Payload().(editor.CloseRequested)
+
+	if !e.HasChanged() {
+		pl.Cancel()
+		e.Bus.Publish(evt.NewFollowup(editor.CloseConfirmed{Editor: e}))
+		return
+	}
+
+	//e.Window().RequestFocus()
+	e.ConfirmClose(func(confirmed bool) {
+		if confirmed {
+			pl.Cancel()
+			e.Bus.Publish(evt.NewFollowup(editor.CloseConfirmed{Editor: e}))
+		} else {
+			e.Bus.Publish(evt.NewFollowup(editor.CloseCanceled{Editor: e}))
+		}
+	})
+}

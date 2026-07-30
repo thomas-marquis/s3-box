@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -19,13 +18,11 @@ import (
 type textEditor struct {
 	editor.Base
 
-	Content     binding.String
-	StatusLabel binding.String
-	Err         binding.Item[error]
-	IsLoading   binding.Bool
+	Content binding.String
+
+	ConfirmClose func(onConfirm func(confirmed bool))
 
 	mu                   sync.Mutex
-	bus                  event.Bus
 	contentHash          string
 	cancelFunc           func()
 	shouldCloseWhenSaved bool
@@ -35,20 +32,17 @@ type textEditor struct {
 
 func New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {
 	e := &textEditor{
-		Base:        editor.NewBase(window, file),
-		Content:     binding.NewString(),
-		StatusLabel: binding.NewString(),
-		IsLoading:   binding.NewBool(),
-		Err:         binding.NewItem(errors.Is),
-		bus:         bus,
+		Base:    editor.NewBase(bus, window, file),
+		Content: binding.NewString(),
 	}
 
 	e.IsLoading.Set(true) //nolint:errcheck
 
-	e.sub = bus.Subscribe().
+	e.Sub.
 		On(event.Is(editor.LoadedType), e.handleLoaded).
-		On(event.Is(editor.LoadFailedType), e.handleLoadFailed)
-	e.sub.ListenWithWorkers(1)
+		On(event.Is(editor.LoadFailedType), e.handleLoadFailed).
+		On(event.Is(editor.CloseRequestedType), e.handleCloseRequested)
+	e.Sub.ListenWithWorkers(1)
 
 	return e
 }
@@ -66,7 +60,7 @@ func (e *textEditor) Save(content string) {
 	e.cancelFunc = cancel
 	e.mu.Unlock()
 
-	e.bus.Publish(event.New(editor.SaveTriggered{
+	e.Bus.Publish(event.New(editor.SaveTriggered{
 		File:    e.File(),
 		Content: content,
 	}, event.WithContext(ctx)))

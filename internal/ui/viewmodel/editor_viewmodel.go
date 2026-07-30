@@ -33,7 +33,6 @@ type EditorViewModel interface {
 	Open(file *directory.File) (editor.Editor, error)
 
 	IsOpen(file *directory.File) bool
-	Close(file *directory.File)
 }
 
 type editorViewModelImpl struct {
@@ -77,6 +76,8 @@ func NewEditorViewModel(
 		On(event.Is(editor.SaveTriggeredType), vm.handleFileSave).
 		On(event.Is(editor.SaveSucceededType), vm.handleFileSaveSuccess).
 		On(event.Is(editor.SaveFailedType), vm.handleFileSaveFailure).
+		On(event.Is(editor.CloseConfirmedType), vm.handleEditorCloseConfirmed).
+		On(event.Is(editor.CloseCanceledType), vm.handleEditorCloseCanceled).
 		ListenNonBlocking()
 
 	return vm
@@ -90,17 +91,6 @@ func (v *editorViewModelImpl) SelectedConnection() *connection_deck.Connection {
 
 func (v *editorViewModelImpl) RegisterEditorFactory(name string, initializer editor.Initializer) {
 	v.editorFactories[name] = initializer
-}
-
-type editorCloser struct {
-	vm      *editorViewModelImpl
-	file    *directory.File
-	onClose func()
-}
-
-func (c *editorCloser) Close() error {
-	c.vm.closeEditor(c.file, c.onClose)
-	return nil
 }
 
 func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) {
@@ -126,21 +116,21 @@ func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) 
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	if closable, ok := e.(editor.Closable); ok {
-		newWin.SetCloseIntercept(func() {
-			v.closeEditor(file, cancel)
-		})
-		closable.SetCloser(&editorCloser{v, file, cancel})
-	} else {
-		newWin.SetOnClosed(func() {
-			cancel()
-			v.unregisterEditor(file)
-		})
-	}
+	newWin.SetCloseIntercept(func() {
+		v.requestClose(e, cancel)
+	})
 
 	v.bus.Publish(file.Load(v.selectedConnection.ID(), event.WithContext(ctx)))
 
 	return e, nil
+}
+
+func (v *editorViewModelImpl) requestClose(e editor.Editor, cancelFunc func()) {
+	v.bus.Publish(event.New(editor.CloseRequested{
+		Editor: e,
+		Cancel: cancelFunc,
+	}))
+	e.Window().RequestFocus()
 }
 
 func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {
@@ -187,41 +177,27 @@ func (v *editorViewModelImpl) handleFileLoadingFailure(evt event.Event) {
 	}))
 }
 
+func (v *editorViewModelImpl) handleEditorCloseConfirmed(evt event.Event) {
+	pl := evt.Payload().(editor.CloseConfirmed)
+	fyne.Do(pl.Editor.Window().Close)
+	v.unregisterEditor(pl.Editor.File())
+	v.bus.Publish(evt.NewFollowup(editor.Closed{Editor: pl.Editor}))
+}
+
+func (v *editorViewModelImpl) handleEditorCloseCanceled(evt event.Event) {
+	pl := evt.Payload().(editor.CloseCanceled)
+	fyne.Do(pl.Editor.Window().RequestFocus)
+}
+
 func (v *editorViewModelImpl) IsOpen(file *directory.File) bool {
 	_, ok := v.openedEditors[file.FullPath()]
 	return ok
 }
 
-func (v *editorViewModelImpl) Close(file *directory.File) {
-	v.closeEditor(file, nil)
-}
-
-func (v *editorViewModelImpl) closeEditor(file *directory.File, onClose func()) {
-	ed, ok := v.openedEditors[file.FullPath()]
-	if !ok {
-		return
-	}
-
-	if closable, ok := ed.(editor.Closable); ok {
-		closable.BeforeClose(func(ready bool) {
-			if ready {
-				if onClose != nil {
-					onClose()
-				}
-				ed.Window().Close()
-				v.unregisterEditor(file)
-			} else {
-				ed.Window().RequestFocus()
-			}
-		})
-	}
-}
-
 func (v *editorViewModelImpl) unregisterEditor(file *directory.File) {
 	path := file.FullPath()
-	if !v.IsOpen(file) {
-		return
-	}
+	v.mu.Lock()
+	defer v.mu.Unlock()
 	delete(v.openedEditors, path)
 	delete(v.loadedContents, path)
 }
@@ -326,7 +302,7 @@ func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {
 	if hasChanged {
 		v.mu.Lock()
 		for _, oe := range v.openedEditors {
-			v.Close(oe.File()) // TODO: move this when the connection change is triggered and warn the user for unsaved changes before closing the editors
+			v.requestClose(oe, func() {}) // TODO: move this when the connection change is triggered and warn the user for unsaved changes before closing the editors
 		}
 		v.selectedConnection = conn
 		v.mu.Unlock()

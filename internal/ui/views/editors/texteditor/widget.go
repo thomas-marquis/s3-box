@@ -33,7 +33,13 @@ func newWidget(e *textEditor) fyne.CanvasObject {
 		e.Err.Set(nil) //nolint:errcheck
 	}))
 
-	e.Window().SetCloseIntercept(w.onClose)
+	e.ConfirmClose = func(onConfirm func(confirmed bool)) {
+		dialog.ShowConfirm("Confirm close", "Are you sure you want to close the editor?", func(ok bool) {
+			onConfirm(ok)
+		}, e.Window())
+	}
+
+	//e.Window().SetCloseIntercept(w.onClose)
 
 	return w
 }
