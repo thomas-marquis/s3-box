@@ -20,7 +20,7 @@ const (
 	CloseCanceledType  event.Type = "event.editor.close.canceled"
 )
 
-type Event interface {
+type Payload interface {
 	This() Editor
 }
 

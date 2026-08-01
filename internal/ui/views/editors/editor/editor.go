@@ -7,8 +7,16 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/driver/desktop"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+)
+
+var (
+	shortcutQuit = desktop.CustomShortcut{
+		KeyName:  fyne.KeyQ,
+		Modifier: fyne.KeyModifierControl,
+	}
 )
 
 type Initializer func(bus event.Bus, window fyne.Window, file *directory.File) Editor
@@ -55,9 +63,19 @@ func NewBase(bus event.Bus, window fyne.Window, file *directory.File) Base {
 		Bus:          bus,
 	}
 
-	e.Sub = bus.Subscribe()
-
 	return e
+}
+
+func (b *Base) ExtendBaseEditor(e Editor) {
+	b.Sub = b.Bus.Subscribe(forCurrentEditor{Editor: e}).
+		DetachOn(event.Is(ClosedType))
+
+	b.window.Canvas().AddShortcut(&shortcutQuit, func(fyne.Shortcut) {
+		b.Bus.Publish(event.New(CloseRequested{
+			Editor: e,
+			Cancel: func() {},
+		}))
+	})
 }
 
 func (b *Base) Window() fyne.Window {

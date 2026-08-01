@@ -68,7 +68,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 		func() fyne.CanvasObject {
 			cell := newCellEntry(w.editor.Records)
 			cell.OnSave = w.editor.Save
-			cell.OnClose = w.editor.Close
+			cell.OnClose = w.editor.RequestClose
 			return cell
 		},
 		func(id widget.TableCellID, object fyne.CanvasObject) {

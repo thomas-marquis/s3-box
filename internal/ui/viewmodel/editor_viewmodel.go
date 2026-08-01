@@ -99,7 +99,7 @@ func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) 
 	}
 
 	if e, ok := v.openedEditors[file.FullPath()]; ok {
-		e.Window().RequestFocus()
+		fyne.Do(e.Window().RequestFocus)
 		return e, ErrEditorAlreadyOpened
 	}
 
@@ -130,7 +130,7 @@ func (v *editorViewModelImpl) requestClose(e editor.Editor, cancelFunc func()) {
 		Editor: e,
 		Cancel: cancelFunc,
 	}))
-	e.Window().RequestFocus()
+	fyne.Do(e.Window().RequestFocus)
 }
 
 func (v *editorViewModelImpl) handleFileLoadingSuccess(evt event.Event) {

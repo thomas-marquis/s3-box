@@ -27,10 +27,6 @@ var (
 		KeyName:  fyne.KeyS,
 		Modifier: fyne.KeyModifierControl,
 	}
-	shortcutQuit = desktop.CustomShortcut{
-		KeyName:  fyne.KeyQ,
-		Modifier: fyne.KeyModifierControl,
-	}
 )
 
 type csvColumn struct {
@@ -56,7 +52,6 @@ var (
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 	ed := &csvEditor{
 		Base: editor.NewBase(bus, w, file),
-		//bus:  bus,
 		Records: binding.NewList[[]string](func(l1, l2 []string) bool {
 			if len(l1) != len(l2) {
 				return false
@@ -73,13 +68,15 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		}),
 	}
 
+	ed.ExtendBaseEditor(ed)
+
 	ed.IsLoading.Set(true) //nolint:errcheck
 
-	w.Canvas().AddShortcut(&shortcutQuit, func(fyne.Shortcut) {
-		if err := ed.closer.Close(); err != nil {
-			ed.StatusLabel.Set("error (unclosed)") //nolint:errcheck
-		}
-	})
+	//w.Canvas().AddShortcut(&shortcutQuit, func(fyne.Shortcut) {
+	//	if err := ed.closer.Close(); err != nil {
+	//		ed.StatusLabel.Set("error (unclosed)") //nolint:errcheck
+	//	}
+	//})
 	w.Canvas().AddShortcut(&shortcutSave, func(fyne.Shortcut) {
 		ed.Save()
 	})
@@ -141,15 +138,18 @@ func (e *csvEditor) SetCloser(closer io.Closer) {
 	e.closer = closer
 }
 
-// Close triggers a close from within the editor
-func (e *csvEditor) Close() {
-	e.BeforeClose(func(ready bool) {
-		if ready {
-			if err := e.closer.Close(); err != nil {
-				e.StatusLabel.Set("error (unclosed)") //nolint:errcheck
-			}
-		}
-	})
+func (e *csvEditor) RequestClose() {
+	//e.BeforeClose(func(ready bool) {
+	//	if ready {
+	//		if err := e.closer.Close(); err != nil {
+	//			e.StatusLabel.Set("error (unclosed)") //nolint:errcheck
+	//		}
+	//	}
+	//})
+	e.Bus.Publish(event.New(editor.CloseRequested{
+		Editor: e,
+		Cancel: func() {},
+	}))
 }
 
 func (e *csvEditor) Cancel() {

@@ -39,8 +39,6 @@ func newWidget(e *textEditor) fyne.CanvasObject {
 		}, e.Window())
 	}
 
-	//e.Window().SetCloseIntercept(w.onClose)
-
 	return w
 }
 
@@ -101,15 +99,16 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (w *TextEditor) onClose() {
-	if w.editor.HasChanged() {
-		dialog.ShowConfirm("Discard changes?",
-			"Do you want to discard your changes?",
-			func(confirmed bool) {
-				if confirmed {
-					w.editor.Window().Close()
-				}
-			}, w.editor.Window())
-	} else {
-		w.editor.Window().Close()
-	}
+	w.editor.RequestClose()
+	//if w.editor.HasChanged() {
+	//	dialog.ShowConfirm("Discard changes?",
+	//		"Do you want to discard your changes?",
+	//		func(confirmed bool) {
+	//			if confirmed {
+	//				w.editor.Window().Close()
+	//			}
+	//		}, w.editor.Window())
+	//} else {
+	//	w.editor.Window().Close()
+	//}
 }

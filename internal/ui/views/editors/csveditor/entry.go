@@ -13,6 +13,10 @@ import (
 
 var (
 	errOutOfBounds = errors.New("out of bounds")
+	shortcutQuit   = desktop.CustomShortcut{
+		KeyName:  fyne.KeyQ,
+		Modifier: fyne.KeyModifierControl,
+	}
 )
 
 type CellEntry struct {

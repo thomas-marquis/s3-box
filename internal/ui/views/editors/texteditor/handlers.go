@@ -40,7 +40,6 @@ func (e *textEditor) handleCloseRequested(evt event.Event) {
 		return
 	}
 
-	//e.Window().RequestFocus()
 	e.ConfirmClose(func(confirmed bool) {
 		if confirmed {
 			pl.Cancel()

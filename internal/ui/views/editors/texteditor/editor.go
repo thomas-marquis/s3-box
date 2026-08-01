@@ -36,19 +36,28 @@ func New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor 
 		Content: binding.NewString(),
 	}
 
+	e.ExtendBaseEditor(e)
+
 	e.IsLoading.Set(true) //nolint:errcheck
 
 	e.Sub.
 		On(event.Is(editor.LoadedType), e.handleLoaded).
 		On(event.Is(editor.LoadFailedType), e.handleLoadFailed).
 		On(event.Is(editor.CloseRequestedType), e.handleCloseRequested)
-	e.Sub.ListenWithWorkers(1)
+	e.Sub.ListenWithWorkers(2)
 
 	return e
 }
 
 func (e *textEditor) CreateWidget() fyne.CanvasObject {
 	return newWidget(e)
+}
+
+func (e *textEditor) RequestClose() {
+	e.Bus.Publish(event.New(editor.CloseRequested{
+		Editor: e,
+		Cancel: func() {},
+	}))
 }
 
 func (e *textEditor) Save(content string) {
@@ -89,19 +98,21 @@ func (e *textEditor) OnSaved(newContent string, err error) {
 	e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
 	e.mu.Lock()
 	if e.shouldCloseWhenSaved {
-		e.Window().Close()
+		e.Bus.Publish(event.New(editor.CloseConfirmed{
+			Editor: e,
+		}))
 	}
 	e.mu.Unlock()
 }
 
-func (e *textEditor) Close() bool {
-	if e.HasChanged() {
-		return false
-	}
-	e.Cancel()
-	e.Window().Close() // force close
-	return true
-}
+//func (e *textEditor) Close() bool {
+//	if e.HasChanged() {
+//		return false
+//	}
+//	e.Cancel()
+//	e.Window().Close() // force close
+//	return true
+//}
 
 func (e *textEditor) Cancel() {
 	e.mu.Lock()
