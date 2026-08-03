@@ -36,16 +36,15 @@ func (e *textEditor) handleCloseRequested(evt event.Event) {
 
 	if !e.HasChanged() {
 		pl.Cancel()
-		e.Bus.Publish(evt.NewFollowup(editor.CloseConfirmed{Editor: e}))
+		e.Bus.Publish(pl.Confirm(evt))
 		return
 	}
 
 	e.ConfirmClose(func(confirmed bool) {
 		if confirmed {
-			pl.Cancel()
-			e.Bus.Publish(evt.NewFollowup(editor.CloseConfirmed{Editor: e}))
+			e.Bus.Publish(pl.Confirm(evt))
 		} else {
-			e.Bus.Publish(evt.NewFollowup(editor.CloseCanceled{Editor: e}))
+			e.Bus.Publish(pl.Cancel(evt))
 		}
 	})
 }

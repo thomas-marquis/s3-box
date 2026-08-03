@@ -60,17 +60,15 @@ func (e *csvEditor) handleLoadFailed(evt event.Event) {
 func (e *csvEditor) handleCloseRequested(evt event.Event) {
 	pl := evt.Payload().(editor.CloseRequested)
 	if !e.HasChanged() {
-		pl.Cancel()
-		e.Bus.Publish(evt.NewFollowup(editor.CloseConfirmed{Editor: e}))
+		e.Bus.Publish(pl.Cancel(evt))
 		return
 	}
 
 	e.ConfirmClose(func(confirmed bool) {
 		if confirmed {
-			pl.Cancel()
-			e.Bus.Publish(evt.NewFollowup(editor.CloseConfirmed{Editor: e}))
+			e.Bus.Publish(pl.Confirm(evt))
 		} else {
-			e.Bus.Publish(evt.NewFollowup(editor.CloseCanceled{Editor: e}))
+			e.Bus.Publish(pl.Cancel(evt))
 		}
 	})
 }

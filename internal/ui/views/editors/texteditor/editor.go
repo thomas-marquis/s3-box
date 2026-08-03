@@ -44,7 +44,7 @@ func New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor 
 		On(event.Is(editor.LoadedType), e.handleLoaded).
 		On(event.Is(editor.LoadFailedType), e.handleLoadFailed).
 		On(event.Is(editor.CloseRequestedType), e.handleCloseRequested)
-	e.Sub.ListenWithWorkers(2)
+	e.Sub.ListenWithWorkers(1)
 
 	return e
 }

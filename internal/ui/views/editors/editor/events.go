@@ -64,7 +64,11 @@ func (p Closed) This() Editor {
 
 type CloseRequested struct {
 	Editor Editor
-	Cancel func() `json:"-"`
+	cancel func()
+}
+
+func NewCloseRequested(e Editor, cancel func()) CloseRequested {
+	return CloseRequested{Editor: e, cancel: cancel}
 }
 
 func (CloseRequested) EventType() event.Type {
@@ -73,6 +77,17 @@ func (CloseRequested) EventType() event.Type {
 
 func (p CloseRequested) This() Editor {
 	return p.Editor
+}
+
+func (p CloseRequested) Confirm(evt event.Event) event.Event {
+	return evt.NewFollowup(CloseConfirmed{Editor: p.Editor})
+}
+
+func (p CloseRequested) Cancel(evt event.Event) event.Event {
+	if p.cancel != nil {
+		p.cancel()
+	}
+	return evt.NewFollowup(CloseCanceled{Editor: p.Editor})
 }
 
 type CloseConfirmed struct {
