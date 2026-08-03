@@ -35,7 +35,6 @@ func (e *textEditor) handleCloseRequested(evt event.Event) {
 	pl := evt.Payload().(editor.CloseRequested)
 
 	if !e.HasChanged() {
-		pl.Cancel()
 		e.Bus.Publish(pl.Confirm(evt))
 		return
 	}

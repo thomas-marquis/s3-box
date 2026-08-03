@@ -68,11 +68,6 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 
 	ed.IsLoading.Set(true) //nolint:errcheck
 
-	//w.Canvas().AddShortcut(&shortcutQuit, func(fyne.Shortcut) {
-	//	if err := ed.closer.Close(); err != nil {
-	//		ed.StatusLabel.Set("error (unclosed)") //nolint:errcheck
-	//	}
-	//})
 	w.Canvas().AddShortcut(&shortcutSave, func(fyne.Shortcut) {
 		ed.Save()
 	})
@@ -135,16 +130,8 @@ func (e *csvEditor) SetCloser(closer io.Closer) {
 }
 
 func (e *csvEditor) RequestClose() {
-	//e.BeforeClose(func(ready bool) {
-	//	if ready {
-	//		if err := e.closer.Close(); err != nil {
-	//			e.StatusLabel.Set("error (unclosed)") //nolint:errcheck
-	//		}
-	//	}
-	//})
 	e.Bus.Publish(event.New(editor.CloseRequested{
 		Editor: e,
-		Cancel: func() {},
 	}))
 }
 
