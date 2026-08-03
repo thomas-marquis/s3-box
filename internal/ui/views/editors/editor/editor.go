@@ -3,7 +3,6 @@ package editor
 import (
 	"encoding/json"
 	"errors"
-	"io"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -26,18 +25,6 @@ type Editor interface {
 	File() *directory.File
 	CreateWidget() fyne.CanvasObject
 	OnSaved(newContent string, err error)
-}
-
-// Closable represent an editor that can be closed properly by the main application.
-type Closable interface {
-	// BeforeClose is called right before the editor is closed externally (from click on the cross button or via the main application).
-	// The callback must be called with ready=true if the editor is ready to be closed (modifications saved, etc.), or with false otherwise.
-	// This method MUST NOT call Window.Close().
-	BeforeClose(cb func(ready bool))
-
-	// SetCloser register an io.Closer object that the editor can use to get closed itself.
-	// This method is called before all others on the editor initialization.
-	SetCloser(closer io.Closer)
 }
 
 type Base struct {
@@ -73,7 +60,6 @@ func (b *Base) ExtendBaseEditor(e Editor) {
 	b.window.Canvas().AddShortcut(&shortcutQuit, func(fyne.Shortcut) {
 		b.Bus.Publish(event.New(CloseRequested{
 			Editor: e,
-			Cancel: func() {},
 		}))
 	})
 }

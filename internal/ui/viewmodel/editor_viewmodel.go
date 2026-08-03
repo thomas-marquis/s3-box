@@ -126,10 +126,7 @@ func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) 
 }
 
 func (v *editorViewModelImpl) requestClose(e editor.Editor, cancelFunc func()) {
-	v.bus.Publish(event.New(editor.New{
-		Editor: e,
-		Cancel: cancelFunc,
-	}))
+	v.bus.Publish(event.New(editor.NewCloseRequested(e, cancelFunc)))
 	fyne.Do(e.Window().RequestFocus)
 }
 

@@ -53,13 +53,6 @@ func (e *textEditor) CreateWidget() fyne.CanvasObject {
 	return newWidget(e)
 }
 
-func (e *textEditor) RequestClose() {
-	e.Bus.Publish(event.New(editor.CloseRequested{
-		Editor: e,
-		Cancel: func() {},
-	}))
-}
-
 func (e *textEditor) Save(content string) {
 	e.IsLoading.Set(true)          //nolint:errcheck
 	e.StatusLabel.Set("Saving...") // nolint:errcheck
@@ -105,14 +98,11 @@ func (e *textEditor) OnSaved(newContent string, err error) {
 	e.mu.Unlock()
 }
 
-//func (e *textEditor) Close() bool {
-//	if e.HasChanged() {
-//		return false
-//	}
-//	e.Cancel()
-//	e.Window().Close() // force close
-//	return true
-//}
+func (e *textEditor) RequestClose() {
+	e.Bus.Publish(event.New(editor.CloseRequested{
+		Editor: e,
+	}))
+}
 
 func (e *textEditor) Cancel() {
 	e.mu.Lock()

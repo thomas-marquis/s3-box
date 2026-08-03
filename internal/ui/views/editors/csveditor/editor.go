@@ -45,10 +45,6 @@ type csvEditor struct {
 	closer  io.Closer
 }
 
-var (
-	_ editor.Closable = (*csvEditor)(nil)
-)
-
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 	ed := &csvEditor{
 		Base: editor.NewBase(bus, w, file),
