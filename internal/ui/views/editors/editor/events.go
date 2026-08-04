@@ -6,12 +6,6 @@ import (
 )
 
 const (
-	SaveTriggeredType event.Type = "event.fileeditor.save.triggered"
-	SaveSucceededType event.Type = "event.fileeditor.save.succeeded"
-	SaveFailedType    event.Type = "event.fileeditor.save.failed"
-
-	/////
-
 	LoadedType         event.Type = "event.editor.loaded"
 	LoadFailedType     event.Type = "event.editor.load.failed"
 	ClosedType         event.Type = "event.editor.closed"
@@ -112,33 +106,4 @@ func (CloseCanceled) EventType() event.Type {
 
 func (p CloseCanceled) This() Editor {
 	return p.Editor
-}
-
-/////
-
-type SaveTriggered struct {
-	File    *directory.File
-	Content string
-}
-
-func (e SaveTriggered) EventType() event.Type {
-	return SaveTriggeredType
-}
-
-type SaveSucceeded struct {
-	File    *directory.File
-	Content string
-}
-
-func (e SaveSucceeded) EventType() event.Type {
-	return SaveSucceededType
-}
-
-type SaveFailed struct {
-	Err  error
-	File *directory.File
-}
-
-func (e SaveFailed) EventType() event.Type {
-	return SaveFailedType
 }

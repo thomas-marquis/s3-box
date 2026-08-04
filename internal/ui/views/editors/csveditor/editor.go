@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
-	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -36,13 +36,11 @@ type csvColumn struct {
 type csvEditor struct {
 	editor.Base
 
-	mu          sync.Mutex
 	cancelFunc  func()
 	contentHash string
 
 	Records binding.List[[]string]
 	Columns binding.List[csvColumn]
-	closer  io.Closer
 }
 
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
@@ -76,7 +74,7 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		On(event.Is(editor.LoadedType), ed.handleLoaded).
 		On(event.Is(editor.LoadFailedType), ed.handleLoadFailed).
 		On(event.Is(editor.CloseRequestedType), ed.handleCloseRequested)
-	ed.Sub.ListenWithWorkers(1)
+	ed.Sub.ListenWithWorkers(2)
 
 	return ed
 }
@@ -87,46 +85,62 @@ func (e *csvEditor) CreateWidget() fyne.CanvasObject {
 
 func (e *csvEditor) Save() {
 	e.IsLoading.Set(true)          //nolint:errcheck
-	e.StatusLabel.Set("Saving...") //nolint:errcheck
+	e.StatusLabel.Set("Saving...") // nolint:errcheck
 
+	content := e.getContent()
 	ctx, cancel := context.WithCancel(context.Background())
-	e.mu.Lock()
+
+	e.Lock()
 	e.cancelFunc = cancel
-	e.mu.Unlock()
+	e.Unlock()
 
-	e.Bus.Publish(event.New(editor.SaveTriggered{
-		File:    e.File(),
-		Content: e.getContent(),
-	}, event.WithContext(ctx)))
-}
-
-func (e *csvEditor) OnSaved(newContent string, err error) {
-	e.IsLoading.Set(false) //nolint:errcheck
-
-	if err != nil {
+	handleFailure := func(err error) {
 		e.StatusLabel.Set("error (unsaved)") //nolint:errcheck
+		e.Err.Set(err)                       //nolint:errcheck
+
+		e.Lock()
+		//e.shouldCloseWhenSaved = false
+		e.cancelFunc = nil
+		e.Unlock()
+	}
+
+	if !e.IsLoaded() {
+		handleFailure(errors.New("file not loaded"))
 		return
 	}
 
-	e.updateContentHash(newContent)
-	e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
-}
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			e.Content.Cancel()
+			close(done)
+		case <-done:
+		}
+	}()
 
-func (e *csvEditor) BeforeClose(cb func(ready bool)) {
-	if e.HasChanged() {
-		e.ConfirmClose(func(confirmed bool) {
-			e.Cancel()
-			cb(confirmed)
-		})
-		return
-	}
+	go func() {
+		defer close(done)
+		defer e.IsLoading.Set(false) //nolint:errcheck
 
-	e.Cancel()
-	cb(true)
-}
+		if _, err := e.Content.Seek(0, io.SeekStart); err != nil {
+			handleFailure(err)
+			return
+		}
+		if _, err := fmt.Fprint(e.Content, content); err != nil {
+			handleFailure(err)
+			return
+		}
+		e.File().SetSizeBytes(uint64(len(content)))
 
-func (e *csvEditor) SetCloser(closer io.Closer) {
-	e.closer = closer
+		e.updateContentHash(content)
+		e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
+		e.Lock()
+		//if e.shouldCloseWhenSaved {
+		//	e.RequestClose()
+		//}
+		e.Unlock()
+	}()
 }
 
 func (e *csvEditor) RequestClose() {
@@ -136,8 +150,8 @@ func (e *csvEditor) RequestClose() {
 }
 
 func (e *csvEditor) Cancel() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	if e.cancelFunc == nil {
 		return
@@ -147,8 +161,8 @@ func (e *csvEditor) Cancel() {
 }
 
 func (e *csvEditor) HasChanged() bool {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.Lock()
+	defer e.Unlock()
 	return e.contentHash != sha256Hex(e.getContent())
 }
 
@@ -170,8 +184,8 @@ func (e *csvEditor) getContent() string {
 }
 
 func (e *csvEditor) updateContentHash(newContent string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.Lock()
+	defer e.Unlock()
 	e.contentHash = sha256Hex(newContent)
 }
 

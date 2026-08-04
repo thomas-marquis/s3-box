@@ -47,7 +47,7 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 
 	textEntry := newTextEditorEntry(w.editor.Save, w.onClose)
 	w.TextEntry = textEntry
-	textEntry.Bind(w.editor.Content)
+	textEntry.Bind(w.editor.ContentStr)
 
 	var cancelBtn *widget.Button
 	w.SaveBtn = widget.NewToolbarAction(theme.DocumentSaveIcon(), func() {

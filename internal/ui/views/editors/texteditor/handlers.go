@@ -8,9 +8,8 @@ import (
 )
 
 func (e *textEditor) handleLoaded(evt event.Event) {
+	defer e.IsLoading.Set(false) //nolint:errcheck
 	pl := evt.Payload().(editor.Loaded)
-
-	e.IsLoading.Set(false) //nolint:errcheck
 
 	contentVal, err := io.ReadAll(pl.Content)
 	if err != nil {
@@ -20,8 +19,9 @@ func (e *textEditor) handleLoaded(evt event.Event) {
 
 	strContent := string(contentVal)
 	e.updateContentHash(strContent)
+	e.SetContent(pl.Content)
 
-	e.Content.Set(strContent) //nolint:errcheck
+	e.ContentStr.Set(strContent) //nolint:errcheck
 }
 
 func (e *textEditor) handleLoadFailed(evt event.Event) {

@@ -10,9 +10,9 @@ import (
 )
 
 func (e *csvEditor) handleLoaded(evt event.Event) {
-	pl := evt.Payload().(editor.Loaded)
+	defer e.IsLoading.Set(false) //nolint:errcheck
 
-	e.IsLoading.Set(false) //nolint:errcheck
+	pl := evt.Payload().(editor.Loaded)
 
 	r := csv.NewReader(pl.Content)
 
@@ -31,6 +31,7 @@ func (e *csvEditor) handleLoaded(evt event.Event) {
 	}
 
 	e.updateContentHash(e.getContent())
+	e.SetContent(pl.Content)
 
 	th := fyne.CurrentApp().Settings().Theme()
 	textSize := th.Size(theme.SizeNameText)
@@ -60,7 +61,7 @@ func (e *csvEditor) handleLoadFailed(evt event.Event) {
 func (e *csvEditor) handleCloseRequested(evt event.Event) {
 	pl := evt.Payload().(editor.CloseRequested)
 	if !e.HasChanged() {
-		e.Bus.Publish(pl.Cancel(evt))
+		e.Bus.Publish(pl.Confirm(evt))
 		return
 	}
 

@@ -4,8 +4,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
-	"sync"
+	"io"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -18,11 +19,10 @@ import (
 type textEditor struct {
 	editor.Base
 
-	Content binding.String
+	ContentStr binding.String
 
 	ConfirmClose func(onConfirm func(confirmed bool))
 
-	mu                   sync.Mutex
 	contentHash          string
 	cancelFunc           func()
 	shouldCloseWhenSaved bool
@@ -32,8 +32,8 @@ type textEditor struct {
 
 func New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {
 	e := &textEditor{
-		Base:    editor.NewBase(bus, window, file),
-		Content: binding.NewString(),
+		Base:       editor.NewBase(bus, window, file),
+		ContentStr: binding.NewString(),
 	}
 
 	e.ExtendBaseEditor(e)
@@ -44,7 +44,7 @@ func New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor 
 		On(event.Is(editor.LoadedType), e.handleLoaded).
 		On(event.Is(editor.LoadFailedType), e.handleLoadFailed).
 		On(event.Is(editor.CloseRequestedType), e.handleCloseRequested)
-	e.Sub.ListenWithWorkers(1)
+	e.Sub.ListenWithWorkers(2)
 
 	return e
 }
@@ -58,44 +58,63 @@ func (e *textEditor) Save(content string) {
 	e.StatusLabel.Set("Saving...") // nolint:errcheck
 
 	ctx, cancel := context.WithCancel(context.Background())
-	e.mu.Lock()
-	e.cancelFunc = cancel
-	e.mu.Unlock()
 
-	e.Bus.Publish(event.New(editor.SaveTriggered{
-		File:    e.File(),
-		Content: content,
-	}, event.WithContext(ctx)))
+	e.Lock()
+	e.cancelFunc = cancel
+	e.Unlock()
+
+	handleFailure := func(err error) {
+		e.StatusLabel.Set("error (unsaved)") //nolint:errcheck
+		e.Err.Set(err)                       //nolint:errcheck
+
+		e.Lock()
+		e.shouldCloseWhenSaved = false
+		e.cancelFunc = nil
+		e.Unlock()
+	}
+
+	if !e.IsLoaded() {
+		handleFailure(errors.New("file not loaded"))
+		return
+	}
+
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			e.Content.Cancel()
+			close(done)
+		case <-done:
+		}
+	}()
+
+	go func() {
+		defer close(done)
+		defer e.IsLoading.Set(false) //nolint:errcheck
+
+		if _, err := e.Content.Seek(0, io.SeekStart); err != nil {
+			handleFailure(err)
+			return
+		}
+		if _, err := fmt.Fprint(e.Content, content); err != nil {
+			handleFailure(err)
+			return
+		}
+		e.File().SetSizeBytes(uint64(len(content)))
+
+		e.updateContentHash(content)
+		e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
+		e.Lock()
+		if e.shouldCloseWhenSaved {
+			e.RequestClose()
+		}
+		e.Unlock()
+	}()
 }
 
 func (e *textEditor) SaveThenExit(content string) {
 	e.shouldCloseWhenSaved = true
 	e.Save(content)
-}
-
-func (e *textEditor) OnSaved(newContent string, err error) {
-	e.IsLoading.Set(false) //nolint:errcheck
-	defer e.Cancel()
-
-	if err != nil {
-		e.StatusLabel.Set("error (unsaved)") //nolint:errcheck
-		e.Err.Set(err)                       //nolint:errcheck
-
-		e.mu.Lock()
-		e.shouldCloseWhenSaved = false
-		e.mu.Unlock()
-		return
-	}
-
-	e.updateContentHash(newContent)
-	e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
-	e.mu.Lock()
-	if e.shouldCloseWhenSaved {
-		e.Bus.Publish(event.New(editor.CloseConfirmed{
-			Editor: e,
-		}))
-	}
-	e.mu.Unlock()
 }
 
 func (e *textEditor) RequestClose() {
@@ -105,8 +124,8 @@ func (e *textEditor) RequestClose() {
 }
 
 func (e *textEditor) Cancel() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	if e.cancelFunc == nil {
 		return
@@ -116,15 +135,15 @@ func (e *textEditor) Cancel() {
 }
 
 func (e *textEditor) HasChanged() bool {
-	val, _ := e.Content.Get()
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	val, _ := e.ContentStr.Get()
+	e.Lock()
+	defer e.Unlock()
 	return e.contentHash != sha256Hex(val)
 }
 
 func (e *textEditor) updateContentHash(newContent string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.Lock()
+	defer e.Unlock()
 	e.contentHash = sha256Hex(newContent)
 }
 

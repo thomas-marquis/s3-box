@@ -3,6 +3,7 @@ package editor
 import (
 	"encoding/json"
 	"errors"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -24,10 +25,12 @@ type Editor interface {
 	Window() fyne.Window
 	File() *directory.File
 	CreateWidget() fyne.CanvasObject
-	OnSaved(newContent string, err error)
+	//OnSaved(newContent string, err error)
 }
 
 type Base struct {
+	sync.Mutex
+
 	window fyne.Window
 	file   *directory.File
 
@@ -37,6 +40,7 @@ type Base struct {
 	IsLoading    binding.Bool
 	ConfirmClose func(onConfirm func(confirmed bool))
 	Bus          event.Bus
+	Content      directory.FileContent
 }
 
 func NewBase(bus event.Bus, window fyne.Window, file *directory.File) Base {
@@ -88,4 +92,15 @@ func (b *Base) MarshalJSON() ([]byte, error) {
 		IsLoading:   loading,
 		Err:         err,
 	})
+}
+
+func (b *Base) IsLoaded() bool {
+	return b.Content != nil
+}
+
+func (b *Base) SetContent(content directory.FileContent) {
+	b.Lock()
+	defer b.Unlock()
+
+	b.Content = content
 }
