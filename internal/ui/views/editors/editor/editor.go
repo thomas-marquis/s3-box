@@ -25,7 +25,6 @@ type Editor interface {
 	Window() fyne.Window
 	File() *directory.File
 	CreateWidget() fyne.CanvasObject
-	//OnSaved(newContent string, err error)
 }
 
 type Base struct {

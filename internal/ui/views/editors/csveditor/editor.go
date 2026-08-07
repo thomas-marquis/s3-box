@@ -99,7 +99,6 @@ func (e *csvEditor) Save() {
 		e.Err.Set(err)                       //nolint:errcheck
 
 		e.Lock()
-		//e.shouldCloseWhenSaved = false
 		e.cancelFunc = nil
 		e.Unlock()
 	}
@@ -136,9 +135,6 @@ func (e *csvEditor) Save() {
 		e.updateContentHash(content)
 		e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
 		e.Lock()
-		//if e.shouldCloseWhenSaved {
-		//	e.RequestClose()
-		//}
 		e.Unlock()
 	}()
 }

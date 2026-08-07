@@ -53,17 +53,21 @@ func (mr *MockBusMockRecorder) Publish(evt any) *gomock.Call {
 }
 
 // Subscribe mocks base method.
-func (m *MockBus) Subscribe() *event.Subscriber {
+func (m *MockBus) Subscribe(defaultMatchers ...event.Matcher) *event.Subscriber {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Subscribe")
+	varargs := []any{}
+	for _, a := range defaultMatchers {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Subscribe", varargs...)
 	ret0, _ := ret[0].(*event.Subscriber)
 	return ret0
 }
 
 // Subscribe indicates an expected call of Subscribe.
-func (mr *MockBusMockRecorder) Subscribe() *gomock.Call {
+func (mr *MockBusMockRecorder) Subscribe(defaultMatchers ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscribe", reflect.TypeOf((*MockBus)(nil).Subscribe))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscribe", reflect.TypeOf((*MockBus)(nil).Subscribe), defaultMatchers...)
 }
 
 // Unsubscribe mocks base method.

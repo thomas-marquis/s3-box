@@ -45,7 +45,7 @@ func newWidget(e *textEditor) fyne.CanvasObject {
 func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
-	textEntry := newTextEditorEntry(w.editor.Save, w.onClose)
+	textEntry := newTextEditorEntry(w.editor.Save, w.editor.RequestClose)
 	w.TextEntry = textEntry
 	textEntry.Bind(w.editor.ContentStr)
 
@@ -96,19 +96,4 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 		textEntry)
 
 	return widget.NewSimpleRenderer(c)
-}
-
-func (w *TextEditor) onClose() {
-	w.editor.RequestClose()
-	//if w.editor.HasChanged() {
-	//	dialog.ShowConfirm("Discard changes?",
-	//		"Do you want to discard your changes?",
-	//		func(confirmed bool) {
-	//			if confirmed {
-	//				w.editor.Window().Close()
-	//			}
-	//		}, w.editor.Window())
-	//} else {
-	//	w.editor.Window().Close()
-	//}
 }
