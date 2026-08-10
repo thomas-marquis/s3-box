@@ -33,7 +33,11 @@ func newWidget(e *textEditor) fyne.CanvasObject {
 		e.Err.Set(nil) //nolint:errcheck
 	}))
 
-	e.Window().SetCloseIntercept(w.onClose)
+	e.ConfirmClose = func(onConfirm func(confirmed bool)) {
+		dialog.ShowConfirm("Confirm close", "Are you sure you want to close the editor?", func(ok bool) {
+			onConfirm(ok)
+		}, e.Window())
+	}
 
 	return w
 }
@@ -41,9 +45,9 @@ func newWidget(e *textEditor) fyne.CanvasObject {
 func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
-	textEntry := newTextEditorEntry(w.editor.Save, w.onClose)
+	textEntry := newTextEditorEntry(w.editor.Save, w.editor.RequestClose, w.editor.IsLoading)
 	w.TextEntry = textEntry
-	textEntry.Bind(w.editor.Content)
+	textEntry.Bind(w.editor.ContentStr)
 
 	var cancelBtn *widget.Button
 	w.SaveBtn = widget.NewToolbarAction(theme.DocumentSaveIcon(), func() {
@@ -92,18 +96,4 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 		textEntry)
 
 	return widget.NewSimpleRenderer(c)
-}
-
-func (w *TextEditor) onClose() {
-	if w.editor.HasChanged() {
-		dialog.ShowConfirm("Discard changes?",
-			"Do you want to discard your changes?",
-			func(confirmed bool) {
-				if confirmed {
-					w.editor.Window().Close()
-				}
-			}, w.editor.Window())
-	} else {
-		w.editor.Window().Close()
-	}
 }

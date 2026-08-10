@@ -3,18 +3,16 @@ package csveditor
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/csv"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
-	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/driver/desktop"
-	"fyne.io/fyne/v2/theme"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
@@ -29,10 +27,6 @@ var (
 		KeyName:  fyne.KeyS,
 		Modifier: fyne.KeyModifierControl,
 	}
-	shortcutQuit = desktop.CustomShortcut{
-		KeyName:  fyne.KeyQ,
-		Modifier: fyne.KeyModifierControl,
-	}
 )
 
 type csvColumn struct {
@@ -40,29 +34,18 @@ type csvColumn struct {
 }
 
 type csvEditor struct {
-	editor.Base
+	*editor.Base
 
-	bus         event.Bus
-	mu          sync.Mutex
 	cancelFunc  func()
 	contentHash string
 
-	Records      binding.List[[]string]
-	Columns      binding.List[csvColumn]
-	IsLoading    binding.Bool
-	StatusLabel  binding.String
-	ConfirmClose func(onConfirm func(confirmed bool))
-	closer       io.Closer
+	Records binding.List[[]string]
+	Columns binding.List[csvColumn]
 }
-
-var (
-	_ editor.Closable = (*csvEditor)(nil)
-)
 
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 	ed := &csvEditor{
-		Base: editor.NewBase(w, file),
-		bus:  bus,
+		Base: editor.NewBase(bus, w, file),
 		Records: binding.NewList[[]string](func(l1, l2 []string) bool {
 			if len(l1) != len(l2) {
 				return false
@@ -77,21 +60,21 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		Columns: binding.NewList[csvColumn](func(c1, c2 csvColumn) bool {
 			return c1 == c2
 		}),
-		IsLoading:    binding.NewBool(),
-		StatusLabel:  binding.NewString(),
-		ConfirmClose: func(onConfirm func(confirmed bool)) {},
 	}
+
+	ed.ExtendBaseEditor(ed)
 
 	ed.IsLoading.Set(true) //nolint:errcheck
 
-	w.Canvas().AddShortcut(&shortcutQuit, func(fyne.Shortcut) {
-		if err := ed.closer.Close(); err != nil {
-			ed.StatusLabel.Set("error (unclosed)") //nolint:errcheck
-		}
-	})
 	w.Canvas().AddShortcut(&shortcutSave, func(fyne.Shortcut) {
 		ed.Save()
 	})
+
+	ed.Sub.
+		On(event.Is(editor.LoadedType), ed.handleLoaded).
+		On(event.Is(editor.LoadFailedType), ed.handleLoadFailed).
+		On(event.Is(editor.CloseRequestedType), ed.handleCloseRequested)
+	ed.Sub.ListenWithWorkers(2)
 
 	return ed
 }
@@ -100,107 +83,69 @@ func (e *csvEditor) CreateWidget() fyne.CanvasObject {
 	return newWidget(e)
 }
 
-func (e *csvEditor) OnLoaded(fileContent directory.FileContent, err error) {
-	defer e.IsLoading.Set(false) //nolint:errcheck
-	if err != nil {
-		e.StatusLabel.Set("error (unloaded)") //nolint:errcheck
-		return
-	}
-
-	r := csv.NewReader(fileContent)
-
-	nbRows := 0
-	for {
-		record, err := r.Read()
-		if err != nil {
-			break
-		}
-		e.Records.Append(record) //nolint:errcheck
-		nbRows++
-	}
-
-	if e.Records.Length() == 0 {
-		return
-	}
-
-	e.updateContentHash(e.getContent())
-
-	th := fyne.CurrentApp().Settings().Theme()
-	textSize := th.Size(theme.SizeNameText)
-
-	firstRow, _ := e.Records.GetValue(0)
-	nbCols := len(firstRow)
-	for i := range nbCols {
-		col := csvColumn{}
-		for j := range nbRows {
-			row, _ := e.Records.GetValue(j)
-			cw := colWidth(row[i], textSize)
-			if col.Width < cw-cellPadding {
-				col.Width = cw
-			}
-		}
-		e.Columns.Append(col) //nolint:errcheck
-	}
-}
-
 func (e *csvEditor) Save() {
 	e.IsLoading.Set(true)          //nolint:errcheck
-	e.StatusLabel.Set("Saving...") //nolint:errcheck
+	e.StatusLabel.Set("Saving...") // nolint:errcheck
 
+	content := e.getContent()
 	ctx, cancel := context.WithCancel(context.Background())
-	e.mu.Lock()
+
+	e.Lock()
 	e.cancelFunc = cancel
-	e.mu.Unlock()
+	e.Unlock()
 
-	e.bus.Publish(event.New(editor.SaveTriggered{
-		File:    e.File(),
-		Content: e.getContent(),
-	}, event.WithContext(ctx)))
-}
-
-func (e *csvEditor) OnSaved(newContent string, err error) {
-	e.IsLoading.Set(false) //nolint:errcheck
-
-	if err != nil {
+	handleFailure := func(err error) {
 		e.StatusLabel.Set("error (unsaved)") //nolint:errcheck
+		e.Err.Set(err)                       //nolint:errcheck
+
+		e.Lock()
+		e.cancelFunc = nil
+		e.Unlock()
+	}
+
+	if !e.IsLoaded() {
+		handleFailure(errors.New("file not loaded"))
 		return
 	}
 
-	e.updateContentHash(newContent)
-	e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
-}
-
-func (e *csvEditor) BeforeClose(cb func(ready bool)) {
-	if e.HasChanged() {
-		e.ConfirmClose(func(confirmed bool) {
-			e.Cancel()
-			cb(confirmed)
-		})
-		return
-	}
-
-	e.Cancel()
-	cb(true)
-}
-
-func (e *csvEditor) SetCloser(closer io.Closer) {
-	e.closer = closer
-}
-
-// Close triggers a close from within the editor
-func (e *csvEditor) Close() {
-	e.BeforeClose(func(ready bool) {
-		if ready {
-			if err := e.closer.Close(); err != nil {
-				e.StatusLabel.Set("error (unclosed)") //nolint:errcheck
-			}
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			e.Content.Cancel()
+			close(done)
+		case <-done:
 		}
-	})
+	}()
+
+	go func() {
+		defer close(done)
+		defer e.IsLoading.Set(false) //nolint:errcheck
+
+		if _, err := e.Content.Seek(0, io.SeekStart); err != nil {
+			handleFailure(err)
+			return
+		}
+		if _, err := fmt.Fprint(e.Content, content); err != nil {
+			handleFailure(err)
+			return
+		}
+		e.File().SetSizeBytes(uint64(len(content)))
+
+		e.updateContentHash(content)
+		e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
+	}()
+}
+
+func (e *csvEditor) RequestClose() {
+	e.Bus.Publish(event.New(editor.CloseRequested{
+		Editor: e,
+	}))
 }
 
 func (e *csvEditor) Cancel() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	if e.cancelFunc == nil {
 		return
@@ -210,8 +155,8 @@ func (e *csvEditor) Cancel() {
 }
 
 func (e *csvEditor) HasChanged() bool {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.Lock()
+	defer e.Unlock()
 	return e.contentHash != sha256Hex(e.getContent())
 }
 
@@ -233,8 +178,8 @@ func (e *csvEditor) getContent() string {
 }
 
 func (e *csvEditor) updateContentHash(newContent string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.Lock()
+	defer e.Unlock()
 	e.contentHash = sha256Hex(newContent)
 }
 

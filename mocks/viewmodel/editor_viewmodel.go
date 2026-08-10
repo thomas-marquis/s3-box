@@ -43,18 +43,6 @@ func (m *MockEditorViewModel) EXPECT() *MockEditorViewModelMockRecorder {
 	return m.recorder
 }
 
-// Close mocks base method.
-func (m *MockEditorViewModel) Close(file *directory.File) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Close", file)
-}
-
-// Close indicates an expected call of Close.
-func (mr *MockEditorViewModelMockRecorder) Close(file any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockEditorViewModel)(nil).Close), file)
-}
-
 // ErrorMessage mocks base method.
 func (m *MockEditorViewModel) ErrorMessage() binding.String {
 	m.ctrl.T.Helper()

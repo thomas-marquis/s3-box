@@ -1,20 +1,22 @@
 package texteditor_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/driver/desktop"
 	fyne_test "fyne.io/fyne/v2/test"
 	fyne_widget "fyne.io/fyne/v2/widget"
+	"github.com/stretchr/testify/assert"
+	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/it-happened/inmemory"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
-	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
-	"go.uber.org/mock/gomock"
 )
 
 // uv run ./tools/diff_images.py --folders internal/ui/views/editors/texteditor/testdata/images internal/ui/views/editors/texteditor/testdata/failed/images --color "red"
@@ -23,182 +25,259 @@ var (
 	lastModified = time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 )
 
-func TestTextEditor_saving(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping image matching tests in short mode")
-	}
+type fakeFileContent struct {
+	*directory.InMemoryContent
+	Written chan struct{}
+	Readed  chan struct{}
+}
 
+var (
+	_ directory.FileContent = (*fakeFileContent)(nil)
+)
+
+func (c *fakeFileContent) Read(buff []byte) (int, error) {
+	<-c.Readed
+	return c.InMemoryContent.Read(buff)
+}
+
+func (c *fakeFileContent) Write(content []byte) (int, error) {
+	<-c.Written
+	return c.InMemoryContent.Write(content)
+}
+
+type fakeFileContentWithWriteErr struct {
+	*directory.InMemoryContent
+	err error
+}
+
+func (c *fakeFileContentWithWriteErr) Write(content []byte) (int, error) {
+	return 0, c.err
+}
+
+type fixture struct {
+	bus    event.Bus
+	ctx    context.Context
+	cancel context.CancelFunc
+	t      *testing.T
+	editor editor.Editor
+	file   *directory.File
+	window fyne.Window
+}
+
+func setup(t *testing.T) *fixture {
+	t.Helper()
 	fyne_test.NewApp()
+	f := &fixture{t: t}
+
+	f.ctx, f.cancel = context.WithCancel(context.Background())
+	f.bus = inmemory.NewBus(f.ctx)
 
 	rootDir, _ := directory.NewRoot(connection_deck.NewConnectionID())
-	file, _ := directory.NewFile("test.txt", rootDir,
+	f.file, _ = directory.NewFile("test.txt", rootDir,
 		directory.WithFileSize(1024),
 		directory.WithFileLastModified(lastModified),
 	)
+
+	f.window = fyne_test.NewWindow(nil)
+	f.window.Resize(fyne.NewSize(500, 300))
+	f.editor = texteditor.New(f.bus, f.window, f.file)
+
+	t.Cleanup(f.teardown)
+
+	return f
+}
+
+func (f *fixture) Window() fyne.Window {
+	f.t.Helper()
+	return f.window
+}
+
+func (f *fixture) File() *directory.File {
+	f.t.Helper()
+	return f.file
+}
+
+func (f *fixture) Editor() editor.Editor {
+	f.t.Helper()
+	return f.editor
+}
+
+func (f *fixture) Bus() event.Bus {
+	f.t.Helper()
+	return f.bus
+}
+
+func (f *fixture) teardown() {
+	f.cancel()
+}
+
+func TestTextEditor_CreateWidget(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping image matching tests in short mode")
+	}
 
 	t.Run("should save updated content", func(t *testing.T) {
 		// Given
-		ctrl := gomock.NewController(t)
-		mockBus := mocks_event.NewMockBus(ctrl)
-		mockBus.EXPECT().Publish(gomock.Any()).AnyTimes()
-
-		w := fyne_test.NewWindow(nil)
-		w.Resize(fyne.NewSize(500, 300))
-		ed := texteditor.New(mockBus, w, file)
+		fxt := setup(t)
+		ed := fxt.Editor()
 
 		res := ed.CreateWidget().(*texteditor.TextEditor)
-		canvas := w.Canvas()
+		canvas := fxt.Window().Canvas()
 		canvas.SetContent(res)
 
-		// When & Then
+		written := make(chan struct{})
+		readed := make(chan struct{})
+
+		content := &fakeFileContent{
+			InMemoryContent: &directory.InMemoryContent{
+				Data: make([]byte, 0),
+			},
+			Written: written,
+			Readed:  readed,
+		}
+
+		// When the file is loading
+		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
+			testutil.AssertImageMatches(ct, "images/is-loading.png", canvas.Capture())
+		}, time.Second, 10*time.Millisecond)
+
+		fxt.Bus().Publish(event.New(editor.Loaded{
+			Editor:  ed,
+			Content: content,
+		}))
+
+		close(readed) // Simulate end loading
+		// When the file is loaded
+		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
+			testutil.AssertImageMatches(ct, "images/loaded-empty.png", canvas.Capture())
+		}, time.Second, 10*time.Millisecond)
+
+		// When user types some text, then save
 		fyne_test.Type(res.TextEntry, "my new content")
 		fyne_test.Tap(res.SaveBtn.ToolbarObject().(*fyne_widget.Button))
-		testutil.AssertImageMatches(t, "images/updated-and-saving.png", canvas.Capture())
 
-		ed.OnSaved("my new content", nil)
-		testutil.AssertImageMatches(t, "images/updated-and-saved.png", canvas.Capture())
+		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
+			testutil.AssertImageMatches(ct, "images/updated-and-saving.png", canvas.Capture())
+		}, time.Second, 10*time.Millisecond)
+
+		close(written)
+		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
+			testutil.AssertImageMatches(ct, "images/updated-and-saved.png", canvas.Capture())
+		}, time.Second, 10*time.Millisecond)
 	})
 
-	t.Run("should display save error", func(t *testing.T) {
+	t.Run("should load and display non empty file", func(t *testing.T) {
 		// Given
-		ctrl := gomock.NewController(t)
-		mockBus := mocks_event.NewMockBus(ctrl)
-		mockBus.EXPECT().Publish(gomock.Any()).AnyTimes()
+		fxt := setup(t)
+		ed := fxt.Editor()
 
-		w := fyne_test.NewWindow(nil)
-		w.Resize(fyne.NewSize(500, 300))
-		ed := texteditor.New(mockBus, w, file)
+		res := ed.CreateWidget().(*texteditor.TextEditor)
+		canvas := fxt.Window().Canvas()
+		canvas.SetContent(res)
 
-		wdg := ed.CreateWidget().(*texteditor.TextEditor)
-		canvas := w.Canvas()
-		canvas.SetContent(wdg)
-
-		// When
-		fyne_test.Type(wdg.TextEntry, "my new content")
-		fyne_test.Tap(wdg.SaveBtn.ToolbarObject().(*fyne_widget.Button))
-
-		ed.OnSaved("", errors.New("failed to save"))
-
-		// Then
-		testutil.AssertImageMatches(t, "images/saving-error.png", canvas.Capture())
-	})
-}
-
-func TestTextEditor_loading(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping image matching tests in short mode")
-	}
-
-	fyne_test.NewApp()
-
-	rootDir, _ := directory.NewRoot(connection_deck.NewConnectionID())
-	file, _ := directory.NewFile("test.txt", rootDir,
-		directory.WithFileSize(1024),
-		directory.WithFileLastModified(lastModified),
-	)
-
-	t.Run("should display empty content when file is not loaded yet", func(t *testing.T) {
-		// Given
-		ctrl := gomock.NewController(t)
-		mockBus := mocks_event.NewMockBus(ctrl)
-
-		w := fyne_test.NewWindow(nil)
-		w.Resize(fyne.NewSize(500, 300))
-
-		ed := texteditor.New(mockBus, w, file)
-
-		// When
-		res := ed.CreateWidget()
-		w.Canvas().SetContent(res)
-
-		// Then
-		testutil.AssertImageMatches(t, "images/is-loading.png", w.Canvas().Capture())
-	})
-
-	t.Run("should display file content", func(t *testing.T) {
-		// Given
-		ctrl := gomock.NewController(t)
-		mockBus := mocks_event.NewMockBus(ctrl)
-
-		w := fyne_test.NewWindow(nil)
-		w.Resize(fyne.NewSize(500, 300))
-
-		ed := texteditor.New(mockBus, w, file)
-		mockContent := &directory.InMemoryContent{
-			Data: []byte("Hello world!"),
-			Pos:  0,
+		content := &directory.InMemoryContent{
+			Data: []byte("something crazy"),
 		}
 
 		// When
-		res := ed.CreateWidget()
-		w.Canvas().SetContent(res)
-
-		ed.OnLoaded(mockContent, nil)
+		fxt.Bus().Publish(event.New(editor.Loaded{
+			Editor:  ed,
+			Content: content,
+		}))
 
 		// Then
-		testutil.AssertImageMatches(t, "images/loaded-with-content.png", w.Canvas().Capture())
+		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
+			testutil.AssertImageMatches(ct, "images/loaded-non-empty.png", canvas.Capture())
+		}, time.Second, 10*time.Millisecond)
 	})
 
-	t.Run("should display error message", func(t *testing.T) {
+	t.Run("should display save error when loading failed", func(t *testing.T) {
 		// Given
-		ctrl := gomock.NewController(t)
-		mockBus := mocks_event.NewMockBus(ctrl)
+		fxt := setup(t)
+		ed := fxt.Editor()
 
-		w := fyne_test.NewWindow(nil)
-		w.Resize(fyne.NewSize(500, 300))
-
-		ed := texteditor.New(mockBus, w, file)
+		res := ed.CreateWidget().(*texteditor.TextEditor)
+		canvas := fxt.Window().Canvas()
+		canvas.SetContent(res)
 
 		// When
-		res := ed.CreateWidget()
-		w.Canvas().SetContent(res)
-
-		ed.OnLoaded(nil, errors.New("error loading file"))
+		fxt.Bus().Publish(event.New(editor.LoadFailed{
+			Editor: ed,
+			Err:    errors.New("summer is coming"),
+		}))
 
 		// Then
-		testutil.AssertImageMatches(t, "images/loaded-with-error.png", w.Canvas().Capture())
+		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
+			testutil.AssertImageMatches(ct, "images/loaded-error.png", fxt.Window().Canvas().Capture())
+		}, time.Second, 10*time.Millisecond)
 	})
-}
 
-func TestTextEditor_close(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping image matching tests in short mode")
-	}
-
-	fyne_test.NewApp()
-
-	rootDir, _ := directory.NewRoot(connection_deck.NewConnectionID())
-	file, _ := directory.NewFile("test.txt", rootDir,
-		directory.WithFileSize(1024),
-		directory.WithFileLastModified(lastModified),
-	)
-
-	t.Run("should warn user when file has been updated", func(t *testing.T) {
+	t.Run("should display the error message when saving fails", func(t *testing.T) {
 		// Given
-		ctrl := gomock.NewController(t)
-		mockBus := mocks_event.NewMockBus(ctrl)
-		w := fyne_test.NewWindow(nil)
-		w.Resize(fyne.NewSize(500, 300))
+		fxt := setup(t)
+		ed := fxt.Editor()
 
-		ed := texteditor.New(mockBus, w, file)
-		wdg := ed.CreateWidget().(*texteditor.TextEditor)
-		canvas := w.Canvas()
-		canvas.SetContent(wdg)
+		res := ed.CreateWidget().(*texteditor.TextEditor)
+		canvas := fxt.Window().Canvas()
+		canvas.SetContent(res)
 
-		mockContent := &directory.InMemoryContent{
-			Data: []byte("Hello "),
-			Pos:  0,
+		content := &fakeFileContentWithWriteErr{
+			InMemoryContent: &directory.InMemoryContent{
+				Data: make([]byte, 0),
+			},
+			err: errors.New("the world just ended"),
 		}
-		ed.OnLoaded(mockContent, nil)
+
+		fxt.Bus().Publish(event.New(editor.Loaded{
+			Editor:  ed,
+			Content: content,
+		}))
+
+		// Wait until the file is loaded
+		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
+			testutil.AssertImageMatches(ct, "images/loaded-empty.png", fxt.Window().Canvas().Capture())
+		}, time.Second, 10*time.Millisecond)
+
+		// When user types some text, then save
+		fyne_test.Type(res.TextEntry, "my new content")
+		fyne_test.Tap(res.SaveBtn.ToolbarObject().(*fyne_widget.Button))
+
+		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
+			testutil.AssertImageMatches(ct, "images/updated-and-saved-with-error.png", canvas.Capture())
+		}, time.Second, 10*time.Millisecond)
+	})
+
+	t.Run("should display a message when closed without saving", func(t *testing.T) {
+		// Given
+		fxt := setup(t)
+		ed := fxt.Editor()
+
+		res := ed.CreateWidget().(*texteditor.TextEditor)
+		canvas := fxt.Window().Canvas()
+		canvas.SetContent(res)
+
+		content := &directory.InMemoryContent{
+			Data: make([]byte, 0),
+		}
+
+		fxt.Bus().Publish(event.New(editor.Loaded{
+			Editor:  ed,
+			Content: content,
+		}))
+
+		// Wait until the file is loaded
+		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
+			testutil.AssertImageMatches(ct, "images/loaded-empty.png", fxt.Window().Canvas().Capture())
+		}, time.Second, 10*time.Millisecond)
+
+		fyne_test.Type(res.TextEntry, "my new content")
 
 		// When
-		fyne_test.Type(wdg.TextEntry, "World!")
-		wdg.TextEntry.TypedShortcut(&desktop.CustomShortcut{
-			KeyName:  fyne.KeyQ,
-			Modifier: fyne.KeyModifierControl,
-		})
+		fxt.Bus().Publish(event.New(editor.CloseRequested{Editor: ed}))
 
 		// Then
-		testutil.AssertImageMatches(t, "images/close-with-unsave.png", w.Canvas().Capture())
+		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
+			testutil.AssertImageMatches(ct, "images/updated-not-saved-and-closed.png", canvas.Capture())
+		}, time.Second, 10*time.Millisecond)
 	})
 }

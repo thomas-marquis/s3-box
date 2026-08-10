@@ -69,30 +69,6 @@ func (mr *MockEditorMockRecorder) File() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "File", reflect.TypeOf((*MockEditor)(nil).File))
 }
 
-// OnLoaded mocks base method.
-func (m *MockEditor) OnLoaded(fileContent directory.FileContent, err error) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "OnLoaded", fileContent, err)
-}
-
-// OnLoaded indicates an expected call of OnLoaded.
-func (mr *MockEditorMockRecorder) OnLoaded(fileContent, err any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnLoaded", reflect.TypeOf((*MockEditor)(nil).OnLoaded), fileContent, err)
-}
-
-// OnSaved mocks base method.
-func (m *MockEditor) OnSaved(newContent string, err error) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "OnSaved", newContent, err)
-}
-
-// OnSaved indicates an expected call of OnSaved.
-func (mr *MockEditorMockRecorder) OnSaved(newContent, err any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnSaved", reflect.TypeOf((*MockEditor)(nil).OnSaved), newContent, err)
-}
-
 // Window mocks base method.
 func (m *MockEditor) Window() fyne.Window {
 	m.ctrl.T.Helper()

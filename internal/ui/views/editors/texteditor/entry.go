@@ -2,6 +2,7 @@ package texteditor
 
 import (
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
@@ -11,6 +12,7 @@ type textContentEntry struct {
 
 	onValidate func(string)
 	onClose    func()
+	isLoading  binding.Bool
 }
 
 var (
@@ -29,7 +31,14 @@ func (e *textContentEntry) TypedShortcut(s fyne.Shortcut) {
 	}
 }
 
-func newTextEditorEntry(onValidate func(string), onCLose func()) *textContentEntry {
+func (e *textContentEntry) TypedRune(r rune) {
+	loaded, _ := e.isLoading.Get()
+	if !loaded {
+		e.Entry.TypedRune(r)
+	}
+}
+
+func newTextEditorEntry(onValidate func(string), onCLose func(), isLoading binding.Bool) *textContentEntry {
 	e := &textContentEntry{
 		Entry: widget.Entry{
 			MultiLine: true,
@@ -37,6 +46,7 @@ func newTextEditorEntry(onValidate func(string), onCLose func()) *textContentEnt
 		},
 		onValidate: onValidate,
 		onClose:    onCLose,
+		isLoading:  isLoading,
 	}
 	e.ExtendBaseWidget(e)
 	return e
