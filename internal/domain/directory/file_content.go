@@ -67,34 +67,3 @@ func (f *InMemoryContent) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (f *InMemoryContent) Cancel() {}
-
-//
-//type InMemContentActionable struct {
-//	*InMemoryContent
-//	actRead chan struct{}
-//}
-//
-//func NewInMemContentActionable() *InMemContentActionable {
-//	c := &InMemContentActionable{}
-//	return c
-//}
-//
-//func (f *InMemContentActionable) Read(p []byte) (int, error) {
-//	return f.InMemoryContent.Read(p)
-//}
-//
-//func (f *InMemContentActionable) Write(p []byte) (int, error) {
-//	return f.InMemoryContent.Write(p)
-//}
-//
-//func (f *InMemContentActionable) Close() error {
-//	return f.InMemoryContent.Close()
-//}
-//
-//func (f *InMemContentActionable) Seek(offset int64, whence int) (int64, error) {
-//	return f.InMemoryContent.Seek(offset, whence)
-//}
-//
-//func (f *InMemContentActionable) Cancel() {
-//	f.InMemoryContent.Cancel()
-//}

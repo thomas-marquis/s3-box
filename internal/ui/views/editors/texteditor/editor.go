@@ -111,6 +111,8 @@ func (e *textEditor) Save(content string) {
 }
 
 func (e *textEditor) SaveThenExit(content string) {
+	e.Lock()
+	defer e.Unlock()
 	e.shouldCloseWhenSaved = true
 	e.Save(content)
 }
