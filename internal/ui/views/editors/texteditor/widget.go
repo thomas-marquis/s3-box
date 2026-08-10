@@ -45,7 +45,7 @@ func newWidget(e *textEditor) fyne.CanvasObject {
 func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
-	textEntry := newTextEditorEntry(w.editor.Save, w.editor.RequestClose)
+	textEntry := newTextEditorEntry(w.editor.Save, w.editor.RequestClose, w.editor.IsLoading)
 	w.TextEntry = textEntry
 	textEntry.Bind(w.editor.ContentStr)
 

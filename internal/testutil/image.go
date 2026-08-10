@@ -6,7 +6,6 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +16,7 @@ import (
 // The test `t` fails if the given image is not equal to the loaded master image.
 // In this case the given image is written into a file in `testdata/failed/<masterFilename>` (relative to the test).
 // This path is also reported, thus the file can be used as new master.
-func AssertImageMatches(t *testing.T, masterFilename string, img image.Image, msgAndArgs ...any) bool {
+func AssertImageMatches(t require.TestingT, masterFilename string, img image.Image, msgAndArgs ...any) bool {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 	masterPath := filepath.Join(wd, "testdata", masterFilename)
@@ -77,7 +76,7 @@ func pixCloseEnough(a, b []uint8) bool {
 	return mismatches == 0 || mismatches < len(a)/100
 }
 
-func pixelsForImage(t *testing.T, img image.Image) []uint8 {
+func pixelsForImage(t assert.TestingT, img image.Image) []uint8 {
 	var pix []uint8
 	if data, ok := img.(*image.RGBA); ok {
 		pix = data.Pix
@@ -85,7 +84,7 @@ func pixelsForImage(t *testing.T, img image.Image) []uint8 {
 		pix = data.Pix
 	}
 	if pix == nil {
-		t.Error("Master image is unsupported type")
+		assert.Fail(t, "Master image is unsupported type")
 	}
 
 	return pix
