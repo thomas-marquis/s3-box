@@ -79,12 +79,10 @@ func NewEditorViewModel(
 		ListenNonBlocking()
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			vm.mu.Lock()
-			vm.forceCloseAll() // TODO: implement a back signal to prevent from closing unsaved editors
-			vm.mu.Unlock()
-		}
+		<-ctx.Done()
+		vm.mu.Lock()
+		vm.forceCloseAll() // TODO: implement a back signal to prevent from closing unsaved editors
+		vm.mu.Unlock()
 	}()
 
 	return vm
@@ -185,7 +183,7 @@ func (v *editorViewModelImpl) handleEditorCloseConfirmed(evt event.Event) {
 	pl := evt.Payload().(editor.CloseConfirmed)
 	fyne.Do(pl.Editor.Window().Close)
 	v.unregisterEditor(pl.Editor.File())
-	v.bus.Publish(evt.NewFollowup(editor.Closed{Editor: pl.Editor}))
+	v.bus.Publish(evt.NewFollowup(editor.Closed(pl)))
 }
 
 func (v *editorViewModelImpl) handleEditorCloseCanceled(evt event.Event) {

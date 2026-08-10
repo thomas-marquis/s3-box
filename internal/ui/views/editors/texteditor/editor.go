@@ -17,7 +17,7 @@ import (
 )
 
 type textEditor struct {
-	editor.Base
+	*editor.Base
 
 	ContentStr binding.String
 
@@ -26,8 +26,6 @@ type textEditor struct {
 	contentHash          string
 	cancelFunc           func()
 	shouldCloseWhenSaved bool
-
-	sub *event.Subscriber
 }
 
 func New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {

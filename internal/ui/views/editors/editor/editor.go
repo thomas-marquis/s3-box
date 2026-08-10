@@ -42,8 +42,8 @@ type Base struct {
 	Content      directory.FileContent
 }
 
-func NewBase(bus event.Bus, window fyne.Window, file *directory.File) Base {
-	e := Base{
+func NewBase(bus event.Bus, window fyne.Window, file *directory.File) *Base {
+	e := &Base{
 		window:       window,
 		file:         file,
 		StatusLabel:  binding.NewString(),

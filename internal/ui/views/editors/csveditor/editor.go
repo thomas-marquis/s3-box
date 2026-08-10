@@ -34,7 +34,7 @@ type csvColumn struct {
 }
 
 type csvEditor struct {
-	editor.Base
+	*editor.Base
 
 	cancelFunc  func()
 	contentHash string
@@ -134,8 +134,6 @@ func (e *csvEditor) Save() {
 
 		e.updateContentHash(content)
 		e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
-		e.Lock()
-		e.Unlock()
 	}()
 }
 
