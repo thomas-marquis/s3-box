@@ -25,14 +25,13 @@ func newWidget(e *csvEditor) *Widget {
 	w := &Widget{
 		editor: e,
 	}
+	w.ExtendBaseWidget(w)
 
 	e.ConfirmClose = func(onConfirm func(confirmed bool)) {
 		dialog.ShowConfirm("Confirm close", "Are you sure you want to close the editor?", func(ok bool) {
 			onConfirm(ok)
 		}, e.Window())
 	}
-
-	w.ExtendBaseWidget(w)
 
 	e.Err.AddListener(binding.NewDataListener(func() {
 		err, _ := e.Err.Get()

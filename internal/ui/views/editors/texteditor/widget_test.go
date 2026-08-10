@@ -149,7 +149,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 		close(readed) // Simulate end loading
 		// When the file is loaded
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(t, "images/loaded-empty.png", fxt.Window().Canvas().Capture())
+			testutil.AssertImageMatches(ct, "images/loaded-empty.png", canvas.Capture())
 		}, time.Second, 10*time.Millisecond)
 
 		// When user types some text, then save
@@ -163,6 +163,31 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 		close(written)
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
 			testutil.AssertImageMatches(ct, "images/updated-and-saved.png", canvas.Capture())
+		}, time.Second, 10*time.Millisecond)
+	})
+
+	t.Run("should load and display non empty file", func(t *testing.T) {
+		// Given
+		fxt := setup(t)
+		ed := fxt.Editor()
+
+		res := ed.CreateWidget().(*texteditor.TextEditor)
+		canvas := fxt.Window().Canvas()
+		canvas.SetContent(res)
+
+		content := &directory.InMemoryContent{
+			Data: []byte("something crazy"),
+		}
+
+		// When
+		fxt.Bus().Publish(event.New(editor.Loaded{
+			Editor:  ed,
+			Content: content,
+		}))
+
+		// Then
+		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
+			testutil.AssertImageMatches(ct, "images/loaded-non-empty.png", canvas.Capture())
 		}, time.Second, 10*time.Millisecond)
 	})
 
@@ -183,7 +208,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 
 		// Then
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(t, "images/loaded-error.png", fxt.Window().Canvas().Capture())
+			testutil.AssertImageMatches(ct, "images/loaded-error.png", fxt.Window().Canvas().Capture())
 		}, time.Second, 10*time.Millisecond)
 	})
 
@@ -210,7 +235,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 
 		// Wait until the file is loaded
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(t, "images/loaded-empty.png", fxt.Window().Canvas().Capture())
+			testutil.AssertImageMatches(ct, "images/loaded-empty.png", fxt.Window().Canvas().Capture())
 		}, time.Second, 10*time.Millisecond)
 
 		// When user types some text, then save
@@ -242,7 +267,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 
 		// Wait until the file is loaded
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(t, "images/loaded-empty.png", fxt.Window().Canvas().Capture())
+			testutil.AssertImageMatches(ct, "images/loaded-empty.png", fxt.Window().Canvas().Capture())
 		}, time.Second, 10*time.Millisecond)
 
 		fyne_test.Type(res.TextEntry, "my new content")
