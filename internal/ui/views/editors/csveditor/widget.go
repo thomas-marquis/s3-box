@@ -15,6 +15,8 @@ type Widget struct {
 	editor *Editor
 
 	SaveBtn *widget.ToolbarAction
+	PrevBtn *widget.Button
+	NextBtn *widget.Button
 }
 
 func newWidget(e *Editor) *Widget {
@@ -154,6 +156,9 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 		}
 	})
 	nextBtn.Disable()
+
+	w.PrevBtn = prevBtn
+	w.NextBtn = nextBtn
 
 	pagination := container.NewHBox(prevBtn, pageLabel, nextBtn)
 
