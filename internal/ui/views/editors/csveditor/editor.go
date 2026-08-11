@@ -1,25 +1,29 @@
 package csveditor
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/theme"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
 
 const (
-	sep = ","
+	sep                     = ","
+	listenerColumnsWidthKey = "listener.columns.width"
 )
 
 var (
@@ -29,38 +33,36 @@ var (
 	}
 )
 
-type csvColumn struct {
-	Width float32
-}
+type ColWidth float32
 
-type csvEditor struct {
+type Editor struct {
 	*editor.Base
 
 	cancelFunc  func()
 	contentHash string
+	// dataListeners is necessary to notify the UI that the editor's state has changed.
+	// In some cases, we can't rely on the binding's listeners.
+	// For example, for binding.List, the event listeners are triggered only if the list size has changed...
+	dataListeners map[string]func()
 
-	Records binding.List[[]string]
-	Columns binding.List[csvColumn]
+	Records   binding.List[[]string]
+	Columns   binding.List[ColWidth]
+	Paginator *Paginator
+
+	PageLabel binding.String
 }
 
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
-	ed := &csvEditor{
-		Base: editor.NewBase(bus, w, file),
-		Records: binding.NewList[[]string](func(l1, l2 []string) bool {
-			if len(l1) != len(l2) {
-				return false
-			}
-			for i := range l1 {
-				if l1[i] != l2[i] {
-					return false
-				}
-			}
-			return true
+	ed := &Editor{
+		PageLabel: binding.NewString(),
+		Base:      editor.NewBase(bus, w, file),
+		Records:   binding.NewList[[]string](slices.Equal),
+		Columns: binding.NewList[ColWidth](func(c1, c2 ColWidth) bool {
+			return cmp.Compare(c1, c2) == 0
 		}),
-		Columns: binding.NewList[csvColumn](func(c1, c2 csvColumn) bool {
-			return c1 == c2
-		}),
+		dataListeners: make(map[string]func()),
 	}
+	ed.Paginator = NewCsvPaginator(ed.Records)
 
 	ed.ExtendBaseEditor(ed)
 
@@ -79,15 +81,50 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 	return ed
 }
 
-func (e *csvEditor) CreateWidget() fyne.CanvasObject {
+func (e *Editor) AddListener(name string, listener func()) {
+	e.dataListeners[name] = listener
+}
+
+func (e *Editor) CreateWidget() fyne.CanvasObject {
 	return newWidget(e)
 }
 
-func (e *csvEditor) Save() {
+func (e *Editor) NextPage() bool {
+	if !e.Paginator.HasNext() {
+		return false
+	}
+
+	e.IsLoading.Set(true)        //nolint:errcheck
+	defer e.IsLoading.Set(false) //nolint:errcheck
+
+	hasMore := e.Paginator.Next()
+	e.UpdatePageLabel()
+	e.updateColumnsWidth()
+	return hasMore
+}
+
+func (e *Editor) PrevPage() {
+	if e.Paginator.CurrentIndex == 0 {
+		return
+	}
+
+	e.IsLoading.Set(true)        //nolint:errcheck
+	defer e.IsLoading.Set(false) //nolint:errcheck
+
+	e.Paginator.Prev()
+	e.UpdatePageLabel()
+	e.updateColumnsWidth()
+}
+
+func (e *Editor) UpdatePageLabel() {
+	e.PageLabel.Set(fmt.Sprintf("%d / %d", e.Paginator.PageNumber(), e.Paginator.TotalPages())) //nolint:errcheck
+}
+
+func (e *Editor) Save() {
 	e.IsLoading.Set(true)          //nolint:errcheck
 	e.StatusLabel.Set("Saving...") // nolint:errcheck
 
-	content := e.getContent()
+	content := e.GetContent()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	e.Lock()
@@ -137,13 +174,13 @@ func (e *csvEditor) Save() {
 	}()
 }
 
-func (e *csvEditor) RequestClose() {
+func (e *Editor) RequestClose() {
 	e.Bus.Publish(event.New(editor.CloseRequested{
 		Editor: e,
 	}))
 }
 
-func (e *csvEditor) Cancel() {
+func (e *Editor) Cancel() {
 	e.Lock()
 	defer e.Unlock()
 
@@ -154,33 +191,65 @@ func (e *csvEditor) Cancel() {
 	e.cancelFunc = nil
 }
 
-func (e *csvEditor) HasChanged() bool {
+func (e *Editor) HasChanged() bool {
 	e.Lock()
 	defer e.Unlock()
-	return e.contentHash != sha256Hex(e.getContent())
+	return e.contentHash != sha256Hex(e.GetContent())
 }
 
-func (e *csvEditor) getContent() string {
-	if e.Records.Length() == 0 {
+func (e *Editor) GetContent() string {
+	if len(e.Paginator.Records) == 0 {
 		return ""
 	}
 
-	records, _ := e.Records.Get() //nolint:errcheck
 	builder := strings.Builder{}
-	for _, row := range records {
-		for _, cell := range row {
+	for i, row := range e.Paginator.Records {
+		for j, cell := range row {
 			builder.WriteString(cell)
-			builder.WriteString(sep)
+			if j < len(row)-1 {
+				builder.WriteString(sep)
+			}
 		}
-		builder.WriteString("\n")
+		if i < len(e.Paginator.Records)-1 {
+			builder.WriteString("\n")
+		}
 	}
 	return builder.String()
 }
 
-func (e *csvEditor) updateContentHash(newContent string) {
+func (e *Editor) updateContentHash(newContent string) {
 	e.Lock()
 	defer e.Unlock()
 	e.contentHash = sha256Hex(newContent)
+}
+
+func (e *Editor) updateColumnsWidth() {
+	th := fyne.CurrentApp().Settings().Theme()
+	textSize := th.Size(theme.SizeNameText)
+
+	firstVisibleRow := e.Paginator.Records[e.Paginator.CurrentIndex]
+	nbCols := len(firstVisibleRow)
+	var colWidths []ColWidth
+	for i := range nbCols {
+		col := colMinWidth
+		for j := range e.Paginator.CurrentPageSize() {
+			row := e.Paginator.Records[e.Paginator.CurrentIndex+j]
+			cw := colWidth(row[i], textSize)
+			if float32(col) < cw-cellPadding {
+				col = ColWidth(cw)
+			}
+			if col >= colMaxWidth {
+				col = colMaxWidth
+				break
+			}
+		}
+		colWidths = append(colWidths, col)
+	}
+
+	e.Columns.Set(colWidths) //nolint:errcheck
+	if listener, ok := e.dataListeners[listenerColumnsWidthKey]; ok {
+		listener()
+	}
 }
 
 func colWidth(text string, textSize float32) float32 {

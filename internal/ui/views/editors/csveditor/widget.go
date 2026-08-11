@@ -9,19 +9,17 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-const (
-	cellPadding = 50
-)
-
 type Widget struct {
 	widget.BaseWidget
 
-	editor *csvEditor
+	editor *Editor
 
 	SaveBtn *widget.ToolbarAction
+	PrevBtn *widget.Button
+	NextBtn *widget.Button
 }
 
-func newWidget(e *csvEditor) *Widget {
+func newWidget(e *Editor) *Widget {
 	w := &Widget{
 		editor: e,
 	}
@@ -47,6 +45,9 @@ func newWidget(e *csvEditor) *Widget {
 
 func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
+
+	var cancelBtn *widget.Button
+	var prevBtn, nextBtn *widget.Button
 
 	table := widget.NewTable(
 		func() (int, int) {
@@ -77,10 +78,6 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			rawVal, _ := w.editor.Records.GetValue(id.Row)
 			cellVal := rawVal[id.Col]
 			cell.SetText(cellVal)
-
-			th := w.Theme()
-			cellSize := fyne.MeasureText(cellVal, th.Size(theme.SizeNameText), fyne.TextStyle{})
-			cell.Resize(fyne.NewSize(cellSize.Width, cell.Size().Height))
 		})
 
 	table.HideSeparators = true
@@ -88,16 +85,15 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 
 	w.editor.Records.AddListener(binding.NewDataListener(table.Refresh))
 
-	w.editor.Columns.AddListener(binding.NewDataListener(func() {
+	w.editor.AddListener(listenerColumnsWidthKey, func() {
 		cols, _ := w.editor.Columns.Get()
 		for i, col := range cols {
-			table.SetColumnWidth(i, col.Width)
+			table.SetColumnWidth(i, float32(col))
 		}
-	}))
+	})
 
 	loader := widget.NewProgressBarInfinite()
 
-	var cancelBtn *widget.Button
 	cancelBtn = widget.NewButton("Cancel", func() {
 		cancelBtn.Disable()
 		w.editor.StatusLabel.Set("cancelling...") //nolint:errcheck
@@ -123,18 +119,51 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 		if isLoading {
 			loaderContainer.Show()
 			loader.Start()
+			table.Hide()
 		} else {
 			loaderContainer.Hide()
 			loader.Stop()
 			table.Show()
+			table.Refresh()
+			if w.editor.Paginator.HasNext() {
+				nextBtn.Enable()
+			}
 		}
 	}))
 
 	w.SaveBtn = widget.NewToolbarAction(theme.DocumentSaveIcon(), w.editor.Save)
-	toolbar := widget.NewToolbar(w.SaveBtn)
+
+	pageLabel := widget.NewLabelWithData(w.editor.PageLabel)
+	pageLabel.Alignment = fyne.TextAlignCenter
+
+	prevBtn = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), func() {
+		w.editor.PrevPage()
+		if w.editor.Paginator.CurrentIndex == 0 {
+			prevBtn.Disable()
+		}
+		if w.editor.Paginator.HasNext() {
+			nextBtn.Enable()
+		}
+	})
+	prevBtn.Disable()
+
+	nextBtn = widget.NewButtonWithIcon("", theme.NavigateNextIcon(), func() {
+		if !w.editor.NextPage() {
+			nextBtn.Disable()
+		}
+		if w.editor.Paginator.CurrentIndex > 0 {
+			prevBtn.Enable()
+		}
+	})
+	nextBtn.Disable()
+
+	w.PrevBtn = prevBtn
+	w.NextBtn = nextBtn
+
+	pagination := container.NewHBox(prevBtn, pageLabel, nextBtn)
 
 	top := container.NewBorder(nil, nil,
-		toolbar,
+		container.NewHBox(widget.NewToolbar(w.SaveBtn), pagination),
 		widget.NewLabelWithData(w.editor.StatusLabel),
 	)
 

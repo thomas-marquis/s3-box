@@ -7,7 +7,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	fyne_test "fyne.io/fyne/v2/test"
-	"github.com/stretchr/testify/assert"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/it-happened/inmemory"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
@@ -21,6 +20,24 @@ const (
 	csvContent = `id,name,age
 1,toto,12
 2,lolo,13`
+	csvLargeContent = `id,name,age
+1,toto,12
+2,lolo,13
+3,alice,25
+4,bob,31
+5,charlie,28
+6,diana,22
+7,edward,45
+8,fiona,33
+9,george,29
+10,hannah,27
+11,isaac,38
+12,julia,24
+13,kevin,41
+14,laura,26
+15,michael,35
+16,nancy,30
+17,oliver,23`
 )
 
 var (
@@ -101,16 +118,14 @@ func TestCsvEditorWidget(t *testing.T) {
 		ed := fxt.Editor()
 
 		widgt := ed.CreateWidget().(*csveditor.Widget)
-		canvas := fxt.Window().Canvas()
 		ed.Window().SetContent(widgt)
+		canvas := ed.Window().Canvas()
 
 		mockContent := &directory.InMemoryContent{
 			Data: []byte(csvContent),
 		}
 
-		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/is-loading.png", canvas.Capture())
-		}, time.Second, 10*time.Millisecond)
+		testutil.AssertImageMatches(t, "images/is-loading.png", canvas.Capture())
 
 		// When
 		fxt.Bus().Publish(event.New(editor.Loaded{
@@ -122,9 +137,48 @@ func TestCsvEditorWidget(t *testing.T) {
 		widgt.Refresh()
 
 		// Then
-		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/loaded-successfully-ugly.png", canvas.Capture())
-			// That's ugly because it seems to be some rendering issues with the Fyne's test app... or with my understanding
-		}, time.Second, 10*time.Millisecond)
+		testutil.AssertImageMatches(t, "images/loaded-successfully.png", canvas.Capture())
+	})
+
+	t.Run("should display page 2", func(t *testing.T) {
+		// Given
+		fxt := setup(t)
+		ed := fxt.Editor()
+
+		widgt := ed.CreateWidget().(*csveditor.Widget)
+		ed.Window().SetContent(widgt)
+		canvas := ed.Window().Canvas()
+
+		mockContent := &directory.InMemoryContent{
+			Data: []byte(csvLargeContent),
+		}
+
+		fxt.Bus().Publish(event.New(editor.Loaded{
+			Editor:  ed,
+			Content: mockContent,
+		}))
+
+		time.Sleep(300 * time.Millisecond) // Magic wait...
+		widgt.Refresh()
+
+		testutil.AssertImageMatches(t, "images/page-1.png", canvas.Capture())
+
+		// When - go to page 2
+		fyne_test.Tap(widgt.NextBtn)
+
+		time.Sleep(300 * time.Millisecond) // Magic wait...
+		widgt.Refresh()
+
+		// Then
+		testutil.AssertImageMatches(t, "images/page-2.png", canvas.Capture())
+
+		// When - go back page 1
+		fyne_test.Tap(widgt.PrevBtn)
+
+		time.Sleep(300 * time.Millisecond) // Magic wait...
+		widgt.Refresh()
+
+		// Then
+		testutil.AssertImageMatches(t, "images/page-1.png", canvas.Capture())
 	})
 }
