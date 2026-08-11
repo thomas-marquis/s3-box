@@ -16,12 +16,12 @@ const (
 type Widget struct {
 	widget.BaseWidget
 
-	editor *csvEditor
+	editor *Editor
 
 	SaveBtn *widget.ToolbarAction
 }
 
-func newWidget(e *csvEditor) *Widget {
+func newWidget(e *Editor) *Widget {
 	w := &Widget{
 		editor: e,
 	}

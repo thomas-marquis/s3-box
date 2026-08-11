@@ -29,22 +29,23 @@ var (
 	}
 )
 
-type csvColumn struct {
+type CsvColumn struct {
 	Width float32
 }
 
-type csvEditor struct {
+type Editor struct {
 	*editor.Base
 
 	cancelFunc  func()
 	contentHash string
 
-	Records binding.List[[]string]
-	Columns binding.List[csvColumn]
+	Records   binding.List[[]string]
+	Columns   binding.List[CsvColumn]
+	Paginator *Paginator
 }
 
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
-	ed := &csvEditor{
+	ed := &Editor{
 		Base: editor.NewBase(bus, w, file),
 		Records: binding.NewList[[]string](func(l1, l2 []string) bool {
 			if len(l1) != len(l2) {
@@ -57,10 +58,11 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 			}
 			return true
 		}),
-		Columns: binding.NewList[csvColumn](func(c1, c2 csvColumn) bool {
+		Columns: binding.NewList[CsvColumn](func(c1, c2 CsvColumn) bool {
 			return c1 == c2
 		}),
 	}
+	ed.Paginator = NewCsvPaginator(ed.Records)
 
 	ed.ExtendBaseEditor(ed)
 
@@ -79,15 +81,23 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 	return ed
 }
 
-func (e *csvEditor) CreateWidget() fyne.CanvasObject {
+func (e *Editor) CreateWidget() fyne.CanvasObject {
 	return newWidget(e)
 }
 
-func (e *csvEditor) Save() {
+func (e *Editor) NextPage() {
+	e.Paginator.Next()
+}
+
+func (e *Editor) PrevPage() {
+	e.Paginator.Prev()
+}
+
+func (e *Editor) Save() {
 	e.IsLoading.Set(true)          //nolint:errcheck
 	e.StatusLabel.Set("Saving...") // nolint:errcheck
 
-	content := e.getContent()
+	content := e.GetContent()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	e.Lock()
@@ -137,13 +147,13 @@ func (e *csvEditor) Save() {
 	}()
 }
 
-func (e *csvEditor) RequestClose() {
+func (e *Editor) RequestClose() {
 	e.Bus.Publish(event.New(editor.CloseRequested{
 		Editor: e,
 	}))
 }
 
-func (e *csvEditor) Cancel() {
+func (e *Editor) Cancel() {
 	e.Lock()
 	defer e.Unlock()
 
@@ -154,30 +164,33 @@ func (e *csvEditor) Cancel() {
 	e.cancelFunc = nil
 }
 
-func (e *csvEditor) HasChanged() bool {
+func (e *Editor) HasChanged() bool {
 	e.Lock()
 	defer e.Unlock()
-	return e.contentHash != sha256Hex(e.getContent())
+	return e.contentHash != sha256Hex(e.GetContent())
 }
 
-func (e *csvEditor) getContent() string {
-	if e.Records.Length() == 0 {
+func (e *Editor) GetContent() string {
+	if len(e.Paginator.Records) == 0 {
 		return ""
 	}
 
-	records, _ := e.Records.Get() //nolint:errcheck
 	builder := strings.Builder{}
-	for _, row := range records {
-		for _, cell := range row {
+	for i, row := range e.Paginator.Records {
+		for j, cell := range row {
 			builder.WriteString(cell)
-			builder.WriteString(sep)
+			if j < len(row)-1 {
+				builder.WriteString(sep)
+			}
 		}
-		builder.WriteString("\n")
+		if i < len(e.Paginator.Records)-1 {
+			builder.WriteString("\n")
+		}
 	}
 	return builder.String()
 }
 
-func (e *csvEditor) updateContentHash(newContent string) {
+func (e *Editor) updateContentHash(newContent string) {
 	e.Lock()
 	defer e.Unlock()
 	e.contentHash = sha256Hex(newContent)

@@ -9,7 +9,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
 
-func (e *csvEditor) handleLoaded(evt event.Event) {
+func (e *Editor) handleLoaded(evt event.Event) {
 	defer e.IsLoading.Set(false) //nolint:errcheck
 
 	pl := evt.Payload().(editor.Loaded)
@@ -17,32 +17,33 @@ func (e *csvEditor) handleLoaded(evt event.Event) {
 	r := csv.NewReader(pl.Content)
 
 	nbRows := 0
-	paginator := NewCsvPaginator(e.Records)
+	e.Paginator.Records = nil
+	e.Paginator.CurrentIndex = 0
 	for {
 		record, err := r.Read()
 		if err != nil {
 			break
 		}
 		nbRows++
-		paginator.Append(record)
+		e.Paginator.Append(record)
 	}
 
-	if len(paginator.Records) == 0 {
+	if len(e.Paginator.Records) == 0 {
 		return
 	}
 
-	e.updateContentHash(e.getContent())
+	e.updateContentHash(e.GetContent())
 	e.SetContent(pl.Content)
 
 	th := fyne.CurrentApp().Settings().Theme()
 	textSize := th.Size(theme.SizeNameText)
 
-	firstRow := paginator.Records[0]
+	firstRow := e.Paginator.Records[0]
 	nbCols := len(firstRow)
 	for i := range nbCols {
-		col := csvColumn{}
+		col := CsvColumn{}
 		for j := range nbRows {
-			row := paginator.Records[j]
+			row := e.Paginator.Records[j]
 			cw := colWidth(row[i], textSize)
 			if col.Width < cw-cellPadding {
 				col.Width = cw
@@ -52,14 +53,14 @@ func (e *csvEditor) handleLoaded(evt event.Event) {
 	}
 }
 
-func (e *csvEditor) handleLoadFailed(evt event.Event) {
+func (e *Editor) handleLoadFailed(evt event.Event) {
 	pl := evt.Payload().(editor.LoadFailed)
 	e.IsLoading.Set(false)                //nolint:errcheck
 	e.StatusLabel.Set("error (unloaded)") //nolint:errcheck
 	e.Err.Set(pl.Err)                     //nolint:errcheck
 }
 
-func (e *csvEditor) handleCloseRequested(evt event.Event) {
+func (e *Editor) handleCloseRequested(evt event.Event) {
 	pl := evt.Payload().(editor.CloseRequested)
 	if !e.HasChanged() {
 		e.Bus.Publish(pl.Confirm(evt))
