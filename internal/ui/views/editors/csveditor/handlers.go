@@ -17,16 +17,17 @@ func (e *csvEditor) handleLoaded(evt event.Event) {
 	r := csv.NewReader(pl.Content)
 
 	nbRows := 0
+	paginator := NewCsvPaginator(e.Records)
 	for {
 		record, err := r.Read()
 		if err != nil {
 			break
 		}
-		e.Records.Append(record) //nolint:errcheck
 		nbRows++
+		paginator.Append(record)
 	}
 
-	if e.Records.Length() == 0 {
+	if len(paginator.Records) == 0 {
 		return
 	}
 
@@ -36,12 +37,12 @@ func (e *csvEditor) handleLoaded(evt event.Event) {
 	th := fyne.CurrentApp().Settings().Theme()
 	textSize := th.Size(theme.SizeNameText)
 
-	firstRow, _ := e.Records.GetValue(0)
+	firstRow := paginator.Records[0]
 	nbCols := len(firstRow)
 	for i := range nbCols {
 		col := csvColumn{}
 		for j := range nbRows {
-			row, _ := e.Records.GetValue(j)
+			row := paginator.Records[j]
 			cw := colWidth(row[i], textSize)
 			if col.Width < cw-cellPadding {
 				col.Width = cw

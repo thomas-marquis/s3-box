@@ -21,6 +21,7 @@ type FileContent interface {
 	io.Closer
 	io.Seeker
 	Canceler
+	//io.ReaderAt //ReadAt(p []byte, off int64) (n int, err error)
 }
 
 type InMemoryContent struct {
