@@ -94,8 +94,8 @@ func (e *Editor) NextPage() bool {
 		return false
 	}
 
-	e.IsLoading.Set(true)
-	defer e.IsLoading.Set(false)
+	e.IsLoading.Set(true)        //nolint:errcheck
+	defer e.IsLoading.Set(false) //nolint:errcheck
 
 	hasMore := e.Paginator.Next()
 	e.UpdatePageLabel()
@@ -108,8 +108,8 @@ func (e *Editor) PrevPage() {
 		return
 	}
 
-	e.IsLoading.Set(true)
-	defer e.IsLoading.Set(false)
+	e.IsLoading.Set(true)        //nolint:errcheck
+	defer e.IsLoading.Set(false) //nolint:errcheck
 
 	e.Paginator.Prev()
 	e.UpdatePageLabel()
@@ -117,7 +117,7 @@ func (e *Editor) PrevPage() {
 }
 
 func (e *Editor) UpdatePageLabel() {
-	e.PageLabel.Set(fmt.Sprintf("%d / %d", e.Paginator.PageNumber(), e.Paginator.TotalPages()))
+	e.PageLabel.Set(fmt.Sprintf("%d / %d", e.Paginator.PageNumber(), e.Paginator.TotalPages())) //nolint:errcheck
 }
 
 func (e *Editor) Save() {
