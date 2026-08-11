@@ -3,8 +3,6 @@ package csveditor
 import (
 	"encoding/csv"
 
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/theme"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
@@ -35,23 +33,7 @@ func (e *Editor) handleLoaded(evt event.Event) {
 	e.updateContentHash(e.GetContent())
 	e.SetContent(pl.Content)
 	e.UpdatePageLabel()
-
-	th := fyne.CurrentApp().Settings().Theme()
-	textSize := th.Size(theme.SizeNameText)
-
-	firstRow := e.Paginator.Records[0]
-	nbCols := len(firstRow)
-	for i := range nbCols {
-		col := CsvColumn{}
-		for j := range nbRows {
-			row := e.Paginator.Records[j]
-			cw := colWidth(row[i], textSize)
-			if col.Width < cw-cellPadding {
-				col.Width = cw
-			}
-		}
-		e.Columns.Append(col) //nolint:errcheck
-	}
+	e.updateColumnsWidth()
 }
 
 func (e *Editor) handleLoadFailed(evt event.Event) {

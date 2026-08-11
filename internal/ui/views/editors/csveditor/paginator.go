@@ -68,6 +68,17 @@ func (p *Paginator) TotalPages() int {
 	return total
 }
 
+func (p *Paginator) CurrentPageSize() int {
+	if p.CurrentIndex+p.PageSize >= len(p.Records) {
+		return len(p.Records) - p.CurrentIndex
+	}
+	return p.PageSize
+}
+
+func (p *Paginator) HasNext() bool {
+	return p.CurrentIndex+p.PageSize < len(p.Records)
+}
+
 func (p *Paginator) updateBinding() {
 	if p.binding == nil {
 		return
