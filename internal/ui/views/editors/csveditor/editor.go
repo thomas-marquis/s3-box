@@ -42,11 +42,14 @@ type Editor struct {
 	Records   binding.List[[]string]
 	Columns   binding.List[CsvColumn]
 	Paginator *Paginator
+
+	PageLabel binding.String
 }
 
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 	ed := &Editor{
-		Base: editor.NewBase(bus, w, file),
+		PageLabel: binding.NewString(),
+		Base:      editor.NewBase(bus, w, file),
 		Records: binding.NewList[[]string](func(l1, l2 []string) bool {
 			if len(l1) != len(l2) {
 				return false
@@ -85,12 +88,19 @@ func (e *Editor) CreateWidget() fyne.CanvasObject {
 	return newWidget(e)
 }
 
-func (e *Editor) NextPage() {
-	e.Paginator.Next()
+func (e *Editor) NextPage() bool {
+	hasMore := e.Paginator.Next()
+	e.UpdatePageLabel()
+	return hasMore
 }
 
 func (e *Editor) PrevPage() {
 	e.Paginator.Prev()
+	e.UpdatePageLabel()
+}
+
+func (e *Editor) UpdatePageLabel() {
+	e.PageLabel.Set(fmt.Sprintf("%d / %d", e.Paginator.PageNumber(), e.Paginator.TotalPages()))
 }
 
 func (e *Editor) Save() {

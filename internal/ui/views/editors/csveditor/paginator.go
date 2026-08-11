@@ -14,19 +14,19 @@ type Paginator struct {
 	Records      []Record
 	CurrentIndex int
 	PageSize     int
-	bound        binding.List[[]string]
+	binding      binding.List[[]string]
 }
 
 func NewCsvPaginator(bound binding.List[[]string]) *Paginator {
 	return &Paginator{
 		PageSize: defaultPageSize,
-		bound:    bound,
+		binding:  bound,
 	}
 }
 
 func (p *Paginator) Append(vals []string) {
 	p.Records = append(p.Records, Record(vals))
-	p.updateBound()
+	p.updateBinding()
 }
 
 func (p *Paginator) Next() bool {
@@ -34,8 +34,8 @@ func (p *Paginator) Next() bool {
 		return false
 	}
 	p.CurrentIndex += p.PageSize
-	p.updateBound()
-	return true
+	p.updateBinding()
+	return p.CurrentIndex+p.PageSize < len(p.Records)
 }
 
 func (p *Paginator) Prev() bool {
@@ -46,12 +46,30 @@ func (p *Paginator) Prev() bool {
 	if p.CurrentIndex < 0 {
 		p.CurrentIndex = 0
 	}
-	p.updateBound()
+	p.updateBinding()
 	return true
 }
 
-func (p *Paginator) updateBound() {
-	if p.bound == nil {
+func (p *Paginator) PageNumber() int {
+	if p.PageSize == 0 {
+		return 0
+	}
+	return p.CurrentIndex/p.PageSize + 1
+}
+
+func (p *Paginator) TotalPages() int {
+	if p.PageSize == 0 {
+		return 0
+	}
+	total := len(p.Records) / p.PageSize
+	if len(p.Records)%p.PageSize != 0 {
+		total++
+	}
+	return total
+}
+
+func (p *Paginator) updateBinding() {
+	if p.binding == nil {
 		return
 	}
 
@@ -61,7 +79,7 @@ func (p *Paginator) updateBound() {
 	}
 
 	if p.CurrentIndex >= len(p.Records) {
-		_ = p.bound.Set(nil)
+		_ = p.binding.Set(nil)
 		return
 	}
 
@@ -69,5 +87,5 @@ func (p *Paginator) updateBound() {
 	for i := p.CurrentIndex; i < end; i++ {
 		page = append(page, []string(p.Records[i]))
 	}
-	_ = p.bound.Set(page)
+	_ = p.binding.Set(page)
 }

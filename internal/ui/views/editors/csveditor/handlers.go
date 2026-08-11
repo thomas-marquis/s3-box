@@ -34,6 +34,7 @@ func (e *Editor) handleLoaded(evt event.Event) {
 
 	e.updateContentHash(e.GetContent())
 	e.SetContent(pl.Content)
+	e.UpdatePageLabel()
 
 	th := fyne.CurrentApp().Settings().Theme()
 	textSize := th.Size(theme.SizeNameText)

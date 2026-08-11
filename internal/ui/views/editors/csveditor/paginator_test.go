@@ -45,8 +45,10 @@ func TestPaginator(t *testing.T) {
 		assert.Equal(t, 0, p.CurrentIndex)
 		assert.Empty(t, p.Records)
 	})
+}
 
-	t.Run("Append should add records and populate first page", func(t *testing.T) {
+func TestPaginator_Append(t *testing.T) {
+	t.Run("should add records and populate first page", func(t *testing.T) {
 		// Given
 		fxt := setupPaginator(t, 2)
 
@@ -64,72 +66,7 @@ func TestPaginator(t *testing.T) {
 		assert.Equal(t, []string{"row2", "col2"}, records[1])
 	})
 
-	t.Run("Next should return false and not increment when on the last page", func(t *testing.T) {
-		// Given
-		fxt := setupPaginator(t, 2)
-		fxt.P.Append([]string{"1", "a"})
-		fxt.P.Append([]string{"2", "b"})
-
-		// When
-		res := fxt.P.Next()
-
-		// Then
-		assert.False(t, res, "Next should return false when no more pages")
-		assert.Equal(t, 0, fxt.P.CurrentIndex, "CurrentIndex should not have changed")
-	})
-
-	t.Run("Prev should return false and not decrement when on the first page", func(t *testing.T) {
-		// Given
-		fxt := setupPaginator(t, 2)
-		fxt.P.Append([]string{"1", "a"})
-		fxt.P.Append([]string{"2", "b"})
-
-		// When
-		res := fxt.P.Prev()
-
-		// Then
-		assert.False(t, res, "Prev should return false when on the first page")
-		assert.Equal(t, 0, fxt.P.CurrentIndex, "CurrentIndex should not have changed")
-	})
-
-	t.Run("Next should update the bound list and increment index", func(t *testing.T) {
-		// Given
-		fxt := setupPaginator(t, 1)
-		fxt.P.Append([]string{"1", "a"})
-		fxt.P.Append([]string{"2", "b"})
-
-		// When
-		res := fxt.P.Next()
-
-		// Then
-		assert.True(t, res)
-		assert.Equal(t, 1, fxt.P.CurrentIndex)
-
-		records, _ := fxt.Binding.Get()
-		require.Len(t, records, 1)
-		assert.Equal(t, []string{"2", "b"}, records[0])
-	})
-
-	t.Run("Prev should update the bound list and decrement index", func(t *testing.T) {
-		// Given
-		fxt := setupPaginator(t, 1)
-		fxt.P.Append([]string{"1", "a"})
-		fxt.P.Append([]string{"2", "b"})
-		fxt.P.Next() // Go to second page
-
-		// When
-		res := fxt.P.Prev()
-
-		// Then
-		assert.True(t, res)
-		assert.Equal(t, 0, fxt.P.CurrentIndex)
-
-		records, _ := fxt.Binding.Get()
-		require.Len(t, records, 1)
-		assert.Equal(t, []string{"1", "a"}, records[0])
-	})
-
-	t.Run("Append should update bound list gracefully when not on first page", func(t *testing.T) {
+	t.Run("should update bound list gracefully when not on first page", func(t *testing.T) {
 		// Given
 		fxt := setupPaginator(t, 2)
 		fxt.P.Append([]string{"1", "a"})
@@ -146,5 +83,90 @@ func TestPaginator(t *testing.T) {
 		require.Len(t, records, 2)
 		assert.Equal(t, []string{"3", "c"}, records[0])
 		assert.Equal(t, []string{"4", "d"}, records[1])
+	})
+}
+
+func TestPaginator_Next(t *testing.T) {
+	t.Run("should return false and not increment when on the last page", func(t *testing.T) {
+		// Given
+		fxt := setupPaginator(t, 2)
+		fxt.P.Append([]string{"1", "a"})
+		fxt.P.Append([]string{"2", "b"})
+
+		// When
+		res := fxt.P.Next()
+
+		// Then
+		assert.False(t, res, "Next should return false when no more pages")
+		assert.Equal(t, 0, fxt.P.CurrentIndex, "CurrentIndex should not have changed")
+	})
+
+	t.Run("should return false when the last page is reached", func(t *testing.T) {
+		// Given
+		fxt := setupPaginator(t, 2)
+		fxt.P.Append([]string{"1", "a"})
+		fxt.P.Append([]string{"2", "b"})
+		fxt.P.Append([]string{"3", "c"})
+		fxt.P.Append([]string{"4", "d"})
+
+		// When
+		res := fxt.P.Next()
+
+		// Then
+		assert.False(t, res, "Next should return false on the last page")
+		assert.Equal(t, 2, fxt.P.CurrentIndex, "CurrentIndex should not have changed")
+	})
+
+	t.Run("should update the bound list and increment index", func(t *testing.T) {
+		// Given
+		fxt := setupPaginator(t, 1)
+		fxt.P.Append([]string{"1", "a"})
+		fxt.P.Append([]string{"2", "b"})
+
+		// When
+		res := fxt.P.Next()
+
+		// Then
+		assert.False(t, res)
+		assert.Equal(t, 1, fxt.P.CurrentIndex)
+
+		records, _ := fxt.Binding.Get()
+		require.Len(t, records, 1)
+		assert.Equal(t, []string{"2", "b"}, records[0])
+	})
+}
+
+func TestPaginator_Prev(t *testing.T) {
+	t.Run("should return false and not decrement when on the first page", func(t *testing.T) {
+		// Given
+		fxt := setupPaginator(t, 2)
+		fxt.P.Append([]string{"1", "a"})
+		fxt.P.Append([]string{"2", "b"})
+
+		// When
+		res := fxt.P.Prev()
+
+		// Then
+		assert.False(t, res, "Prev should return false when on the first page")
+		assert.Equal(t, 0, fxt.P.CurrentIndex, "CurrentIndex should not have changed")
+	})
+
+	t.Run("should update the bound list and decrement index", func(t *testing.T) {
+		// Given
+		fxt := setupPaginator(t, 1)
+		fxt.P.Append([]string{"1", "a"})
+		fxt.P.Append([]string{"2", "b"})
+		fxt.P.Next() // Go to second page
+
+		// When
+		res := fxt.P.Prev()
+
+		// Then
+		assert.True(t, res)
+		assert.Equal(t, 0, fxt.P.CurrentIndex)
+
+		records, _ := fxt.Binding.Get()
+		require.Len(t, records, 1)
+		assert.Equal(t, []string{"1", "a"}, records[0])
 	})
 }

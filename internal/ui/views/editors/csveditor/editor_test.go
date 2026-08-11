@@ -26,8 +26,11 @@ func TestCsvEditor_Pagination(t *testing.T) {
 	ed.Paginator.Append([]string{"1", "a"})
 	ed.Paginator.Append([]string{"2", "b"})
 	ed.Paginator.Append([]string{"3", "c"})
+	ed.UpdatePageLabel()
 
 	// Then - Page 1
+	page, _ := ed.PageLabel.Get()
+	assert.Equal(t, "1 / 2", page)
 	records, _ := ed.Records.Get()
 	assert.Len(t, records, 2)
 	assert.Equal(t, []string{"1", "a"}, records[0])
@@ -36,6 +39,8 @@ func TestCsvEditor_Pagination(t *testing.T) {
 	ed.NextPage()
 
 	// Then - Page 2
+	page, _ = ed.PageLabel.Get()
+	assert.Equal(t, "2 / 2", page)
 	records, _ = ed.Records.Get()
 	assert.Len(t, records, 1)
 	assert.Equal(t, []string{"3", "c"}, records[0])
@@ -44,6 +49,8 @@ func TestCsvEditor_Pagination(t *testing.T) {
 	ed.PrevPage()
 
 	// Then - Back to Page 1
+	page, _ = ed.PageLabel.Get()
+	assert.Equal(t, "1 / 2", page)
 	records, _ = ed.Records.Get()
 	assert.Len(t, records, 2)
 	assert.Equal(t, []string{"1", "a"}, records[0])

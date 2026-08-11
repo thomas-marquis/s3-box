@@ -131,10 +131,33 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 	}))
 
 	w.SaveBtn = widget.NewToolbarAction(theme.DocumentSaveIcon(), w.editor.Save)
-	toolbar := widget.NewToolbar(w.SaveBtn)
+
+	pageLabel := widget.NewLabelWithData(w.editor.PageLabel)
+	pageLabel.Alignment = fyne.TextAlignCenter
+
+	var prevBtn, nextBtn *widget.Button
+	prevBtn = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), func() {
+		if w.editor.Paginator.CurrentIndex == 0 {
+			prevBtn.Disable()
+			return
+		}
+		w.editor.PrevPage()
+		if w.editor.Paginator.PageNumber() < w.editor.Paginator.TotalPages() {
+			nextBtn.Enable()
+		}
+	})
+	nextBtn = widget.NewButtonWithIcon("", theme.NavigateNextIcon(), func() {
+		if !w.editor.NextPage() {
+			nextBtn.Disable()
+		}
+		if w.editor.Paginator.CurrentIndex > 0 {
+			prevBtn.Enable()
+		}
+	})
+	pagination := container.NewHBox(prevBtn, pageLabel, nextBtn)
 
 	top := container.NewBorder(nil, nil,
-		toolbar,
+		container.NewHBox(widget.NewToolbar(w.SaveBtn), pagination),
 		widget.NewLabelWithData(w.editor.StatusLabel),
 	)
 
