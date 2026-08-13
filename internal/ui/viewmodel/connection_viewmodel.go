@@ -70,9 +70,7 @@ func NewConnectionViewModel(
 	notifier notification.Repository,
 	bus event.Bus,
 ) ConnectionViewModel {
-	c := binding.NewList[*connection_deck.Connection](func(c1, c2 *connection_deck.Connection) bool {
-		return c1.Is(c2)
-	})
+	c := binding.NewList[*connection_deck.Connection](connection_deck.Compare)
 
 	ctx, cancel := context.WithTimeout(context.Background(), appState.Settings().TimeoutValue())
 	defer cancel()

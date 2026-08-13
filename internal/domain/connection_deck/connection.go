@@ -199,3 +199,13 @@ func (c *Connection) AsS3Like(server string, useTLS bool) {
 	c.revision++
 	AsS3Like(server, useTLS)(c)
 }
+
+func Compare(c1, c2 *Connection) bool {
+	if c1 == nil && c2 == nil {
+		return true
+	}
+	if c1 == nil || c2 == nil {
+		return false
+	}
+	return c1.Is(c2)
+}

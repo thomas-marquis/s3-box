@@ -40,7 +40,7 @@ type ExplorerViewModel interface {
 	// State methods
 	////////////////////////
 
-	SelectedConnection() binding.Untyped
+	SelectedConnection() binding.Item[*connection_deck.Connection]
 
 	CurrentSelectedConnection() *connection_deck.Connection
 
@@ -113,7 +113,7 @@ type explorerViewModelImpl struct {
 	baseViewModel
 	sync.Mutex
 
-	selectedConnection    binding.Untyped
+	selectedConnection    binding.Item[*connection_deck.Connection]
 	selectedConnectionVal *connection_deck.Connection
 
 	settingsVm           SettingsViewModel
@@ -149,7 +149,7 @@ func NewExplorerViewModel(
 		settingsVm:             settingsVm,
 		notifier:               notifier,
 		selectedConnectionVal:  initialConnection,
-		selectedConnection:     binding.NewUntyped(),
+		selectedConnection:     binding.NewItem[*connection_deck.Connection](connection_deck.Compare),
 		bus:                    bus,
 		selectedDirectory:      nil,
 		isSelectedDirLoading:   binding.NewBool(),
@@ -253,7 +253,7 @@ func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
 	v.triggerStateListeners()
 }
 
-func (v *explorerViewModelImpl) SelectedConnection() binding.Untyped {
+func (v *explorerViewModelImpl) SelectedConnection() binding.Item[*connection_deck.Connection] {
 	return v.selectedConnection
 }
 

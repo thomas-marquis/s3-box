@@ -375,10 +375,10 @@ func (mr *MockExplorerViewModelMockRecorder) RollbackRename(dir any) *gomock.Cal
 }
 
 // SelectedConnection mocks base method.
-func (m *MockExplorerViewModel) SelectedConnection() binding.Untyped {
+func (m *MockExplorerViewModel) SelectedConnection() binding.Item[*connection_deck.Connection] {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectedConnection")
-	ret0, _ := ret[0].(binding.Untyped)
+	ret0, _ := ret[0].(binding.Item[*connection_deck.Connection])
 	return ret0
 }
 
