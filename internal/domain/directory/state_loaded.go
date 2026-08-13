@@ -106,9 +106,7 @@ func (s *loadedState) Notify(evt event.Event) error {
 		}
 
 	case DeleteFileSucceeded:
-		if _, found := s.files[pl.File.Name()]; found {
-			delete(s.files, pl.File.Name())
-		}
+		delete(s.files, pl.File.Name())
 
 	case CreateFileSucceeded:
 		s.files[pl.File.Name()] = pl.File
