@@ -159,7 +159,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		var file *directory.File
 		tu.MakeDirectory(t, "",
 			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
-			tu.WithFiles("test.txt"), tu.FileTo("test.txt", &file))
+			tu.WithFileTo("test.txt", &file))
 
 		// When opening the editor
 		require.False(t, vm.IsOpen(file))
@@ -205,7 +205,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		var file *directory.File
 		tu.MakeDirectory(t, "",
 			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
-			tu.WithFiles("test.txt"), tu.FileTo("test.txt", &file))
+			tu.WithFileTo("test.txt", &file))
 
 		// When opening the editor
 		_, err := vm.Open(file)
@@ -238,7 +238,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		var file *directory.File
 		tu.MakeDirectory(t, "",
 			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
-			tu.WithFiles("test.txt"), tu.FileTo("test.txt", &file))
+			tu.WithFileTo("test.txt", &file))
 
 		// When
 		fxt.Bus().Publish(event.New(connection_deck.RemoveConnectionSucceeded{
@@ -264,8 +264,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		var file, file2 *directory.File
 		tu.MakeDirectory(t, "",
 			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
-			tu.WithFiles("test.txt", "test2.txt"),
-			tu.FileTo("test.txt", &file), tu.FileTo("test2.txt", &file2))
+			tu.WithFileTo("test.txt", &file), tu.WithFileTo("test2.txt", &file2))
 
 		oe1, _ := vm.Open(file)
 		_, err := vm.Open(file2)
@@ -291,11 +290,10 @@ func TestEditorViewModelImpl_IsOpen(t *testing.T) {
 		var file1, file2, file3 *directory.File
 		tu.MakeDirectory(t, "",
 			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
-			tu.WithFiles("test1.txt", "test2.txt", "test3.txt"),
-			tu.FileTo("test1.txt", &file1), tu.FileTo("test2.txt", &file2),
+			tu.WithFile("test3.txt"),
+			tu.WithFileTo("test1.txt", &file1), tu.WithFileTo("test2.txt", &file2),
 			tu.WithSubDirectory("mydir",
-				tu.WithFiles("test3.txt"),
-				tu.FileTo("test3.txt", &file3)))
+				tu.WithFileTo("test3.txt", &file3)))
 
 		// When & Then
 		assert.False(t, vm.IsOpen(file1))

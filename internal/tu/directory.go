@@ -182,12 +182,6 @@ func WithConnectionId(connId connection_deck.ConnectionID) DirectoryBuilderOptio
 	}
 }
 
-func WithFiles(fileNames ...string) DirectoryBuilderOption {
-	return func(cfg *directoryBuilderConfig) {
-		cfg.files = fileNames
-	}
-}
-
 func WithSubDirectory(name string, opts ...DirectoryBuilderOption) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
 		sdCfg := directoryBuilderConfig{
@@ -240,8 +234,26 @@ func To(ptr **directory.Directory) DirectoryBuilderOption {
 	}
 }
 
-func FileTo(name string, ptr **directory.File) DirectoryBuilderOption {
+func WithFile(name string) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
+		cfg.files = append(cfg.files, name)
+	}
+}
+
+func WithFileTo(name string, ptr **directory.File) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		if cfg.files == nil {
+			cfg.files = make([]string, 0)
+		}
+
+		for _, f := range cfg.files {
+			if f == name {
+				panic("file already exists")
+			}
+		}
+
+		cfg.files = append(cfg.files, name)
+
 		if cfg.fileRefs == nil {
 			cfg.fileRefs = make(map[string]**directory.File)
 		}

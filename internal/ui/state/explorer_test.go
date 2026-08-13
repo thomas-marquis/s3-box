@@ -47,8 +47,7 @@ func TestExplorerState_AppendFile(t *testing.T) {
 		var f *directory.File
 		rootDir := tu.MakeDirectory(t, "",
 			tu.AsRoot(),
-			tu.WithFiles("file.txt"),
-			tu.FileTo("file.txt", &f))
+			tu.WithFileTo("file.txt", &f))
 		require.NoError(t, s.Explorer().InitFileTree(rootDir, "myBucket"))
 
 		// When
@@ -79,13 +78,11 @@ func TestExplorerState_AppendFile(t *testing.T) {
 
 		rootDir := tu.MakeDirectory(t, "",
 			tu.AsRoot(),
-			tu.WithFiles("main.go", "README.md"),
-			tu.FileTo("main.go", &mainFile),
-			tu.FileTo("README.md", &readmeFile),
+			tu.WithFileTo("main.go", &mainFile),
+			tu.WithFileTo("README.md", &readmeFile),
 			tu.WithSubDirectory("src",
 				tu.To(&srcDir),
-				tu.WithFiles("user.go"),
-				tu.FileTo("user.go", &userFile)))
+				tu.WithFileTo("user.go", &userFile)))
 		require.NoError(t, s.Explorer().InitFileTree(rootDir, "myBucket"))
 
 		require.NoError(t, s.Explorer().AppendFile(mainFile))
@@ -161,13 +158,11 @@ func TestExplorerState_PrependDirectory(t *testing.T) {
 
 		rootDir := tu.MakeDirectory(t, "",
 			tu.AsRoot(),
-			tu.WithFiles("main.go", "README.md"),
-			tu.FileTo("main.go", &mainFile),
-			tu.FileTo("README.md", &readmeFile),
+			tu.WithFileTo("main.go", &mainFile),
+			tu.WithFileTo("README.md", &readmeFile),
 			tu.WithSubDirectory("src",
 				tu.To(&srcDir),
-				tu.WithFiles("user.go"),
-				tu.FileTo("user.go", &userFile),
+				tu.WithFileTo("user.go", &userFile),
 				tu.WithSubDirectory("infra",
 					tu.To(&infraDir))))
 		require.NoError(t, s.Explorer().InitFileTree(rootDir, "myBucket"))

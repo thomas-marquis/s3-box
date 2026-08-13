@@ -27,7 +27,7 @@ func TestMakeDirectory(t *testing.T) {
 		// When
 		res := tu.MakeDirectory(t, "",
 			tu.AsRoot(),
-			tu.WithFiles("file1.txt", "file2.txt"))
+			tu.WithFile("file1.txt"), tu.WithFile("file2.txt"))
 
 		// Then
 		assert.Equal(t, directory.RootDirName, res.Name())
@@ -66,7 +66,8 @@ func TestMakeDirectory(t *testing.T) {
 			tu.WithRootParent(),
 			tu.WithConnectionId(fakeConnId),
 			tu.IsLoaded(),
-			tu.WithFiles("file1.txt", "file2.txt"),
+			tu.WithFile("file1.txt"),
+			tu.WithFile("file2.txt"),
 		)
 
 		// Then
@@ -116,10 +117,12 @@ func TestMakeDirectory(t *testing.T) {
 		res := tu.MakeDirectory(t, "documents",
 			tu.WithConnectionId(fakeConnId),
 			tu.IsLoaded(),
-			tu.WithFiles("report.pdf", "invoice.pdf"),
+			tu.WithFile("report.pdf"),
+			tu.WithFile("invoice.pdf"),
 			tu.WithSubDirectory("code",
 				tu.IsLoaded(),
-				tu.WithFiles("main.go", "test.go"),
+				tu.WithFile("main.go"),
+				tu.WithFile("test.go"),
 			),
 			tu.WithSubDirectory("data"),
 			tu.WithParent("thomas",
@@ -177,13 +180,13 @@ func TestMakeDirectory(t *testing.T) {
 		var internalDir *directory.Directory
 		dir := tu.MakeDirectory(t, "src",
 			tu.WithRootParent(),
-			tu.WithFiles("main.go", "README.md", "Makefile"),
-			tu.FileTo("main.go", &f1),
-			tu.FileTo("Makefile", &f2),
+			tu.WithFile("README.md"),
+			tu.WithFileTo("main.go", &f1),
+			tu.WithFileTo("Makefile", &f2),
 			tu.WithSubDirectory("internal",
 				tu.To(&internalDir),
-				tu.WithFiles("utils.go", "user.go"),
-				tu.FileTo("user.go", &f3)))
+				tu.WithFile("utils.go"),
+				tu.WithFileTo("user.go", &f3)))
 
 		expected1, _ := dir.GetFileByName("main.go")
 		expected2, _ := dir.GetFileByName("Makefile")
