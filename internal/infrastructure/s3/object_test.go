@@ -13,7 +13,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 )
 
 func TestS3Object_Read(t *testing.T) {
@@ -22,20 +22,20 @@ func TestS3Object_Read(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
+	endpoint, terminate := tu.SetupS3testContainer(ctx, t)
 	defer terminate()
-	testClient := testutil.SetupS3Client(t, endpoint)
+	testClient := tu.SetupS3Client(t, endpoint)
 
-	bucket := testutil.FakeS3LikeBucketName
-	testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+	bucket := tu.FakeS3LikeBucketName
+	tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 		{Key: "existing-file.txt", Body: strings.NewReader("hello world")},
 	})
-	conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
+	conn := tu.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
 	client := s3client.NewAwsClient(conn)
 
 	t.Run("should read the object content when exists", func(t *testing.T) {
 		// Given
-		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		rootDir, err := directory.NewRoot(tu.FakeAwsConnectionId)
 		require.NoError(t, err)
 		file, err := directory.NewFile("existing-file.txt", rootDir)
 		require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestS3Object_Read(t *testing.T) {
 
 	t.Run("should read the object content when exists with non-zero offset", func(t *testing.T) {
 		// Given
-		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		rootDir, err := directory.NewRoot(tu.FakeAwsConnectionId)
 		require.NoError(t, err)
 		file, err := directory.NewFile("existing-file.txt", rootDir)
 		require.NoError(t, err)
@@ -79,7 +79,7 @@ func TestS3Object_Read(t *testing.T) {
 
 	t.Run("should return an error when the object does not exists", func(t *testing.T) {
 		// Given
-		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		rootDir, err := directory.NewRoot(tu.FakeAwsConnectionId)
 		require.NoError(t, err)
 		file, err := directory.NewFile("non-existing-file.txt", rootDir)
 		require.NoError(t, err)
@@ -104,19 +104,19 @@ func TestS3Object_Write(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
+	endpoint, terminate := tu.SetupS3testContainer(ctx, t)
 	defer terminate()
-	testClient := testutil.SetupS3Client(t, endpoint)
+	testClient := tu.SetupS3Client(t, endpoint)
 
-	bucket := testutil.FakeS3LikeBucketName
-	testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{})
-	conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
+	bucket := tu.FakeS3LikeBucketName
+	tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{})
+	conn := tu.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
 	client := s3client.NewAwsClient(conn)
 
 	t.Run("should create the object if not exists then makes it readable", func(t *testing.T) {
 		// Given
 		fileKey := "brand-new-file.txt"
-		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		rootDir, err := directory.NewRoot(tu.FakeAwsConnectionId)
 		require.NoError(t, err)
 		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
@@ -136,15 +136,15 @@ func TestS3Object_Write(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "new content", string(localContent))
 
-		testutil.AssertObjectContent(t, testClient, testutil.FakeS3LikeBucketName, fileKey, "new content")
+		tu.AssertObjectContent(t, testClient, tu.FakeS3LikeBucketName, fileKey, "new content")
 	})
 
 	t.Run("should append to the object's content if exists", func(t *testing.T) {
 		// Given
 		fileKey := "this-file-exists-0.txt"
-		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
+		tu.PutObject(t, testClient, tu.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
 
-		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		rootDir, err := directory.NewRoot(tu.FakeAwsConnectionId)
 		require.NoError(t, err)
 		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
@@ -165,15 +165,15 @@ func TestS3Object_Write(t *testing.T) {
 		assert.Equal(t, "initial content appended", string(localContent))
 
 		// Verify the content was updated in S3
-		testutil.AssertObjectContent(t, testClient, testutil.FakeS3LikeBucketName, fileKey, "initial content appended")
+		tu.AssertObjectContent(t, testClient, tu.FakeS3LikeBucketName, fileKey, "initial content appended")
 	})
 
 	t.Run("should overwrite the object's content if exists and after seeking to 0", func(t *testing.T) {
 		// Given
 		fileKey := "this-file-exists-1.txt"
-		testutil.PutObject(t, testClient, testutil.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
+		tu.PutObject(t, testClient, tu.FakeS3LikeBucketName, fileKey, strings.NewReader("initial content"))
 
-		rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+		rootDir, err := directory.NewRoot(tu.FakeAwsConnectionId)
 		require.NoError(t, err)
 		file, err := directory.NewFile(fileKey, rootDir)
 		require.NoError(t, err)
@@ -192,7 +192,7 @@ func TestS3Object_Write(t *testing.T) {
 		assert.NoError(t, err2)
 		assert.Equal(t, 11, n2)
 
-		testutil.AssertObjectContent(t, testClient, testutil.FakeS3LikeBucketName, fileKey, "New content")
+		tu.AssertObjectContent(t, testClient, tu.FakeS3LikeBucketName, fileKey, "New content")
 
 		localContent, err := io.ReadAll(obj)
 		require.NoError(t, err)
@@ -203,11 +203,11 @@ func TestS3Object_Write(t *testing.T) {
 		// Given
 		fileKey := "this-file-exists.txt"
 
-		bucketName := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(context.TODO(), t, testClient, bucketName, []testutil.FakeS3Object{
+		bucketName := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(context.TODO(), t, testClient, bucketName, []tu.FakeS3Object{
 			{Key: fileKey, Body: strings.NewReader("initial content")},
 		})
-		conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucketName)
+		conn := tu.FakeAwsConnectionWithEndpoint(t, endpoint, bucketName)
 		client := s3client.NewAwsClient(conn, func(options *awsS3.Options) {
 			options.Interceptors.AddBeforeTransmit(&fakeErrorInterceptor{
 				PutErrorForKeys: []string{fileKey},
@@ -235,18 +235,18 @@ func TestS3Object_Write(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "initial content", string(localContent))
 
-		testutil.AssertObjectContent(t, testClient, bucketName, fileKey, "initial content")
+		tu.AssertObjectContent(t, testClient, bucketName, fileKey, "initial content")
 	})
 
 	t.Run("should reset the object content and offset on error with a non-zero offset", func(t *testing.T) {
 		// Given
 		fileKey := "this-file-exists.txt"
 
-		bucketName := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(context.TODO(), t, testClient, bucketName, []testutil.FakeS3Object{
+		bucketName := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(context.TODO(), t, testClient, bucketName, []tu.FakeS3Object{
 			{Key: fileKey, Body: strings.NewReader("initial content")},
 		})
-		conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucketName)
+		conn := tu.FakeAwsConnectionWithEndpoint(t, endpoint, bucketName)
 		client := s3client.NewAwsClient(conn, func(options *awsS3.Options) {
 			options.Interceptors.AddBeforeTransmit(&fakeErrorInterceptor{
 				PutErrorForKeys: []string{fileKey},
@@ -280,6 +280,6 @@ func TestS3Object_Write(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "initial content", string(localContent))
 
-		testutil.AssertObjectContent(t, testClient, bucketName, fileKey, "initial content")
+		tu.AssertObjectContent(t, testClient, bucketName, fileKey, "initial content")
 	})
 }

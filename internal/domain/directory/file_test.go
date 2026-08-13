@@ -7,13 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 )
 
 func TestFile_Rename(t *testing.T) {
 	t.Run("should rename file and emit event", func(t *testing.T) {
 		// Given
-		parentDir := testutil.NewNotLoadedDirectory(t, "parent", directory.RootPath)
+		parentDir := tu.NewNotLoadedDirectory(t, "parent", directory.RootPath)
 
 		file, err := directory.NewFile("oldname.txt", parentDir)
 		require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestFile_Rename(t *testing.T) {
 
 	t.Run("should return error when new name is invalid", func(t *testing.T) {
 		// Given
-		parentDir := testutil.NewNotLoadedDirectory(t, "parent", directory.RootPath)
+		parentDir := tu.NewNotLoadedDirectory(t, "parent", directory.RootPath)
 
 		file, err := directory.NewFile("oldname.txt", parentDir)
 		require.NoError(t, err)
@@ -54,7 +54,7 @@ func TestFile_Rename(t *testing.T) {
 
 	t.Run("should update file in directory on rename success event", func(t *testing.T) {
 		// Given
-		parentDir := testutil.NewNotLoadedDirectory(t, "parent", directory.RootPath)
+		parentDir := tu.NewNotLoadedDirectory(t, "parent", directory.RootPath)
 
 		file, err := directory.NewFile("oldname.txt", parentDir)
 		require.NoError(t, err)

@@ -11,7 +11,7 @@ import (
 	"github.com/thomas-marquis/it-happened/inmemory"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
@@ -125,7 +125,7 @@ func TestCsvEditorWidget(t *testing.T) {
 			Data: []byte(csvContent),
 		}
 
-		testutil.AssertImageMatches(t, "images/is-loading.png", canvas.Capture())
+		tu.AssertImageMatches(t, "images/is-loading.png", canvas.Capture())
 
 		// When
 		fxt.Bus().Publish(event.New(editor.Loaded{
@@ -137,7 +137,7 @@ func TestCsvEditorWidget(t *testing.T) {
 		widgt.Refresh()
 
 		// Then
-		testutil.AssertImageMatches(t, "images/loaded-successfully.png", canvas.Capture())
+		tu.AssertImageMatches(t, "images/loaded-successfully.png", canvas.Capture())
 	})
 
 	t.Run("should display page 2", func(t *testing.T) {
@@ -161,7 +161,7 @@ func TestCsvEditorWidget(t *testing.T) {
 		time.Sleep(300 * time.Millisecond) // Magic wait...
 		widgt.Refresh()
 
-		testutil.AssertImageMatches(t, "images/page-1.png", canvas.Capture())
+		tu.AssertImageMatches(t, "images/page-1.png", canvas.Capture())
 
 		// When - go to page 2
 		fyne_test.Tap(widgt.NextBtn)
@@ -170,7 +170,7 @@ func TestCsvEditorWidget(t *testing.T) {
 		widgt.Refresh()
 
 		// Then
-		testutil.AssertImageMatches(t, "images/page-2.png", canvas.Capture())
+		tu.AssertImageMatches(t, "images/page-2.png", canvas.Capture())
 
 		// When - go back page 1
 		fyne_test.Tap(widgt.PrevBtn)
@@ -179,6 +179,6 @@ func TestCsvEditorWidget(t *testing.T) {
 		widgt.Refresh()
 
 		// Then
-		testutil.AssertImageMatches(t, "images/page-1.png", canvas.Capture())
+		tu.AssertImageMatches(t, "images/page-1.png", canvas.Capture())
 	})
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/thomas-marquis/it-happened/eventest"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 )
 
 func TestPreview_Materialize(t *testing.T) {
@@ -18,10 +18,10 @@ func TestPreview_Materialize(t *testing.T) {
 		// Given
 		connID := connection_deck.NewConnectionID()
 
-		dir := testutil.MakeDirectory(t, "data",
-			testutil.WithRootParent(),
-			testutil.WithConnectionId(connID),
-			testutil.IsLoaded(),
+		dir := tu.MakeDirectory(t, "data",
+			tu.WithRootParent(),
+			tu.WithConnectionId(connID),
+			tu.IsLoaded(),
 		)
 
 		dirMd, _ := directory.New(connID, "md", dir)
@@ -89,16 +89,16 @@ func TestPreview_Materialize(t *testing.T) {
 		// Given
 		connID := connection_deck.NewConnectionID()
 
-		dir := testutil.MakeDirectory(t, "data",
-			testutil.WithRootParent(),
-			testutil.WithConnectionId(connID),
-			testutil.IsLoaded(),
-			testutil.WithFiles("file1.txt"),
-			testutil.WithSubDirectory("md",
-				testutil.IsLoaded(),
-				testutil.WithSubDirectory("html",
-					testutil.IsLoaded(),
-					testutil.WithFiles("file5.html"),
+		dir := tu.MakeDirectory(t, "data",
+			tu.WithRootParent(),
+			tu.WithConnectionId(connID),
+			tu.IsLoaded(),
+			tu.WithFiles("file1.txt"),
+			tu.WithSubDirectory("md",
+				tu.IsLoaded(),
+				tu.WithSubDirectory("html",
+					tu.IsLoaded(),
+					tu.WithFiles("file5.html"),
 				),
 			),
 		)
@@ -164,16 +164,16 @@ func TestPreview_GetByPath(t *testing.T) {
 	// Given
 	connID := connection_deck.NewConnectionID()
 
-	dir := testutil.MakeDirectory(t, "project",
-		testutil.WithRootParent(),
-		testutil.WithConnectionId(connID),
-		testutil.IsLoaded(),
-		testutil.WithSubDirectory("src",
-			testutil.IsLoaded(),
-			testutil.WithSubDirectory("html",
-				testutil.IsLoaded(),
+	dir := tu.MakeDirectory(t, "project",
+		tu.WithRootParent(),
+		tu.WithConnectionId(connID),
+		tu.IsLoaded(),
+		tu.WithSubDirectory("src",
+			tu.IsLoaded(),
+			tu.WithSubDirectory("html",
+				tu.IsLoaded(),
 			),
-			testutil.WithSubDirectory("go"),
+			tu.WithSubDirectory("go"),
 		),
 	)
 

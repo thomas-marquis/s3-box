@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 )
 
 func TestPath_DirectoryName(t *testing.T) {
@@ -91,12 +91,12 @@ func TestPath_Is(t *testing.T) {
 	}{
 		{
 			Path:     "/home/user/data/",
-			Dir:      testutil.NewNotLoadedDirectory(t, "data", "/home/user/"),
+			Dir:      tu.NewNotLoadedDirectory(t, "data", "/home/user/"),
 			Expected: true,
 		},
 		{
 			Path:     "/home/user/data/",
-			Dir:      testutil.NewNotLoadedDirectory(t, "data2", "/home/user/"),
+			Dir:      tu.NewNotLoadedDirectory(t, "data2", "/home/user/"),
 			Expected: false,
 		},
 	} {

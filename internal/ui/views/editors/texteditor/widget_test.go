@@ -14,7 +14,7 @@ import (
 	"github.com/thomas-marquis/it-happened/inmemory"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
 )
@@ -138,7 +138,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 
 		// When the file is loading
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/is-loading.png", canvas.Capture())
+			tu.AssertImageMatches(ct, "images/is-loading.png", canvas.Capture())
 		}, time.Second, 10*time.Millisecond)
 
 		fxt.Bus().Publish(event.New(editor.Loaded{
@@ -149,7 +149,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 		close(readed) // Simulate end loading
 		// When the file is loaded
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/loaded-empty.png", canvas.Capture())
+			tu.AssertImageMatches(ct, "images/loaded-empty.png", canvas.Capture())
 		}, time.Second, 10*time.Millisecond)
 
 		// When user types some text, then save
@@ -157,12 +157,12 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 		fyne_test.Tap(res.SaveBtn.ToolbarObject().(*fyne_widget.Button))
 
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/updated-and-saving.png", canvas.Capture())
+			tu.AssertImageMatches(ct, "images/updated-and-saving.png", canvas.Capture())
 		}, time.Second, 10*time.Millisecond)
 
 		close(written)
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/updated-and-saved.png", canvas.Capture())
+			tu.AssertImageMatches(ct, "images/updated-and-saved.png", canvas.Capture())
 		}, time.Second, 10*time.Millisecond)
 	})
 
@@ -187,7 +187,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 
 		// Then
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/loaded-non-empty.png", canvas.Capture())
+			tu.AssertImageMatches(ct, "images/loaded-non-empty.png", canvas.Capture())
 		}, time.Second, 10*time.Millisecond)
 	})
 
@@ -208,7 +208,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 
 		// Then
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/loaded-error.png", fxt.Window().Canvas().Capture())
+			tu.AssertImageMatches(ct, "images/loaded-error.png", fxt.Window().Canvas().Capture())
 		}, time.Second, 10*time.Millisecond)
 	})
 
@@ -235,7 +235,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 
 		// Wait until the file is loaded
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/loaded-empty.png", fxt.Window().Canvas().Capture())
+			tu.AssertImageMatches(ct, "images/loaded-empty.png", fxt.Window().Canvas().Capture())
 		}, time.Second, 10*time.Millisecond)
 
 		// When user types some text, then save
@@ -243,7 +243,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 		fyne_test.Tap(res.SaveBtn.ToolbarObject().(*fyne_widget.Button))
 
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/updated-and-saved-with-error.png", canvas.Capture())
+			tu.AssertImageMatches(ct, "images/updated-and-saved-with-error.png", canvas.Capture())
 		}, time.Second, 10*time.Millisecond)
 	})
 
@@ -267,7 +267,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 
 		// Wait until the file is loaded
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/loaded-empty.png", fxt.Window().Canvas().Capture())
+			tu.AssertImageMatches(ct, "images/loaded-empty.png", fxt.Window().Canvas().Capture())
 		}, time.Second, 10*time.Millisecond)
 
 		fyne_test.Type(res.TextEntry, "my new content")
@@ -277,7 +277,7 @@ func TestTextEditor_CreateWidget(t *testing.T) {
 
 		// Then
 		assert.EventuallyWithT(t, func(ct *assert.CollectT) {
-			testutil.AssertImageMatches(ct, "images/updated-not-saved-and-closed.png", canvas.Capture())
+			tu.AssertImageMatches(ct, "images/updated-not-saved-and-closed.png", canvas.Capture())
 		}, time.Second, 10*time.Millisecond)
 	})
 }

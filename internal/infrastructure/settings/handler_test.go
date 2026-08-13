@@ -8,7 +8,7 @@ import (
 	"github.com/thomas-marquis/it-happened/eventest"
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	infra "github.com/thomas-marquis/s3-box/internal/infrastructure/settings"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
 	mocks_fyne "github.com/thomas-marquis/s3-box/mocks/fyne"
 	"go.uber.org/mock/gomock"
@@ -52,7 +52,7 @@ func TestFyneSettingsHandler_write(t *testing.T) {
 			}
 		}`
 		mockPrefs.EXPECT().
-			SetString(gomock.Eq("settingsV2"), testutil.JsonEqMatcher(t, newPrefs)).
+			SetString(gomock.Eq("settingsV2"), tu.JsonEqMatcher(t, newPrefs)).
 			Times(1)
 
 		events := make(chan event.Event)
@@ -78,7 +78,7 @@ func TestFyneSettingsHandler_write(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 	})
 
 	t.Run("should handle write when preferences are empty", func(t *testing.T) {
@@ -116,7 +116,7 @@ func TestFyneSettingsHandler_write(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 	})
 }
 
@@ -171,7 +171,7 @@ func TestFyneSettingsHandler_load(t *testing.T) {
 		events <- event.New(settings.LoadTriggered{})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 	})
 
 	t.Run("should return empty maps when no settings exist", func(t *testing.T) {
@@ -202,7 +202,7 @@ func TestFyneSettingsHandler_load(t *testing.T) {
 		events <- event.New(settings.LoadTriggered{})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 	})
 
 	t.Run("should handle empty string from prefs and return empty maps", func(t *testing.T) {
@@ -234,7 +234,7 @@ func TestFyneSettingsHandler_load(t *testing.T) {
 		events <- event.New(settings.LoadTriggered{})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 	})
 
 	t.Run("should fail when preferences cannot be read", func(t *testing.T) {
@@ -264,7 +264,7 @@ func TestFyneSettingsHandler_load(t *testing.T) {
 		events <- event.New(settings.LoadTriggered{})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 	})
 
 	t.Run("should fail when DTO has invalid configuration type", func(t *testing.T) {
@@ -299,6 +299,6 @@ func TestFyneSettingsHandler_load(t *testing.T) {
 		events <- event.New(settings.LoadTriggered{})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 	})
 }

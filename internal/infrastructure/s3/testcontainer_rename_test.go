@@ -16,7 +16,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 	"go.uber.org/mock/gomock"
 )
 
@@ -27,21 +27,21 @@ func TestS3EventHandler_rename(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
+	endpoint, terminate := tu.SetupS3testContainer(ctx, t)
 	t.Cleanup(terminate)
-	testClient := testutil.SetupS3Client(t, endpoint)
+	testClient := tu.SetupS3Client(t, endpoint)
 
 	t.Run("should rename a file successfully", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "mydir/original.txt", Body: strings.NewReader("original content")},
 		})
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		parentDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
-		originalFile := testutil.AddFileToDirectory(t, parentDir, "original.txt")
+		parentDir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "mydir", directory.RootPath)
+		originalFile := tu.AddFileToDirectory(t, parentDir, "original.txt")
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -71,17 +71,17 @@ func TestS3EventHandler_rename(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 
-		testutil.AssertObjectNotExists(t, testClient, bucket, "mydir/original.txt")
-		testutil.AssertObjectContent(t, testClient, bucket, "mydir/renamed.txt", "original content")
+		tu.AssertObjectNotExists(t, testClient, bucket, "mydir/original.txt")
+		tu.AssertObjectContent(t, testClient, bucket, "mydir/renamed.txt", "original content")
 	})
 
 	t.Run("should ask for user validation before renaming a non-empty directory", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "originaldir/empty/", Body: strings.NewReader("")},
@@ -89,8 +89,8 @@ func TestS3EventHandler_rename(t *testing.T) {
 			{Key: "originaldir/subdir/nested.txt", Body: strings.NewReader("nested content")},
 			{Key: "originaldir/subdir/originaldir/more-nested.txt", Body: strings.NewReader("more nested content")},
 		})
-		originalDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "originaldir", directory.RootPath)
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		originalDir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "originaldir", directory.RootPath)
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -121,31 +121,31 @@ func TestS3EventHandler_rename(t *testing.T) {
 		fakeEventChan <- inputEvt
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 
 		// Ensure the bucket content is left unchanged until the user has validated the operation
-		oldKeys := testutil.ListKeys(t, testClient, bucket, "originaldir/")
+		oldKeys := tu.ListKeys(t, testClient, bucket, "originaldir/")
 		assert.Len(t, oldKeys, 5)
 
 		var wg sync.WaitGroup
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/file.txt", "file content", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/empty/", "", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/", "", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/nested.txt", "nested content", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/originaldir/more-nested.txt", "more nested content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/file.txt", "file content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/empty/", "", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/", "", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/nested.txt", "nested content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/originaldir/more-nested.txt", "more nested content", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname1/file.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname1/file.txt", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/.s3box-rename-src", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname1/.s3box-rename-dst", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/.s3box-rename-src", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname1/.s3box-rename-dst", &wg)
 		wg.Wait()
 	})
 
 	t.Run("should rename directory and its content after user had validated it", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "originaldir/empty/", Body: strings.NewReader("")},
@@ -153,8 +153,8 @@ func TestS3EventHandler_rename(t *testing.T) {
 			{Key: "originaldir/subdir/nested.txt", Body: strings.NewReader("nested content")},
 			{Key: "originaldir/subdir/originaldir/more-nested.txt", Body: strings.NewReader("more nested content")},
 		})
-		originalDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "originaldir", directory.RootPath)
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		originalDir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "originaldir", directory.RootPath)
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -189,37 +189,37 @@ func TestS3EventHandler_rename(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 
-		oldKeys := testutil.ListKeys(t, testClient, bucket, "originaldir/")
+		oldKeys := tu.ListKeys(t, testClient, bucket, "originaldir/")
 		assert.Len(t, oldKeys, 0)
 
-		resKeys := testutil.ListKeys(t, testClient, bucket, "newname/")
+		resKeys := tu.ListKeys(t, testClient, bucket, "newname/")
 		assert.Len(t, resKeys, 5)
 
 		var wg sync.WaitGroup
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/file.txt", "file content", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/empty/", "", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/", "", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/nested.txt", "nested content", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/originaldir/more-nested.txt", "more nested content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/file.txt", "file content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/empty/", "", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/", "", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/nested.txt", "nested content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/originaldir/more-nested.txt", "more nested content", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/file.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/empty/", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/nested.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/originaldir/more-nested.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/file.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/empty/", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/nested.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/originaldir/more-nested.txt", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/.s3box-rename-src", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-dst", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/.s3box-rename-src", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-dst", &wg)
 		wg.Wait()
 	})
 
 	t.Run("should rename non-base directory and its content after user had validated it", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "originaldir/empty/", Body: strings.NewReader("")},
@@ -227,8 +227,8 @@ func TestS3EventHandler_rename(t *testing.T) {
 			{Key: "originaldir/subdir/nested.txt", Body: strings.NewReader("nested content")},
 			{Key: "originaldir/subdir/originaldir/more-nested.txt", Body: strings.NewReader("more nested content")},
 		})
-		subdir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "subdir", "/originaldir/")
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		subdir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "subdir", "/originaldir/")
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -262,44 +262,44 @@ func TestS3EventHandler_rename(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 
 		var wg sync.WaitGroup
 
 		wg.Go(func() {
-			oldKeys := testutil.ListKeys(t, testClient, bucket, "originaldir/subdir")
+			oldKeys := tu.ListKeys(t, testClient, bucket, "originaldir/subdir")
 			assert.Len(t, oldKeys, 0)
 		})
 
 		wg.Go(func() {
-			resKeys := testutil.ListKeys(t, testClient, bucket, "originaldir/newname/")
+			resKeys := tu.ListKeys(t, testClient, bucket, "originaldir/newname/")
 			assert.Len(t, resKeys, 2)
 		})
 
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/file.txt", "file content", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/empty/", "", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/newname/", "", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/newname/nested.txt", "nested content", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/newname/originaldir/more-nested.txt", "more nested content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/file.txt", "file content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/empty/", "", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/newname/", "", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/newname/nested.txt", "nested content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/newname/originaldir/more-nested.txt", "more nested content", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/nested.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/originaldir/more-nested.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/nested.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/originaldir/more-nested.txt", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/.s3box-rename-src", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/newname/.s3box-rename-dst", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/subdir/.s3box-rename-src", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/newname/.s3box-rename-dst", &wg)
 		wg.Wait()
 	})
 
 	t.Run("should rename empty directory directly without validation", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(context.TODO(), t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(context.TODO(), t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "base/empty/", Body: strings.NewReader("")},
 		})
-		dir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "empty", "/base/")
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		dir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "empty", "/base/")
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -330,22 +330,22 @@ func TestS3EventHandler_rename(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 
 		var wg sync.WaitGroup
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "base/newname/", "", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "base/empty/", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "base/newname/", "", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "base/empty/", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "base/empty/.s3box-rename-src", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "base/newname/.s3box-rename-dst", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "base/empty/.s3box-rename-src", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "base/newname/.s3box-rename-dst", &wg)
 		wg.Wait()
 	})
 
 	t.Run("should handle rename failure gracefully and write marker files", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "originaldir/empty/", Body: strings.NewReader("")},
@@ -353,10 +353,10 @@ func TestS3EventHandler_rename(t *testing.T) {
 			{Key: "originaldir/subdir/nested.txt", Body: strings.NewReader("nested content")},
 			{Key: "originaldir/subdir/originaldir/more-nested.txt", Body: strings.NewReader("more nested content")},
 		})
-		originalDir := testutil.MakeDirectory(t, "originaldir",
-			testutil.WithRootParent(),
-			testutil.WithConnectionId(testutil.FakeAwsConnectionId))
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		originalDir := tu.MakeDirectory(t, "originaldir",
+			tu.WithRootParent(),
+			tu.WithConnectionId(tu.FakeAwsConnectionId))
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -399,34 +399,34 @@ func TestS3EventHandler_rename(t *testing.T) {
 				NewName:   "newname",
 			}),
 		})
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 
 		var wg sync.WaitGroup
 
 		// copy errors results
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/nested.txt", "nested content", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/", "", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/nested.txt", "nested content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/", "", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/nested.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/nested.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/", &wg)
 
 		// delete errors results
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/originaldir/more-nested.txt", "more nested content", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/originaldir/more-nested.txt", "more nested content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "originaldir/subdir/originaldir/more-nested.txt", "more nested content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/originaldir/more-nested.txt", "more nested content", &wg)
 
 		// what's been moved to the dest directory
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/file.txt", "file content", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/empty/", "", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/file.txt", "file content", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/empty/", "", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/file.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/empty/", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/file.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "originaldir/empty/", &wg)
 
 		// check marker files are still there
-		testutil.AssertJSONObjectContentAsync(t, testClient, bucket, "originaldir/.s3box-rename-src", `
+		tu.AssertJSONObjectContentAsync(t, testClient, bucket, "originaldir/.s3box-rename-src", `
 		{
 			"dstPath": "/newname/"
 		}`, &wg)
-		testutil.AssertJSONObjectContentAsync(t, testClient, bucket, "newname/.s3box-rename-dst", `
+		tu.AssertJSONObjectContentAsync(t, testClient, bucket, "newname/.s3box-rename-dst", `
 		{
 			"srcPath": "/originaldir/"
 		}`, &wg)
@@ -436,15 +436,15 @@ func TestS3EventHandler_rename(t *testing.T) {
 	t.Run("should fails when the destination directory already exists", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "newname/", Body: strings.NewReader("")},
 			{Key: "newname/somefile.txt", Body: strings.NewReader("some content")},
 		})
-		originalDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "originaldir", directory.RootPath)
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		originalDir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "originaldir", directory.RootPath)
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -474,23 +474,23 @@ func TestS3EventHandler_rename(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 
-		testutil.AssertObjectNotExists(t, testClient, bucket, "originaldir/.s3box-rename-src")
-		testutil.AssertObjectNotExists(t, testClient, bucket, "newname/.s3box-rename-dst")
+		tu.AssertObjectNotExists(t, testClient, bucket, "originaldir/.s3box-rename-src")
+		tu.AssertObjectNotExists(t, testClient, bucket, "newname/.s3box-rename-dst")
 	})
 
 	t.Run("should fails when the src directory already contains a marker file", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "originaldir/", Body: strings.NewReader("")},
 			{Key: "originaldir/file.txt", Body: strings.NewReader("file content")},
 			{Key: "originaldir/.s3box-rename-src", Body: strings.NewReader(`{"dstPath": "/othernewname/"}`)},
 		})
-		originalDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "originaldir", directory.RootPath)
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		originalDir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "originaldir", directory.RootPath)
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -523,18 +523,18 @@ func TestS3EventHandler_rename(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 	})
 
 	t.Run("should rename with default grants when user doesn't have GetObjectACL permission", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(context.TODO(), t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(context.TODO(), t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "base/empty/", Body: strings.NewReader("")},
 		})
-		dir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "empty", directory.NewPath("base"))
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		dir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "empty", directory.NewPath("base"))
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -567,20 +567,20 @@ func TestS3EventHandler_rename(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 
-		testutil.AssertObjectContent(t, testClient, bucket, "base/newname/", "")
-		testutil.AssertObjectNotExists(t, testClient, bucket, "base/empty/")
+		tu.AssertObjectContent(t, testClient, bucket, "base/newname/", "")
+		tu.AssertObjectNotExists(t, testClient, bucket, "base/empty/")
 
-		testutil.AssertObjectNotExists(t, testClient, bucket, "base/empty/.s3box-rename-src")
-		testutil.AssertObjectNotExists(t, testClient, bucket, "base/newname/.s3box-rename-dst")
+		tu.AssertObjectNotExists(t, testClient, bucket, "base/empty/.s3box-rename-src")
+		tu.AssertObjectNotExists(t, testClient, bucket, "base/newname/.s3box-rename-dst")
 	})
 
 	t.Run("should successfully resume renaming directory when marker files are present", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "oldname/", Body: strings.NewReader("")},
 			{Key: "oldname/.s3box-rename-src", Body: strings.NewReader(`{"dstPath": "/newname/"}`)},
 			{Key: "oldname/file1.txt", Body: strings.NewReader("content 1")},
@@ -595,10 +595,10 @@ func TestS3EventHandler_rename(t *testing.T) {
 			{Key: "newname/subdir/file4.txt", Body: strings.NewReader("content 4")},
 			{Key: "newname/subdir/file5.txt", Body: strings.NewReader("content 5")},
 		})
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		oldDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "oldname", directory.RootPath)
-		newDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "newname", directory.RootPath)
+		oldDir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "oldname", directory.RootPath)
+		newDir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "newname", directory.RootPath)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -629,38 +629,38 @@ func TestS3EventHandler_rename(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 
 		var wg sync.WaitGroup
 
 		// Check everything is moved
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/file1.txt", "content 1", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/file2.txt", "content 2", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/file3.txt", "content 3", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/file4.txt", "content 4", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/file5.txt", "content 5", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/file6.txt", "content 6", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/file1.txt", "content 1", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/file2.txt", "content 2", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/file3.txt", "content 3", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/file4.txt", "content 4", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/file5.txt", "content 5", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/file6.txt", "content 6", &wg)
 
 		// Check markers are gone
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/file1.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/file2.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/file3.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/subdir/file4.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/subdir/file5.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/subdir/file6.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/file1.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/file2.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/file3.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/subdir/file4.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/subdir/file5.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/subdir/file6.txt", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-src", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-dst", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-src", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-dst", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-src", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-dst", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-src", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-dst", &wg)
 		wg.Wait()
 	})
 
 	t.Run("should successfully rollback renaming directory when marker files are present", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "oldname/", Body: strings.NewReader("")},
 			{Key: "oldname/.s3box-rename-src", Body: strings.NewReader(`{"dstPath": "/newname/"}`)},
 			{Key: "oldname/file1.txt", Body: strings.NewReader("content 1")},
@@ -675,10 +675,10 @@ func TestS3EventHandler_rename(t *testing.T) {
 			{Key: "newname/subdir/file4.txt", Body: strings.NewReader("content 4")},
 			{Key: "newname/subdir/file5.txt", Body: strings.NewReader("content 5")},
 		})
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		oldDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "oldname", directory.RootPath)
-		newDir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "newname", directory.RootPath)
+		oldDir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "oldname", directory.RootPath)
+		newDir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "newname", directory.RootPath)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -709,38 +709,38 @@ func TestS3EventHandler_rename(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 
 		var wg sync.WaitGroup
 
 		// Check everything is moved
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "oldname/file1.txt", "content 1", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "oldname/file2.txt", "content 2", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "oldname/file3.txt", "content 3", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "oldname/subdir/file4.txt", "content 4", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "oldname/subdir/file5.txt", "content 5", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "oldname/subdir/file6.txt", "content 6", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "oldname/file1.txt", "content 1", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "oldname/file2.txt", "content 2", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "oldname/file3.txt", "content 3", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "oldname/subdir/file4.txt", "content 4", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "oldname/subdir/file5.txt", "content 5", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "oldname/subdir/file6.txt", "content 6", &wg)
 
 		// Check markers are gone
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/file1.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/file2.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/file3.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/file4.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/file5.txt", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/file6.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/file1.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/file2.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/file3.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/file4.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/file5.txt", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/file6.txt", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-src", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-dst", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-src", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-dst", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-src", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-dst", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-src", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-dst", &wg)
 		wg.Wait()
 	})
 
 	t.Run("should successfully abort renaming directory when marker files are present", func(t *testing.T) {
 		t.Parallel()
 		// Given
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "oldname/", Body: strings.NewReader("")},
 			{Key: "oldname/.s3box-rename-src", Body: strings.NewReader(`{"dstPath": "/newname/"}`)},
 			{Key: "oldname/file1.txt", Body: strings.NewReader("content 1")},
@@ -755,10 +755,10 @@ func TestS3EventHandler_rename(t *testing.T) {
 			{Key: "newname/subdir/file4.txt", Body: strings.NewReader("content 4")},
 			{Key: "newname/subdir/file5.txt", Body: strings.NewReader("content 5")},
 		})
-		fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+		fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-		oldDir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "oldname", directory.RootPath)
-		newDir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "newname", directory.RootPath)
+		oldDir := tu.NewNotLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "oldname", directory.RootPath)
+		newDir := tu.NewNotLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "newname", directory.RootPath)
 
 		fakeEventChan := make(chan event.Event, 1)
 		defer close(fakeEventChan)
@@ -810,30 +810,30 @@ func TestS3EventHandler_rename(t *testing.T) {
 		})
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 
 		var wg sync.WaitGroup
 
 		// Check everything is moved
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "oldname/file1.txt", "content 1", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/file2.txt", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "oldname/file3.txt", "content 3", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "oldname/subdir/file4.txt", "content 4", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/subdir/file5.txt", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "oldname/subdir/file6.txt", "content 6", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "oldname/file1.txt", "content 1", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/file2.txt", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "oldname/file3.txt", "content 3", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "oldname/subdir/file4.txt", "content 4", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/subdir/file5.txt", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "oldname/subdir/file6.txt", "content 6", &wg)
 
 		// Check markers are gone
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/file1.txt", "content 1", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/file2.txt", "content 2", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/file3.txt", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/file4.txt", "content 4", &wg)
-		testutil.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/file5.txt", "content 5", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/file6.txt", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/file1.txt", "content 1", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/file2.txt", "content 2", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/file3.txt", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/file4.txt", "content 4", &wg)
+		tu.AssertObjectContentAsync(t, testClient, bucket, "newname/subdir/file5.txt", "content 5", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/subdir/file6.txt", &wg)
 
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-src", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-dst", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-src", &wg)
-		testutil.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-dst", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-src", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "oldname/.s3box-rename-dst", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-src", &wg)
+		tu.AssertObjectNotExistsAsync(t, testClient, bucket, "newname/.s3box-rename-dst", &wg)
 
 		wg.Wait()
 	})
