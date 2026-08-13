@@ -223,7 +223,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 
 		resFiles = dir.Files()
 		assert.Len(t, resFiles, 2)
-		assert.Equal(t, "main.go", resFiles[1].Name().String())
+		assert.Equal(t, "main.go", resFiles[0].Name().String())
 	})
 
 	t.Run("should emit file deleted event when file exists, then re-uploaded", func(t *testing.T) {
@@ -692,18 +692,22 @@ func TestDirectory_Rename(t *testing.T) {
 
 	t.Run("should update sub directories' parent path recursively", func(t *testing.T) {
 		// Given
-		dir := testutil.NewLoadedDirectory(t, "oldname", directory.RootPath)
-		f1 := testutil.AddFileToDirectory(t, dir, "f1.txt")
+		var subdir1, subdir2, subSubDir1, subSubDir2NoLoaded *directory.Directory
+		var f1, f11, f111 *directory.File
 
-		subdir1 := testutil.AddSubDirectoryToDirectory(t, dir, "sub1")
-		f11 := testutil.AddFileToDirectory(t, subdir1, "f11.txt")
-
-		subdir2 := testutil.AddSubDirectoryToDirectory(t, dir, "sub2")
-
-		subSubDir1 := testutil.AddSubDirectoryToDirectory(t, subdir1, "subsub1")
-		f111 := testutil.AddFileToDirectory(t, subSubDir1, "f111.txt")
-
-		subSubDir2NoLoaded := testutil.AddSubNotLoadedDirectoryToDirectory(t, subdir2, "subsub2")
+		dir := testutil.MakeDirectory(t, "oldname",
+			testutil.WithRootParent(),
+			testutil.WithFiles("f1.txt"), testutil.FileTo("f1.txt", &f1),
+			testutil.WithSubDirectory("sub1",
+				testutil.To(&subdir1),
+				testutil.WithFiles("f11.txt"), testutil.FileTo("f11.txt", &f11),
+				testutil.WithSubDirectory("subsub1",
+					testutil.To(&subSubDir1),
+					testutil.WithFiles("f111.txt"), testutil.FileTo("f111.txt", &f111))),
+			testutil.WithSubDirectory("sub2",
+				testutil.To(&subdir2),
+				testutil.WithSubDirectory("subsub2",
+					testutil.To(&subSubDir2NoLoaded))))
 
 		require.Equal(t, directory.Path("/oldname/"), dir.Path())
 		require.Equal(t, directory.Path("/oldname/sub1/"), subdir1.Path())

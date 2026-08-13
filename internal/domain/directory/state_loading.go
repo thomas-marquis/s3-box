@@ -27,7 +27,11 @@ func (s *loadingState) Load() (event.Event, error) {
 func (s *loadingState) Notify(evt event.Event) error {
 	switch pl := evt.Payload().(type) {
 	case LoadSucceeded:
-		s.d.setState(newLoadedState(s.baseState, pl.SubDirectories, pl.Files))
+		files := make(map[FileName]*File)
+		for _, file := range pl.Files {
+			files[file.Name()] = file
+		}
+		s.d.setState(newLoadedState(s.baseState, pl.SubDirectories, files))
 
 	case LoadFailed:
 		var urErr UncompletedRename

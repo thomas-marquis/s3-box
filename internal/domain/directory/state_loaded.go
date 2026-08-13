@@ -3,7 +3,9 @@ package directory
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
+	"slices"
 
 	"github.com/thomas-marquis/it-happened/event"
 )
@@ -14,13 +16,13 @@ type loadedState struct {
 
 var _ state = (*loadedState)(nil)
 
-func newLoadedState(previous baseState, subDirs []*Directory, files []*File) *loadedState {
+func newLoadedState(previous baseState, subDirs []*Directory, files map[FileName]*File) *loadedState {
 	bs := previous.Clone()
 	if subDirs == nil {
 		bs.subDirs = []*Directory{}
 	}
 	if files == nil {
-		bs.files = []*File{}
+		bs.files = make(map[FileName]*File)
 	}
 	bs.subDirs = subDirs
 	bs.files = files
@@ -35,8 +37,13 @@ func (s *loadedState) SubDirectories() []*Directory {
 	return s.subDirs
 }
 
-func (s *loadedState) Files() []*File {
-	return s.files
+func (s *loadedState) Files() (files []*File) {
+	keys := slices.Collect(maps.Keys(s.files))
+	slices.Sort(keys)
+	for _, name := range keys {
+		files = append(files, s.files[name])
+	}
+	return
 }
 
 func (s *loadedState) Load() (event.Event, error) {
@@ -101,28 +108,23 @@ func (s *loadedState) Notify(evt event.Event) error {
 		}
 
 	case DeleteFileSucceeded:
-		for i, file := range s.files {
-			if file.Is(pl.File) {
-				newFiles := append(s.files[:i], s.files[i+1:]...)
-				s.files = newFiles
-				return nil
-			}
+		if _, found := s.files[pl.File.Name()]; found {
+			delete(s.files, pl.File.Name())
 		}
 
 	case CreateFileSucceeded:
-		s.files = append(s.files, pl.File)
+		s.files[pl.File.Name()] = pl.File
 
 	case RenameFileSucceeded:
-		for _, f := range s.files {
-			if f.Is(pl.File) {
-				n, err := NewFileName(pl.NewName)
-				if err != nil {
-					return err
-				}
-				f.name = n
-				return nil
+		if f, found := s.files[pl.File.Name()]; found {
+			n, err := NewFileName(pl.NewName)
+			if err != nil {
+				return err
 			}
+			f.name = n
+			return nil
 		}
+
 		return fmt.Errorf("file %s not found in directory", pl.File.Name())
 
 	case CreateSucceeded:
@@ -132,18 +134,17 @@ func (s *loadedState) Notify(evt event.Event) error {
 	case UploadFileSucceeded:
 		f := pl.File
 		if !s.updateFile(f) {
-			s.files = append(s.files, f)
+			s.files[f.Name()] = f
 		}
 	}
 	return nil
 }
 
 func (s *loadedState) updateFile(f *File) bool {
-	for i, file := range s.files {
-		if file.Is(f) {
-			s.files[i] = f
-			return true
-		}
+	if _, found := s.files[f.Name()]; found {
+		s.files[f.Name()] = f
+		return true
 	}
+
 	return false
 }
