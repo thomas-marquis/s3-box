@@ -10,7 +10,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
 
 var errConnNotInBinding = fmt.Errorf("connection not found in binding list")
@@ -24,7 +23,7 @@ type ConnectionViewModel interface {
 	////////////////////////
 
 	// Connections return the list of connections as a binding.UntypedList
-	Connections() binding.UntypedList
+	Connections() binding.List[*connection_deck.Connection]
 
 	// Deck return user's connections deck
 	Deck() *connection_deck.Deck
@@ -57,7 +56,7 @@ type connectionViewModelImpl struct {
 	connectionRepository connection_deck.Repository
 	settingsViewModel    SettingsViewModel
 	appState             *state.State
-	connBindings         binding.UntypedList
+	connBindings         binding.List[*connection_deck.Connection]
 	deck                 *connection_deck.Deck
 	notifier             notification.Repository
 	onChangeCallbacks    []func(*connection_deck.Connection)
@@ -71,7 +70,9 @@ func NewConnectionViewModel(
 	notifier notification.Repository,
 	bus event.Bus,
 ) ConnectionViewModel {
-	c := binding.NewUntypedList()
+	c := binding.NewList[*connection_deck.Connection](func(c1, c2 *connection_deck.Connection) bool {
+		return c1.Is(c2)
+	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), appState.Settings().TimeoutValue())
 	defer cancel()
@@ -135,7 +136,7 @@ func NewConnectionViewModel(
 	return vm
 }
 
-func (v *connectionViewModelImpl) Connections() binding.UntypedList {
+func (v *connectionViewModelImpl) Connections() binding.List[*connection_deck.Connection] {
 	return v.connBindings
 }
 
@@ -233,7 +234,7 @@ func (v *connectionViewModelImpl) IsReadOnly() bool {
 
 func (v *connectionViewModelImpl) deleteFromBinding(evt event.Event, deletedConn *connection_deck.Connection) error {
 	found := false
-	allConnections := uiutils.GetUntypedListOrPanic[*connection_deck.Connection](v.connBindings)
+	allConnections, _ := v.connBindings.Get()
 	for _, prevConn := range allConnections {
 		if prevConn.Is(deletedConn) {
 			found = v.connBindings.Remove(prevConn) == nil
@@ -254,7 +255,7 @@ func (v *connectionViewModelImpl) deleteFromBinding(evt event.Event, deletedConn
 }
 
 func (v *connectionViewModelImpl) findConnectionInBinding(connID connection_deck.ConnectionID) *connection_deck.Connection {
-	connections, err := uiutils.GetUntypedList[*connection_deck.Connection](v.connBindings)
+	connections, err := v.connBindings.Get()
 	if err != nil {
 		return nil
 	}
@@ -282,7 +283,7 @@ func (v *connectionViewModelImpl) updateConnectionBinding(evt event.Event, c *co
 			}
 
 			// Necessary workaround to trigger the refresh in the UI
-			placeholderConn := connection_deck.Connection{}
+			placeholderConn := &connection_deck.Connection{}
 			v.connBindings.Append(placeholderConn) //nolint:errcheck
 			v.connBindings.Remove(placeholderConn) //nolint:errcheck
 		}

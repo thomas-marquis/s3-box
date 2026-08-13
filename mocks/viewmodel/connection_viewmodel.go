@@ -43,10 +43,10 @@ func (m *MockConnectionViewModel) EXPECT() *MockConnectionViewModelMockRecorder 
 }
 
 // Connections mocks base method.
-func (m *MockConnectionViewModel) Connections() binding.UntypedList {
+func (m *MockConnectionViewModel) Connections() binding.List[*connection_deck.Connection] {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Connections")
-	ret0, _ := ret[0].(binding.UntypedList)
+	ret0, _ := ret[0].(binding.List[*connection_deck.Connection])
 	return ret0
 }
 
