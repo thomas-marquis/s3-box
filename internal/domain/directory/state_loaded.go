@@ -16,15 +16,15 @@ type loadedState struct {
 
 var _ state = (*loadedState)(nil)
 
-func newLoadedState(previous baseState, subDirs []*Directory, files map[FileName]*File) *loadedState {
+func newLoadedState(previous baseState, subDirs map[Path]*Directory, files map[FileName]*File) *loadedState {
 	bs := previous.Clone()
 	if subDirs == nil {
-		bs.subDirs = []*Directory{}
+		bs.subDirsNew = make(map[Path]*Directory)
 	}
 	if files == nil {
 		bs.files = make(map[FileName]*File)
 	}
-	bs.subDirs = subDirs
+	bs.subDirsNew = subDirs
 	bs.files = files
 	return &loadedState{bs}
 }
@@ -33,8 +33,8 @@ func (s *loadedState) Type() StateType {
 	return stateTypeLoaded
 }
 
-func (s *loadedState) SubDirectories() []*Directory {
-	return s.subDirs
+func (s *loadedState) SubDirectories() (dirs []*Directory) {
+	return slices.Collect(maps.Values(s.subDirsNew))
 }
 
 func (s *loadedState) Files() (files []*File) {
@@ -100,11 +100,9 @@ func (s *loadedState) Preview() (*Preview, error) {
 func (s *loadedState) Notify(evt event.Event) error {
 	switch pl := evt.Payload().(type) {
 	case DeleteSucceeded:
-		for i, subDirPath := range s.subDirs {
-			if subDirPath.Is(pl.Directory) {
-				s.subDirs = append(s.subDirs[:i], s.subDirs[i+1:]...)
-				return nil
-			}
+		if _, found := s.subDirsNew[pl.Directory.Path()]; found {
+			delete(s.subDirsNew, pl.Directory.Path())
+			return nil
 		}
 
 	case DeleteFileSucceeded:
@@ -129,7 +127,7 @@ func (s *loadedState) Notify(evt event.Event) error {
 
 	case CreateSucceeded:
 		pl.Directory.setState(newLoadedState(baseState{d: pl.Directory}, nil, nil))
-		s.subDirs = append(s.subDirs, pl.Directory)
+		s.subDirsNew[pl.Directory.Path()] = pl.Directory
 
 	case UploadFileSucceeded:
 		f := pl.File

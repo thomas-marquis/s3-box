@@ -29,7 +29,6 @@ type state interface {
 
 type baseState struct {
 	d          *Directory
-	subDirs    []*Directory
 	files      map[FileName]*File
 	subDirsNew map[Path]*Directory
 }
@@ -37,7 +36,6 @@ type baseState struct {
 func (s *baseState) Clone() baseState {
 	return baseState{
 		d:          s.d,
-		subDirs:    s.subDirs,
 		files:      s.files,
 		subDirsNew: s.subDirsNew,
 	}

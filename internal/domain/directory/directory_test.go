@@ -69,11 +69,10 @@ func TestDirectory(t *testing.T) {
 func TestDirectory_Load(t *testing.T) {
 	t.Run("should load then update directory content on success", func(t *testing.T) {
 		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
-		require.False(t, dir.IsLoaded())
+		dir := testutil.MakeDirectory(t, "data", testutil.WithRootParent())
 
-		d1, _ := directory.New(connection_deck.NewConnectionID(), "data/d1", dir)
-		d2, _ := directory.New(connection_deck.NewConnectionID(), "data/d2", dir)
+		d1, _ := directory.New(connection_deck.NewConnectionID(), "d1", dir)
+		d2, _ := directory.New(connection_deck.NewConnectionID(), "d2", dir)
 		subDirs := []*directory.Directory{
 			d1, d2,
 		}
