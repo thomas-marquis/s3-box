@@ -1,4 +1,4 @@
-package testutil
+package tu
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 // AssertImageMatches asserts that the given image is the same as the one stored in the master file.
@@ -30,7 +31,7 @@ func AssertImageMatches(t require.TestingT, masterFilename string, img image.Ima
 
 	file, err := os.Open(masterPath)
 	require.NoError(t, err)
-	defer file.Close() //nolint:errcheck
+	defer u.SkipD(file.Close)
 	raw, _, err := image.Decode(file)
 	require.NoError(t, err)
 
@@ -99,7 +100,7 @@ func writeImage(path string, img image.Image) error {
 		return err
 	}
 	if err = png.Encode(f, img); err != nil {
-		f.Close() //nolint:errcheck
+		u.Skip(f.Close())
 		return err
 	}
 	return f.Close()

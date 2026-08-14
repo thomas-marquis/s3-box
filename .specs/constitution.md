@@ -55,7 +55,7 @@
 - Initialize Fyne with `fyne_test.NewApp()` (or `fyne_test.NewTempApp(t)` when appropriate).
 - Render widgets with `fyne_test.NewWindow(res).Canvas()` and compare using `fyne_test.AssertRendersToMarkup(t, "<name>", canvas)`.
 - Simulate interactions with `fyne_test.Tap` when needed.
-- Use data bindings (`binding.NewTree`, `binding.NewUntypedList`, `binding.NewString`) to feed viewmodels.
+- Use data bindings (`binding.NewTree`, `binding.NewList`, `binding.NewString`) to feed viewmodels.
 - Mock app context and viewmodels via `mocks/context` and `mocks/viewmodel`, using `AnyTimes()` for repeated calls.
 
 ### DTO Tests

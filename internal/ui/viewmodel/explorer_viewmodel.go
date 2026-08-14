@@ -7,8 +7,9 @@ import (
 	"sync"
 
 	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 
 	"fmt"
 	"path/filepath"
@@ -40,7 +41,7 @@ type ExplorerViewModel interface {
 	// State methods
 	////////////////////////
 
-	SelectedConnection() binding.Untyped
+	SelectedConnection() binding.Item[*connection_deck.Connection]
 
 	CurrentSelectedConnection() *connection_deck.Connection
 
@@ -113,7 +114,7 @@ type explorerViewModelImpl struct {
 	baseViewModel
 	sync.Mutex
 
-	selectedConnection    binding.Untyped
+	selectedConnection    binding.Item[*connection_deck.Connection]
 	selectedConnectionVal *connection_deck.Connection
 
 	settingsVm           SettingsViewModel
@@ -149,7 +150,7 @@ func NewExplorerViewModel(
 		settingsVm:             settingsVm,
 		notifier:               notifier,
 		selectedConnectionVal:  initialConnection,
-		selectedConnection:     binding.NewUntyped(),
+		selectedConnection:     binding.NewItem[*connection_deck.Connection](connection_deck.Compare),
 		bus:                    bus,
 		selectedDirectory:      nil,
 		isSelectedDirLoading:   binding.NewBool(),
@@ -160,7 +161,7 @@ func NewExplorerViewModel(
 
 	if err := v.initializeTreeData(initialConnection); err != nil {
 		if errors.Is(err, ErrNoConnectionSelected) {
-			v.selectedConnection.Set(nil) //nolint:errcheck
+			u.Skip(v.selectedConnection.Set(nil))
 			v.selectedConnectionVal = nil
 		}
 		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err))
@@ -253,7 +254,7 @@ func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
 	v.triggerStateListeners()
 }
 
-func (v *explorerViewModelImpl) SelectedConnection() binding.Untyped {
+func (v *explorerViewModelImpl) SelectedConnection() binding.Item[*connection_deck.Connection] {
 	return v.selectedConnection
 }
 
@@ -338,10 +339,10 @@ func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
 		v.notifier.NotifyError(err)
 		return
 	}
-	v.infoMessage.Set(pl.Err.Error()) //nolint:errcheck
+	u.Skip(v.infoMessage.Set(pl.Err.Error()))
 
 	if dir.Is(v.selectedDirectory) {
-		v.isSelectedDirLoading.Set(false) // nolint:errcheck
+		u.Skip(v.isSelectedDirLoading.Set(false))
 	}
 
 	v.triggerStateListeners()
@@ -354,15 +355,15 @@ func (v *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
 
 func (v *explorerViewModelImpl) handleDownloadFileSuccess(evt event.Event) {
 	pl := evt.Payload().(directory.DownloadFileSucceeded)
-	v.infoMessage.Set( //nolint:errcheck
-		fmt.Sprintf("File %s downloaded", pl.File.Name()))
+	u.Skip(v.infoMessage.Set(
+		fmt.Sprintf("File %s downloaded", pl.File.Name())))
 }
 
 func (v *explorerViewModelImpl) handleDownloadFileFailure(evt event.Event) {
 	pl := evt.Payload().(directory.DownloadFileFailed)
 	err := fmt.Errorf("error downloading file: %w", pl.Err)
 	v.notifier.NotifyError(err)
-	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	u.Skip(v.errorMessage.Set(err.Error()))
 }
 
 func (v *explorerViewModelImpl) DoUpload(localBasePath string, preview *directory.Preview, strategy directory.MaterializeStrategy) {
@@ -414,19 +415,19 @@ func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
 		err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
 	}
 	v.notifier.NotifyError(err)
-	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	u.Skip(v.errorMessage.Set(err.Error()))
 	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) PrepareUpload(uris []fyne.URI, dir *directory.Directory) error {
-	prev, err := makePreviewFromUris(uiutils.FromFyneUrisToPaths(uris), dir)
+	prev, err := makePreviewFromUris(uu.FromFyneUrisToPaths(uris), dir)
 	if err != nil {
 		return err
 	}
 
 	loadMat := directory.NewLoadMaterializer(prev, directory.UploadReady{
 		Directory: dir,
-		SrcPaths:  uiutils.FromFyneUrisToPaths(uris),
+		SrcPaths:  uu.FromFyneUrisToPaths(uris),
 	}, directory.UploadFailed{
 		Err:       errors.New("timeout"),
 		Directory: dir,
@@ -501,7 +502,7 @@ func makePreviewFromUris(paths []string, dir *directory.Directory) (*directory.P
 func (v *explorerViewModelImpl) handleUploadReady(evt event.Event) {
 	pl := evt.Payload().(directory.UploadReady)
 
-	localParentDirUri := uiutils.GetCommonParentPath(pl.SrcPaths)
+	localParentDirUri := uu.GetCommonParentPath(pl.SrcPaths)
 
 	prev, err := makePreviewFromUris(pl.SrcPaths, pl.Directory)
 	if err != nil {
@@ -509,7 +510,7 @@ func (v *explorerViewModelImpl) handleUploadReady(evt event.Event) {
 		return
 	}
 	if v.onUploadReady != nil {
-		v.onUploadReady(UploadPreviewState{ //nolint:errcheck
+		v.onUploadReady(UploadPreviewState{
 			Preview: prev,
 			BaseUri: localParentDirUri,
 		})
@@ -518,7 +519,7 @@ func (v *explorerViewModelImpl) handleUploadReady(evt event.Event) {
 
 func (v *explorerViewModelImpl) DeleteDirectory(dir *directory.Directory) {
 	if directory.RootPath.Is(dir) {
-		v.errorMessage.Set("Cannot delete root directory") //nolint:errcheck
+		u.Skip(v.errorMessage.Set("Cannot delete root directory"))
 		return
 	}
 
@@ -526,11 +527,11 @@ func (v *explorerViewModelImpl) DeleteDirectory(dir *directory.Directory) {
 
 	evt, err := parent.RemoveSubDirectory(dir.Name())
 	if err != nil {
-		v.errorMessage.Set(err.Error()) //nolint:errcheck
+		u.Skip(v.errorMessage.Set(err.Error()))
 		return
 	}
 
-	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	u.Skip(v.isSelectedDirLoading.Set(true))
 
 	v.bus.Publish(evt)
 }
@@ -569,12 +570,12 @@ func (v *explorerViewModelImpl) handleDeleteDirectoryFailure(evt event.Event) {
 	}
 
 	if pl.Directory.Is(v.selectedDirectory) {
-		v.isSelectedDirLoading.Set(false) // nolint:errcheck
+		u.Skip(v.isSelectedDirLoading.Set(false))
 	}
 
 	err := fmt.Errorf("error deleting directory: %w", pl.Err)
 	v.notifier.NotifyError(err)
-	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	u.Skip(v.errorMessage.Set(err.Error()))
 	v.triggerStateListeners()
 }
 
@@ -621,7 +622,7 @@ func (v *explorerViewModelImpl) handleDeleteFileFailure(evt event.Event) {
 	}
 	err := fmt.Errorf("error deleting file: %w", pl.Err)
 	v.notifier.NotifyError(err)
-	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	u.Skip(v.errorMessage.Set(err.Error()))
 	v.triggerStateListeners()
 }
 
@@ -698,7 +699,7 @@ func (v *explorerViewModelImpl) handleCreateDirFailure(evt event.Event) {
 	}
 	err := fmt.Errorf("error creating directory: %w", pl.Err)
 	v.notifier.NotifyError(err)
-	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	u.Skip(v.errorMessage.Set(err.Error()))
 	v.triggerStateListeners()
 }
 
@@ -742,7 +743,7 @@ func (v *explorerViewModelImpl) handleCreateFileFailure(evt event.Event) {
 		err = fmt.Errorf("%w: error notifying parent directory: %w", err, notifErr)
 	}
 	v.notifier.NotifyError(err)
-	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	u.Skip(v.errorMessage.Set(err.Error()))
 	v.triggerStateListeners()
 }
 
@@ -806,7 +807,7 @@ func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
 
 	defer func() {
 		if dir.Is(v.selectedDirectory) {
-			v.isSelectedDirLoading.Set(false) // nolint:errcheck
+			u.Skip(v.isSelectedDirLoading.Set(false))
 		}
 	}()
 
@@ -816,7 +817,7 @@ func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
 		return
 	}
 	v.notifier.NotifyError(err)
-	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	u.Skip(v.errorMessage.Set(err.Error()))
 	v.triggerStateListeners()
 }
 
@@ -826,7 +827,7 @@ func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) error {
 		return fmt.Errorf("impossible to resume rename: %w", err)
 	}
 	v.bus.Publish(evt)
-	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	u.Skip(v.isSelectedDirLoading.Set(true))
 	return nil
 }
 
@@ -836,7 +837,7 @@ func (v *explorerViewModelImpl) RollbackRename(dir *directory.Directory) error {
 		return fmt.Errorf("impossible to rollback rename: %w", err)
 	}
 	v.bus.Publish(evt)
-	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	u.Skip(v.isSelectedDirLoading.Set(true))
 	return nil
 }
 
@@ -846,7 +847,7 @@ func (v *explorerViewModelImpl) AbortRename(dir *directory.Directory) error {
 		return fmt.Errorf("impossible to abort rename: %w", err)
 	}
 	v.bus.Publish(evt)
-	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	u.Skip(v.isSelectedDirLoading.Set(true))
 	return nil
 }
 
@@ -901,7 +902,7 @@ func (v *explorerViewModelImpl) handleRenameFileFailure(evt event.Event) {
 		return
 	}
 	v.notifier.NotifyError(err)
-	v.errorMessage.Set(err.Error()) //nolint:errcheck
+	u.Skip(v.errorMessage.Set(err.Error()))
 	v.triggerStateListeners()
 }
 
@@ -951,11 +952,11 @@ func (v *explorerViewModelImpl) handleConnectionChange(evt event.Event) {
 	if hasChanged {
 		v.Lock()
 		v.selectedConnectionVal = conn
-		v.selectedConnection.Set(conn) //nolint:errcheck
+		u.Skip(v.selectedConnection.Set(conn))
 		v.Unlock()
 
 		if err := v.initializeTreeData(conn); err != nil {
-			v.errorMessage.Set(err.Error()) //nolint:errcheck
+			u.Skip(v.errorMessage.Set(err.Error()))
 			return
 		}
 	}
@@ -966,6 +967,6 @@ func (v *explorerViewModelImpl) handleConnectionRemoved(evt event.Event) {
 	conn := pl.Connection()
 	if v.selectedConnectionVal != nil && v.selectedConnectionVal.Is(conn) {
 		v.selectedConnectionVal = nil
-		v.selectedConnection.Set(nil) //nolint:errcheck
+		u.Skip(v.selectedConnection.Set(nil))
 	}
 }

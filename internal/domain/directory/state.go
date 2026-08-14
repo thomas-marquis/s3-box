@@ -28,13 +28,17 @@ type state interface {
 }
 
 type baseState struct {
-	d       *Directory
-	files   []*File
-	subDirs []*Directory
+	d          *Directory
+	files      map[FileName]*File
+	subDirsNew map[Path]*Directory
 }
 
 func (s *baseState) Clone() baseState {
-	return baseState{d: s.d, files: s.files, subDirs: s.subDirs}
+	return baseState{
+		d:          s.d,
+		files:      s.files,
+		subDirsNew: s.subDirsNew,
+	}
 }
 
 func (s *baseState) SubDirectories() []*Directory {

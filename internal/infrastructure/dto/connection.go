@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 type connectionDTO struct {
@@ -92,7 +93,7 @@ func (c *ConnectionsDTO) ToConnections() *connection_deck.Deck {
 		}
 	}
 	if selectedID != nilID {
-		conns.Select(selectedID) //nolint:errcheck
+		u.SkipV(conns.Select(selectedID))
 	}
 	return conns
 }

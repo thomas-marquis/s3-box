@@ -3,7 +3,9 @@ package directory
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
+	"slices"
 
 	"github.com/thomas-marquis/it-happened/event"
 )
@@ -14,15 +16,15 @@ type loadedState struct {
 
 var _ state = (*loadedState)(nil)
 
-func newLoadedState(previous baseState, subDirs []*Directory, files []*File) *loadedState {
+func newLoadedState(previous baseState, subDirs map[Path]*Directory, files map[FileName]*File) *loadedState {
 	bs := previous.Clone()
 	if subDirs == nil {
-		bs.subDirs = []*Directory{}
+		bs.subDirsNew = make(map[Path]*Directory)
 	}
 	if files == nil {
-		bs.files = []*File{}
+		bs.files = make(map[FileName]*File)
 	}
-	bs.subDirs = subDirs
+	bs.subDirsNew = subDirs
 	bs.files = files
 	return &loadedState{bs}
 }
@@ -31,12 +33,17 @@ func (s *loadedState) Type() StateType {
 	return stateTypeLoaded
 }
 
-func (s *loadedState) SubDirectories() []*Directory {
-	return s.subDirs
+func (s *loadedState) SubDirectories() (dirs []*Directory) {
+	return slices.Collect(maps.Values(s.subDirsNew))
 }
 
-func (s *loadedState) Files() []*File {
-	return s.files
+func (s *loadedState) Files() (files []*File) {
+	keys := slices.Collect(maps.Keys(s.files))
+	slices.Sort(keys)
+	for _, name := range keys {
+		files = append(files, s.files[name])
+	}
+	return
 }
 
 func (s *loadedState) Load() (event.Event, error) {
@@ -93,57 +100,47 @@ func (s *loadedState) Preview() (*Preview, error) {
 func (s *loadedState) Notify(evt event.Event) error {
 	switch pl := evt.Payload().(type) {
 	case DeleteSucceeded:
-		for i, subDirPath := range s.subDirs {
-			if subDirPath.Is(pl.Directory) {
-				s.subDirs = append(s.subDirs[:i], s.subDirs[i+1:]...)
-				return nil
-			}
+		if _, found := s.subDirsNew[pl.Directory.Path()]; found {
+			delete(s.subDirsNew, pl.Directory.Path())
+			return nil
 		}
 
 	case DeleteFileSucceeded:
-		for i, file := range s.files {
-			if file.Is(pl.File) {
-				newFiles := append(s.files[:i], s.files[i+1:]...)
-				s.files = newFiles
-				return nil
-			}
-		}
+		delete(s.files, pl.File.Name())
 
 	case CreateFileSucceeded:
-		s.files = append(s.files, pl.File)
+		s.files[pl.File.Name()] = pl.File
 
 	case RenameFileSucceeded:
-		for _, f := range s.files {
-			if f.Is(pl.File) {
-				n, err := NewFileName(pl.NewName)
-				if err != nil {
-					return err
-				}
-				f.name = n
-				return nil
+		if f, found := s.files[pl.File.Name()]; found {
+			n, err := NewFileName(pl.NewName)
+			if err != nil {
+				return err
 			}
+			f.name = n
+			return nil
 		}
+
 		return fmt.Errorf("file %s not found in directory", pl.File.Name())
 
 	case CreateSucceeded:
 		pl.Directory.setState(newLoadedState(baseState{d: pl.Directory}, nil, nil))
-		s.subDirs = append(s.subDirs, pl.Directory)
+		s.subDirsNew[pl.Directory.Path()] = pl.Directory
 
 	case UploadFileSucceeded:
 		f := pl.File
 		if !s.updateFile(f) {
-			s.files = append(s.files, f)
+			s.files[f.Name()] = f
 		}
 	}
 	return nil
 }
 
 func (s *loadedState) updateFile(f *File) bool {
-	for i, file := range s.files {
-		if file.Is(f) {
-			s.files[i] = f
-			return true
-		}
+	if _, found := s.files[f.Name()]; found {
+		s.files[f.Name()] = f
+		return true
 	}
+
 	return false
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 )
@@ -18,7 +18,7 @@ func TestExplorerState_InitFileTree(t *testing.T) {
 	t.Run("should create the root node from the provided root directory", func(t *testing.T) {
 		// Given
 		s := state.New()
-		rootDir := testutil.MakeDirectory(t, "", testutil.AsRoot())
+		rootDir := tu.MakeDirectory(t, "", tu.AsRoot())
 
 		// When
 		err := s.Explorer().InitFileTree(rootDir, "myBucket")
@@ -45,10 +45,9 @@ func TestExplorerState_AppendFile(t *testing.T) {
 		// Given
 		s := state.New()
 		var f *directory.File
-		rootDir := testutil.MakeDirectory(t, "",
-			testutil.AsRoot(),
-			testutil.WithFiles("file.txt"),
-			testutil.FileTo("file.txt", &f))
+		rootDir := tu.MakeDirectory(t, "",
+			tu.AsRoot(),
+			tu.WithFileTo("file.txt", &f))
 		require.NoError(t, s.Explorer().InitFileTree(rootDir, "myBucket"))
 
 		// When
@@ -77,15 +76,13 @@ func TestExplorerState_AppendFile(t *testing.T) {
 		var mainFile, readmeFile, userFile *directory.File
 		var srcDir *directory.Directory
 
-		rootDir := testutil.MakeDirectory(t, "",
-			testutil.AsRoot(),
-			testutil.WithFiles("main.go", "README.md"),
-			testutil.FileTo("main.go", &mainFile),
-			testutil.FileTo("README.md", &readmeFile),
-			testutil.WithSubDirectory("src",
-				testutil.To(&srcDir),
-				testutil.WithFiles("user.go"),
-				testutil.FileTo("user.go", &userFile)))
+		rootDir := tu.MakeDirectory(t, "",
+			tu.AsRoot(),
+			tu.WithFileTo("main.go", &mainFile),
+			tu.WithFileTo("README.md", &readmeFile),
+			tu.WithSubDirectory("src",
+				tu.To(&srcDir),
+				tu.WithFileTo("user.go", &userFile)))
 		require.NoError(t, s.Explorer().InitFileTree(rootDir, "myBucket"))
 
 		require.NoError(t, s.Explorer().AppendFile(mainFile))
@@ -126,11 +123,11 @@ func TestExplorerState_PrependDirectory(t *testing.T) {
 		// Given
 		s := state.New()
 		var dataDir *directory.Directory
-		rootDir := testutil.MakeDirectory(t, "",
-			testutil.AsRoot(),
-			testutil.IsLoaded(),
-			testutil.WithSubDirectory("data",
-				testutil.To(&dataDir)))
+		rootDir := tu.MakeDirectory(t, "",
+			tu.AsRoot(),
+			tu.IsLoaded(),
+			tu.WithSubDirectory("data",
+				tu.To(&dataDir)))
 		require.NoError(t, s.Explorer().InitFileTree(rootDir, "myBucket"))
 
 		// When
@@ -159,17 +156,15 @@ func TestExplorerState_PrependDirectory(t *testing.T) {
 		var mainFile, readmeFile, userFile *directory.File
 		var srcDir, infraDir *directory.Directory
 
-		rootDir := testutil.MakeDirectory(t, "",
-			testutil.AsRoot(),
-			testutil.WithFiles("main.go", "README.md"),
-			testutil.FileTo("main.go", &mainFile),
-			testutil.FileTo("README.md", &readmeFile),
-			testutil.WithSubDirectory("src",
-				testutil.To(&srcDir),
-				testutil.WithFiles("user.go"),
-				testutil.FileTo("user.go", &userFile),
-				testutil.WithSubDirectory("infra",
-					testutil.To(&infraDir))))
+		rootDir := tu.MakeDirectory(t, "",
+			tu.AsRoot(),
+			tu.WithFileTo("main.go", &mainFile),
+			tu.WithFileTo("README.md", &readmeFile),
+			tu.WithSubDirectory("src",
+				tu.To(&srcDir),
+				tu.WithFileTo("user.go", &userFile),
+				tu.WithSubDirectory("infra",
+					tu.To(&infraDir))))
 		require.NoError(t, s.Explorer().InitFileTree(rootDir, "myBucket"))
 
 		require.NoError(t, s.Explorer().AppendFile(mainFile))
@@ -205,12 +200,12 @@ func TestExplorerState_PrependDirectory(t *testing.T) {
 		// Given
 		s := state.New()
 		var dataDir, csvDir *directory.Directory
-		rootDir := testutil.MakeDirectory(t, "",
-			testutil.AsRoot(),
-			testutil.WithSubDirectory("data",
-				testutil.To(&dataDir),
-				testutil.WithSubDirectory("csv",
-					testutil.To(&csvDir))))
+		rootDir := tu.MakeDirectory(t, "",
+			tu.AsRoot(),
+			tu.WithSubDirectory("data",
+				tu.To(&dataDir),
+				tu.WithSubDirectory("csv",
+					tu.To(&csvDir))))
 		require.NoError(t, s.Explorer().InitFileTree(rootDir, "myBucket"))
 
 		require.NoError(t, s.Explorer().InitFileTree(rootDir, "myBucket"))

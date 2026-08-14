@@ -9,7 +9,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/driver/mobile"
 	"fyne.io/fyne/v2/widget"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 )
 
 type NumericalEntry[T uint64 | time.Duration] struct {
@@ -48,7 +48,7 @@ func (e *NumericalEntry[T]) Keyboard() mobile.KeyboardType {
 
 func (e *NumericalEntry[T]) Bind(data binding.Item[T]) {
 	e.Entry.Bind(
-		uiutils.NewBindMapper[T, string](data,
+		uu.NewBindMapper[T, string](data,
 			func(sizeBytes T) string {
 				inUint := sizeBytes / e.baseUnit
 				return fmt.Sprintf("%d", inUint)

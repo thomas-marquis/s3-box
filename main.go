@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/app"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 
@@ -14,7 +15,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer logger.Sync() //nolint:errcheck
+	defer u.SkipD(logger.Sync)
 
 	a, err := app.New(logger, navigation.ExplorerRoute)
 	if err != nil {

@@ -27,7 +27,15 @@ func (s *loadingState) Load() (event.Event, error) {
 func (s *loadingState) Notify(evt event.Event) error {
 	switch pl := evt.Payload().(type) {
 	case LoadSucceeded:
-		s.d.setState(newLoadedState(s.baseState, pl.SubDirectories, pl.Files))
+		files := make(map[FileName]*File)
+		for _, file := range pl.Files {
+			files[file.Name()] = file
+		}
+		subDirs := make(map[Path]*Directory)
+		for _, subDir := range pl.SubDirectories {
+			subDirs[subDir.Path()] = subDir
+		}
+		s.d.setState(newLoadedState(s.baseState, subDirs, files))
 
 	case LoadFailed:
 		var urErr UncompletedRename
@@ -65,10 +73,10 @@ func (s *loadingState) Notify(evt event.Event) error {
 	case RenameSucceeded:
 		s.d.name = pl.NewName
 		s.d.path = s.d.parent.Path().NewSubPath(pl.NewName)
-		for _, subDir := range s.subDirs {
+		for _, subDir := range s.subDirsNew {
 			subDir.updatePath(s.d.path)
 		}
-		s.d.setState(newLoadedState(s.Clone(), s.subDirs, s.files))
+		s.d.setState(newLoadedState(s.Clone(), s.subDirsNew, s.files))
 
 	case RenameFailed:
 		var urErr UncompletedRename
@@ -83,7 +91,7 @@ func (s *loadingState) Notify(evt event.Event) error {
 		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: pl.Err}))
 
 	case UserValidationRefused:
-		s.d.setState(newLoadedState(s.baseState, s.subDirs, s.files))
+		s.d.setState(newLoadedState(s.baseState, s.subDirsNew, s.files))
 	}
 
 	return nil

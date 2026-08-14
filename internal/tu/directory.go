@@ -1,4 +1,4 @@
-package testutil
+package tu
 
 import (
 	"log"
@@ -81,12 +81,6 @@ func NewLoadedDirectoryWithConn(t *testing.T, connID connection_deck.ConnectionI
 	return dir
 }
 
-// NewLoadedDirectory creates a new loaded directory with FakeS3LikeConnectionId
-func NewLoadedDirectory(t *testing.T, name string, parentPath directory.Path) *directory.Directory {
-	t.Helper()
-	return NewLoadedDirectoryWithConn(t, FakeS3LikeConnectionId, name, parentPath)
-}
-
 // NewNotLoadedDirectoryWithConn creates a new unloaded directory with the provided connection ID, but with loaded parents chain
 func NewNotLoadedDirectoryWithConn(t *testing.T, connID connection_deck.ConnectionID, name string, parentPath directory.Path) *directory.Directory {
 	t.Helper()
@@ -142,25 +136,6 @@ func AddFileToDirectory(t *testing.T, dir *directory.Directory, name string) *di
 	return f
 }
 
-// AddSubDirectoryToDirectory creates a new subdirectory in the provided one, then returns the new directory.
-// The connection id used is FakeS3LikeConnectionId.
-func AddSubDirectoryToDirectory(t *testing.T, dir *directory.Directory, name string) *directory.Directory {
-	t.Helper()
-
-	_, err := dir.NewSubDirectory(name)
-	require.NoError(t, err)
-
-	nd := NewLoadedDirectory(t, name, dir.Path())
-
-	err = dir.Notify(event.New(directory.CreateSucceeded{
-		ParentDirectory: dir,
-		Directory:       nd,
-	}))
-	require.NoError(t, err)
-
-	return nd
-}
-
 func AddSubNotLoadedDirectoryToDirectory(t *testing.T, dir *directory.Directory, name string) *directory.Directory {
 	t.Helper()
 
@@ -204,12 +179,6 @@ func IsLoaded() DirectoryBuilderOption {
 func WithConnectionId(connId connection_deck.ConnectionID) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
 		cfg.connectionId = connId
-	}
-}
-
-func WithFiles(fileNames ...string) DirectoryBuilderOption {
-	return func(cfg *directoryBuilderConfig) {
-		cfg.files = fileNames
 	}
 }
 
@@ -265,8 +234,26 @@ func To(ptr **directory.Directory) DirectoryBuilderOption {
 	}
 }
 
-func FileTo(name string, ptr **directory.File) DirectoryBuilderOption {
+func WithFile(name string) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
+		cfg.files = append(cfg.files, name)
+	}
+}
+
+func WithFileTo(name string, ptr **directory.File) DirectoryBuilderOption {
+	return func(cfg *directoryBuilderConfig) {
+		if cfg.files == nil {
+			cfg.files = make([]string, 0)
+		}
+
+		for _, f := range cfg.files {
+			if f == name {
+				panic("file already exists")
+			}
+		}
+
+		cfg.files = append(cfg.files, name)
+
 		if cfg.fileRefs == nil {
 			cfg.fileRefs = make(map[string]**directory.File)
 		}

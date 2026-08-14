@@ -5,6 +5,7 @@ import (
 
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	apptheme "github.com/thomas-marquis/s3-box/internal/ui/theme"
 	"github.com/thomas-marquis/s3-box/internal/ui/values"
@@ -45,7 +46,7 @@ func NewSettingsViewModel(
 			settings.LoadFailedType, settings.LoadSucceededType,
 			settings.SaveSucceededType, settings.SaveFailedType,
 		), func(e event.Event) {
-			appState.Settings().IsReady().Set(true) //nolint:errcheck
+			u.Skip(appState.Settings().IsReady().Set(true))
 			vm.notifySettings(e)
 			vm.updateStatusMessage(e)
 		}).
@@ -80,10 +81,10 @@ func (v *settingsViewModelImpl) Save() {
 	s := v.state.Settings().Get()
 
 	if !s.HasPendingEvents() {
-		v.state.Settings().StatusMessage().Set("No changes to save") //nolint:errcheck
+		u.Skip(v.state.Settings().StatusMessage().Set("No changes to save"))
 		go func() {
 			time.Sleep(2 * time.Second)
-			v.state.Settings().StatusMessage().Set("") //nolint:errcheck
+			u.Skip(v.state.Settings().StatusMessage().Set(""))
 		}()
 		return
 	}
@@ -110,9 +111,9 @@ func (v *settingsViewModelImpl) updateStatusMessage(evt event.Event) {
 	case settings.SaveSucceededType:
 		v.state.Settings().SyncStatusMessage()
 	case settings.LoadFailedType:
-		v.state.Settings().StatusMessage().Set("Loading error") //nolint:errcheck
+		u.Skip(v.state.Settings().StatusMessage().Set("Loading error"))
 	case settings.SaveFailedType:
-		v.state.Settings().StatusMessage().Set("Saving error") //nolint:errcheck
+		u.Skip(v.state.Settings().StatusMessage().Set("Saving error"))
 	}
 }
 

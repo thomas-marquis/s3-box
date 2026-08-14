@@ -13,7 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 func TestS3Client(t *testing.T) {
@@ -23,9 +24,9 @@ func TestS3Client(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
+	endpoint, terminate := tu.SetupS3testContainer(ctx, t)
 	t.Cleanup(terminate)
-	testClient := testutil.SetupS3Client(t, endpoint)
+	testClient := tu.SetupS3Client(t, endpoint)
 
 	t.Run("RenameObject", func(t *testing.T) {
 		t.Parallel()
@@ -33,12 +34,12 @@ func TestS3Client(t *testing.T) {
 		newKey := "new-file.txt"
 		content := "hello world"
 
-		bucket := testutil.FakeRandomBucketName()
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		bucket := tu.FakeRandomBucketName()
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: oldKey, Body: strings.NewReader(content)},
 		})
 
-		conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
+		conn := tu.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
 		client := s3client.NewAwsClient(conn, func(o *s3.Options) {
 			o.Region = "us-east-1"
 		})
@@ -50,8 +51,8 @@ func TestS3Client(t *testing.T) {
 
 			// Then
 			assert.NoError(t, err)
-			testutil.AssertObjectContent(t, testClient, bucket, newKey, content)
-			testutil.AssertObjectNotExists(t, testClient, bucket, oldKey)
+			tu.AssertObjectContent(t, testClient, bucket, newKey, content)
+			tu.AssertObjectNotExists(t, testClient, bucket, oldKey)
 		})
 
 		t.Run("should return error if old key does not exist", func(t *testing.T) {
@@ -67,16 +68,16 @@ func TestS3Client(t *testing.T) {
 	t.Run("ListObjects", func(t *testing.T) {
 		t.Parallel()
 
-		bucket := testutil.FakeRandomBucketName()
+		bucket := tu.FakeRandomBucketName()
 
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "dir1/file1.txt", Body: strings.NewReader("1")},
 			{Key: "dir1/file2.txt", Body: strings.NewReader("22")},
 			{Key: "dir2/file3.txt", Body: strings.NewReader("333")},
 			{Key: "file4.txt", Body: strings.NewReader("4444")},
 		})
 
-		conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
+		conn := tu.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
 		client := s3client.NewAwsClient(conn, func(o *s3.Options) {
 			o.Region = "us-east-1"
 		})
@@ -124,15 +125,15 @@ func TestS3Client(t *testing.T) {
 	t.Run("ListObjectsWithCallback", func(t *testing.T) {
 		t.Parallel()
 
-		bucket := testutil.FakeRandomBucketName()
+		bucket := tu.FakeRandomBucketName()
 
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 			{Key: "file1.txt", Body: strings.NewReader("1")},
 			{Key: "file2.txt", Body: strings.NewReader("2")},
 			{Key: "file3.txt", Body: strings.NewReader("3")},
 		})
 
-		conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
+		conn := tu.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
 		client := s3client.NewAwsClient(conn, func(o *s3.Options) {
 			o.Region = "us-east-1"
 		})
@@ -160,13 +161,13 @@ func TestS3Client(t *testing.T) {
 	t.Run("UploadAndDownload", func(t *testing.T) {
 		t.Parallel()
 
-		bucket := testutil.FakeRandomBucketName()
+		bucket := tu.FakeRandomBucketName()
 		key := "large-file.txt"
 		content := strings.Repeat("a", 1024*1024) // 1MB
 
-		testutil.SetupS3Bucket(ctx, t, testClient, bucket, nil)
+		tu.SetupS3Bucket(ctx, t, testClient, bucket, nil)
 
-		conn := testutil.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
+		conn := tu.FakeAwsConnectionWithEndpoint(t, endpoint, bucket)
 		client := s3client.NewAwsClient(conn, func(o *s3.Options) {
 			o.Region = "us-east-1"
 		})
@@ -177,13 +178,13 @@ func TestS3Client(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Then (Verify Upload)
-			testutil.AssertObjectContent(t, testClient, bucket, key, content)
+			tu.AssertObjectContent(t, testClient, bucket, key, content)
 
 			// When (Download)
 			tmpFile, err := os.CreateTemp("", "download-test")
 			require.NoError(t, err)
-			defer os.Remove(tmpFile.Name()) // nolint:errcheck
-			defer tmpFile.Close()           //nolint:errcheck
+			defer u.SkipD1(os.Remove, tmpFile.Name())
+			defer u.SkipD(tmpFile.Close)
 
 			err = client.Download(ctx, key, tmpFile)
 			assert.NoError(t, err)
@@ -198,7 +199,7 @@ func TestS3Client(t *testing.T) {
 	t.Run("GetObjectGrants", func(t *testing.T) {
 		t.Parallel()
 
-		bucket := testutil.FakeRandomBucketName()
+		bucket := tu.FakeRandomBucketName()
 		conn := connection_deck.New().New("test", "test", "test", bucket,
 			connection_deck.AsAWS("us-east-1")).
 			Payload().(connection_deck.CreateConnectionTriggered).Connection()
@@ -209,7 +210,7 @@ func TestS3Client(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		testutil.FillBucket(t, ctx, testClient, bucket, []testutil.FakeS3Object{
+		tu.FillBucket(t, ctx, testClient, bucket, []tu.FakeS3Object{
 			{Key: "file1.txt", Body: strings.NewReader("content"), ACL: types.ObjectCannedACLBucketOwnerFullControl},
 			{Key: "file2.txt", Body: strings.NewReader("content")},
 		})

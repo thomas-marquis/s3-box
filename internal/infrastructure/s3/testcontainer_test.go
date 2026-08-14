@@ -12,7 +12,7 @@ import (
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 	"go.uber.org/mock/gomock"
 )
 
@@ -23,9 +23,9 @@ func TestS3EventHandler(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	endpoint, terminate := testutil.SetupS3testContainer(ctx, t)
+	endpoint, terminate := tu.SetupS3testContainer(ctx, t)
 	t.Cleanup(terminate)
-	testClient := testutil.SetupS3Client(t, endpoint)
+	testClient := tu.SetupS3Client(t, endpoint)
 
 	t.Run("test load directory", func(t *testing.T) {
 		t.Parallel()
@@ -33,8 +33,8 @@ func TestS3EventHandler(t *testing.T) {
 		t.Run("should publish root directory and its content", func(t *testing.T) {
 			t.Parallel()
 			// Given
-			bucket := testutil.FakeRandomBucketName()
-			testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+			bucket := tu.FakeRandomBucketName()
+			tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 				{Key: "root_file.txt"},
 				{Key: "mydir/"},
 				{Key: "mydir/file_in_dir.txt"},
@@ -43,9 +43,9 @@ func TestS3EventHandler(t *testing.T) {
 				{Key: "mydir/newname/.s3box-rename-dst", Body: strings.NewReader(`{"srcPath": "/mydir/oldname/"}`)},
 				{Key: "mydir/newname/copied.md", Body: strings.NewReader("lolo")},
 			})
-			fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+			fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-			rootDir, err := directory.NewRoot(testutil.FakeAwsConnectionId)
+			rootDir, err := directory.NewRoot(tu.FakeAwsConnectionId)
 			require.NoError(t, err)
 
 			fakeEventChan := make(chan event.Event, 1)
@@ -75,14 +75,14 @@ func TestS3EventHandler(t *testing.T) {
 			fakeEventChan <- event.New(directory.LoadTriggered{Directory: rootDir})
 
 			// Then
-			testutil.AssertEventually(t, done)
+			tu.AssertEventually(t, done)
 		})
 
 		t.Run("should returns subdirectory and its content", func(t *testing.T) {
 			t.Parallel()
 			// Given
-			bucket := testutil.FakeRandomBucketName()
-			testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+			bucket := tu.FakeRandomBucketName()
+			tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 				{Key: "root_file.txt"},
 				{Key: "mydir/"},
 				{Key: "mydir/file_in_dir.txt"},
@@ -91,13 +91,13 @@ func TestS3EventHandler(t *testing.T) {
 				{Key: "mydir/newname/.s3box-rename-dst", Body: strings.NewReader(`{"srcPath": "/mydir/oldname/"}`)},
 				{Key: "mydir/newname/copied.md", Body: strings.NewReader("lolo")},
 			})
-			fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+			fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 			fakeEventChan := make(chan event.Event, 1)
 			defer close(fakeEventChan)
 			mockBus, mockConnRepo, mockNotifRepo := setupMocks(t, fakeDeck, fakeEventChan)
 
-			dir := testutil.NewLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
+			dir := tu.NewLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "mydir", directory.RootPath)
 
 			done := make(chan struct{})
 			mockBus.EXPECT().
@@ -117,14 +117,14 @@ func TestS3EventHandler(t *testing.T) {
 
 			// When
 			fakeEventChan <- event.New(directory.LoadTriggered{Directory: dir})
-			testutil.AssertEventually(t, done)
+			tu.AssertEventually(t, done)
 		})
 
 		t.Run("should handle AWS connection without custom endpoint", func(t *testing.T) {
 			t.Parallel()
 			// Given
-			bucket := testutil.FakeRandomBucketName()
-			testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+			bucket := tu.FakeRandomBucketName()
+			tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 				{Key: "root_file.txt"},
 				{Key: "mydir/"},
 				{Key: "mydir/file_in_dir.txt"},
@@ -134,8 +134,8 @@ func TestS3EventHandler(t *testing.T) {
 				{Key: "mydir/newname/copied.md", Body: strings.NewReader("lolo")},
 			})
 
-			awsDeck := testutil.FakeDeckWithConnections(t,
-				testutil.FakeAwsConnection(t, bucket))
+			awsDeck := tu.FakeDeckWithConnections(t,
+				tu.FakeAwsConnection(t, bucket))
 
 			fakeEventChan := make(chan event.Event, 1)
 			defer close(fakeEventChan)
@@ -157,7 +157,7 @@ func TestS3EventHandler(t *testing.T) {
 				})).
 				Times(1)
 
-			dir, err := directory.New(testutil.FakeAwsConnectionId, directory.RootDirName, nil)
+			dir, err := directory.New(tu.FakeAwsConnectionId, directory.RootDirName, nil)
 			require.NoError(t, err)
 
 			s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
@@ -166,14 +166,14 @@ func TestS3EventHandler(t *testing.T) {
 			fakeEventChan <- event.New(directory.LoadTriggered{Directory: dir})
 
 			// Then
-			testutil.AssertEventually(t, done)
+			tu.AssertEventually(t, done)
 		})
 
 		t.Run("should emit a failure event with a UncompletedRename error when markers are detected", func(t *testing.T) {
 			t.Parallel()
 			// Given
-			bucket := testutil.FakeRandomBucketName()
-			testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+			bucket := tu.FakeRandomBucketName()
+			tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 				{Key: "root_file.txt"},
 				{Key: "mydir/"},
 				{Key: "mydir/file_in_dir.txt"},
@@ -182,7 +182,7 @@ func TestS3EventHandler(t *testing.T) {
 				{Key: "mydir/newname/.s3box-rename-dst", Body: strings.NewReader(`{"srcPath": "/mydir/oldname/"}`)},
 				{Key: "mydir/newname/copied.md", Body: strings.NewReader("lolo")},
 			})
-			fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+			fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 			fakeEventChan := make(chan event.Event, 1)
 			defer close(fakeEventChan)
@@ -205,13 +205,13 @@ func TestS3EventHandler(t *testing.T) {
 				})).
 				Times(1)
 
-			dir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "oldname", "/mydir/")
+			dir := tu.NewNotLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "oldname", "/mydir/")
 
 			s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
 			// When
 			fakeEventChan <- event.New(directory.LoadTriggered{Directory: dir})
-			testutil.AssertEventually(t, done)
+			tu.AssertEventually(t, done)
 		})
 	})
 
@@ -221,11 +221,11 @@ func TestS3EventHandler(t *testing.T) {
 		t.Run("should download file content and publish success", func(t *testing.T) {
 			t.Parallel()
 			// Given
-			bucket := testutil.FakeRandomBucketName()
-			testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+			bucket := tu.FakeRandomBucketName()
+			tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 				{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("download-me")},
 			})
-			fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+			fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 			fakeEventChan := make(chan event.Event, 1)
 			defer close(fakeEventChan)
@@ -245,7 +245,7 @@ func TestS3EventHandler(t *testing.T) {
 
 			s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
-			mydir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
+			mydir := tu.NewNotLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "mydir", directory.RootPath)
 			file, err := directory.NewFile("file_in_dir.txt", mydir)
 			require.NoError(t, err)
 
@@ -253,13 +253,13 @@ func TestS3EventHandler(t *testing.T) {
 
 			// When
 			fakeEventChan <- event.New(directory.DownloadFileTriggered{
-				ConnectionID: testutil.FakeAwsConnectionId,
+				ConnectionID: tu.FakeAwsConnectionId,
 				DstPath:      destPath,
 				File:         file,
 			})
 
 			// Then
-			testutil.AssertEventually(t, done)
+			tu.AssertEventually(t, done)
 			downloaded, err := os.ReadFile(destPath)
 			require.NoError(t, err)
 			assert.Equal(t, "download-me", string(downloaded))
@@ -268,11 +268,11 @@ func TestS3EventHandler(t *testing.T) {
 		t.Run("should publish failure when object is missing", func(t *testing.T) {
 			t.Parallel()
 			// Given
-			bucket := testutil.FakeRandomBucketName()
-			testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{
+			bucket := tu.FakeRandomBucketName()
+			tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{
 				{Key: "mydir/file_in_dir.txt", Body: strings.NewReader("download-me")},
 			})
-			fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+			fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
 			fakeEventChan := make(chan event.Event, 1)
 			defer close(fakeEventChan)
@@ -295,7 +295,7 @@ func TestS3EventHandler(t *testing.T) {
 
 			s3.NewS3EventHandler(mockConnRepo, mockBus, mockNotifRepo).Listen()
 
-			mydir := testutil.NewNotLoadedDirectoryWithConn(t, testutil.FakeAwsConnectionId, "mydir", directory.RootPath)
+			mydir := tu.NewNotLoadedDirectoryWithConn(t, tu.FakeAwsConnectionId, "mydir", directory.RootPath)
 			file, err := directory.NewFile("missing.txt", mydir)
 			require.NoError(t, err)
 
@@ -303,11 +303,11 @@ func TestS3EventHandler(t *testing.T) {
 
 			// When & Then
 			fakeEventChan <- event.New(directory.DownloadFileTriggered{
-				ConnectionID: testutil.FakeAwsConnectionId,
+				ConnectionID: tu.FakeAwsConnectionId,
 				DstPath:      destPath,
 				File:         file,
 			})
-			testutil.AssertEventually(t, done)
+			tu.AssertEventually(t, done)
 		})
 	})
 
@@ -317,13 +317,13 @@ func TestS3EventHandler(t *testing.T) {
 		t.Run("should create an empty file", func(t *testing.T) {
 			t.Parallel()
 			// Given
-			bucket := testutil.FakeRandomBucketName()
-			testutil.SetupS3Bucket(ctx, t, testClient, bucket, []testutil.FakeS3Object{})
-			fakeDeck := testutil.FakeDeckWithAwsConnection(t, endpoint, bucket)
+			bucket := tu.FakeRandomBucketName()
+			tu.SetupS3Bucket(ctx, t, testClient, bucket, []tu.FakeS3Object{})
+			fakeDeck := tu.FakeDeckWithAwsConnection(t, endpoint, bucket)
 
-			dir := testutil.MakeDirectory(t, "mydir",
-				testutil.WithRootParent(),
-				testutil.WithConnectionId(testutil.FakeAwsConnectionId),
+			dir := tu.MakeDirectory(t, "mydir",
+				tu.WithRootParent(),
+				tu.WithConnectionId(tu.FakeAwsConnectionId),
 			)
 			newFile, err := directory.NewFile("new_file.txt", dir)
 			require.NoError(t, err)
@@ -348,13 +348,13 @@ func TestS3EventHandler(t *testing.T) {
 
 			// When
 			fakeEventChan <- event.New(directory.CreateFileTriggered{
-				ConnectionID: testutil.FakeAwsConnectionId,
+				ConnectionID: tu.FakeAwsConnectionId,
 				Directory:    dir,
 				File:         newFile,
 			})
-			testutil.AssertEventually(t, done)
+			tu.AssertEventually(t, done)
 
-			testutil.AssertObjectContent(t, testClient, bucket, "mydir/new_file.txt", "")
+			tu.AssertObjectContent(t, testClient, bucket, "mydir/new_file.txt", "")
 		})
 	})
 }

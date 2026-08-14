@@ -13,7 +13,7 @@ import (
 	"github.com/thomas-marquis/it-happened/eventest"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
 	mocks_fyne "github.com/thomas-marquis/s3-box/mocks/fyne"
 	"go.uber.org/mock/gomock"
@@ -147,7 +147,7 @@ func TestFyneConnectionsRepository_select(t *testing.T) {
 		events <- evt
 
 		// Then
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 	})
 }
 
@@ -190,7 +190,7 @@ func TestFyneConnectionsRepository_create(t *testing.T) {
 
 		// When
 		events <- evt
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 	})
 }
 
@@ -281,7 +281,7 @@ func TestFyneConnectionsRepository_update(t *testing.T) {
 
 		// When
 		events <- evt
-		testutil.AssertEventually(t, done)
+		tu.AssertEventually(t, done)
 	})
 }
 

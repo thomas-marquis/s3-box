@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 
@@ -25,7 +26,7 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 			return
 		}
 		dialog.ShowError(errors.New(msg), appCtx.Window())
-		vm.ErrorMessage().Set("") //nolint:errcheck
+		u.Skip(vm.ErrorMessage().Set(""))
 	}))
 
 	createBtn := fyne_widget.NewButtonWithIcon(

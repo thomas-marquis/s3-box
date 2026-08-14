@@ -5,7 +5,7 @@ import (
 
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 	mocks_connection_deck "github.com/thomas-marquis/s3-box/mocks/connection_deck"
 	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
 	mocks_notification "github.com/thomas-marquis/s3-box/mocks/notification"
@@ -27,7 +27,7 @@ func setupMocks(t *testing.T, deck *connection_deck.Deck, events chan event.Even
 		Return(event.NewSubscriber(events))
 
 	mockConnRepo.EXPECT().
-		Get(gomock.AssignableToTypeOf(testutil.CtxType)).
+		Get(gomock.AssignableToTypeOf(tu.CtxType)).
 		Return(deck, nil).
 		Times(1)
 

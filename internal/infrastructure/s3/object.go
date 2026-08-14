@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 )
@@ -36,7 +36,7 @@ func NewObject(ctx context.Context, client s3client.Client, file *directory.File
 	}
 
 	// Check if an object exists to determine the initial state
-	buff := manager.NewWriteAtBuffer([]byte{})
+	buff := types.NewWriteAtBuffer([]byte{})
 	key := buildS3Key(file)
 	if err := client.Download(ctx, key, buff); err != nil {
 		if isNotFoundError(err) {

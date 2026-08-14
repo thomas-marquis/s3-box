@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	fyne_widget "fyne.io/fyne/v2/widget"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/values"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
@@ -61,7 +62,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 				if writer == nil {
 					return
 				}
-				defer writer.Close() //nolint:errcheck
+				defer u.SkipD(writer.Close)
 
 				if err := ctx.ConnectionViewModel().ExportAsJSON(writer); err != nil {
 					dialog.ShowError(err, ctx.Window())

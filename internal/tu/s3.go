@@ -1,4 +1,4 @@
-package testutil
+package tu
 
 import (
 	"context"
@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 type FakeS3Object struct {
@@ -154,7 +155,7 @@ func AssertObjectContent(t *testing.T, client *s3.Client, bucketName, key, expec
 	t.Helper()
 
 	body := GetObject(t, client, bucketName, key)
-	defer body.Close() //nolint:errcheck
+	defer u.SkipD(body.Close)
 
 	content, err := io.ReadAll(body)
 
@@ -173,7 +174,7 @@ func AssertJSONObjectContent(t *testing.T, client *s3.Client, bucketName, key, e
 	t.Helper()
 
 	body := GetObject(t, client, bucketName, key)
-	defer body.Close() //nolint:errcheck
+	defer u.SkipD(body.Close)
 
 	content, err := io.ReadAll(body)
 

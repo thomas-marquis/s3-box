@@ -5,6 +5,7 @@ import (
 
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 type NotificationViewModel interface {
@@ -30,7 +31,7 @@ func NewNotificationViewModel(ctx context.Context, notifier notification.Reposit
 			case <-ctx.Done():
 				return
 			case notif := <-notifStream:
-				notifications.Prepend(notif) //nolint:errcheck
+				u.Skip(notifications.Prepend(notif))
 			}
 		}
 	}()

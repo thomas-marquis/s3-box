@@ -6,6 +6,7 @@ import (
 
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 func (h *EventHandler) handleDownloadFile(e event.Event) {
@@ -28,7 +29,7 @@ func (h *EventHandler) handleDownloadFile(e event.Event) {
 		handleError(fmt.Errorf("failed opening the file to download: %w", err))
 		return
 	}
-	defer localFile.Close() //nolint:errcheck
+	defer u.SkipD(localFile.Close)
 
 	if err := client.Download(ctx, mapFileToKey(pl.File), localFile); err != nil {
 		handleError(fmt.Errorf("failed downloading file: %w", err))

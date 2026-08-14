@@ -5,7 +5,7 @@ import (
 
 	"fyne.io/fyne/v2/data/binding"
 	fyne_test "fyne.io/fyne/v2/test"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 	mocks_appcontext "github.com/thomas-marquis/s3-box/mocks/context"
 	mocks_viewmodel "github.com/thomas-marquis/s3-box/mocks/viewmodel"
@@ -30,7 +30,7 @@ func TestDirectoryDetails(t *testing.T) {
 		mockExplorerVM.EXPECT().IsSelectedDirectoryLoading().Return(fakeIsLoadingBinding).AnyTimes()
 		mockExplorerVM.EXPECT().OnUploadReady(gomock.Any()).AnyTimes()
 
-		dir := testutil.FakeNotLoadedRootDirectory(t)
+		dir := tu.FakeNotLoadedRootDirectory(t)
 
 		mockConnVM.EXPECT().IsReadOnly().Return(false)
 
@@ -58,7 +58,7 @@ func TestDirectoryDetails(t *testing.T) {
 		mockExplorerVM.EXPECT().IsSelectedDirectoryLoading().Return(fakeIsLoadingBinding).AnyTimes()
 		mockExplorerVM.EXPECT().OnUploadReady(gomock.Any()).AnyTimes()
 
-		dir := testutil.FakeNotLoadedRootDirectory(t)
+		dir := tu.FakeNotLoadedRootDirectory(t)
 
 		mockConnVM.EXPECT().IsReadOnly().Return(true)
 

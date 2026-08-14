@@ -14,7 +14,7 @@ import (
 	"github.com/thomas-marquis/it-happened/inmemory"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	mock_editor "github.com/thomas-marquis/s3-box/mocks/editor"
@@ -157,9 +157,9 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		vm.RegisterEditorFactory("text", edFactory)
 
 		var file *directory.File
-		testutil.MakeDirectory(t, "",
-			testutil.AsRoot(), testutil.WithConnectionId(fxt.Connection().ID()),
-			testutil.WithFiles("test.txt"), testutil.FileTo("test.txt", &file))
+		tu.MakeDirectory(t, "",
+			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
+			tu.WithFileTo("test.txt", &file))
 
 		// When opening the editor
 		require.False(t, vm.IsOpen(file))
@@ -203,9 +203,9 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		vm.RegisterEditorFactory("text", edFactory)
 
 		var file *directory.File
-		testutil.MakeDirectory(t, "",
-			testutil.AsRoot(), testutil.WithConnectionId(fxt.Connection().ID()),
-			testutil.WithFiles("test.txt"), testutil.FileTo("test.txt", &file))
+		tu.MakeDirectory(t, "",
+			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
+			tu.WithFileTo("test.txt", &file))
 
 		// When opening the editor
 		_, err := vm.Open(file)
@@ -236,9 +236,9 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		vm := fxt.Instance()
 
 		var file *directory.File
-		testutil.MakeDirectory(t, "",
-			testutil.AsRoot(), testutil.WithConnectionId(fxt.Connection().ID()),
-			testutil.WithFiles("test.txt"), testutil.FileTo("test.txt", &file))
+		tu.MakeDirectory(t, "",
+			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
+			tu.WithFileTo("test.txt", &file))
 
 		// When
 		fxt.Bus().Publish(event.New(connection_deck.RemoveConnectionSucceeded{
@@ -262,10 +262,9 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		vm := fxt.Instance()
 
 		var file, file2 *directory.File
-		testutil.MakeDirectory(t, "",
-			testutil.AsRoot(), testutil.WithConnectionId(fxt.Connection().ID()),
-			testutil.WithFiles("test.txt", "test2.txt"),
-			testutil.FileTo("test.txt", &file), testutil.FileTo("test2.txt", &file2))
+		tu.MakeDirectory(t, "",
+			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
+			tu.WithFileTo("test.txt", &file), tu.WithFileTo("test2.txt", &file2))
 
 		oe1, _ := vm.Open(file)
 		_, err := vm.Open(file2)
@@ -289,13 +288,12 @@ func TestEditorViewModelImpl_IsOpen(t *testing.T) {
 		vm := fxt.Instance()
 
 		var file1, file2, file3 *directory.File
-		testutil.MakeDirectory(t, "",
-			testutil.AsRoot(), testutil.WithConnectionId(fxt.Connection().ID()),
-			testutil.WithFiles("test1.txt", "test2.txt", "test3.txt"),
-			testutil.FileTo("test1.txt", &file1), testutil.FileTo("test2.txt", &file2),
-			testutil.WithSubDirectory("mydir",
-				testutil.WithFiles("test3.txt"),
-				testutil.FileTo("test3.txt", &file3)))
+		tu.MakeDirectory(t, "",
+			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
+			tu.WithFile("test3.txt"),
+			tu.WithFileTo("test1.txt", &file1), tu.WithFileTo("test2.txt", &file2),
+			tu.WithSubDirectory("mydir",
+				tu.WithFileTo("test3.txt", &file3)))
 
 		// When & Then
 		assert.False(t, vm.IsOpen(file1))

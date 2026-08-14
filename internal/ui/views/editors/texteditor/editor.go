@@ -13,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
 
@@ -36,7 +37,7 @@ func New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor 
 
 	e.ExtendBaseEditor(e)
 
-	e.IsLoading.Set(true) //nolint:errcheck
+	u.Skip(e.IsLoading.Set(true))
 
 	e.Sub.
 		On(event.Is(editor.LoadedType), e.handleLoaded).
@@ -52,8 +53,8 @@ func (e *textEditor) CreateWidget() fyne.CanvasObject {
 }
 
 func (e *textEditor) Save(content string) {
-	e.IsLoading.Set(true)          //nolint:errcheck
-	e.StatusLabel.Set("Saving...") // nolint:errcheck
+	u.Skip(e.IsLoading.Set(true))
+	u.Skip(e.StatusLabel.Set("Saving..."))
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -62,8 +63,8 @@ func (e *textEditor) Save(content string) {
 	e.Unlock()
 
 	handleFailure := func(err error) {
-		e.StatusLabel.Set("error (unsaved)") //nolint:errcheck
-		e.Err.Set(err)                       //nolint:errcheck
+		u.Skip(e.StatusLabel.Set("error (unsaved)"))
+		u.Skip(e.Err.Set(err))
 
 		e.Lock()
 		e.shouldCloseWhenSaved = false
@@ -88,7 +89,7 @@ func (e *textEditor) Save(content string) {
 
 	go func() {
 		defer close(done)
-		defer e.IsLoading.Set(false) //nolint:errcheck
+		defer u.SkipD1(e.IsLoading.Set, false)
 
 		if _, err := e.Content.Seek(0, io.SeekStart); err != nil {
 			handleFailure(err)
@@ -101,7 +102,9 @@ func (e *textEditor) Save(content string) {
 		e.File().SetSizeBytes(uint64(len(content)))
 
 		e.updateContentHash(content)
-		e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
+		u.Skip(
+			e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))),
+		)
 		e.Lock()
 		if e.shouldCloseWhenSaved {
 			e.RequestClose()

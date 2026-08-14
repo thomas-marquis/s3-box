@@ -10,13 +10,14 @@ import (
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
-	"github.com/thomas-marquis/s3-box/internal/testutil"
+	"github.com/thomas-marquis/s3-box/internal/tu"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 func TestDirectory(t *testing.T) {
 	t.Run("should change directory states", func(t *testing.T) {
 		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
+		dir := tu.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
 		// When & Then
 		// not loaded directory
@@ -50,10 +51,10 @@ func TestDirectory(t *testing.T) {
 
 	t.Run("should change directory states with error", func(t *testing.T) {
 		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
+		dir := tu.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
 		// When
-		dir.Load() //nolint:errcheck
+		u.SkipV(dir.Load())
 		require.NoError(t, dir.Notify(event.New(directory.LoadFailed{
 			Err:       errors.New("ckc"),
 			Directory: dir,
@@ -69,11 +70,10 @@ func TestDirectory(t *testing.T) {
 func TestDirectory_Load(t *testing.T) {
 	t.Run("should load then update directory content on success", func(t *testing.T) {
 		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
-		require.False(t, dir.IsLoaded())
+		dir := tu.MakeDirectory(t, "data", tu.WithRootParent())
 
-		d1, _ := directory.New(connection_deck.NewConnectionID(), "data/d1", dir)
-		d2, _ := directory.New(connection_deck.NewConnectionID(), "data/d2", dir)
+		d1, _ := directory.New(connection_deck.NewConnectionID(), "d1", dir)
+		d2, _ := directory.New(connection_deck.NewConnectionID(), "d2", dir)
 		subDirs := []*directory.Directory{
 			d1, d2,
 		}
@@ -110,7 +110,7 @@ func TestDirectory_Load(t *testing.T) {
 
 	t.Run("should return error when loading is already in progress", func(t *testing.T) {
 		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
+		dir := tu.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
 		_, err := dir.Load()
 		require.NoError(t, err)
@@ -127,7 +127,7 @@ func TestDirectory_Load(t *testing.T) {
 
 	t.Run("should trigger a reload when directory is already loaded", func(t *testing.T) {
 		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
+		dir := tu.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
 		_, err := dir.Load()
 		require.NoError(t, err)
@@ -150,7 +150,7 @@ func TestDirectory_Load(t *testing.T) {
 func TestDirectory_NewFile(t *testing.T) {
 	t.Run("should create a file and add it to the directory on success", func(t *testing.T) {
 		// Given
-		dir := testutil.FakeLoadedRootDirectory(t)
+		dir := tu.FakeLoadedRootDirectory(t)
 
 		// When
 		evt, err := dir.NewFile("report.csv", false)
@@ -180,7 +180,7 @@ func TestDirectory_NewFile(t *testing.T) {
 func TestDirectory_RemoveFile(t *testing.T) {
 	t.Run("should create file deleted event when file exists, then recreated", func(t *testing.T) {
 		// Given
-		dir := testutil.FakeNotLoadedRootDirectory(t)
+		dir := tu.FakeNotLoadedRootDirectory(t)
 
 		f1, _ := directory.NewFile("main.go", dir)
 		f2, _ := directory.NewFile("readme.md", dir)
@@ -223,12 +223,12 @@ func TestDirectory_RemoveFile(t *testing.T) {
 
 		resFiles = dir.Files()
 		assert.Len(t, resFiles, 2)
-		assert.Equal(t, "main.go", resFiles[1].Name().String())
+		assert.Equal(t, "main.go", resFiles[0].Name().String())
 	})
 
 	t.Run("should emit file deleted event when file exists, then re-uploaded", func(t *testing.T) {
 		// Given
-		dir := testutil.FakeNotLoadedRootDirectory(t)
+		dir := tu.FakeNotLoadedRootDirectory(t)
 
 		f1, _ := directory.NewFile("main.go", dir)
 		loadEvt := event.New(directory.LoadSucceeded{Directory: dir, Files: []*directory.File{f1}})
@@ -270,7 +270,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 
 	t.Run("should return error when file does not exist", func(t *testing.T) {
 		// Given
-		dir := testutil.FakeNotLoadedRootDirectory(t)
+		dir := tu.FakeNotLoadedRootDirectory(t)
 
 		loadEvt := event.New(directory.LoadSucceeded{Directory: dir})
 		_, err := dir.Load()
@@ -287,7 +287,7 @@ func TestDirectory_RemoveFile(t *testing.T) {
 
 	t.Run("shouldn't remove the file when a failure event is emitted", func(t *testing.T) {
 		// Given
-		dir := testutil.FakeNotLoadedRootDirectory(t)
+		dir := tu.FakeNotLoadedRootDirectory(t)
 
 		f1, _ := directory.NewFile("main.go", dir)
 		f2, _ := directory.NewFile("readme.md", dir)
@@ -317,9 +317,9 @@ func TestDirectory_RemoveFile(t *testing.T) {
 func TestDirectory_RemoveSubDirectory(t *testing.T) {
 	t.Run("should return error when subdirectory does not exist", func(t *testing.T) {
 		// Given
-		dir := testutil.MakeDirectory(t, "",
-			testutil.AsRoot(),
-			testutil.IsLoaded())
+		dir := tu.MakeDirectory(t, "",
+			tu.AsRoot(),
+			tu.IsLoaded())
 
 		// When
 		_, err := dir.RemoveSubDirectory("missing")
@@ -330,16 +330,16 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 
 	t.Run("shouldn't remove the subdirectory when a failure event is emitted", func(t *testing.T) {
 		// Given
-		connID := testutil.FakeS3LikeConnectionId
+		connID := tu.FakeS3LikeConnectionId
 
 		var subDir1, subDir2 *directory.Directory
-		dir := testutil.MakeDirectory(t, "",
-			testutil.AsRoot(),
-			testutil.WithConnectionId(connID),
-			testutil.WithSubDirectory("sub1",
-				testutil.To(&subDir1)),
-			testutil.WithSubDirectory("sub2",
-				testutil.To(&subDir2)))
+		dir := tu.MakeDirectory(t, "",
+			tu.AsRoot(),
+			tu.WithConnectionId(connID),
+			tu.WithSubDirectory("sub1",
+				tu.To(&subDir1)),
+			tu.WithSubDirectory("sub2",
+				tu.To(&subDir2)))
 
 		failureEvt := event.New(directory.DeleteFailed{
 			Err:       errors.New("ckc"),
@@ -357,16 +357,16 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 
 	t.Run("should remove the subdirectory when a success event is emitted", func(t *testing.T) {
 		// Given
-		connID := testutil.FakeS3LikeConnectionId
+		connID := tu.FakeS3LikeConnectionId
 
 		var subDir1, subDir2 *directory.Directory
-		dir := testutil.MakeDirectory(t, "",
-			testutil.AsRoot(),
-			testutil.WithConnectionId(connID),
-			testutil.WithSubDirectory("sub1",
-				testutil.To(&subDir1)),
-			testutil.WithSubDirectory("sub2",
-				testutil.To(&subDir2)))
+		dir := tu.MakeDirectory(t, "",
+			tu.AsRoot(),
+			tu.WithConnectionId(connID),
+			tu.WithSubDirectory("sub1",
+				tu.To(&subDir1)),
+			tu.WithSubDirectory("sub2",
+				tu.To(&subDir2)))
 
 		successEvt := event.New(directory.DeleteSucceeded{
 			Directory: subDir1,
@@ -386,12 +386,12 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 		// Given
 		connID := connection_deck.NewConnectionID()
 		var subdir *directory.Directory
-		dir := testutil.MakeDirectory(t, "mydir",
-			testutil.WithRootParent(),
-			testutil.WithConnectionId(connID),
-			testutil.WithSubDirectory("subdir",
-				testutil.To(&subdir),
-				testutil.IsLoaded()))
+		dir := tu.MakeDirectory(t, "mydir",
+			tu.WithRootParent(),
+			tu.WithConnectionId(connID),
+			tu.WithSubDirectory("subdir",
+				tu.To(&subdir),
+				tu.IsLoaded()))
 
 		// When
 		evt, err := dir.RemoveSubDirectory("subdir")
@@ -455,7 +455,7 @@ func TestDirectory_RemoveSubDirectory(t *testing.T) {
 func TestDirectory_UploadFile(t *testing.T) {
 	t.Run("should emit upload event and add file on success", func(t *testing.T) {
 		// Given
-		dir := testutil.FakeNotLoadedRootDirectory(t)
+		dir := tu.FakeNotLoadedRootDirectory(t)
 
 		loadEvt := event.New(directory.LoadSucceeded{Directory: dir})
 		_, err := dir.Load()
@@ -486,8 +486,8 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 	t.Run("should emit upload event and add file on success on a non empty directory", func(t *testing.T) {
 		// Given
-		connID := testutil.FakeS3LikeConnectionId
-		dir := testutil.NewNotLoadedDirectory(t, "data", directory.RootPath)
+		connID := tu.FakeS3LikeConnectionId
+		dir := tu.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
 		d1, _ := directory.New(connID, "d1", dir)
 		d2, _ := directory.New(connID, "d2", dir)
@@ -531,7 +531,7 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 	t.Run("should overwrite existing file when upload succeeds", func(t *testing.T) {
 		// Given
-		dir := testutil.FakeNotLoadedRootDirectory(t)
+		dir := tu.FakeNotLoadedRootDirectory(t)
 
 		existing, _ := directory.NewFile("report.csv", dir, directory.WithFileSize(42))
 		loadEvt := event.New(directory.LoadSucceeded{
@@ -564,7 +564,7 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 	t.Run("should return an error when the file already exists remotely in the directory", func(t *testing.T) {
 		// Given
-		dir := testutil.FakeNotLoadedRootDirectory(t)
+		dir := tu.FakeNotLoadedRootDirectory(t)
 
 		existing, _ := directory.NewFile("report.csv", dir, directory.WithFileSize(42))
 		loadEvt := event.New(directory.LoadSucceeded{Directory: dir, Files: []*directory.File{existing}})
@@ -583,7 +583,7 @@ func TestDirectory_UploadFile(t *testing.T) {
 
 	t.Run("should return error when directory is not loaded", func(t *testing.T) {
 		// Given
-		dir := testutil.FakeNotLoadedRootDirectory(t)
+		dir := tu.FakeNotLoadedRootDirectory(t)
 
 		// When
 		_, err := dir.UploadFile("local/report.csv", false)
@@ -596,7 +596,7 @@ func TestDirectory_UploadFile(t *testing.T) {
 func TestDirectory_Rename(t *testing.T) {
 	t.Run("should emit event and not yet rename the directory", func(t *testing.T) {
 		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "oldname", "/parent/")
+		dir := tu.NewNotLoadedDirectory(t, "oldname", "/parent/")
 		loadEvt := event.New(directory.LoadSucceeded{Directory: dir})
 
 		_, err := dir.Load()
@@ -617,7 +617,7 @@ func TestDirectory_Rename(t *testing.T) {
 
 	t.Run("should return error when directory is not loaded", func(t *testing.T) {
 		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "oldname", "/parent/")
+		dir := tu.NewNotLoadedDirectory(t, "oldname", "/parent/")
 
 		// When
 		_, err := dir.Rename("newname")
@@ -628,7 +628,7 @@ func TestDirectory_Rename(t *testing.T) {
 
 	t.Run("should return error when new name is invalid", func(t *testing.T) {
 		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "oldname", "/parent/")
+		dir := tu.NewNotLoadedDirectory(t, "oldname", "/parent/")
 
 		loadEvt := event.New(directory.LoadSucceeded{Directory: dir})
 		_, err := dir.Load()
@@ -653,7 +653,7 @@ func TestDirectory_Rename(t *testing.T) {
 
 	t.Run("should return error when trying to rename to same name", func(t *testing.T) {
 		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "oldname", "/parent/")
+		dir := tu.NewNotLoadedDirectory(t, "oldname", "/parent/")
 
 		loadEvt := event.New(directory.LoadSucceeded{Directory: dir})
 		_, err := dir.Load()
@@ -670,7 +670,7 @@ func TestDirectory_Rename(t *testing.T) {
 
 	t.Run("should update directory state on rename success event", func(t *testing.T) {
 		// Given
-		dir := testutil.NewNotLoadedDirectory(t, "oldname", "/parent/")
+		dir := tu.NewNotLoadedDirectory(t, "oldname", "/parent/")
 
 		loadEvt := event.New(directory.LoadSucceeded{Directory: dir})
 		_, err := dir.Load()
@@ -692,18 +692,22 @@ func TestDirectory_Rename(t *testing.T) {
 
 	t.Run("should update sub directories' parent path recursively", func(t *testing.T) {
 		// Given
-		dir := testutil.NewLoadedDirectory(t, "oldname", directory.RootPath)
-		f1 := testutil.AddFileToDirectory(t, dir, "f1.txt")
+		var subdir1, subdir2, subSubDir1, subSubDir2NoLoaded *directory.Directory
+		var f1, f11, f111 *directory.File
 
-		subdir1 := testutil.AddSubDirectoryToDirectory(t, dir, "sub1")
-		f11 := testutil.AddFileToDirectory(t, subdir1, "f11.txt")
-
-		subdir2 := testutil.AddSubDirectoryToDirectory(t, dir, "sub2")
-
-		subSubDir1 := testutil.AddSubDirectoryToDirectory(t, subdir1, "subsub1")
-		f111 := testutil.AddFileToDirectory(t, subSubDir1, "f111.txt")
-
-		subSubDir2NoLoaded := testutil.AddSubNotLoadedDirectoryToDirectory(t, subdir2, "subsub2")
+		dir := tu.MakeDirectory(t, "oldname",
+			tu.WithRootParent(),
+			tu.WithFileTo("f1.txt", &f1),
+			tu.WithSubDirectory("sub1",
+				tu.To(&subdir1),
+				tu.WithFileTo("f11.txt", &f11),
+				tu.WithSubDirectory("subsub1",
+					tu.To(&subSubDir1),
+					tu.WithFileTo("f111.txt", &f111))),
+			tu.WithSubDirectory("sub2",
+				tu.To(&subdir2),
+				tu.WithSubDirectory("subsub2",
+					tu.To(&subSubDir2NoLoaded))))
 
 		require.Equal(t, directory.Path("/oldname/"), dir.Path())
 		require.Equal(t, directory.Path("/oldname/sub1/"), subdir1.Path())
@@ -738,9 +742,9 @@ func TestDirectory_Rename(t *testing.T) {
 func TestDirectory_Resume(t *testing.T) {
 	t.Run("should returns a rename resume event when directory is in a resumable state with a rename pending status after a failing rename", func(t *testing.T) {
 		// Given
-		root := testutil.FakeLoadedRootDirectory(t)
-		oldDir := testutil.AddSubNotLoadedDirectoryToDirectory(t, root, "oldname")
-		newDir := testutil.AddSubNotLoadedDirectoryToDirectory(t, root, "newname")
+		root := tu.FakeLoadedRootDirectory(t)
+		oldDir := tu.AddSubNotLoadedDirectoryToDirectory(t, root, "oldname")
+		newDir := tu.AddSubNotLoadedDirectoryToDirectory(t, root, "newname")
 
 		_, err := oldDir.Load()
 		require.NoError(t, err)
@@ -780,9 +784,9 @@ func TestDirectory_Resume(t *testing.T) {
 
 	t.Run("should returns a rename resume event when directory is in a resumable state with a rename pending status after a failing loading", func(t *testing.T) {
 		// Given
-		root := testutil.FakeLoadedRootDirectory(t)
-		oldDir := testutil.AddSubNotLoadedDirectoryToDirectory(t, root, "oldname")
-		newDir := testutil.AddSubNotLoadedDirectoryToDirectory(t, root, "newname")
+		root := tu.FakeLoadedRootDirectory(t)
+		oldDir := tu.AddSubNotLoadedDirectoryToDirectory(t, root, "oldname")
+		newDir := tu.AddSubNotLoadedDirectoryToDirectory(t, root, "newname")
 
 		urErr := directory.UncompletedRename{
 			SourceDirPath:      "/oldname/",

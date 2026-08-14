@@ -10,8 +10,9 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 )
 
 type DirectoryPreview struct {
@@ -59,7 +60,7 @@ func (w *DirectoryPreview) makeContent(mainContent fyne.CanvasObject, validateLa
 		validateBtn = widget.NewButton(validateLabel, onValidate)
 	} else {
 		validateBtn = NewButtonWithData(
-			uiutils.NewBindingItemFormatter(w.selectedStrategy, func(strategy directory.MaterializeStrategy) string {
+			uu.NewBindingItemFormatter(w.selectedStrategy, func(strategy directory.MaterializeStrategy) string {
 				return "Upload: " + strategy.String()
 			}),
 			onValidate)
@@ -86,7 +87,7 @@ func (w *DirectoryPreview) CreateRenderer() fyne.WidgetRenderer {
 		panic("no strategies available")
 	}
 
-	w.selectedStrategy.Set(strategies[0]) //nolint:errcheck
+	u.Skip(w.selectedStrategy.Set(strategies[0]))
 	if len(strategies) == 1 {
 		return widget.NewSimpleRenderer(w.makeContent(
 			w.makeTree(strategies[0]),
@@ -104,8 +105,8 @@ func (w *DirectoryPreview) CreateRenderer() fyne.WidgetRenderer {
 		tis...,
 	)
 	tabs.OnSelected = func(item *container.TabItem) {
-		w.infoData.Set("")                                       //nolint:errcheck
-		w.selectedStrategy.Set(strategies[tabs.SelectedIndex()]) //nolint:errcheck
+		u.Skip(w.infoData.Set(""))
+		u.Skip(w.selectedStrategy.Set(strategies[tabs.SelectedIndex()]))
 	}
 
 	return widget.NewSimpleRenderer(w.makeContent(tabs, ""))
@@ -158,14 +159,14 @@ func (w *DirectoryPreview) makeTree(strategy directory.MaterializeStrategy) *wid
 
 				status, desc, err := ni.Preview.FileStatus(strategy, fileName)
 				if err != nil {
-					fmt.Fprintf(&fileLabelBuilder, " (%s)", err) //nolint:errcheck
+					u.SkipV(fmt.Fprintf(&fileLabelBuilder, " (%s)", err))
 				}
-				fmt.Fprintf(&fileLabelBuilder, " (%s)", status) //nolint:errcheck
+				u.SkipV(fmt.Fprintf(&fileLabelBuilder, " (%s)", status))
 
 				if desc != "" {
 					infoBtn.Show()
 					infoBtn.OnTapped = func() {
-						w.infoData.Set(desc) //nolint:errcheck
+						u.Skip(w.infoData.Set(desc))
 					}
 				} else {
 					infoBtn.Hide()
@@ -193,15 +194,15 @@ func (i *previewNodeItem) IsDir() bool {
 
 func initPreviewData(data binding.Tree[previewNodeItem], preview *directory.Preview, parentPath string) {
 	currPath := parentPath + preview.Directory().Name() + "/"
-	data.Append(parentPath, currPath, previewNodeItem{ // nolint:errcheck
+	u.Skip(data.Append(parentPath, currPath, previewNodeItem{
 		Preview: preview,
 		File:    nil,
-	})
+	}))
 	for _, f := range preview.Files() {
-		data.Append(currPath, currPath+f.Name().String(), previewNodeItem{ // nolint:errcheck
+		u.Skip(data.Append(currPath, currPath+f.Name().String(), previewNodeItem{
 			Preview: preview,
 			File:    f,
-		})
+		}))
 	}
 	for _, c := range preview.Children() {
 		initPreviewData(data, c, currPath)

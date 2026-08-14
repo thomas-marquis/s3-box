@@ -1,4 +1,4 @@
-package uiutils
+package uu
 
 import (
 	"path/filepath"

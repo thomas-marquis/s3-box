@@ -34,14 +34,14 @@ func GetNotificationView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 			var title, detail string
 			switch notif.Type() {
 			case notification.LevelError:
-				title = fmt.Sprintf("%s: Error: %s", //nolint:errcheck
+				title = fmt.Sprintf("%s: Error: %s",
 					formattedDt, notif.(notification.ErrorNotification).Error().Error())
 			case notification.LevelInfo:
-				title = fmt.Sprintf("%s: Info: %s", //nolint:errcheck
+				title = fmt.Sprintf("%s: Info: %s",
 					formattedDt, notif.(notification.LogNotification).Title())
 				detail = notif.(notification.LogNotification).Message()
 			case notification.LevelDebug:
-				title = fmt.Sprintf("%s: Debug: %s", //nolint:errcheck
+				title = fmt.Sprintf("%s: Debug: %s",
 					formattedDt, notif.(notification.LogNotification).Title())
 				detail = notif.(notification.LogNotification).Message()
 			}

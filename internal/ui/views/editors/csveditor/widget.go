@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 type Widget struct {
@@ -37,7 +38,7 @@ func newWidget(e *Editor) *Widget {
 			return
 		}
 		dialog.ShowError(err, e.Window())
-		e.Err.Set(nil) //nolint:errcheck
+		u.Skip(e.Err.Set(nil))
 	}))
 
 	return w
@@ -96,7 +97,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 
 	cancelBtn = widget.NewButton("Cancel", func() {
 		cancelBtn.Disable()
-		w.editor.StatusLabel.Set("cancelling...") //nolint:errcheck
+		u.Skip(w.editor.StatusLabel.Set("cancelling..."))
 		w.editor.Cancel()
 	})
 

@@ -16,7 +16,7 @@ import (
 
 type ConnectionList struct {
 	widget.BaseWidget
-	connections binding.UntypedList
+	connections binding.List[*connection_deck.Connection]
 	appCtx      appcontext.AppContext
 }
 
@@ -69,8 +69,7 @@ func (w *ConnectionList) makeRowListItem() fyne.CanvasObject {
 }
 
 func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject) {
-	i, _ := di.(binding.Untyped).Get()
-	conn, _ := i.(*connection_deck.Connection)
+	conn, _ := di.(binding.Item[*connection_deck.Connection]).Get()
 	vm := w.appCtx.ConnectionViewModel()
 
 	c, _ := o.(*fyne.Container)
