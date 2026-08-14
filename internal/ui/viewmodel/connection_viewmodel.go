@@ -9,6 +9,7 @@ import (
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 )
 
@@ -82,10 +83,10 @@ func NewConnectionViewModel(
 	}
 
 	errorMsgBinding := binding.NewString()
-	errorMsgBinding.Set("") //nolint:errcheck
+	u.Skip(errorMsgBinding.Set(""))
 
 	loading := binding.NewBool()
-	loading.Set(false) //nolint:errcheck
+	u.Skip(loading.Set(false))
 
 	vm := &connectionViewModelImpl{
 		baseViewModel: baseViewModel{
@@ -175,7 +176,7 @@ func (v *connectionViewModelImpl) handleUpdate(evt event.Event) {
 	cg := evt.Payload().(connection_deck.ConnectionGetter)
 	v.updateConnectionBinding(evt, cg.Connection())
 	v.deck.Notify(evt)
-	v.loading.Set(false) //nolint:errcheck
+	u.Skip(v.loading.Set(false))
 }
 
 func (v *connectionViewModelImpl) Delete(conn *connection_deck.Connection) {
@@ -197,7 +198,7 @@ func (v *connectionViewModelImpl) handleDelete(evt event.Event) {
 		return
 	}
 	v.deck.Notify(evt)
-	v.loading.Set(false) //nolint:errcheck
+	u.Skip(v.loading.Set(false))
 }
 
 func (v *connectionViewModelImpl) Create(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) {
@@ -207,9 +208,9 @@ func (v *connectionViewModelImpl) Create(name, accessKey, secretKey, bucket stri
 
 func (v *connectionViewModelImpl) handleCreate(evt event.Event) {
 	pl := evt.Payload().(connection_deck.CreateConnectionSucceeded)
-	v.connBindings.Append(pl.Connection()) //nolint:errcheck
+	u.Skip(v.connBindings.Append(pl.Connection()))
 	v.deck.Notify(evt)
-	v.loading.Set(false) //nolint:errcheck
+	u.Skip(v.loading.Set(false))
 }
 
 func (v *connectionViewModelImpl) ExportAsJSON(writer io.Writer) error {
@@ -282,8 +283,8 @@ func (v *connectionViewModelImpl) updateConnectionBinding(evt event.Event, c *co
 
 			// Necessary workaround to trigger the refresh in the UI
 			placeholderConn := &connection_deck.Connection{}
-			v.connBindings.Append(placeholderConn) //nolint:errcheck
-			v.connBindings.Remove(placeholderConn) //nolint:errcheck
+			u.Skip(v.connBindings.Append(placeholderConn))
+			u.Skip(v.connBindings.Remove(placeholderConn))
 		}
 	}
 
@@ -298,7 +299,7 @@ func (v *connectionViewModelImpl) updateConnectionBinding(evt event.Event, c *co
 
 func (v *connectionViewModelImpl) initConnections(deck *connection_deck.Deck) {
 	for _, c := range deck.Get() {
-		v.connBindings.Append(c) //nolint:errcheck
+		u.Skip(v.connBindings.Append(c))
 	}
 }
 
@@ -306,12 +307,12 @@ func (v *connectionViewModelImpl) handleOnLoading(_ event.Event) {
 	if v.IsLoading() {
 		return
 	}
-	v.loading.Set(true) //nolint:errcheck
+	u.Skip(v.loading.Set(true))
 }
 
 func (v *connectionViewModelImpl) handleFailure(evt event.Event) {
 	pl := evt.Payload().(connection_deck.ErrorGetter)
-	v.errorMessage.Set(pl.Error().Error()) //nolint:errcheck
+	u.Skip(v.errorMessage.Set(pl.Error().Error()))
 	v.deck.Notify(evt)
-	v.loading.Set(false) //nolint:errcheck
+	u.Skip(v.loading.Set(false))
 }

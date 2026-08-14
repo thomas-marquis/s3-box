@@ -4,11 +4,12 @@ import (
 	"encoding/csv"
 
 	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
 
 func (e *Editor) handleLoaded(evt event.Event) {
-	defer e.IsLoading.Set(false) //nolint:errcheck
+	defer u.SkipD1(e.IsLoading.Set, false)
 
 	pl := evt.Payload().(editor.Loaded)
 
@@ -38,9 +39,9 @@ func (e *Editor) handleLoaded(evt event.Event) {
 
 func (e *Editor) handleLoadFailed(evt event.Event) {
 	pl := evt.Payload().(editor.LoadFailed)
-	e.IsLoading.Set(false)                //nolint:errcheck
-	e.StatusLabel.Set("error (unloaded)") //nolint:errcheck
-	e.Err.Set(pl.Err)                     //nolint:errcheck
+	u.Skip(e.IsLoading.Set(false))
+	u.Skip(e.StatusLabel.Set("error (unloaded)"))
+	u.Skip(e.Err.Set(pl.Err))
 }
 
 func (e *Editor) handleCloseRequested(evt event.Event) {

@@ -5,6 +5,7 @@ import (
 
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 	"github.com/thomas-marquis/s3-box/internal/ui/values"
 )
@@ -90,10 +91,10 @@ func (s *SettingsState) SyncStatusMessage() {
 	state := s.aggregate.State()
 	switch state.String() {
 	case "loading":
-		s.statusMessage.Set("Loading...") //nolint:errcheck
+		u.Skip(s.statusMessage.Set("Loading..."))
 	case "saving":
-		s.statusMessage.Set("Saving...") //nolint:errcheck
+		u.Skip(s.statusMessage.Set("Saving..."))
 	default:
-		s.statusMessage.Set("") //nolint:errcheck
+		u.Skip(s.statusMessage.Set(""))
 	}
 }

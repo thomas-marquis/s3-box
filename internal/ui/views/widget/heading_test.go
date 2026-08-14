@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	fyne_test "fyne.io/fyne/v2/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 )
 
@@ -28,7 +29,7 @@ func TestHeading(t *testing.T) {
 
 		// When
 		res := widget.NewHeadingWithData(data)
-		data.Set("Hello world!") //nolint:errcheck
+		u.Skip(data.Set("Hello world!"))
 		c := fyne_test.NewWindow(res).Canvas()
 
 		// Then

@@ -15,6 +15,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 const (
@@ -522,7 +523,7 @@ func readRenameMarker(ctx context.Context, client s3client.Client, key string) (
 	if err != nil {
 		return nil, err
 	}
-	defer res.Body.Close() //nolint:errcheck
+	defer u.SkipD(res.Body.Close)
 
 	var m renameMarker
 	if err := json.NewDecoder(res.Body).Decode(&m); err != nil {

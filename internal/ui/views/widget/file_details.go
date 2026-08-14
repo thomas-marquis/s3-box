@@ -15,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/dustin/go-humanize"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 )
@@ -142,8 +143,8 @@ func (w *FileDetails) Select(file *directory.File) {
 	fileURI := storage.NewFileURI(file.FullPath())
 	w.fileIcon.SetURI(fileURI)
 
-	w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05")) //nolint:errcheck
-	w.fileSizeBinding.Set(humanize.Bytes(file.SizeBytes()))                      //nolint:errcheck
+	u.Skip(w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05")))
+	u.Skip(w.fileSizeBinding.Set(humanize.Bytes(file.SizeBytes())))
 
 	w.appCtx.State().Settings().EditorFileSizeLimitBytes().RemoveListener(w.maxFileSizeListener)
 	dl := binding.NewDataListener(func() {

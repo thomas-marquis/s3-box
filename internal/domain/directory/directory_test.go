@@ -11,6 +11,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/tu"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 func TestDirectory(t *testing.T) {
@@ -53,7 +54,7 @@ func TestDirectory(t *testing.T) {
 		dir := tu.NewNotLoadedDirectory(t, "data", directory.RootPath)
 
 		// When
-		dir.Load() //nolint:errcheck
+		u.SkipV(dir.Load())
 		require.NoError(t, dir.Notify(event.New(directory.LoadFailed{
 			Err:       errors.New("ckc"),
 			Directory: dir,

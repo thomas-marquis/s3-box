@@ -6,6 +6,7 @@ import (
 
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 // GetString retrieves a string value from a binding.String.
@@ -44,7 +45,7 @@ func NewBindingItemFormatter[T any](original binding.Item[T], formatFunc func(T)
 
 	dl := binding.NewDataListener(func() {
 		item, _ := b.original.Get()
-		b.Set(b.formatFunc(item)) //nolint:errcheck
+		u.Skip(b.Set(b.formatFunc(item)))
 	})
 	original.AddListener(dl)
 
@@ -63,7 +64,7 @@ type baseSettingsBinding[T any] struct {
 func (b *baseSettingsBinding[T]) bind(s *settings.Settings, name string) {
 	b.cancel = s.Observe(name, func(value any) {
 		if val, ok := value.(T); ok {
-			b.Set(val) //nolint:errcheck
+			u.Skip(b.Set(val))
 		}
 	})
 	runtime.AddCleanup(b, func(cancel func()) {
@@ -99,11 +100,11 @@ func NewSettingsBindingString(s *settings.Settings, name string) binding.String 
 	}
 
 	initialValue := s.ReadString(name)
-	bs.Set(initialValue) //nolint:errcheck
+	u.Skip(bs.Set(initialValue))
 
 	bs.cancel = s.Observe(name, func(value any) {
 		if strVal, ok := value.(string); ok {
-			bs.Set(strVal) //nolint:errcheck
+			u.Skip(bs.Set(strVal))
 		}
 	})
 	runtime.AddCleanup(bs, func(cancel func()) {
@@ -142,7 +143,7 @@ func NewSettingsBindingDuration(s *settings.Settings, name string) binding.Item[
 		return bf
 	}
 
-	bf.Set(s.ReadDuration(name)) //nolint:errcheck
+	u.Skip(bf.Set(s.ReadDuration(name)))
 	bf.bind(s, name)
 
 	return bf
@@ -169,7 +170,7 @@ func NewSettingsBindingIntToUint64(s *settings.Settings, name string) binding.It
 	}
 
 	initialValue := s.ReadUint64(name)
-	bi.Set(initialValue) //nolint:errcheck
+	u.Skip(bi.Set(initialValue))
 
 	bi.bind(s, name)
 
@@ -203,7 +204,7 @@ func NewBindMapper[S, T any](src binding.Item[S],
 		if err != nil || comparator(newVal, curr) {
 			return
 		}
-		b.Set(sToT(newVal)) //nolint:errcheck
+		u.Skip(b.Set(sToT(newVal)))
 	})
 	src.AddListener(srcDl)
 
@@ -220,7 +221,7 @@ func NewBindMapper[S, T any](src binding.Item[S],
 		if err != nil || comparator(curr, newVal) {
 			return
 		}
-		src.Set(tToS(newVal)) //nolint:errcheck
+		u.Skip(src.Set(tToS(newVal)))
 	}))
 
 	return b

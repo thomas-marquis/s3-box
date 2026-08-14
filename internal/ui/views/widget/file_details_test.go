@@ -8,6 +8,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/values"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
@@ -54,9 +55,9 @@ func setupFileDetailsMocksWithLimit(t *testing.T, limitBytes uint64) fileDetails
 	m.mockAppCtx.EXPECT().State().Return(m.mockState).AnyTimes()
 
 	// Register the settings that file_details needs
-	m.mockState.Settings().Get().Register( //nolint:errcheck
+	u.Skip(m.mockState.Settings().Get().Register(
 		settings.AUint64(values.SettingEditFileSizeLimitByte, limitBytes),
-	)
+	))
 
 	return m
 }

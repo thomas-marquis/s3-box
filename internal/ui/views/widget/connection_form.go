@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
 )
@@ -85,22 +86,22 @@ func (w *ConnectionForm) AsDialog(label string) dialog.Dialog {
 func (w *ConnectionForm) buildAWSForm() *widget.Form {
 	// Init data bindings
 	nameData := binding.NewString()
-	nameData.Set(w.defaultConnection.Name()) //nolint:errcheck
+	u.Skip(nameData.Set(w.defaultConnection.Name()))
 
 	accessKeyData := binding.NewString()
-	accessKeyData.Set(w.defaultConnection.AccessKey()) //nolint:errcheck
+	u.Skip(accessKeyData.Set(w.defaultConnection.AccessKey()))
 
 	secretKeyData := binding.NewString()
-	secretKeyData.Set(w.defaultConnection.SecretKey()) //nolint:errcheck
+	u.Skip(secretKeyData.Set(w.defaultConnection.SecretKey()))
 
 	bucketData := binding.NewString()
-	bucketData.Set(w.defaultConnection.Bucket()) //nolint:errcheck
+	u.Skip(bucketData.Set(w.defaultConnection.Bucket()))
 
 	regionData := binding.NewString()
-	regionData.Set(w.defaultConnection.Region()) //nolint:errcheck
+	u.Skip(regionData.Set(w.defaultConnection.Region()))
 
 	readOnlyData := binding.NewBool()
-	readOnlyData.Set(w.defaultConnection.ReadOnly()) //nolint:errcheck
+	u.Skip(readOnlyData.Set(w.defaultConnection.ReadOnly()))
 
 	// Create Form items
 	nameFormItem := makeTextFormItemWithData(
@@ -168,25 +169,25 @@ func (w *ConnectionForm) buildAWSForm() *widget.Form {
 func (w *ConnectionForm) buildS3LikeForm() *widget.Form {
 	// Init data bindings
 	nameData := binding.NewString()
-	nameData.Set(w.defaultConnection.Name()) //nolint:errcheck
+	u.Skip(nameData.Set(w.defaultConnection.Name()))
 
 	accessKeyData := binding.NewString()
-	accessKeyData.Set(w.defaultConnection.AccessKey()) //nolint:errcheck
+	u.Skip(accessKeyData.Set(w.defaultConnection.AccessKey()))
 
 	secretKeyData := binding.NewString()
-	secretKeyData.Set(w.defaultConnection.SecretKey()) //nolint:errcheck
+	u.Skip(secretKeyData.Set(w.defaultConnection.SecretKey()))
 
 	serverData := binding.NewString()
-	serverData.Set(w.defaultConnection.Server()) //nolint:errcheck
+	u.Skip(serverData.Set(w.defaultConnection.Server()))
 
 	bucketData := binding.NewString()
-	bucketData.Set(w.defaultConnection.Bucket()) //nolint:errcheck
+	u.Skip(bucketData.Set(w.defaultConnection.Bucket()))
 
 	readOnlyData := binding.NewBool()
-	readOnlyData.Set(w.defaultConnection.ReadOnly()) //nolint:errcheck
+	u.Skip(readOnlyData.Set(w.defaultConnection.ReadOnly()))
 
 	useTlsData := binding.NewBool()
-	useTlsData.Set(w.defaultConnection.IsTLSActivated()) //nolint:errcheck
+	u.Skip(useTlsData.Set(w.defaultConnection.IsTLSActivated()))
 
 	nameFormItem := makeTextFormItemWithData(
 		nameData,

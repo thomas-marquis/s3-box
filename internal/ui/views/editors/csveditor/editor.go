@@ -18,6 +18,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
 
@@ -66,7 +67,7 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 
 	ed.ExtendBaseEditor(ed)
 
-	ed.IsLoading.Set(true) //nolint:errcheck
+	u.Skip(ed.IsLoading.Set(true))
 
 	w.Canvas().AddShortcut(&shortcutSave, func(fyne.Shortcut) {
 		ed.Save()
@@ -94,8 +95,8 @@ func (e *Editor) NextPage() bool {
 		return false
 	}
 
-	e.IsLoading.Set(true)        //nolint:errcheck
-	defer e.IsLoading.Set(false) //nolint:errcheck
+	u.Skip(e.IsLoading.Set(true))
+	defer u.SkipD1(e.IsLoading.Set, false)
 
 	hasMore := e.Paginator.Next()
 	e.UpdatePageLabel()
@@ -108,8 +109,8 @@ func (e *Editor) PrevPage() {
 		return
 	}
 
-	e.IsLoading.Set(true)        //nolint:errcheck
-	defer e.IsLoading.Set(false) //nolint:errcheck
+	u.Skip(e.IsLoading.Set(true))
+	defer u.SkipD1(e.IsLoading.Set, false)
 
 	e.Paginator.Prev()
 	e.UpdatePageLabel()
@@ -117,12 +118,16 @@ func (e *Editor) PrevPage() {
 }
 
 func (e *Editor) UpdatePageLabel() {
-	e.PageLabel.Set(fmt.Sprintf("%d / %d", e.Paginator.PageNumber(), e.Paginator.TotalPages())) //nolint:errcheck
+	u.Skip(
+		e.PageLabel.Set(
+			fmt.Sprintf("%d / %d", e.Paginator.PageNumber(), e.Paginator.TotalPages())),
+	)
+
 }
 
 func (e *Editor) Save() {
-	e.IsLoading.Set(true)          //nolint:errcheck
-	e.StatusLabel.Set("Saving...") // nolint:errcheck
+	u.Skip(e.IsLoading.Set(true))
+	u.Skip(e.StatusLabel.Set("Saving..."))
 
 	content := e.GetContent()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -132,8 +137,8 @@ func (e *Editor) Save() {
 	e.Unlock()
 
 	handleFailure := func(err error) {
-		e.StatusLabel.Set("error (unsaved)") //nolint:errcheck
-		e.Err.Set(err)                       //nolint:errcheck
+		u.Skip(e.StatusLabel.Set("error (unsaved)"))
+		u.Skip(e.Err.Set(err))
 
 		e.Lock()
 		e.cancelFunc = nil
@@ -157,7 +162,7 @@ func (e *Editor) Save() {
 
 	go func() {
 		defer close(done)
-		defer e.IsLoading.Set(false) //nolint:errcheck
+		defer u.SkipD1(e.IsLoading.Set, false)
 
 		if _, err := e.Content.Seek(0, io.SeekStart); err != nil {
 			handleFailure(err)
@@ -170,7 +175,9 @@ func (e *Editor) Save() {
 		e.File().SetSizeBytes(uint64(len(content)))
 
 		e.updateContentHash(content)
-		e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))) // nolint:errcheck
+		u.Skip(
+			e.StatusLabel.Set(fmt.Sprintf("Saved %s", time.Now().Format("15:04:05"))),
+		)
 	}()
 }
 
@@ -246,7 +253,7 @@ func (e *Editor) updateColumnsWidth() {
 		colWidths = append(colWidths, col)
 	}
 
-	e.Columns.Set(colWidths) //nolint:errcheck
+	u.Skip(e.Columns.Set(colWidths))
 	if listener, ok := e.dataListeners[listenerColumnsWidthKey]; ok {
 		listener()
 	}

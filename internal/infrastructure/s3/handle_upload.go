@@ -7,6 +7,7 @@ import (
 
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 func (h *EventHandler) handleUploadFile(e event.Event) {
@@ -29,7 +30,7 @@ func (h *EventHandler) handleUploadFile(e event.Event) {
 		handleError(err)
 		return
 	}
-	defer localFile.Close() //nolint:errcheck
+	defer u.SkipD(localFile.Close)
 
 	info, err := localFile.Stat()
 	if err != nil {

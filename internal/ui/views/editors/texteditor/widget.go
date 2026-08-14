@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 type TextEditor struct {
@@ -30,7 +31,7 @@ func newWidget(e *textEditor) fyne.CanvasObject {
 			return
 		}
 		dialog.ShowError(err, e.Window())
-		e.Err.Set(nil) //nolint:errcheck
+		u.Skip(e.Err.Set(nil))
 	}))
 
 	e.ConfirmClose = func(onConfirm func(confirmed bool)) {
@@ -59,7 +60,7 @@ func (w *TextEditor) CreateRenderer() fyne.WidgetRenderer {
 	loader := widget.NewProgressBarInfinite()
 	cancelBtn = widget.NewButton("Cancel", func() {
 		cancelBtn.Disable()
-		w.editor.StatusLabel.Set("cancelling...") //nolint:errcheck
+		u.Skip(w.editor.StatusLabel.Set("cancelling..."))
 		w.editor.Cancel()
 	})
 	loaderContainer := container.NewBorder(

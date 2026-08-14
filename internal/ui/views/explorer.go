@@ -5,6 +5,7 @@ import (
 
 	"fyne.io/fyne/v2/dialog"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/u"
 
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 
@@ -37,7 +38,7 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 	vm := appCtx.ExplorerViewModel()
 
 	headingData := binding.NewString()
-	headingData.Set("File explorer") //nolint:errcheck
+	u.Skip(headingData.Set("File explorer"))
 
 	content := container.NewHSplit(fyne_widget.NewLabel(""), fyne_widget.NewLabel(""))
 
@@ -51,7 +52,7 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 			if conn.ReadOnly() {
 				val += " (read-only)"
 			}
-			headingData.Set(val) //nolint:errcheck
+			u.Skip(headingData.Set(val))
 			noConn.Hide()
 			content.Show()
 		}
@@ -63,7 +64,7 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 			return
 		}
 		dialog.ShowError(errors.New(msg), appCtx.Window())
-		vm.ErrorMessage().Set("") //nolint:errcheck
+		u.Skip(vm.ErrorMessage().Set(""))
 	}))
 
 	vm.InfoMessage().AddListener(binding.NewDataListener(func() {
@@ -72,7 +73,7 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 			return
 		}
 		dialog.ShowInformation("Info", msg, appCtx.Window())
-		vm.InfoMessage().Set("") //nolint:errcheck
+		u.Skip(vm.InfoMessage().Set(""))
 	}))
 
 	go func() {

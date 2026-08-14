@@ -14,6 +14,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 	"github.com/thomas-marquis/s3-box/internal/tu"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 func TestS3Client(t *testing.T) {
@@ -182,8 +183,8 @@ func TestS3Client(t *testing.T) {
 			// When (Download)
 			tmpFile, err := os.CreateTemp("", "download-test")
 			require.NoError(t, err)
-			defer os.Remove(tmpFile.Name()) // nolint:errcheck
-			defer tmpFile.Close()           //nolint:errcheck
+			defer u.SkipD1(os.Remove, tmpFile.Name())
+			defer u.SkipD(tmpFile.Close)
 
 			err = client.Download(ctx, key, tmpFile)
 			assert.NoError(t, err)
