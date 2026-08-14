@@ -9,7 +9,7 @@ import (
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 
 	"fmt"
 	"path/filepath"
@@ -420,14 +420,14 @@ func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) PrepareUpload(uris []fyne.URI, dir *directory.Directory) error {
-	prev, err := makePreviewFromUris(uiutils.FromFyneUrisToPaths(uris), dir)
+	prev, err := makePreviewFromUris(uu.FromFyneUrisToPaths(uris), dir)
 	if err != nil {
 		return err
 	}
 
 	loadMat := directory.NewLoadMaterializer(prev, directory.UploadReady{
 		Directory: dir,
-		SrcPaths:  uiutils.FromFyneUrisToPaths(uris),
+		SrcPaths:  uu.FromFyneUrisToPaths(uris),
 	}, directory.UploadFailed{
 		Err:       errors.New("timeout"),
 		Directory: dir,
@@ -502,7 +502,7 @@ func makePreviewFromUris(paths []string, dir *directory.Directory) (*directory.P
 func (v *explorerViewModelImpl) handleUploadReady(evt event.Event) {
 	pl := evt.Payload().(directory.UploadReady)
 
-	localParentDirUri := uiutils.GetCommonParentPath(pl.SrcPaths)
+	localParentDirUri := uu.GetCommonParentPath(pl.SrcPaths)
 
 	prev, err := makePreviewFromUris(pl.SrcPaths, pl.Directory)
 	if err != nil {

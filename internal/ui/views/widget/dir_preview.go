@@ -12,7 +12,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 )
 
 type DirectoryPreview struct {
@@ -60,7 +60,7 @@ func (w *DirectoryPreview) makeContent(mainContent fyne.CanvasObject, validateLa
 		validateBtn = widget.NewButton(validateLabel, onValidate)
 	} else {
 		validateBtn = NewButtonWithData(
-			uiutils.NewBindingItemFormatter(w.selectedStrategy, func(strategy directory.MaterializeStrategy) string {
+			uu.NewBindingItemFormatter(w.selectedStrategy, func(strategy directory.MaterializeStrategy) string {
 				return "Upload: " + strategy.String()
 			}),
 			onValidate)

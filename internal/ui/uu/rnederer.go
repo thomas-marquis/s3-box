@@ -1,4 +1,4 @@
-package uiutils
+package uu
 
 import "fyne.io/fyne/v2"
 

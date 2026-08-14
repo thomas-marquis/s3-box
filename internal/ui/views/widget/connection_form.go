@@ -10,7 +10,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 )
 
 type ConnDialogOnSubmitFunc func(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption)
@@ -154,12 +154,12 @@ func (w *ConnectionForm) buildAWSForm() *widget.Form {
 	)
 	f.OnSubmit = func() {
 		w.handleOnSubmit(
-			uiutils.GetString(nameData),
-			uiutils.GetString(accessKeyData),
-			uiutils.GetString(secretKeyData),
-			uiutils.GetString(bucketData),
-			connection_deck.AsAWS(uiutils.GetString(regionData)),
-			connection_deck.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
+			uu.GetString(nameData),
+			uu.GetString(accessKeyData),
+			uu.GetString(secretKeyData),
+			uu.GetString(bucketData),
+			connection_deck.AsAWS(uu.GetString(regionData)),
+			connection_deck.WithReadOnlyOption(uu.GetBool(readOnlyData)),
 		)
 	}
 
@@ -243,12 +243,12 @@ func (w *ConnectionForm) buildS3LikeForm() *widget.Form {
 	)
 	f.OnSubmit = func() {
 		w.handleOnSubmit(
-			uiutils.GetString(nameData),
-			uiutils.GetString(accessKeyData),
-			uiutils.GetString(secretKeyData),
-			uiutils.GetString(bucketData),
-			connection_deck.AsS3Like(uiutils.GetString(serverData), uiutils.GetBool(useTlsData)),
-			connection_deck.WithReadOnlyOption(uiutils.GetBool(readOnlyData)),
+			uu.GetString(nameData),
+			uu.GetString(accessKeyData),
+			uu.GetString(secretKeyData),
+			uu.GetString(bucketData),
+			connection_deck.AsS3Like(uu.GetString(serverData), uu.GetBool(useTlsData)),
+			connection_deck.WithReadOnlyOption(uu.GetBool(readOnlyData)),
 		)
 	}
 

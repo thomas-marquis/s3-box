@@ -8,7 +8,7 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 )
 
 type DropZone struct {
@@ -85,7 +85,7 @@ func (w *DropZone) CreateRenderer() fyne.WidgetRenderer {
 				bg.FillColor = th.Color(theme.ColorNamePressed, v)
 				return
 			}
-			r, g, bb, a := uiutils.ToNRGBA(th.Color(theme.ColorNamePressed, v))
+			r, g, bb, a := uu.ToNRGBA(th.Color(theme.ColorNamePressed, v))
 			aa := uint8(a)
 			fade := aa - uint8(float32(aa)*done)
 			if fade > 0 {
@@ -103,7 +103,7 @@ func (w *DropZone) CreateRenderer() fyne.WidgetRenderer {
 	}
 
 	r := &dropZoneRenderer{
-		BaseRenderer: uiutils.NewBaseRenderer(objects),
+		BaseRenderer: uu.NewBaseRenderer(objects),
 		w:            w,
 		text:         text,
 		background:   bg,
@@ -167,7 +167,7 @@ func (w *DropZone) dropAnimation() {
 }
 
 type dropZoneRenderer struct {
-	uiutils.BaseRenderer
+	uu.BaseRenderer
 
 	text       *widget.RichText
 	background *canvas.Rectangle

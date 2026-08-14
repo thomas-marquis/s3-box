@@ -6,7 +6,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	"github.com/thomas-marquis/s3-box/internal/u"
-	"github.com/thomas-marquis/s3-box/internal/ui/uiutils"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 	"github.com/thomas-marquis/s3-box/internal/ui/values"
 )
 
@@ -33,9 +33,9 @@ func newSettingsState() *SettingsState {
 
 	state := &SettingsState{
 		aggregate:     settingsAgg,
-		timeout:       uiutils.NewSettingsBindingDuration(settingsAgg, values.SettingTimeoutSec),
-		fileLimit:     uiutils.NewSettingsBindingIntToUint64(settingsAgg, values.SettingEditFileSizeLimitByte),
-		colorTheme:    uiutils.NewSettingsBindingString(settingsAgg, values.SettingColorTheme),
+		timeout:       uu.NewSettingsBindingDuration(settingsAgg, values.SettingTimeoutSec),
+		fileLimit:     uu.NewSettingsBindingIntToUint64(settingsAgg, values.SettingEditFileSizeLimitByte),
+		colorTheme:    uu.NewSettingsBindingString(settingsAgg, values.SettingColorTheme),
 		isReady:       binding.NewBool(),
 		statusMessage: binding.NewString(),
 	}
