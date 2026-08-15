@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENCE)
 
 <p align="center">
-  <img src="resources/logo-wbg.png" width="220" alt="genkit-mistral logo">
+  <img src="resources/logo-wbg.png" width="220" alt="s3-box logo">
 </p>
 
 Managing S3-like storage (AWS S3, MinIO, GCS, etc.) locally is cumbersome.

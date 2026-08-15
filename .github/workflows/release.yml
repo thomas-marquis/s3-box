@@ -53,7 +53,7 @@ jobs:
 
       - name: Package for Linux
         run: |
-          fyne-cross linux -arch=amd64 -name ${{ env.BASE_APP_NAME }} -icon resources/logo-wbg.png -app-version ${{ steps.get_version.outputs.version }} -app-id fr.scalde.s3box -image thomasmarquis/fyne-cross-images:linux
+          fyne --target linux --name ${{ env.BASE_APP_NAME }} --icon resources/logo-wbg.png --app-version ${{ steps.get_version.outputs.version }} --app-id fr.scalde.s3box
 
       - name: Package for Windows
         run: |
@@ -64,8 +64,8 @@ jobs:
         with:
           make_latest: true
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: fyne-cross/dist/linux-amd64/${{ env.BASE_APP_NAME }}.tar.xz
-          asset_name: ${{ env.BASE_APP_NAME }}-linux-amd64-${{ steps.get_version.outputs.tag }}.tar.xz
+          file: ${{ env.BASE_APP_NAME }}.tar.xz
+          asset_name: ${{ env.BASE_APP_NAME }}-linux-${{ steps.get_version.outputs.tag }}.tar.xz
           tag: ${{ steps.get_version.outputs.tag }}
           overwrite: true
           body: "New release ${{ steps.get_version.outputs.tag }}"
