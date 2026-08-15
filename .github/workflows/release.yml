@@ -53,7 +53,7 @@ jobs:
 
       - name: Package for Linux
         run: |
-          fyne package --target linux --name ${{ env.BASE_APP_NAME }} --icon resources/logo-wbg.png --app-version ${{ steps.get_version.outputs.version }} --app-id fr.scalde.s3box
+          fyne package --target linux --name ${{ env.BASE_APP_NAME }} --icon resources/logo-wbg.png --appVersion ${{ steps.get_version.outputs.version }} --appId fr.scalde.s3box
 
       - name: Package for Windows
         run: |
