@@ -73,10 +73,10 @@ func (s *loadingState) Notify(evt event.Event) error {
 	case RenameSucceeded:
 		s.d.name = pl.NewName
 		s.d.path = s.d.parent.Path().NewSubPath(pl.NewName)
-		for _, subDir := range s.subDirsNew {
+		for _, subDir := range s.subDirs {
 			subDir.updatePath(s.d.path)
 		}
-		s.d.setState(newLoadedState(s.Clone(), s.subDirsNew, s.files))
+		s.d.setState(newLoadedState(s.Clone(), s.subDirs, s.files))
 
 	case RenameFailed:
 		var urErr UncompletedRename
@@ -91,7 +91,7 @@ func (s *loadingState) Notify(evt event.Event) error {
 		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: pl.Err}))
 
 	case UserValidationRefused:
-		s.d.setState(newLoadedState(s.baseState, s.subDirsNew, s.files))
+		s.d.setState(newLoadedState(s.baseState, s.subDirs, s.files))
 	}
 
 	return nil

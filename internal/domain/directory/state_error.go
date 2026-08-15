@@ -37,11 +37,11 @@ func (s *errorState) Notify(evt event.Event) error {
 	case RenameSucceeded:
 		s.d.name = pl.NewName
 		s.d.path = s.d.parent.Path().NewSubPath(pl.NewName)
-		for _, subDir := range s.subDirsNew {
+		for _, subDir := range s.subDirs {
 			subDir.updatePath(s.d.path)
 		}
 
-		s.d.setState(newLoadedState(s.baseState, s.subDirsNew, s.files))
+		s.d.setState(newLoadedState(s.baseState, s.subDirs, s.files))
 
 	case RenameFailed:
 		if errors.Is(pl.Err, &UncompletedRename{}) {
