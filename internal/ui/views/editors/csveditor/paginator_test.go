@@ -8,6 +8,7 @@ import (
 	fyne_test "fyne.io/fyne/v2/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
 )
 
@@ -44,6 +45,65 @@ func TestPaginator(t *testing.T) {
 		assert.Equal(t, 10, p.PageSize)
 		assert.Equal(t, 0, p.CurrentIndex)
 		assert.Empty(t, p.Records)
+	})
+
+	t.Run("should display the first row on page 2 when HasHeader has been switched to true", func(t *testing.T) {
+		// Given
+		fxt := setupPaginator(t, 3)
+
+		fxt.P.Append([]string{"row1", "col2"}) // 0 | P1 | (H) p1 -> header row
+		fxt.P.Append([]string{"row2", "col2"}) // 1 | P1 | (H) p1
+		fxt.P.Append([]string{"row3", "col2"}) // 2 | P1 | (H) p1
+		fxt.P.Append([]string{"row4", "col2"}) // 3 | P2 | (H) p2
+		fxt.P.Append([]string{"row5", "col2"}) // 4 | P2 | (H) p2
+		fxt.P.Append([]string{"row6", "col2"}) // 5 | P2 | (H) p3
+		fxt.P.Append([]string{"row7", "col2"}) // 6 | P3 | (H) p3
+		fxt.P.Append([]string{"row8", "col2"}) // 7 | P3 | (H) p4
+
+		// (H) SIh = (SI-[PI-1~PI>2])
+		// (H) PSh = PS-1
+
+		// When - page 2
+		fxt.P.Next()
+
+		// When - page 2, enable headers
+		u.Skip(fxt.P.HasHeader.Set(true))
+
+		// Then
+		records := u.SkipV(fxt.Binding.Get())
+		assert.Len(t, records, 3)
+		assert.Equal(t, []string{"row1", "col2"}, records[0])
+		assert.Equal(t, []string{"row4", "col2"}, records[1])
+		assert.Equal(t, []string{"row5", "col2"}, records[2])
+
+		// When - page 3
+		fxt.P.Next()
+
+		// Then
+		records = u.SkipV(fxt.Binding.Get())
+		assert.Len(t, records, 3)
+		assert.Equal(t, []string{"row1", "col2"}, records[0])
+		assert.Equal(t, []string{"row6", "col2"}, records[1])
+		assert.Equal(t, []string{"row7", "col2"}, records[2])
+
+		// When - page 3, disable headers
+		u.Skip(fxt.P.HasHeader.Set(false))
+
+		// Then
+		records = u.SkipV(fxt.Binding.Get())
+		assert.Len(t, records, 2)
+		assert.Equal(t, []string{"row7", "col2"}, records[0])
+		assert.Equal(t, []string{"row8", "col2"}, records[1])
+
+		// When - enable header, page 4
+		u.Skip(fxt.P.HasHeader.Set(true))
+		fxt.P.Next()
+
+		// Then
+		records = u.SkipV(fxt.Binding.Get())
+		assert.Len(t, records, 2)
+		assert.Equal(t, []string{"row1", "col2"}, records[0])
+		assert.Equal(t, []string{"row8", "col2"}, records[1])
 	})
 }
 

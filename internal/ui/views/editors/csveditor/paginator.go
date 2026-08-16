@@ -2,6 +2,7 @@ package csveditor
 
 import (
 	"fyne.io/fyne/v2/data/binding"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 const (
@@ -15,13 +16,21 @@ type Paginator struct {
 	CurrentIndex int
 	PageSize     int
 	binding      binding.List[[]string]
+	HasHeader    binding.Bool
 }
 
 func NewCsvPaginator(bound binding.List[[]string]) *Paginator {
-	return &Paginator{
-		PageSize: defaultPageSize,
-		binding:  bound,
+	hasHeader := binding.NewBool()
+
+	p := &Paginator{
+		PageSize:  defaultPageSize,
+		binding:   bound,
+		HasHeader: hasHeader,
 	}
+
+	hasHeader.AddListener(binding.NewDataListener(p.updateBinding))
+
+	return p
 }
 
 func (p *Paginator) Append(vals []string) {
@@ -30,12 +39,12 @@ func (p *Paginator) Append(vals []string) {
 }
 
 func (p *Paginator) Next() bool {
-	if p.CurrentIndex+p.PageSize >= len(p.Records) {
+	if p.currentIndex()+p.pageSize() >= len(p.Records) {
 		return false
 	}
 	p.CurrentIndex += p.PageSize
 	p.updateBinding()
-	return p.CurrentIndex+p.PageSize < len(p.Records)
+	return p.currentIndex()+p.pageSize() < len(p.Records)
 }
 
 func (p *Paginator) Prev() bool {
@@ -51,10 +60,7 @@ func (p *Paginator) Prev() bool {
 }
 
 func (p *Paginator) PageNumber() int {
-	if p.PageSize == 0 {
-		return 0
-	}
-	return p.CurrentIndex/p.PageSize + 1
+	return p.pageIndex() + 1
 }
 
 func (p *Paginator) TotalPages() int {
@@ -79,24 +85,61 @@ func (p *Paginator) HasNext() bool {
 	return p.CurrentIndex+p.PageSize < len(p.Records)
 }
 
+func (p *Paginator) pageSize() int {
+	pageSize := p.PageSize
+	if p.hasHeader() {
+		pageSize--
+	}
+	return pageSize
+}
+
+func (p *Paginator) currentIndex() int {
+	index := p.CurrentIndex
+	pageIndex := p.pageIndex()
+	if index > 0 && p.hasHeader() {
+		if pageIndex > 1 {
+			index -= pageIndex - 1
+		}
+	}
+	return index
+}
+
+func (p *Paginator) hasHeader() bool {
+	return u.SkipV(p.HasHeader.Get())
+}
+
 func (p *Paginator) updateBinding() {
 	if p.binding == nil {
 		return
 	}
 
-	end := p.CurrentIndex + p.PageSize
+	pageSize := p.pageSize()
+	startIndex := p.currentIndex()
+	hasHeader := p.hasHeader()
+
+	end := startIndex + pageSize
 	if end > len(p.Records) {
 		end = len(p.Records)
 	}
 
-	if p.CurrentIndex >= len(p.Records) {
-		_ = p.binding.Set(nil)
+	if startIndex >= len(p.Records) {
+		u.Skip(p.binding.Set(nil))
 		return
 	}
 
 	var page [][]string
-	for i := p.CurrentIndex; i < end; i++ {
+	if hasHeader {
+		page = append(page, []string(p.Records[0]))
+	}
+	for i := startIndex; i < end; i++ {
 		page = append(page, []string(p.Records[i]))
 	}
-	_ = p.binding.Set(page)
+	u.Skip(p.binding.Set(page))
+}
+
+func (p *Paginator) pageIndex() int {
+	if p.PageSize == 0 {
+		return 0
+	}
+	return p.CurrentIndex / p.PageSize
 }
