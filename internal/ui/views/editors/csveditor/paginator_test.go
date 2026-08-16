@@ -43,7 +43,7 @@ func TestPaginator(t *testing.T) {
 
 		// Then
 		assert.Equal(t, 10, p.PageSize)
-		assert.Equal(t, 0, p.CurrentIndex)
+		assert.Equal(t, 0, p.CurrentIndex())
 		assert.Empty(t, p.Records)
 	})
 
@@ -138,7 +138,7 @@ func TestPaginator_Append(t *testing.T) {
 		fxt.P.Append([]string{"4", "d"})
 
 		// Then
-		assert.Equal(t, 2, fxt.P.CurrentIndex)
+		assert.Equal(t, 2, fxt.P.CurrentIndex())
 		records, _ := fxt.Binding.Get()
 		require.Len(t, records, 2)
 		assert.Equal(t, []string{"3", "c"}, records[0])
@@ -158,7 +158,7 @@ func TestPaginator_Next(t *testing.T) {
 
 		// Then
 		assert.False(t, res, "Next should return false when no more pages")
-		assert.Equal(t, 0, fxt.P.CurrentIndex, "CurrentIndex should not have changed")
+		assert.Equal(t, 0, fxt.P.CurrentIndex(), "CurrentIndex should not have changed")
 	})
 
 	t.Run("should return false when the last page is reached", func(t *testing.T) {
@@ -174,7 +174,7 @@ func TestPaginator_Next(t *testing.T) {
 
 		// Then
 		assert.False(t, res, "Next should return false on the last page")
-		assert.Equal(t, 2, fxt.P.CurrentIndex, "CurrentIndex should not have changed")
+		assert.Equal(t, 2, fxt.P.CurrentIndex(), "CurrentIndex should not have changed")
 	})
 
 	t.Run("should update the bound list and increment index", func(t *testing.T) {
@@ -188,7 +188,7 @@ func TestPaginator_Next(t *testing.T) {
 
 		// Then
 		assert.False(t, res)
-		assert.Equal(t, 1, fxt.P.CurrentIndex)
+		assert.Equal(t, 1, fxt.P.CurrentIndex())
 
 		records, _ := fxt.Binding.Get()
 		require.Len(t, records, 1)
@@ -208,7 +208,7 @@ func TestPaginator_Prev(t *testing.T) {
 
 		// Then
 		assert.False(t, res, "Prev should return false when on the first page")
-		assert.Equal(t, 0, fxt.P.CurrentIndex, "CurrentIndex should not have changed")
+		assert.Equal(t, 0, fxt.P.CurrentIndex(), "CurrentIndex should not have changed")
 	})
 
 	t.Run("should update the bound list and decrement index", func(t *testing.T) {
@@ -223,7 +223,7 @@ func TestPaginator_Prev(t *testing.T) {
 
 		// Then
 		assert.True(t, res)
-		assert.Equal(t, 0, fxt.P.CurrentIndex)
+		assert.Equal(t, 0, fxt.P.CurrentIndex())
 
 		records, _ := fxt.Binding.Get()
 		require.Len(t, records, 1)

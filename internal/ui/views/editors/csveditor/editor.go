@@ -64,6 +64,7 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		dataListeners: make(map[string]func()),
 	}
 	ed.Paginator = NewCsvPaginator(ed.Records)
+	ed.Paginator.HasHeader.AddListener(binding.NewDataListener(ed.updateColumnsWidth))
 
 	ed.ExtendBaseEditor(ed)
 
@@ -105,7 +106,7 @@ func (e *Editor) NextPage() bool {
 }
 
 func (e *Editor) PrevPage() {
-	if e.Paginator.CurrentIndex == 0 {
+	if e.Paginator.CurrentIndex() == 0 {
 		return
 	}
 
@@ -234,13 +235,22 @@ func (e *Editor) updateColumnsWidth() {
 	th := fyne.CurrentApp().Settings().Theme()
 	textSize := th.Size(theme.SizeNameText)
 
-	firstVisibleRow := e.Paginator.Records[e.Paginator.CurrentIndex]
+	firstVisibleRow := e.Paginator.Records[e.Paginator.CurrentIndex()]
 	nbCols := len(firstVisibleRow)
 	var colWidths []ColWidth
+	hasHeader := u.SkipV(e.Paginator.HasHeader.Get())
 	for i := range nbCols {
 		col := colMinWidth
+		if hasHeader {
+			row := e.Paginator.Records[0]
+			cw := colWidth(row[i], textSize)
+			col = ColWidth(cw)
+			if col >= colMaxWidth {
+				col = colMaxWidth
+			}
+		}
 		for j := range e.Paginator.CurrentPageSize() {
-			row := e.Paginator.Records[e.Paginator.CurrentIndex+j]
+			row := e.Paginator.Records[e.Paginator.CurrentIndex()+j]
 			cw := colWidth(row[i], textSize)
 			if float32(col) < cw-cellPadding {
 				col = ColWidth(cw)

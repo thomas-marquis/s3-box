@@ -139,7 +139,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 
 	prevBtn = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), func() {
 		w.editor.PrevPage()
-		if w.editor.Paginator.CurrentIndex == 0 {
+		if w.editor.Paginator.CurrentIndex() == 0 {
 			prevBtn.Disable()
 		}
 		if w.editor.Paginator.HasNext() {
@@ -152,7 +152,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 		if !w.editor.NextPage() {
 			nextBtn.Disable()
 		}
-		if w.editor.Paginator.CurrentIndex > 0 {
+		if w.editor.Paginator.CurrentIndex() > 0 {
 			prevBtn.Enable()
 		}
 	})
@@ -163,8 +163,10 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 
 	pagination := container.NewHBox(prevBtn, pageLabel, nextBtn)
 
+	hasHeaderCheck := widget.NewCheckWithData("Has header", w.editor.Paginator.HasHeader)
+
 	top := container.NewBorder(nil, nil,
-		container.NewHBox(widget.NewToolbar(w.SaveBtn), pagination),
+		container.NewHBox(widget.NewToolbar(w.SaveBtn), pagination, hasHeaderCheck),
 		widget.NewLabelWithData(w.editor.StatusLabel),
 	)
 
