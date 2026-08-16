@@ -79,6 +79,12 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			rawVal, _ := w.editor.Records.GetValue(id.Row)
 			cellVal := rawVal[id.Col]
 			cell.SetText(cellVal)
+
+			if id.Row == 0 && u.SkipV(w.editor.Paginator.HasHeader.Get()) {
+				cell.TextStyle.Bold = true
+			} else {
+				cell.TextStyle.Bold = false
+			}
 		})
 
 	table.HideSeparators = true
@@ -92,6 +98,8 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			table.SetColumnWidth(i, float32(col))
 		}
 	})
+
+	w.editor.Paginator.HasHeader.AddListener(binding.NewDataListener(table.Refresh))
 
 	loader := widget.NewProgressBarInfinite()
 
