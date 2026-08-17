@@ -121,6 +121,7 @@ func TestS3EventHandler(t *testing.T) {
 		})
 
 		t.Run("should handle AWS connection without custom endpoint", func(t *testing.T) {
+			// IMPORTANT: may fail when ran offline...
 			t.Parallel()
 			// Given
 			bucket := tu.FakeRandomBucketName()

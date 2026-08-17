@@ -116,11 +116,15 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 	loader.Stop()
 	loaderContainer.Hide()
 
-	if isLoading, _ := w.editor.IsLoading.Get(); isLoading {
+	hasHeaderCheck := widget.NewCheckWithData("Has header", w.editor.Paginator.HasHeader)
+	hasHeaderCheck.Disable()
+
+	if u.SkipV(w.editor.IsLoading.Get()) {
 		loader.Start()
 		loaderContainer.Show()
 	} else {
 		table.Show()
+		hasHeaderCheck.Enable()
 	}
 
 	w.editor.IsLoading.AddListener(binding.NewDataListener(func() {
@@ -129,6 +133,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			loaderContainer.Show()
 			loader.Start()
 			table.Hide()
+			hasHeaderCheck.Disable()
 		} else {
 			loaderContainer.Hide()
 			loader.Stop()
@@ -137,6 +142,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			if w.editor.Paginator.HasNext() {
 				nextBtn.Enable()
 			}
+			hasHeaderCheck.Enable()
 		}
 	}))
 
@@ -170,8 +176,6 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 	w.NextBtn = nextBtn
 
 	pagination := container.NewHBox(prevBtn, pageLabel, nextBtn)
-
-	hasHeaderCheck := widget.NewCheckWithData("Has header", w.editor.Paginator.HasHeader)
 
 	top := container.NewBorder(nil, nil,
 		container.NewHBox(widget.NewToolbar(w.SaveBtn), pagination, hasHeaderCheck),

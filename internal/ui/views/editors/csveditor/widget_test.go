@@ -12,9 +12,12 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/tu"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
+
+// uv run ./tools/diff_images.py --folders internal/ui/views/editors/csveditor/testdata/images internal/ui/views/editors/csveditor/testdata/failed/images --color "red"
 
 const (
 	csvContent = `id,name,age
@@ -180,5 +183,56 @@ func TestCsvEditorWidget(t *testing.T) {
 
 		// Then
 		tu.AssertImageMatches(t, "images/page-1.png", canvas.Capture())
+
+		// When - header enabled on page 1
+		u.Skip(ed.(*csveditor.Editor).Paginator.HasHeader.Set(true))
+		time.Sleep(300 * time.Millisecond) // Magic wait...
+		widgt.Refresh()
+
+		// Then
+		tu.AssertImageMatches(t, "images/page-1-header.png", canvas.Capture())
+	})
+
+	t.Run("should display header when enabled", func(t *testing.T) {
+		// Given
+		fxt := setup(t)
+		ed := fxt.Editor()
+
+		widgt := ed.CreateWidget().(*csveditor.Widget)
+		ed.Window().SetContent(widgt)
+		canvas := ed.Window().Canvas()
+
+		mockContent := &directory.InMemoryContent{
+			Data: []byte(csvLargeContent),
+		}
+
+		fxt.Bus().Publish(event.New(editor.Loaded{
+			Editor:  ed,
+			Content: mockContent,
+		}))
+
+		time.Sleep(300 * time.Millisecond) // Magic wait...
+		widgt.Refresh()
+
+		// When & Then - page 1
+		u.Skip(ed.(*csveditor.Editor).Paginator.HasHeader.Set(true))
+		time.Sleep(300 * time.Millisecond) // Magic wait...
+		widgt.Refresh()
+
+		tu.AssertImageMatches(t, "images/page-1-header.png", canvas.Capture())
+
+		// When & Then - page 2
+		fyne_test.Tap(widgt.NextBtn)
+		u.Skip(ed.(*csveditor.Editor).Paginator.HasHeader.Set(true))
+		time.Sleep(300 * time.Millisecond) // Magic wait...
+		widgt.Refresh()
+
+		tu.AssertImageMatches(t, "images/page-2-header.png", canvas.Capture())
+
+		u.Skip(ed.(*csveditor.Editor).Paginator.HasHeader.Set(false))
+		time.Sleep(300 * time.Millisecond) // Magic wait...
+		widgt.Refresh()
+
+		tu.AssertImageMatches(t, "images/page-2-header-disabled.png", canvas.Capture())
 	})
 }

@@ -232,6 +232,9 @@ func (e *Editor) updateContentHash(newContent string) {
 }
 
 func (e *Editor) updateColumnsWidth() {
+	if len(e.Paginator.Records) == 0 {
+		return
+	}
 	th := fyne.CurrentApp().Settings().Theme()
 	textSize := th.Size(theme.SizeNameText)
 
