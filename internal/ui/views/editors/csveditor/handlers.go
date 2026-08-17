@@ -16,8 +16,7 @@ func (e *Editor) handleLoaded(evt event.Event) {
 	r := csv.NewReader(pl.Content)
 
 	nbRows := 0
-	e.Paginator.Records = nil
-	e.Paginator.CurrentIndex = 0
+	e.Paginator.Reset()
 	for {
 		record, err := r.Read()
 		if err != nil {

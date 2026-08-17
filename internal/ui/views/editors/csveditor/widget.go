@@ -79,6 +79,12 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			rawVal, _ := w.editor.Records.GetValue(id.Row)
 			cellVal := rawVal[id.Col]
 			cell.SetText(cellVal)
+
+			if id.Row == 0 && u.SkipV(w.editor.Paginator.HasHeader.Get()) {
+				cell.TextStyle.Bold = true
+			} else {
+				cell.TextStyle.Bold = false
+			}
 		})
 
 	table.HideSeparators = true
@@ -92,6 +98,8 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			table.SetColumnWidth(i, float32(col))
 		}
 	})
+
+	w.editor.Paginator.HasHeader.AddListener(binding.NewDataListener(table.Refresh))
 
 	loader := widget.NewProgressBarInfinite()
 
@@ -108,11 +116,15 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 	loader.Stop()
 	loaderContainer.Hide()
 
-	if isLoading, _ := w.editor.IsLoading.Get(); isLoading {
+	hasHeaderCheck := widget.NewCheckWithData("Has header", w.editor.Paginator.HasHeader)
+	hasHeaderCheck.Disable()
+
+	if u.SkipV(w.editor.IsLoading.Get()) {
 		loader.Start()
 		loaderContainer.Show()
 	} else {
 		table.Show()
+		hasHeaderCheck.Enable()
 	}
 
 	w.editor.IsLoading.AddListener(binding.NewDataListener(func() {
@@ -121,6 +133,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			loaderContainer.Show()
 			loader.Start()
 			table.Hide()
+			hasHeaderCheck.Disable()
 		} else {
 			loaderContainer.Hide()
 			loader.Stop()
@@ -129,6 +142,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			if w.editor.Paginator.HasNext() {
 				nextBtn.Enable()
 			}
+			hasHeaderCheck.Enable()
 		}
 	}))
 
@@ -139,7 +153,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 
 	prevBtn = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), func() {
 		w.editor.PrevPage()
-		if w.editor.Paginator.CurrentIndex == 0 {
+		if w.editor.Paginator.CurrentIndex() == 0 {
 			prevBtn.Disable()
 		}
 		if w.editor.Paginator.HasNext() {
@@ -152,7 +166,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 		if !w.editor.NextPage() {
 			nextBtn.Disable()
 		}
-		if w.editor.Paginator.CurrentIndex > 0 {
+		if w.editor.Paginator.CurrentIndex() > 0 {
 			prevBtn.Enable()
 		}
 	})
@@ -164,7 +178,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 	pagination := container.NewHBox(prevBtn, pageLabel, nextBtn)
 
 	top := container.NewBorder(nil, nil,
-		container.NewHBox(widget.NewToolbar(w.SaveBtn), pagination),
+		container.NewHBox(widget.NewToolbar(w.SaveBtn), pagination, hasHeaderCheck),
 		widget.NewLabelWithData(w.editor.StatusLabel),
 	)
 
