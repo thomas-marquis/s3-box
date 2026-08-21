@@ -34,6 +34,7 @@ type File struct {
 	parent       *Directory
 	sizeBytes    uint64
 	lastModified time.Time
+	tags         map[string]Tag
 }
 
 func NewFile(name string, parent *Directory, opts ...FileOption) (*File, error) {
