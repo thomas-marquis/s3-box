@@ -28,6 +28,10 @@ type Tag struct {
 	Value string
 }
 
+func CompareTag(t1, t2 Tag) bool {
+	return t1.Key == t2.Key
+}
+
 func NewTag(key, value string) (Tag, error) {
 	if err := validateTag(key, value); err != nil {
 		return Tag{}, err
@@ -49,6 +53,16 @@ type TagSet struct {
 	tags        map[string]Tag
 	pendingCmds []Command
 	pendingTags map[string]Tag
+	file        *File
+}
+
+func NewTagSet(file *File) *TagSet {
+	return &TagSet{
+		tags:        make(map[string]Tag),
+		pendingCmds: make([]Command, 0),
+		pendingTags: make(map[string]Tag),
+		file:        file,
+	}
 }
 
 func (t *TagSet) Add(key, value string) error {
@@ -124,11 +138,12 @@ func (t *TagSet) Save() event.Event {
 	return event.New(TagsSaveTriggered{
 		TagSet: t,
 		Tags:   tagListFromMap(t.pendingTags),
+		File:   t.file,
 	})
 }
 
 func (t *TagSet) Load() event.Event {
-	return event.New(TagsLoadTriggered{TagSet: t})
+	return event.New(TagsLoadTriggered{TagSet: t, File: t.file})
 }
 
 func (t *TagSet) Notify(evt event.Event) {
