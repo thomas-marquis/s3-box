@@ -45,14 +45,15 @@ func NewTagsViewmodel(ctx context.Context, bus event.Bus, appState *state.State)
 }
 
 func (v *tagsViewmodelImpl) Select(ts *directory.TagSet) {
+	u.Skip(v.state.IsLoading().Set(true))
+	u.Skip(v.state.StatusLabel().Set(""))
+	v.state.SetCurrentTagSet(ts)
+
 	if ts.IsLoaded() {
 		uu.SetListValues(v.state.DisplayedTags(), ts.Get())
 		return
 	}
 
-	u.Skip(v.state.IsLoading().Set(true))
-	u.Skip(v.state.StatusLabel().Set(""))
-	v.state.SetCurrentTagSet(ts)
 	v.bus.Publish(ts.Load())
 	uu.SetListValues(v.state.DisplayedTags(), []directory.Tag{})
 }

@@ -128,6 +128,7 @@ func NewTagsTable(appCtx appcontext.AppContext, vm viewmodel.TagsViewmodel) *Tag
 			case tableColActions:
 				label.Hide()
 				actions.Show()
+
 				delBtn.OnTapped = w.makeOnTagDelete(boundTag)
 				editBtn.OnTapped = w.makeOnTagEdit(ts, boundTag)
 			}

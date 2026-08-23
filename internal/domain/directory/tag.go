@@ -97,9 +97,13 @@ func (t *TagSet) Add(key, value string) error {
 		t.mu.RUnlock()
 		return ErrMaxTagCountReached
 	}
-	if err := t.Validate(key, value); err != nil {
+	if err := validateTag(key, value); err != nil {
 		t.mu.RUnlock()
 		return err
+	}
+	if _, exists := t.tags[key]; exists {
+		t.mu.RUnlock()
+		return ErrTagKeyAlreadyExists
 	}
 
 	for _, cmd := range t.pendingCmds {
@@ -113,18 +117,6 @@ func (t *TagSet) Add(key, value string) error {
 	t.mu.Lock()
 	t.pendingCmds = append(t.pendingCmds, tagAdd{TagSet: t, NewTag: Tag{Key: key, Value: value}})
 	t.mu.Unlock()
-	return nil
-}
-
-func (t *TagSet) Validate(key, value string) error {
-	if err := validateTag(key, value); err != nil {
-		t.mu.RUnlock()
-		return err
-	}
-	if _, exists := t.tags[key]; exists {
-		t.mu.RUnlock()
-		return ErrTagKeyAlreadyExists
-	}
 	return nil
 }
 
