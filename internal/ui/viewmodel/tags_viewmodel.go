@@ -45,7 +45,7 @@ func NewTagsViewmodel(ctx context.Context, bus event.Bus, appState *state.State)
 }
 
 func (v *tagsViewmodelImpl) Select(ts *directory.TagSet) {
-	if ts.IsLoaded().Get() {
+	if ts.IsLoaded() {
 		uu.SetListValues(v.state.DisplayedTags(), ts.Get())
 		return
 	}

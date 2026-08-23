@@ -62,7 +62,7 @@ type TagSet struct {
 	pendingCmds  []Command
 	objectPath   Path
 	connectionID connection_deck.ConnectionID
-	isLoaded     *u.ObservableValue[bool]
+	isLoaded     bool
 }
 
 func NewTagSet(path Path, connectionID connection_deck.ConnectionID) *TagSet {
@@ -72,7 +72,6 @@ func NewTagSet(path Path, connectionID connection_deck.ConnectionID) *TagSet {
 		pendingCmds:  make([]Command, 0),
 		objectPath:   path,
 		connectionID: connectionID,
-		isLoaded:     u.NewObservableValue(false),
 	}
 }
 
@@ -84,7 +83,7 @@ func (t *TagSet) ObjectPath() Path {
 	return t.objectPath
 }
 
-func (t *TagSet) IsLoaded() *u.ObservableValue[bool] {
+func (t *TagSet) IsLoaded() bool {
 	return t.isLoaded
 }
 
@@ -216,7 +215,9 @@ func (t *TagSet) Save() event.Event {
 }
 
 func (t *TagSet) Load() event.Event {
-	if t.isLoaded.Get() {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	if t.isLoaded {
 		return event.New(event.ItHappened{}) // TODO: nothing happened
 	}
 	return event.New(TagsLoadTriggered{TagSet: t})
@@ -227,7 +228,9 @@ func (t *TagSet) Notify(evt event.Event) {
 	case TagsLoadSucceeded:
 		t.replaceTags(pl.Tags)
 		t.TriggerAll(pl.Tags)
-		t.isLoaded.Set(true)
+		t.mu.Lock()
+		t.isLoaded = true
+		t.mu.Unlock()
 	case TagsSaveSucceeded:
 		t.replaceTags(pl.Tags)
 		t.TriggerAll(pl.Tags)
