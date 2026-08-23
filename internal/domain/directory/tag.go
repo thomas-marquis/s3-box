@@ -95,17 +95,17 @@ func (t *TagSet) ConnectionID() connection_deck.ConnectionID {
 func (t *TagSet) Add(key, value string) error {
 	t.mu.RLock()
 	if len(t.tags) >= MaxTagCount {
+		t.mu.RUnlock()
 		return ErrMaxTagCountReached
 	}
-	if err := validateTag(key, value); err != nil {
+	if err := t.Validate(key, value); err != nil {
+		t.mu.RUnlock()
 		return err
-	}
-	if _, exists := t.tags[key]; exists {
-		return ErrTagKeyAlreadyExists
 	}
 
 	for _, cmd := range t.pendingCmds {
 		if cmd.Key() == key {
+			t.mu.RUnlock()
 			return ErrTagOperationPending
 		}
 	}
@@ -117,16 +117,30 @@ func (t *TagSet) Add(key, value string) error {
 	return nil
 }
 
+func (t *TagSet) Validate(key, value string) error {
+	if err := validateTag(key, value); err != nil {
+		t.mu.RUnlock()
+		return err
+	}
+	if _, exists := t.tags[key]; exists {
+		t.mu.RUnlock()
+		return ErrTagKeyAlreadyExists
+	}
+	return nil
+}
+
 func (t *TagSet) Remove(key string) error {
 	if len(key) > MaxTagKeyLength {
 		return ErrTagKeyTooLong
 	}
 	t.mu.RLock()
 	if _, exists := t.tags[key]; !exists {
+		t.mu.RUnlock()
 		return ErrTagKeyNotExists
 	}
 	for _, cmd := range t.pendingCmds {
 		if cmd.Key() == key {
+			t.mu.RUnlock()
 			return ErrTagOperationPending
 		}
 	}
@@ -142,16 +156,21 @@ func (t *TagSet) Update(originalKey, newKey, newValue string) error {
 	if err := validateTag(newKey, newValue); err != nil {
 		return err
 	}
-	t.mu.Lock()
-	defer t.mu.Unlock()
 
+	t.mu.RLock()
 	if _, exists := t.tags[originalKey]; !exists {
+		t.mu.RUnlock()
 		return ErrTagKeyNotExists
 	}
 
 	if _, exists := t.tags[newKey]; newKey != originalKey && exists {
+		t.mu.RUnlock()
 		return ErrTagKeyAlreadyExists
 	}
+	t.mu.RUnlock()
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	for i, cmd := range t.pendingCmds {
 		if cmd.Key() == originalKey {

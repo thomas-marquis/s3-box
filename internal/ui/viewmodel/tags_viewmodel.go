@@ -2,17 +2,20 @@ package viewmodel
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 )
 
 type TagsViewmodel interface {
 	Select(ts *directory.TagSet)
 	Save()
 	Add(key, value string) error
+	Delete(key string)
 }
 
 type tagsViewmodelImpl struct {
@@ -42,10 +45,16 @@ func NewTagsViewmodel(ctx context.Context, bus event.Bus, appState *state.State)
 }
 
 func (v *tagsViewmodelImpl) Select(ts *directory.TagSet) {
+	if ts.IsLoaded().Get() {
+		uu.SetListValues(v.state.DisplayedTags(), ts.Get())
+		return
+	}
+
 	u.Skip(v.state.IsLoading().Set(true))
 	u.Skip(v.state.StatusLabel().Set(""))
 	v.state.SetCurrentTagSet(ts)
 	v.bus.Publish(ts.Load())
+	uu.SetListValues(v.state.DisplayedTags(), []directory.Tag{})
 }
 
 func (v *tagsViewmodelImpl) Save() {
@@ -62,12 +71,21 @@ func (v *tagsViewmodelImpl) Add(key, value string) error {
 	return nil
 }
 
+func (v *tagsViewmodelImpl) Delete(key string) {
+	ts := v.state.CurrentTagSet()
+	if err := ts.Remove(key); err != nil {
+		u.Skip(v.state.StatusLabel().Set(fmt.Sprintf("failed to remove tag: %s", err.Error())))
+	}
+	v.bus.Publish(ts.Save())
+}
+
 func (v *tagsViewmodelImpl) handleLoaded(evt event.Event) {
 	pl := evt.Payload().(directory.TagsLoadSucceeded)
 	pl.TagSet.Notify(evt)
 	if v.hasCurrentTagSetChanged(pl.TagSet) {
 		return
 	}
+	uu.SetListValues(v.state.DisplayedTags(), pl.Tags)
 	u.Skip(v.state.IsLoading().Set(false))
 }
 
@@ -87,6 +105,7 @@ func (v *tagsViewmodelImpl) handleSaved(evt event.Event) {
 	if v.hasCurrentTagSetChanged(pl.TagSet) {
 		return
 	}
+	uu.SetListValues(v.state.DisplayedTags(), pl.Tags)
 	u.Skip(v.state.StatusLabel().Set("Saved"))
 }
 

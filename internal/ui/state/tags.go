@@ -13,12 +13,14 @@ type TagsState struct {
 	isLoading     binding.Bool
 	statusLabel   binding.String
 	currentTagSet *directory.TagSet
+	displayedTags binding.List[directory.Tag]
 }
 
 func newTagsState() *TagsState {
 	return &TagsState{
-		isLoading:   binding.NewBool(),
-		statusLabel: binding.NewString(),
+		isLoading:     binding.NewBool(),
+		statusLabel:   binding.NewString(),
+		displayedTags: binding.NewList(directory.CompareTag),
 	}
 }
 
@@ -34,6 +36,10 @@ func (t *TagsState) CurrentTagSet() *directory.TagSet {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.currentTagSet
+}
+
+func (t *TagsState) DisplayedTags() binding.List[directory.Tag] {
+	return t.displayedTags
 }
 
 func (t *TagsState) SetCurrentTagSet(ts *directory.TagSet) {

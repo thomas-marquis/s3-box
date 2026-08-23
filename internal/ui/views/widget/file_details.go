@@ -129,7 +129,7 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 					),
 					makeSeparator()),
 				nil, nil, nil,
-				tagsGroup,
+				container.NewPadded(tagsGroup),
 			),
 		),
 	)

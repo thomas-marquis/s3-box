@@ -73,21 +73,3 @@ func (e *NumericalEntry[T]) Bind(data binding.Item[T]) {
 		),
 	)
 }
-
-type TextEntry struct {
-	widget.Entry
-	OnTyped func(string)
-}
-
-func NewTextEntry() *TextEntry {
-	e := &TextEntry{}
-	e.ExtendBaseWidget(e)
-	return e
-}
-
-func (e *TextEntry) TypedRune(r rune) {
-	e.Entry.TypedRune(r)
-	if e.OnTyped != nil {
-		e.OnTyped(e.Text)
-	}
-}
