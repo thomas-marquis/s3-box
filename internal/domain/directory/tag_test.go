@@ -8,13 +8,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/it-happened/eventest"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 )
 
 func TestTagSet_Load(t *testing.T) {
 	t.Run("should load successfully", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 		require.Empty(t, ts.Get())
 
 		// When
@@ -50,7 +51,7 @@ func TestTagSet_Load(t *testing.T) {
 func TestTagSet_Add(t *testing.T) {
 	t.Run("should add a new tag", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 
 		t1 := directory.Tag{
 			Key:   "mykey",
@@ -92,7 +93,7 @@ func TestTagSet_Add(t *testing.T) {
 
 	t.Run("should return an error when the tag already exists", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 
 		t1 := directory.Tag{
 			Key:   "mykey",
@@ -114,7 +115,7 @@ func TestTagSet_Add(t *testing.T) {
 
 	t.Run("should return an error when the tag has already been added but still in pending", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 
 		require.NoError(t, ts.Add("mykey", "toto"))
 		require.Len(t, ts.Get(), 0)
@@ -128,7 +129,7 @@ func TestTagSet_Add(t *testing.T) {
 
 	t.Run("should return an error when 10 tags are already attached to the file", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 		existingTags := make([]directory.Tag, 10)
 		for i := range 9 {
 			existingTags = append(existingTags, directory.Tag{Key: fmt.Sprintf("key%d", i), Value: fmt.Sprintf("value%d", i)})
@@ -145,7 +146,7 @@ func TestTagSet_Add(t *testing.T) {
 
 	t.Run("should return an error when the tag key length is greater than 128 Unicode characters", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 		longKey := string(make([]rune, 129))
 
 		// When
@@ -157,7 +158,7 @@ func TestTagSet_Add(t *testing.T) {
 
 	t.Run("should return an error when the tag value length is greater than 256 Unicode characters", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 		longValue := string(make([]rune, 257))
 
 		// When
@@ -171,7 +172,7 @@ func TestTagSet_Add(t *testing.T) {
 func TestTagSet_Remove(t *testing.T) {
 	t.Run("should remove an existing tag", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 		t1 := directory.Tag{Key: "mykey", Value: "toto"}
 		t2 := directory.Tag{Key: "other", Value: "lolo"}
 
@@ -207,7 +208,7 @@ func TestTagSet_Remove(t *testing.T) {
 
 	t.Run("should return an error when the tag does not exist", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 
 		// When
 		err := ts.Remove("nonexistent")
@@ -218,7 +219,7 @@ func TestTagSet_Remove(t *testing.T) {
 
 	t.Run("should return an error when the tag key length is greater than 128 Unicode characters", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 		longKey := string(make([]rune, 129))
 
 		// When
@@ -230,7 +231,7 @@ func TestTagSet_Remove(t *testing.T) {
 
 	t.Run("should return an error when the tag has already been removed but still in pending", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 		t1 := directory.Tag{Key: "mykey", Value: "toto"}
 
 		ts.Notify(event.New(directory.TagsLoadSucceeded{
@@ -249,9 +250,9 @@ func TestTagSet_Remove(t *testing.T) {
 }
 
 func TestTagSet_Update(t *testing.T) {
-	t.Run("should update an existing tag", func(t *testing.T) {
+	t.Run("should update an existing tag's value", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 		t1 := directory.Tag{Key: "mykey", Value: "toto"}
 		t2 := directory.Tag{Key: "other", Value: "lolo"}
 
@@ -262,7 +263,7 @@ func TestTagSet_Update(t *testing.T) {
 		require.Len(t, ts.Get(), 2)
 
 		// When
-		err := ts.Update("mykey", "newvalue")
+		err := ts.Update("mykey", "mykey", "newvalue")
 		require.NoError(t, err)
 		evt := ts.Save()
 
@@ -294,10 +295,10 @@ func TestTagSet_Update(t *testing.T) {
 
 	t.Run("should return an error when the tag does not exist", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 
 		// When
-		err := ts.Update("nonexistent", "newvalue")
+		err := ts.Update("nonexistent", "newKey", "newvalue")
 
 		// Then
 		assert.ErrorIs(t, err, directory.ErrTagKeyNotExists)
@@ -305,11 +306,18 @@ func TestTagSet_Update(t *testing.T) {
 
 	t.Run("should return an error when the tag key length is greater than 128 Unicode characters", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
+		t1 := directory.Tag{Key: "mykey", Value: "toto"}
+
+		ts.Notify(event.New(directory.TagsLoadSucceeded{
+			TagSet: ts,
+			Tags:   []directory.Tag{t1},
+		}))
+
 		longKey := string(make([]rune, 129))
 
 		// When
-		err := ts.Update(longKey, "value")
+		err := ts.Update("mykey", longKey, "value")
 
 		// Then
 		assert.ErrorIs(t, err, directory.ErrTagKeyTooLong)
@@ -317,7 +325,7 @@ func TestTagSet_Update(t *testing.T) {
 
 	t.Run("should return an error when the tag value length is greater than 256 Unicode characters", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 		t1 := directory.Tag{Key: "mykey", Value: "toto"}
 
 		ts.Notify(event.New(directory.TagsLoadSucceeded{
@@ -328,15 +336,15 @@ func TestTagSet_Update(t *testing.T) {
 		longValue := string(make([]rune, 257))
 
 		// When
-		err := ts.Update("mykey", longValue)
+		err := ts.Update("mykey", "mykey", longValue)
 
 		// Then
 		assert.ErrorIs(t, err, directory.ErrTagValueTooLong)
 	})
 
-	t.Run("should return an error when the tag has already been updated but still in pending", func(t *testing.T) {
+	t.Run("should update the tag with the last set new value and key", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 		t1 := directory.Tag{Key: "mykey", Value: "toto"}
 
 		ts.Notify(event.New(directory.TagsLoadSucceeded{
@@ -344,20 +352,45 @@ func TestTagSet_Update(t *testing.T) {
 			Tags:   []directory.Tag{t1},
 		}))
 
-		require.NoError(t, ts.Update("mykey", "newvalue"))
-
 		// When
-		err := ts.Update("mykey", "another")
+		assert.NoError(t, ts.Update("mykey", "newKey", "newvalue"))
+		assert.NoError(t, ts.Update("mykey", "another", "newvalue2"))
 
 		// Then
-		assert.ErrorIs(t, err, directory.ErrTagOperationPending)
+		evt := ts.Save()
+		pl := evt.Payload().(directory.TagsSaveTriggered)
+
+		assert.Len(t, pl.Tags, 1)
+		assert.Equal(t, "another", pl.Tags[0].Key)
+		assert.Equal(t, "newvalue2", pl.Tags[0].Value)
+	})
+
+	t.Run("should return an error when the new key match an existing key", func(t *testing.T) {
+		// Given
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
+		t1 := directory.Tag{Key: "mykey", Value: "toto"}
+		t2 := directory.Tag{Key: "existingKey", Value: "lolo"}
+
+		ts.Notify(event.New(directory.TagsLoadSucceeded{
+			TagSet: ts,
+			Tags:   []directory.Tag{t1, t2},
+		}))
+
+		// When
+		err := ts.Update("mykey", "existingKey", "newvalue")
+
+		// Then
+		assert.ErrorIs(t, err, directory.ErrTagKeyAlreadyExists)
+
+		evt := ts.Save()
+		eventest.AssertIsType(t, evt, event.NothingHappenedType)
 	})
 }
 
-func TestTagSet_MixedOperations(t *testing.T) {
+func TestTagSet(t *testing.T) {
 	t.Run("should handle add, update, and remove operations together", func(t *testing.T) {
 		// Given
-		ts := &directory.TagSet{}
+		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
 		t1 := directory.Tag{Key: "mykey", Value: "toto"}
 		t2 := directory.Tag{Key: "other", Value: "lolo"}
 
@@ -369,7 +402,7 @@ func TestTagSet_MixedOperations(t *testing.T) {
 
 		// When
 		require.NoError(t, ts.Add("newkey", "newvalue"))
-		require.NoError(t, ts.Update("mykey", "updated"))
+		require.NoError(t, ts.Update("mykey", "mykey", "updated"))
 		require.NoError(t, ts.Remove("other"))
 
 		evt := ts.Save()

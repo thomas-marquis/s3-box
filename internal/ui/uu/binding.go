@@ -226,3 +226,50 @@ func NewBindMapper[S, T any](src binding.Item[S],
 
 	return b
 }
+
+// SetListValues update the provided binding.List values
+func SetListValues[T any](data binding.List[T], values []T) {
+	olds := u.SkipV(data.Get())
+	for _, v := range olds {
+		u.Skip(data.Remove(v))
+	}
+	for _, v := range values {
+		u.Skip(data.Append(v))
+	}
+}
+
+type ObservableValueBinding[T any] struct {
+	binding.Item[T]
+	obs *u.ObservableValue[T]
+}
+
+func NewObservableValueBinding[T any](obs *u.ObservableValue[T], comparator func(T, T) bool) binding.Item[T] {
+	b := &ObservableValueBinding[T]{
+		Item: binding.NewItem[T](comparator),
+		obs:  obs,
+	}
+
+	cancel := obs.Observe(func(newVal T) {
+		oldVal := u.SkipV(b.Get())
+		if comparator(oldVal, newVal) {
+			return
+		}
+		u.Skip(b.Set(newVal))
+	})
+
+	listener := binding.NewDataListener(func() {
+		oldVal := obs.Get()
+		newVal := u.SkipV(b.Get())
+		if comparator(oldVal, newVal) {
+			return
+		}
+		obs.Set(newVal)
+	})
+	b.AddListener(listener)
+
+	runtime.AddCleanup(b, func(cancel func()) {
+		cancel()
+	}, cancel)
+
+	return b
+}

@@ -2,10 +2,14 @@ package directory
 
 import (
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
+	"sync"
 
 	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 var (
@@ -29,7 +33,7 @@ type Tag struct {
 }
 
 func CompareTag(t1, t2 Tag) bool {
-	return t1.Key == t2.Key
+	return t1.Key == t2.Key && t1.Value == t2.Value
 }
 
 func NewTag(key, value string) (Tag, error) {
@@ -50,22 +54,52 @@ func validateTag(key, value string) error {
 }
 
 type TagSet struct {
-	tags        map[string]Tag
-	pendingCmds []Command
-	pendingTags map[string]Tag
-	file        *File
+	*u.Observable[[]Tag]
+
+	mu sync.RWMutex
+
+	tags         map[string]Tag
+	pendingCmds  []Command
+	objectPath   Path
+	connectionID connection_deck.ConnectionID
+	isLoaded     *u.ObservableValue[bool]
 }
 
-func NewTagSet(file *File) *TagSet {
+func NewTagSet(path Path, connectionID connection_deck.ConnectionID) *TagSet {
 	return &TagSet{
-		tags:        make(map[string]Tag),
-		pendingCmds: make([]Command, 0),
-		pendingTags: make(map[string]Tag),
-		file:        file,
+		Observable:   u.NewObservable[[]Tag](),
+		tags:         make(map[string]Tag),
+		pendingCmds:  make([]Command, 0),
+		objectPath:   path,
+		connectionID: connectionID,
+		isLoaded:     u.NewObservableValue(false),
 	}
 }
 
+func (t *TagSet) ID() string {
+	return fmt.Sprintf("%s:%s", t.connectionID, t.objectPath)
+}
+
+func (t *TagSet) ObjectPath() Path {
+	return t.objectPath
+}
+
+func (t *TagSet) IsLoaded() *u.ObservableValue[bool] {
+	return t.isLoaded
+}
+
+func (t *TagSet) ConnectionID() connection_deck.ConnectionID {
+	return t.connectionID
+}
+
+func (t *TagSet) HasPending() bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return len(t.pendingCmds) > 0
+}
+
 func (t *TagSet) Add(key, value string) error {
+	t.mu.RLock()
 	if len(t.tags) >= MaxTagCount {
 		return ErrMaxTagCountReached
 	}
@@ -75,13 +109,17 @@ func (t *TagSet) Add(key, value string) error {
 	if _, exists := t.tags[key]; exists {
 		return ErrTagKeyAlreadyExists
 	}
+
 	for _, cmd := range t.pendingCmds {
 		if cmd.Key() == key {
 			return ErrTagOperationPending
 		}
 	}
+	t.mu.RUnlock()
 
+	t.mu.Lock()
 	t.pendingCmds = append(t.pendingCmds, tagAdd{TagSet: t, NewTag: Tag{Key: key, Value: value}})
+	t.mu.Unlock()
 	return nil
 }
 
@@ -89,6 +127,7 @@ func (t *TagSet) Remove(key string) error {
 	if len(key) > MaxTagKeyLength {
 		return ErrTagKeyTooLong
 	}
+	t.mu.RLock()
 	if _, exists := t.tags[key]; !exists {
 		return ErrTagKeyNotExists
 	}
@@ -97,65 +136,94 @@ func (t *TagSet) Remove(key string) error {
 			return ErrTagOperationPending
 		}
 	}
+	t.mu.RUnlock()
 
+	t.mu.Lock()
 	t.pendingCmds = append(t.pendingCmds, tagRemove{TagSet: t, TagKey: key})
+	t.mu.Unlock()
 	return nil
 }
 
-func (t *TagSet) Update(key, value string) error {
-	if err := validateTag(key, value); err != nil {
+func (t *TagSet) Update(originalKey, newKey, newValue string) error {
+	if err := validateTag(newKey, newValue); err != nil {
 		return err
 	}
-	if _, exists := t.tags[key]; !exists {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if _, exists := t.tags[originalKey]; !exists {
 		return ErrTagKeyNotExists
 	}
-	for _, cmd := range t.pendingCmds {
-		if cmd.Key() == key {
+
+	if _, exists := t.tags[newKey]; newKey != originalKey && exists {
+		return ErrTagKeyAlreadyExists
+	}
+
+	for i, cmd := range t.pendingCmds {
+		if cmd.Key() == originalKey {
+			if _, ok := cmd.(tagUpdate); ok {
+				t.pendingCmds[i] = tagUpdate{TagKey: originalKey, NewKey: newKey, NewValue: newValue}
+				return nil
+			}
 			return ErrTagOperationPending
 		}
 	}
 
-	t.pendingCmds = append(t.pendingCmds, tagUpdate{TagSet: t, TagKey: key, NewValue: value})
+	t.pendingCmds = append(t.pendingCmds, tagUpdate{TagKey: originalKey, NewKey: newKey, NewValue: newValue})
 	return nil
 }
 
 func (t *TagSet) Get() (tags []Tag) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return tagListFromMap(t.tags)
 }
 
 func (t *TagSet) Save() event.Event {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	if len(t.pendingCmds) == 0 {
-		return event.New(event.ItHappened{}) // TODO: nothing happened
+		return event.New(event.NothingHappened{})
 	}
-	t.pendingTags = make(map[string]Tag)
+	pendingTags := make(map[string]Tag)
 	for k, v := range t.tags {
-		t.pendingTags[k] = v
+		pendingTags[k] = v
 	}
 	for _, cmd := range t.pendingCmds {
-		cmd.Execute()
+		cmd.Execute(pendingTags)
 	}
+
+	clear(t.pendingCmds)
 
 	return event.New(TagsSaveTriggered{
 		TagSet: t,
-		Tags:   tagListFromMap(t.pendingTags),
-		File:   t.file,
+		Tags:   tagListFromMap(pendingTags),
 	})
 }
 
 func (t *TagSet) Load() event.Event {
-	return event.New(TagsLoadTriggered{TagSet: t, File: t.file})
+	if t.isLoaded.Get() {
+		return event.New(event.ItHappened{}) // TODO: nothing happened
+	}
+	return event.New(TagsLoadTriggered{TagSet: t})
 }
 
 func (t *TagSet) Notify(evt event.Event) {
 	switch pl := evt.Payload().(type) {
 	case TagsLoadSucceeded:
 		t.replaceTags(pl.Tags)
+		t.TriggerAll(pl.Tags)
+		t.isLoaded.Set(true)
 	case TagsSaveSucceeded:
 		t.replaceTags(pl.Tags)
+		t.TriggerAll(pl.Tags)
 	}
 }
 
 func (t *TagSet) replaceTags(newTags []Tag) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	t.tags = make(map[string]Tag)
 	for _, tag := range newTags {
 		t.tags[tag.Key] = tag
@@ -164,7 +232,7 @@ func (t *TagSet) replaceTags(newTags []Tag) {
 
 type Command interface {
 	Key() string
-	Execute()
+	Execute(acc map[string]Tag)
 }
 
 type tagAdd struct {
@@ -176,8 +244,8 @@ func (c tagAdd) Key() string {
 	return c.NewTag.Key
 }
 
-func (c tagAdd) Execute() {
-	c.TagSet.pendingTags[c.NewTag.Key] = c.NewTag
+func (c tagAdd) Execute(acc map[string]Tag) {
+	acc[c.NewTag.Key] = c.NewTag
 }
 
 type tagRemove struct {
@@ -189,22 +257,22 @@ func (c tagRemove) Key() string {
 	return c.TagKey
 }
 
-func (c tagRemove) Execute() {
-	delete(c.TagSet.pendingTags, c.TagKey)
+func (c tagRemove) Execute(acc map[string]Tag) {
+	delete(acc, c.TagKey)
 }
 
 type tagUpdate struct {
 	TagKey   string
+	NewKey   string
 	NewValue string
-	TagSet   *TagSet
 }
 
 func (c tagUpdate) Key() string {
 	return c.TagKey
 }
 
-func (c tagUpdate) Execute() {
-	c.TagSet.pendingTags[c.TagKey] = Tag{Key: c.TagKey, Value: c.NewValue}
+func (c tagUpdate) Execute(acc map[string]Tag) {
+	acc[c.TagKey] = Tag{Key: c.NewKey, Value: c.NewValue}
 }
 
 func tagListFromMap(tags map[string]Tag) []Tag {

@@ -12,24 +12,22 @@ func (h *EventHandler) handleLoadTags(e event.Event) {
 	ctx := e.Context()
 	pl := e.Payload().(directory.TagsLoadTriggered)
 	tagSet := pl.TagSet
-	file := pl.File
 
 	handleError := func(err error) {
-		h.notifier.NotifyError(fmt.Errorf("failed loading tags for file %s: %w", file.FullPath(), err))
+		h.notifier.NotifyError(fmt.Errorf("failed loading tags for file %s: %w", pl.TagSet.ObjectPath(), err))
 		h.bus.Publish(e.NewFollowup(directory.TagsLoadFailed{
 			TagSet: tagSet,
 			Error:  err,
-			File:   file,
 		}))
 	}
 
-	client, err := h.clientFactory.Get(ctx, file.Parent().ConnectionID())
+	client, err := h.clientFactory.Get(ctx, pl.TagSet.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	key := mapFileToKey(file)
+	key := mapPathToObjectKey(pl.TagSet.ObjectPath())
 	output, err := client.GetObjectTagging(ctx, key)
 	if err != nil {
 		handleError(fmt.Errorf("failed to get tags for file %s: %w", key, err))
@@ -40,7 +38,6 @@ func (h *EventHandler) handleLoadTags(e event.Event) {
 	h.bus.Publish(e.NewFollowup(directory.TagsLoadSucceeded{
 		TagSet: tagSet,
 		Tags:   tags,
-		File:   file,
 	}))
 }
 
@@ -48,25 +45,23 @@ func (h *EventHandler) handleSaveTags(e event.Event) {
 	ctx := e.Context()
 	pl := e.Payload().(directory.TagsSaveTriggered)
 	tagSet := pl.TagSet
-	file := pl.File
 	tags := pl.Tags
 
 	handleError := func(err error) {
-		h.notifier.NotifyError(fmt.Errorf("failed saving tags for file %s: %w", file.FullPath(), err))
+		h.notifier.NotifyError(fmt.Errorf("failed saving tags for file %s: %w", pl.TagSet.ObjectPath(), err))
 		h.bus.Publish(e.NewFollowup(directory.TagsSaveFailed{
 			TagSet: tagSet,
 			Error:  err,
-			File:   file,
 		}))
 	}
 
-	client, err := h.clientFactory.Get(ctx, file.Parent().ConnectionID())
+	client, err := h.clientFactory.Get(ctx, pl.TagSet.ConnectionID())
 	if err != nil {
 		handleError(err)
 		return
 	}
 
-	key := mapFileToKey(file)
+	key := mapPathToObjectKey(pl.TagSet.ObjectPath())
 	s3Tags := s3client.MapFromDomainTags(tags)
 
 	if _, err := client.PutObjectTagging(ctx, key, s3Tags); err != nil {
@@ -77,6 +72,5 @@ func (h *EventHandler) handleSaveTags(e event.Event) {
 	h.bus.Publish(e.NewFollowup(directory.TagsSaveSucceeded{
 		TagSet: tagSet,
 		Tags:   tags,
-		File:   file,
 	}))
 }

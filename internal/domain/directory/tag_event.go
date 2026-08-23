@@ -1,6 +1,8 @@
 package directory
 
-import "github.com/thomas-marquis/it-happened/event"
+import (
+	"github.com/thomas-marquis/it-happened/event"
+)
 
 const (
 	TagsSaveTriggeredType event.Type = "event.tag.save.triggered"
@@ -11,7 +13,6 @@ const (
 type TagsSaveTriggered struct {
 	TagSet *TagSet
 	Tags   []Tag
-	File   *File
 }
 
 func (p TagsSaveTriggered) EventType() event.Type {
@@ -21,7 +22,6 @@ func (p TagsSaveTriggered) EventType() event.Type {
 type TagsSaveSucceeded struct {
 	TagSet *TagSet
 	Tags   []Tag
-	File   *File
 }
 
 func (p TagsSaveSucceeded) EventType() event.Type {
@@ -31,7 +31,6 @@ func (p TagsSaveSucceeded) EventType() event.Type {
 type TagsSaveFailed struct {
 	TagSet *TagSet
 	Error  error
-	File   *File
 }
 
 func (p TagsSaveFailed) EventType() event.Type {
@@ -46,7 +45,6 @@ const (
 
 type TagsLoadTriggered struct {
 	TagSet *TagSet
-	File   *File
 }
 
 func (p TagsLoadTriggered) EventType() event.Type {
@@ -56,7 +54,6 @@ func (p TagsLoadTriggered) EventType() event.Type {
 type TagsLoadSucceeded struct {
 	TagSet *TagSet
 	Tags   []Tag
-	File   *File
 }
 
 func (p TagsLoadSucceeded) EventType() event.Type {
@@ -66,7 +63,6 @@ func (p TagsLoadSucceeded) EventType() event.Type {
 type TagsLoadFailed struct {
 	TagSet *TagSet
 	Error  error
-	File   *File
 }
 
 func (p TagsLoadFailed) EventType() event.Type {

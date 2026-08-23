@@ -18,6 +18,7 @@ type State struct {
 	connections *ConnectionsState
 	explorer    *ExplorerState
 	settings    *SettingsState
+	tags        *TagsState
 }
 
 func New() *State {
@@ -29,6 +30,7 @@ func New() *State {
 			}),
 		},
 		settings: newSettingsState(),
+		tags:     newTagsState(),
 	}
 }
 
@@ -42,4 +44,8 @@ func (s *State) Connections() *ConnectionsState {
 
 func (s *State) Settings() *SettingsState {
 	return s.settings
+}
+
+func (s *State) Tags() *TagsState {
+	return s.tags
 }
