@@ -92,12 +92,6 @@ func (t *TagSet) ConnectionID() connection_deck.ConnectionID {
 	return t.connectionID
 }
 
-func (t *TagSet) HasPending() bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return len(t.pendingCmds) > 0
-}
-
 func (t *TagSet) Add(key, value string) error {
 	t.mu.RLock()
 	if len(t.tags) >= MaxTagCount {
@@ -194,7 +188,7 @@ func (t *TagSet) Save() event.Event {
 		cmd.Execute(pendingTags)
 	}
 
-	clear(t.pendingCmds)
+	t.pendingCmds = make([]Command, 0)
 
 	return event.New(TagsSaveTriggered{
 		TagSet: t,

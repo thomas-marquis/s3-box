@@ -29,31 +29,38 @@ type TagsTable struct {
 	state   *state.State
 	appCtx  appcontext.AppContext
 	table   *widget.Table
+
+	noTagsLabel   *widget.Label
+	noTagsBinding binding.String
 }
 
 func NewTagsTable(appCtx appcontext.AppContext, vm viewmodel.TagsViewmodel) *TagsTable {
 	w := &TagsTable{
-		vm:     vm,
-		appCtx: appCtx,
-		state:  appCtx.State(),
+		vm:            vm,
+		appCtx:        appCtx,
+		state:         appCtx.State(),
+		noTagsBinding: binding.NewString(),
 	}
 
 	w.ExtendBaseWidget(w)
 
-	w.SaveBtn = widget.NewButton("Save", w.vm.Save)
-	w.SaveBtn.Hide()
-	return w
-}
+	w.noTagsLabel = widget.NewLabelWithData(w.noTagsBinding)
+	w.noTagsLabel.Hide()
 
-func (w *TagsTable) CreateRenderer() fyne.WidgetRenderer {
-	w.ExtendBaseWidget(w)
+	w.SaveBtn = widget.NewButton("Save", func() {
+		w.vm.Save()
+		w.SaveBtn.Disable()
+	})
 
 	w.AddBtn = widget.NewButton("New tag", func() {
 		dataKey := binding.NewString()
 		dataValue := binding.NewString()
 
 		keyEntry := widget.NewEntryWithData(dataKey)
+		keyEntry.Resize(fyne.NewSize(150, keyEntry.Size().Height))
+
 		valEntry := widget.NewEntryWithData(dataValue)
+		valEntry.Resize(fyne.NewSize(150, valEntry.Size().Height))
 
 		dialog.ShowForm("New tag", "Add", "Cancel", []*widget.FormItem{
 			widget.NewFormItem("Key", keyEntry),
@@ -77,12 +84,14 @@ func (w *TagsTable) CreateRenderer() fyne.WidgetRenderer {
 			return w.state.Tags().Length(), 2
 		},
 		func() fyne.CanvasObject {
-			entry := widget.NewEntry()
-			entry.Validator = nil
+			entry := NewTextEntry()
+			entry.Validator = func(string) error {
+				return nil
+			}
 			return entry
 		},
 		func(id widget.TableCellID, o fyne.CanvasObject) {
-			entry := o.(*widget.Entry)
+			entry := o.(*TextEntry)
 
 			ts := w.state.Tags().CurrentTagSet()
 			if ts == nil {
@@ -95,30 +104,45 @@ func (w *TagsTable) CreateRenderer() fyne.WidgetRenderer {
 			if id.Col == 0 {
 				// Key
 				entry.SetText(tag.Key)
-				entry.OnChanged = func(newKey string) {
-					w.SaveBtn.Show()
+				entry.OnTyped = func(newKey string) {
 					entry.SetValidationError(ts.Update(tag.Key, newKey, tag.Value))
+					w.SaveBtn.Show()
+					w.SaveBtn.Enable()
 				}
 			} else {
 				// Value
 				entry.SetText(tag.Value)
-				entry.OnChanged = func(newValue string) {
-					w.SaveBtn.Show()
+				entry.OnTyped = func(newValue string) {
 					entry.SetValidationError(ts.Update(tag.Key, tag.Key, newValue))
+					w.SaveBtn.Show()
+					w.SaveBtn.Enable()
 				}
 			}
 		},
 	)
 
-	c := container.NewVBox(
-		w.table,
-		container.NewBorder(nil, nil,
+	return w
+}
+
+func (w *TagsTable) CreateRenderer() fyne.WidgetRenderer {
+	w.ExtendBaseWidget(w)
+
+	w.SaveBtn.Hide()
+
+	w.table.SetColumnWidth(0, 150)
+	w.table.SetColumnWidth(1, 200)
+	w.table.HideSeparators = true
+
+	c := container.NewBorder(
+		container.NewBorder(w.noTagsLabel, nil,
 			container.NewHBox(
 				w.AddBtn,
 				w.SaveBtn,
 			),
 			widget.NewLabelWithData(w.state.Tags().StatusLabel()),
 		),
+		nil, nil, nil,
+		w.table,
 	)
 
 	return widget.NewSimpleRenderer(c)
@@ -127,16 +151,26 @@ func (w *TagsTable) CreateRenderer() fyne.WidgetRenderer {
 // Select changes the tag set in use for this widget.
 func (w *TagsTable) Select(ts *directory.TagSet) {
 	w.SaveBtn.Hide()
+
 	prevTs := w.state.Tags().CurrentTagSet()
 	if prevTs != nil {
 		prevTs.RemoveObserversWithName(tagsWidgetObserversName)
 	}
 
-	w.vm.Select(ts)
-	ts.ObserveWithName(tagsWidgetObserversName, func([]directory.Tag) {
-		if w.table == nil {
-			return
-		}
-		w.table.Refresh()
+	ts.ObserveWithName(tagsWidgetObserversName, func(tags []directory.Tag) {
+		fyne.Do(func() {
+			if len(tags) == 0 {
+				w.table.Hide()
+				u.Skip(w.noTagsBinding.Set("No tags to display"))
+				w.noTagsLabel.Show()
+			} else {
+				w.table.Show()
+				u.Skip(w.noTagsBinding.Set(""))
+				w.noTagsLabel.Hide()
+			}
+		})
 	})
+	ts.TriggerWithName(tagsWidgetObserversName, ts.Get())
+
+	w.vm.Select(ts)
 }

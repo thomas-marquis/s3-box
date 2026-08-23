@@ -84,7 +84,7 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 		}
 	}()
 
-	detailsContainer := container.NewVBox()
+	detailsContainer := container.NewStack()
 	fileDetails := widget.NewFileDetails(appCtx)
 	dirDetails := widget.NewDirectoryDetails(appCtx)
 

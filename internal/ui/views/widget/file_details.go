@@ -103,22 +103,34 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 		lastModified,
 	)
 
+	tagsGroup := widget.NewAccordion(
+		widget.NewAccordionItem("Tags", w.tags),
+	)
+	tagsGroup.OpenAll()
+
 	return widget.NewSimpleRenderer(
-		container.NewVBox(
-			container.NewBorder(nil, nil,
-				container.NewHBox(w.fileIcon, w.pathLabel),
-				copyPath),
-			makeSeparator(),
-			container.New(
-				layout.NewCustomPaddedLayout(0, 0, 5, 5),
-				w.actionToolbar,
+		container.NewBorder(
+			container.NewVBox(
+				container.NewBorder(nil, nil,
+					container.NewHBox(w.fileIcon, w.pathLabel),
+					copyPath),
+				makeSeparator(),
 			),
-			container.New(
-				layout.NewCustomPaddedLayout(30, 0, 5, 5),
-				fileInfosTable,
+			nil, nil, nil,
+			container.NewBorder(
+				container.NewVBox(
+					container.New(
+						layout.NewCustomPaddedLayout(0, 0, 5, 5),
+						w.actionToolbar,
+					),
+					container.New(
+						layout.NewCustomPaddedLayout(30, 0, 5, 5),
+						fileInfosTable,
+					),
+					makeSeparator()),
+				nil, nil, nil,
+				tagsGroup,
 			),
-			makeSeparator(),
-			w.tags,
 		),
 	)
 }
