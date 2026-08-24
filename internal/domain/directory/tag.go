@@ -121,9 +121,6 @@ func (t *TagSet) Add(key, value string) error {
 }
 
 func (t *TagSet) Remove(key string) error {
-	if len(key) > MaxTagKeyLength {
-		return ErrTagKeyTooLong
-	}
 	t.mu.RLock()
 	if _, exists := t.tags[key]; !exists {
 		t.mu.RUnlock()

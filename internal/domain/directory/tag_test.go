@@ -217,18 +217,6 @@ func TestTagSet_Remove(t *testing.T) {
 		assert.ErrorIs(t, err, directory.ErrTagKeyNotExists)
 	})
 
-	t.Run("should return an error when the tag key length is greater than 128 Unicode characters", func(t *testing.T) {
-		// Given
-		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
-		longKey := string(make([]rune, 129))
-
-		// When
-		err := ts.Remove(longKey)
-
-		// Then
-		assert.ErrorIs(t, err, directory.ErrTagKeyTooLong)
-	})
-
 	t.Run("should return an error when the tag has already been removed but still in pending", func(t *testing.T) {
 		// Given
 		ts := directory.NewTagSet("/data/", connection_deck.NewConnectionID())
