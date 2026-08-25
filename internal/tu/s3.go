@@ -30,7 +30,7 @@ func SetupS3testContainer(ctx context.Context, t *testing.T) (string, func()) {
 	t.Helper()
 
 	req := testcontainers.ContainerRequest{
-		Image:        "ministackorg/ministack:latest",
+		Image:        "ministackorg/ministack:1.5.0",
 		ExposedPorts: []string{"4566/tcp"},
 		Env: map[string]string{
 			"GATEWAY_PORT": "4566",

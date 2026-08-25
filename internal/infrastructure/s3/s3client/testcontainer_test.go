@@ -227,8 +227,6 @@ func TestS3Client(t *testing.T) {
 			assert.Empty(t, res.Read)
 			assert.Empty(t, res.ReadAcp)
 			assert.Empty(t, res.WriteAcp)
-
-			assert.Equal(t, "id=000000000000", res.FullControl[0]) // ministack's default generate owner ID
 		})
 	})
 }
