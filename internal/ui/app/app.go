@@ -117,6 +117,8 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 	editorViewModel := viewmodel.NewEditorViewModel(ctx, eventBus, notifier,
 		connectionViewModel.Deck().SelectedConnection())
 
+	tagsViewModel := viewmodel.NewTagsViewmodel(ctx, eventBus, appState)
+
 	appCtx := appcontext.New(
 		appName,
 		w,
@@ -125,6 +127,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		settingsViewModel,
 		notificationsViewModel,
 		editorViewModel,
+		tagsViewModel,
 		initRoute,
 		appViews,
 		logger,

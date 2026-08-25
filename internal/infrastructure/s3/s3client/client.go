@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
@@ -21,6 +22,8 @@ type BaseAPI interface {
 	ListObjectsWithCallback(ctx context.Context, prefix string, recursive bool, callback func(page *s3.ListObjectsV2Output) error, opts ...Option) error
 	Download(ctx context.Context, key string, writer io.WriterAt, opts ...Option) error
 	Upload(ctx context.Context, key string, body io.Reader, opts ...Option) error
+	PutObjectTagging(ctx context.Context, key string, tags []s3types.Tag, opts ...Option) (*s3.PutObjectTaggingOutput, error)
+	GetObjectTagging(ctx context.Context, key string, opts ...Option) (*s3.GetObjectTaggingOutput, error)
 }
 
 type Client interface {
@@ -137,6 +140,13 @@ func (c *clientImpl) Download(ctx context.Context, key string, writer io.WriterA
 
 func (c *clientImpl) Upload(ctx context.Context, key string, body io.Reader, opts ...Option) error {
 	return c.api.Upload(ctx, key, body, opts...)
+}
+
+func (c *clientImpl) GetObjectTagging(ctx context.Context, key string, opts ...Option) (*s3.GetObjectTaggingOutput, error) {
+	return c.api.GetObjectTagging(ctx, key, opts...)
+}
+func (c *clientImpl) PutObjectTagging(ctx context.Context, key string, tags []s3types.Tag, opts ...Option) (*s3.PutObjectTaggingOutput, error) {
+	return c.api.PutObjectTagging(ctx, key, tags, opts...)
 }
 
 type Option func(any)

@@ -34,10 +34,12 @@ type File struct {
 	parent       *Directory
 	sizeBytes    uint64
 	lastModified time.Time
+	tagSet       *TagSet
 }
 
 func NewFile(name string, parent *Directory, opts ...FileOption) (*File, error) {
 	fileName, err := NewFileName(name)
+	filePath := parent.Path().NewSubFilePath(name)
 	if err != nil {
 		return nil, err
 	}
@@ -45,6 +47,7 @@ func NewFile(name string, parent *Directory, opts ...FileOption) (*File, error) 
 		name:         fileName,
 		parent:       parent,
 		lastModified: time.Now(),
+		tagSet:       NewTagSet(filePath, parent.ConnectionID()),
 	}
 	for _, opt := range opts {
 		opt(f)
@@ -66,6 +69,10 @@ func (f *File) Equal(other *File) bool {
 	return f.Is(other) &&
 		f.sizeBytes == other.sizeBytes &&
 		f.lastModified.Equal(other.lastModified)
+}
+
+func (f *File) TagSet() *TagSet {
+	return f.tagSet
 }
 
 // Name is the File entity's unique ID within a given Directory.

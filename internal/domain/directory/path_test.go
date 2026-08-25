@@ -83,6 +83,31 @@ func TestPath_NewSubPath(t *testing.T) {
 	}
 }
 
+func TestPath_NewSubFilePath(t *testing.T) {
+	for _, tc := range []struct {
+		In       string
+		FileName string
+		Expected string
+	}{
+		{"/home/user/data/", "file.txt", "/home/user/data/file.txt"},
+		{"home/user/data", "project", "/home/user/data/project"},
+		{"", "", "/"},
+		{directory.RootPath.String(), "user", "/user"},
+		{"/mydir/", "README.md", "/mydir/README.md"},
+	} {
+		t.Run(fmt.Sprintf("should append %s to %s", tc.FileName, tc.In), func(t *testing.T) {
+			// Given
+			p := directory.NewPath(tc.In)
+
+			// When
+			res := p.NewSubFilePath(tc.FileName)
+
+			// Then
+			assert.Equal(t, tc.Expected, res.String())
+		})
+	}
+}
+
 func TestPath_Is(t *testing.T) {
 	for _, tc := range []struct {
 		Path     string

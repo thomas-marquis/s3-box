@@ -52,6 +52,8 @@ func (h *EventHandler) Listen() {
 		On(event.Is(directory.DownloadFileTriggeredType), h.handleDownloadFile).
 		On(event.Is(directory.LoadTriggeredType), h.handleLoadDirectory).
 		On(event.Is(directory.LoadFileTriggeredType), h.handleLoadFile).
+		On(event.Is(directory.TagsLoadTriggeredType), h.handleLoadTags).
+		On(event.Is(directory.TagsSaveTriggeredType), h.handleSaveTags).
 		On(event.Is(directory.UserValidationAcceptedType), h.handleRenameDirectory).
 		On(event.Is(directory.RenameFileTriggeredType), h.handleRenameFile).
 		On(event.Is(directory.RenameTriggeredType), h.handleRenameRequest).

@@ -133,6 +133,31 @@ func (c *baseApiImpl) Download(ctx context.Context, key string, writer io.Writer
 	return c.handleS3SdkError(err, key)
 }
 
+func (c *baseApiImpl) GetObjectTagging(ctx context.Context, key string, opts ...Option) (*s3.GetObjectTaggingOutput, error) {
+	in := &s3.GetObjectTaggingInput{
+		Bucket: aws.String(c.bucket),
+		Key:    aws.String(key),
+	}
+	for _, opt := range opts {
+		opt(in)
+	}
+	res, err := c.client.GetObjectTagging(ctx, in)
+	return res, c.handleS3SdkError(err, key)
+}
+
+func (c *baseApiImpl) PutObjectTagging(ctx context.Context, key string, tags []s3types.Tag, opts ...Option) (*s3.PutObjectTaggingOutput, error) {
+	in := &s3.PutObjectTaggingInput{
+		Bucket:  aws.String(c.bucket),
+		Key:     aws.String(key),
+		Tagging: &s3types.Tagging{TagSet: tags},
+	}
+	for _, opt := range opts {
+		opt(in)
+	}
+	res, err := c.client.PutObjectTagging(ctx, in)
+	return res, c.handleS3SdkError(err, key)
+}
+
 func (c *baseApiImpl) Upload(ctx context.Context, key string, body io.Reader, opts ...Option) error {
 	in := &transfermanager.UploadObjectInput{
 		Bucket: aws.String(c.bucket),

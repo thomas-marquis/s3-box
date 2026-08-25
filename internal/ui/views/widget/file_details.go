@@ -31,6 +31,7 @@ type FileDetails struct {
 
 	pathLabel *widget.Label
 	fileIcon  *widget.FileIcon
+	tags      *TagsTable
 
 	downloadAction *ToolbarButton
 	deleteAction   *ToolbarButton
@@ -75,6 +76,8 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		w.deleteAction,
 	)
 
+	w.tags = NewTagsTable(w.appCtx, w.appCtx.TagsViewModel())
+
 	w.ExtendBaseWidget(w)
 	return w
 }
@@ -100,24 +103,42 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 		lastModified,
 	)
 
+	tagsGroup := widget.NewAccordion(
+		widget.NewAccordionItem("Tags", w.tags),
+	)
+	tagsGroup.OpenAll()
+
 	return widget.NewSimpleRenderer(
-		container.NewVBox(
-			container.NewBorder(nil, nil,
-				container.NewHBox(w.fileIcon, w.pathLabel),
-				copyPath),
-			container.New(
-				layout.NewCustomPaddedLayout(10, 20, 0, 0),
-				widget.NewSeparator(),
+		container.NewBorder(
+			container.NewVBox(
+				container.NewBorder(nil, nil,
+					container.NewHBox(w.fileIcon, w.pathLabel),
+					copyPath),
+				makeSeparator(),
 			),
-			container.New(
-				layout.NewCustomPaddedLayout(0, 0, 5, 5),
-				w.actionToolbar,
-			),
-			container.New(
-				layout.NewCustomPaddedLayout(30, 0, 5, 5),
-				fileInfosTable,
+			nil, nil, nil,
+			container.NewBorder(
+				container.NewVBox(
+					container.New(
+						layout.NewCustomPaddedLayout(0, 0, 5, 5),
+						w.actionToolbar,
+					),
+					container.New(
+						layout.NewCustomPaddedLayout(30, 0, 5, 5),
+						fileInfosTable,
+					),
+					makeSeparator()),
+				nil, nil, nil,
+				container.NewPadded(tagsGroup),
 			),
 		),
+	)
+}
+
+func makeSeparator() fyne.CanvasObject {
+	return container.New(
+		layout.NewCustomPaddedLayout(10, 20, 0, 0),
+		widget.NewSeparator(),
 	)
 }
 
@@ -126,6 +147,8 @@ func (w *FileDetails) Select(file *directory.File) {
 	edVm := w.appCtx.EditorViewModel()
 
 	w.currentSelectedFile = file
+
+	w.tags.Select(file.TagSet())
 
 	var path string
 	originalPath := file.FullPath()

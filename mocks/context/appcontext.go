@@ -214,6 +214,20 @@ func (mr *MockAppContextMockRecorder) State() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "State", reflect.TypeOf((*MockAppContext)(nil).State))
 }
 
+// TagsViewModel mocks base method.
+func (m *MockAppContext) TagsViewModel() viewmodel.TagsViewModel {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TagsViewModel")
+	ret0, _ := ret[0].(viewmodel.TagsViewModel)
+	return ret0
+}
+
+// TagsViewModel indicates an expected call of TagsViewModel.
+func (mr *MockAppContextMockRecorder) TagsViewModel() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TagsViewModel", reflect.TypeOf((*MockAppContext)(nil).TagsViewModel))
+}
+
 // Window mocks base method.
 func (m *MockAppContext) Window() fyne.Window {
 	m.ctrl.T.Helper()

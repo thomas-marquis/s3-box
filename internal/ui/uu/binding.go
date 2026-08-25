@@ -226,3 +226,14 @@ func NewBindMapper[S, T any](src binding.Item[S],
 
 	return b
 }
+
+// SetListValues update the provided binding.List values
+func SetListValues[T any](data binding.List[T], values []T) {
+	olds := u.SkipV(data.Get())
+	for _, v := range olds {
+		u.Skip(data.Remove(v))
+	}
+	for _, v := range values {
+		u.Skip(data.Append(v))
+	}
+}
