@@ -2,7 +2,6 @@ package widget
 
 import (
 	"fmt"
-	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -28,9 +27,8 @@ const (
 // TagsTable is a singleton widget that displays an editable and savable list of tags.
 type TagsTable struct {
 	widget.BaseWidget
-	mu     sync.Mutex
 	AddBtn *widget.Button
-	vm     viewmodel.TagsViewmodel
+	vm     viewmodel.TagsViewModel
 	state  *state.State
 	appCtx appcontext.AppContext
 	table  *widget.Table
@@ -39,7 +37,7 @@ type TagsTable struct {
 	noTagsBinding binding.String
 }
 
-func NewTagsTable(appCtx appcontext.AppContext, vm viewmodel.TagsViewmodel) *TagsTable {
+func NewTagsTable(appCtx appcontext.AppContext, vm viewmodel.TagsViewModel) *TagsTable {
 	w := &TagsTable{
 		vm:            vm,
 		appCtx:        appCtx,

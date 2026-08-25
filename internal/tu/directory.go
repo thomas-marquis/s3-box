@@ -158,7 +158,9 @@ type directoryBuilderConfig struct {
 	name          string
 	loaded        bool
 	subDirConfigs []*directoryBuilderConfig
-	files         []string
+
+	fileNamesWithOptions map[string][]directory.FileOption
+
 	connectionId  connection_deck.ConnectionID
 	parentConfig  *directoryBuilderConfig
 	parent        *directory.Directory
@@ -234,25 +236,26 @@ func To(ptr **directory.Directory) DirectoryBuilderOption {
 	}
 }
 
-func WithFile(name string) DirectoryBuilderOption {
+func WithFile(name string, opts ...directory.FileOption) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
-		cfg.files = append(cfg.files, name)
+		if cfg.fileNamesWithOptions == nil {
+			cfg.fileNamesWithOptions = make(map[string][]directory.FileOption)
+		}
+		cfg.fileNamesWithOptions[name] = opts
 	}
 }
 
-func WithFileTo(name string, ptr **directory.File) DirectoryBuilderOption {
+func WithFileTo(name string, ptr **directory.File, opts ...directory.FileOption) DirectoryBuilderOption {
 	return func(cfg *directoryBuilderConfig) {
-		if cfg.files == nil {
-			cfg.files = make([]string, 0)
+		if cfg.fileNamesWithOptions == nil {
+			cfg.fileNamesWithOptions = make(map[string][]directory.FileOption)
 		}
 
-		for _, f := range cfg.files {
-			if f == name {
-				panic("file already exists")
-			}
+		if _, exists := cfg.fileNamesWithOptions[name]; exists {
+			panic("file already exists")
 		}
 
-		cfg.files = append(cfg.files, name)
+		cfg.fileNamesWithOptions[name] = opts
 
 		if cfg.fileRefs == nil {
 			cfg.fileRefs = make(map[string]**directory.File)
@@ -311,7 +314,7 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 		*cfg.ref = dir
 	}
 
-	shouldBeLoaded := cfg.loaded || len(cfg.files) > 0 || len(cfg.subDirConfigs) > 0
+	shouldBeLoaded := cfg.loaded || len(cfg.fileNamesWithOptions) > 0 || len(cfg.subDirConfigs) > 0
 	if shouldBeLoaded {
 		_, err = dir.Load()
 		require.NoError(t, err)
@@ -321,9 +324,9 @@ func MakeDirectory(t *testing.T, name string, opts ...DirectoryBuilderOption) *d
 		require.NoError(t, err)
 	}
 
-	if len(cfg.files) > 0 {
-		for _, fileName := range cfg.files {
-			fEvt, err := dir.NewFile(fileName, false)
+	if len(cfg.fileNamesWithOptions) > 0 {
+		for fileName, opts := range cfg.fileNamesWithOptions {
+			fEvt, err := dir.NewFile(fileName, false, opts...)
 			require.NoError(t, err)
 			f := fEvt.Payload().(directory.CreateFileTriggered).File
 			require.NoError(t, dir.Notify(event.New(directory.CreateFileSucceeded{

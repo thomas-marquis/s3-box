@@ -3,6 +3,7 @@ package settings
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 	"sync"
@@ -93,14 +94,13 @@ func (s *Settings) Write(name string, value any) error {
 		return ErrNotReady
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	tp, err := inferType(value)
 	if err != nil {
 		return err
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	registeredType, exists := s.registered[name]
 	if !exists {
 		return errors.Join(ErrUnregistered, fmt.Errorf("writing %s", name))
@@ -304,11 +304,10 @@ func (s *Settings) Notify(evt event.Event) error {
 		s.mu.Unlock()
 
 	case WriteSucceeded:
-		s.mu.Lock()
-		defer s.mu.Unlock()
-
 		// Validate the setting is registered and type matches
+		s.mu.RLock()
 		registeredType, exists := s.registered[pl.Name]
+		s.mu.RUnlock()
 		if !exists {
 			return nil // Silent no-op for unregistered settings
 		}
@@ -323,10 +322,18 @@ func (s *Settings) Notify(evt event.Event) error {
 		}
 
 		// Store the value
+		s.mu.Lock()
 		if _, valueMapExists := s.values[registeredType]; !valueMapExists {
 			s.values[registeredType] = make(map[string]any)
 		}
 		s.values[registeredType][pl.Name] = pl.Value
+		s.mu.Unlock()
+
+		s.mu.RLock()
+		obs := s.observers[pl.Name]
+		obsCpy := make(map[int]func(any), len(obs))
+		maps.Copy(obsCpy, obs)
+		s.mu.RUnlock()
 
 		if observers, ok := s.observers[pl.Name]; ok {
 			for _, observer := range observers {

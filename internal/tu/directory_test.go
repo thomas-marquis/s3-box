@@ -2,6 +2,7 @@ package tu_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
@@ -200,5 +201,23 @@ func TestMakeDirectory(t *testing.T) {
 		assert.Same(t, expected1, f1)
 		assert.Same(t, expected2, f2)
 		assert.Same(t, expected3, f3)
+	})
+
+	t.Run("should add files with options", func(t *testing.T) {
+		// Given
+		var f1, f2 *directory.File
+		lastModified := time.Date(2016, 9, 17, 23, 0, 0, 0, time.UTC)
+
+		// When
+		tu.MakeDirectory(t, "mydir", tu.WithRootParent(),
+			tu.WithFileTo("test.txt", &f1, directory.WithFileSize(1024)),
+			tu.WithSubDirectory("subdir",
+				tu.WithFileTo("test2.txt", &f2, directory.WithFileLastModified(lastModified), directory.WithFileSize(2048))))
+
+		// Then
+		assert.Equal(t, uint64(1024), f1.SizeBytes())
+
+		assert.Equal(t, lastModified, f2.LastModified())
+		assert.Equal(t, uint64(2048), f2.SizeBytes())
 	})
 }

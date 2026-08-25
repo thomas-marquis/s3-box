@@ -5,9 +5,10 @@ import (
 	"time"
 
 	fyne_test "fyne.io/fyne/v2/test"
-	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
+	"github.com/thomas-marquis/s3-box/internal/tu"
 	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/values"
@@ -21,12 +22,17 @@ const (
 	fakeFileSizeLimitKB = 2048
 )
 
+var (
+	lastModified = time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+)
+
 type fileDetailsMocks struct {
 	mockAppCtx     *mocks_appcontext.MockAppContext
 	mockExplorerVM *mocks_viewmodel.MockExplorerViewModel
 	mockConnVM     *mocks_viewmodel.MockConnectionViewModel
 	mockSettingsVM *mocks_viewmodel.MockSettingsViewModel
 	mockEditorVM   *mocks_viewmodel.MockEditorViewModel
+	mockTagsVM     *mocks_viewmodel.MockTagsViewModel
 	mockState      *state.State
 }
 
@@ -44,8 +50,11 @@ func setupFileDetailsMocksWithLimit(t *testing.T, limitBytes uint64) fileDetails
 		mockConnVM:     mocks_viewmodel.NewMockConnectionViewModel(ctrl),
 		mockSettingsVM: mocks_viewmodel.NewMockSettingsViewModel(ctrl),
 		mockEditorVM:   mocks_viewmodel.NewMockEditorViewModel(ctrl),
+		mockTagsVM:     mocks_viewmodel.NewMockTagsViewModel(ctrl),
 		mockState:      state.New(),
 	}
+
+	m.mockTagsVM.EXPECT().Select(gomock.Any()).AnyTimes()
 
 	m.mockAppCtx.EXPECT().ExplorerViewModel().Return(m.mockExplorerVM).AnyTimes()
 	m.mockAppCtx.EXPECT().ConnectionViewModel().Return(m.mockConnVM).AnyTimes()
@@ -53,11 +62,13 @@ func setupFileDetailsMocksWithLimit(t *testing.T, limitBytes uint64) fileDetails
 	m.mockAppCtx.EXPECT().EditorViewModel().Return(m.mockEditorVM).AnyTimes()
 	m.mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
 	m.mockAppCtx.EXPECT().State().Return(m.mockState).AnyTimes()
+	m.mockAppCtx.EXPECT().TagsViewModel().Return(m.mockTagsVM).AnyTimes()
 
 	// Register the settings that file_details needs
-	u.Skip(m.mockState.Settings().Get().Register(
-		settings.AUint64(values.SettingEditFileSizeLimitByte, limitBytes),
-	))
+	u.Skip(m.mockState.Settings().Get().Notify(event.New(settings.WriteSucceeded{
+		Name:  values.SettingEditFileSizeLimitByte,
+		Value: limitBytes,
+	})))
 
 	return m
 }
@@ -65,12 +76,11 @@ func setupFileDetailsMocksWithLimit(t *testing.T, limitBytes uint64) fileDetails
 func TestFileDetails(t *testing.T) {
 	fyne_test.NewApp()
 
-	lastModified := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
-	rootDir, _ := directory.NewRoot(connection_deck.NewConnectionID())
-	file, _ := directory.NewFile("test.txt", rootDir,
-		directory.WithFileSize(fakeFileSizeLimitKB),
-		directory.WithFileLastModified(lastModified),
-	)
+	var file *directory.File
+	tu.MakeDirectory(t, "", tu.AsRoot(),
+		tu.WithFileTo("test.txt", &file,
+			directory.WithFileSize(fakeFileSizeLimitKB),
+			directory.WithFileLastModified(lastModified)))
 
 	t.Run("should display file details", func(t *testing.T) {
 		// Given
@@ -83,10 +93,10 @@ func TestFileDetails(t *testing.T) {
 		c := fyne_test.NewWindow(res).Canvas()
 
 		// Then
-		fyne_test.AssertRendersToMarkup(t, "file_details", c)
+		tu.AssertImageMatches(t, "images/file-details.png", c.Capture())
 	})
 
-	t.Run("should disable preview if file is too large", func(t *testing.T) {
+	t.Run("should disable edit button when file is too large", func(t *testing.T) {
 		// Given
 		m := setupFileDetailsMocksWithLimit(t, 512)
 		m.mockConnVM.EXPECT().IsReadOnly().Return(false).AnyTimes()
@@ -97,7 +107,7 @@ func TestFileDetails(t *testing.T) {
 		c := fyne_test.NewWindow(res).Canvas()
 
 		// Then
-		fyne_test.AssertRendersToMarkup(t, "file_details_large", c)
+		tu.AssertImageMatches(t, "images/file-details-too-large.png", c.Capture())
 	})
 
 	t.Run("should disable delete if read-only", func(t *testing.T) {
@@ -111,6 +121,6 @@ func TestFileDetails(t *testing.T) {
 		c := fyne_test.NewWindow(res).Canvas()
 
 		// Then
-		fyne_test.AssertRendersToMarkup(t, "file_details_readonly", c)
+		tu.AssertImageMatches(t, "images/file-details-read-only.png", c.Capture())
 	})
 }

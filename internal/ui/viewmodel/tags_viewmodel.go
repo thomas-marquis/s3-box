@@ -11,7 +11,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 )
 
-type TagsViewmodel interface {
+type TagsViewModel interface {
 	Select(ts *directory.TagSet)
 	Save()
 	Add(key, value string) error
@@ -23,7 +23,7 @@ type tagsViewmodelImpl struct {
 	state *state.TagsState
 }
 
-func NewTagsViewmodel(ctx context.Context, bus event.Bus, appState *state.State) TagsViewmodel {
+func NewTagsViewmodel(ctx context.Context, bus event.Bus, appState *state.State) TagsViewModel {
 	v := &tagsViewmodelImpl{
 		state: appState.Tags(),
 		bus:   bus,
