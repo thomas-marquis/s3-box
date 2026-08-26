@@ -42,20 +42,6 @@ func (m *MockConnectionViewModel) EXPECT() *MockConnectionViewModelMockRecorder 
 	return m.recorder
 }
 
-// Connections mocks base method.
-func (m *MockConnectionViewModel) Connections() binding.List[*connection_deck.Connection] {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Connections")
-	ret0, _ := ret[0].(binding.List[*connection_deck.Connection])
-	return ret0
-}
-
-// Connections indicates an expected call of Connections.
-func (mr *MockConnectionViewModelMockRecorder) Connections() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connections", reflect.TypeOf((*MockConnectionViewModel)(nil).Connections))
-}
-
 // Create mocks base method.
 func (m *MockConnectionViewModel) Create(name, accessKey, secretKey, bucket string, options ...connection_deck.ConnectionOption) {
 	m.ctrl.T.Helper()
@@ -71,20 +57,6 @@ func (mr *MockConnectionViewModelMockRecorder) Create(name, accessKey, secretKey
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{name, accessKey, secretKey, bucket}, options...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockConnectionViewModel)(nil).Create), varargs...)
-}
-
-// Deck mocks base method.
-func (m *MockConnectionViewModel) Deck() *connection_deck.Deck {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Deck")
-	ret0, _ := ret[0].(*connection_deck.Deck)
-	return ret0
-}
-
-// Deck indicates an expected call of Deck.
-func (mr *MockConnectionViewModelMockRecorder) Deck() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deck", reflect.TypeOf((*MockConnectionViewModel)(nil).Deck))
 }
 
 // Delete mocks base method.

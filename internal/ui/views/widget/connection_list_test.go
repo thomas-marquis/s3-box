@@ -3,9 +3,12 @@ package widget_test
 import (
 	"testing"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	fyne_test "fyne.io/fyne/v2/test"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/tu"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 	mocks_appcontext "github.com/thomas-marquis/s3-box/mocks/context"
 	mocks_viewmodel "github.com/thomas-marquis/s3-box/mocks/viewmodel"
@@ -31,16 +34,19 @@ func TestConnectionList(t *testing.T) {
 
 	mockAppCtx.EXPECT().ConnectionViewModel().Return(mockConnVM).AnyTimes()
 	mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
-	mockConnVM.EXPECT().Connections().Return(connections).AnyTimes()
-	mockConnVM.EXPECT().Deck().Return(deck).AnyTimes()
+	st := state.New()
+	st.Connection().Init(deck)
+	mockAppCtx.EXPECT().State().Return(st).AnyTimes()
 
 	t.Run("should display list of connections", func(t *testing.T) {
 		// When
 		res := widget.NewConnectionList(mockAppCtx)
-		c := fyne_test.NewWindow(res).Canvas()
+		w := fyne_test.NewWindow(res)
+		w.Resize(fyne.NewSize(400, 300))
+		c := w.Canvas()
 		res.Refresh()
 
 		// Then
-		fyne_test.AssertRendersToMarkup(t, "connection_list", c)
+		tu.AssertImageMatches(t, "images/connection-list.png", c.Capture())
 	})
 }
