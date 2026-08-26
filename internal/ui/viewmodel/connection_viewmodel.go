@@ -19,17 +19,6 @@ var errConnNotInBinding = fmt.Errorf("connection not found in binding list")
 type ConnectionViewModel interface {
 	ViewModel
 
-	////////////////////////
-	// State methods
-	////////////////////////
-
-	// IsReadOnly returns true if the connection view model is in a read-only state, otherwise false.
-	IsReadOnly() bool
-
-	////////////////////////
-	// Action methods
-	////////////////////////
-
 	Select(conn *connection_deck.Connection)
 
 	Delete(conn *connection_deck.Connection)
@@ -202,13 +191,6 @@ func (v *connectionViewModelImpl) ExportAsJSON(writer io.Writer) error {
 	}
 
 	return nil
-}
-
-func (v *connectionViewModelImpl) IsReadOnly() bool {
-	if v.state.Connection().Deck().SelectedConnection() == nil {
-		return false
-	}
-	return v.state.Connection().Deck().SelectedConnection().ReadOnly()
 }
 
 func (v *connectionViewModelImpl) deleteFromBinding(evt event.Event, deletedConn *connection_deck.Connection) error {

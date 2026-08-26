@@ -45,3 +45,10 @@ func (s *ConnectionState) FindOrNil(id connection_deck.ConnectionID) *connection
 	}
 	return nil
 }
+
+func (s *ConnectionState) IsReadOnly() bool {
+	if s.deck.SelectedConnection() == nil {
+		return false
+	}
+	return s.deck.SelectedConnection().ReadOnly()
+}

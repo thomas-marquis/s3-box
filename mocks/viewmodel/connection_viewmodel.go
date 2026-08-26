@@ -127,20 +127,6 @@ func (mr *MockConnectionViewModelMockRecorder) IsLoading() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsLoading", reflect.TypeOf((*MockConnectionViewModel)(nil).IsLoading))
 }
 
-// IsReadOnly mocks base method.
-func (m *MockConnectionViewModel) IsReadOnly() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsReadOnly")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// IsReadOnly indicates an expected call of IsReadOnly.
-func (mr *MockConnectionViewModelMockRecorder) IsReadOnly() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReadOnly", reflect.TypeOf((*MockConnectionViewModel)(nil).IsReadOnly))
-}
-
 // Loading mocks base method.
 func (m *MockConnectionViewModel) Loading() binding.Bool {
 	m.ctrl.T.Helper()

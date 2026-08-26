@@ -174,7 +174,7 @@ func (w *FileDetails) Select(file *directory.File) {
 		if file.SizeBytes() > w.appCtx.State().Settings().EditorFileSizeLimitBytesValue() {
 			w.editAction.Disable()
 		} else {
-			if w.appCtx.ConnectionViewModel().IsReadOnly() {
+			if w.appCtx.State().Connection().IsReadOnly() {
 				w.editAction.Disable()
 			} else {
 				w.editAction.Enable()
@@ -265,7 +265,7 @@ func (w *FileDetails) Select(file *directory.File) {
 				}
 			}, w.appCtx.Window())
 	})
-	if w.appCtx.ConnectionViewModel().IsReadOnly() {
+	if w.appCtx.State().Connection().IsReadOnly() {
 		w.deleteAction.Disable()
 		w.editAction.Disable()
 		w.renameAction.Disable()
