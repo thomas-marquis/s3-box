@@ -133,6 +133,21 @@ func (c *baseApiImpl) Download(ctx context.Context, key string, writer io.Writer
 	return c.handleS3SdkError(err, key)
 }
 
+func (c *baseApiImpl) DownloadDirectory(ctx context.Context, keyPrefix, dest string, opts ...Option) error {
+	manager := transfermanager.New(c.client)
+	in := &transfermanager.DownloadDirectoryInput{
+		Bucket:      aws.String(c.bucket),
+		Destination: aws.String(dest),
+		KeyPrefix:   aws.String(keyPrefix),
+	}
+	for _, opt := range opts {
+		opt(in)
+	}
+
+	_, err := manager.DownloadDirectory(ctx, in)
+	return c.handleS3SdkError(err, keyPrefix)
+}
+
 func (c *baseApiImpl) GetObjectTagging(ctx context.Context, key string, opts ...Option) (*s3.GetObjectTaggingOutput, error) {
 	in := &s3.GetObjectTaggingInput{
 		Bucket: aws.String(c.bucket),

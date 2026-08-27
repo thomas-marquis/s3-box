@@ -72,6 +72,8 @@ type ExplorerViewModel interface {
 	// DownloadFile downloads a file to the specified local destination
 	DownloadFile(f *directory.File, dest string)
 
+	DownloadDirectory(dir *directory.Directory, dest string)
+
 	PrepareUpload(uris []fyne.URI, dir *directory.Directory) error
 	DoUpload(localBasePath string, preview *directory.Preview, strategy directory.MaterializeStrategy)
 	UploadOne(localPath string, dir *directory.Directory, overwrite bool) error
@@ -150,10 +152,6 @@ func NewExplorerViewModel(
 		state:                  st,
 	}
 
-	if err := v.initializeTreeData(initialConnection); err != nil {
-		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err))
-	}
-
 	st.Connection().Selected().AddListener(binding.NewDataListener(func() {
 		newSelected := u.SkipV(st.Connection().Selected().Get())
 		if newSelected == nil {
@@ -189,6 +187,8 @@ func NewExplorerViewModel(
 		On(event.Is(directory.UploadReadyType), v.handleUploadReady).
 		On(event.Is(directory.DeleteFailedType), v.handleDeleteDirectoryFailure).
 		On(event.Is(directory.DeleteSucceededType), v.handleDeleteDirectorySuccess).
+		On(event.Is(directory.DownloadSucceededType), v.handleDownloadSuccess).
+		On(event.Is(directory.DownloadFailedType), v.handleDownloadFailure).
 		ListenWithWorkers(3)
 
 	return v
@@ -346,6 +346,31 @@ func (v *explorerViewModelImpl) handleDownloadFileSuccess(evt event.Event) {
 
 func (v *explorerViewModelImpl) handleDownloadFileFailure(evt event.Event) {
 	pl := evt.Payload().(directory.DownloadFileFailed)
+	err := fmt.Errorf("error downloading file: %w", pl.Err)
+	v.notifier.NotifyError(err)
+	u.Skip(v.errorMessage.Set(err.Error()))
+}
+
+func (v *explorerViewModelImpl) DownloadDirectory(dir *directory.Directory, destParent string) {
+	v.bus.Publish(event.New(directory.DownloadTriggered{
+		Directory:      dir,
+		DestParentPath: destParent,
+	}))
+}
+
+func (v *explorerViewModelImpl) handleDownloadSuccess(evt event.Event) {
+	pl := evt.Payload().(directory.DownloadSucceeded)
+	if err := pl.Directory.Notify(evt); err != nil {
+		v.notifier.NotifyError(err)
+		u.Skip(v.errorMessage.Set(err.Error()))
+		return
+	}
+	u.Skip(v.infoMessage.Set(
+		fmt.Sprintf("Directory %s downloaded successfully", pl.Directory.Name())))
+}
+
+func (v *explorerViewModelImpl) handleDownloadFailure(evt event.Event) {
+	pl := evt.Payload().(directory.DownloadFailed)
 	err := fmt.Errorf("error downloading file: %w", pl.Err)
 	v.notifier.NotifyError(err)
 	u.Skip(v.errorMessage.Set(err.Error()))

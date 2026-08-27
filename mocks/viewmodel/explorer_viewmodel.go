@@ -129,6 +129,18 @@ func (mr *MockExplorerViewModelMockRecorder) DoUpload(localBasePath, preview, st
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoUpload", reflect.TypeOf((*MockExplorerViewModel)(nil).DoUpload), localBasePath, preview, strategy)
 }
 
+// DownloadDirectory mocks base method.
+func (m *MockExplorerViewModel) DownloadDirectory(dir *directory.Directory, dest string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DownloadDirectory", dir, dest)
+}
+
+// DownloadDirectory indicates an expected call of DownloadDirectory.
+func (mr *MockExplorerViewModelMockRecorder) DownloadDirectory(dir, dest any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownloadDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).DownloadDirectory), dir, dest)
+}
+
 // DownloadFile mocks base method.
 func (m *MockExplorerViewModel) DownloadFile(f *directory.File, dest string) {
 	m.ctrl.T.Helper()
