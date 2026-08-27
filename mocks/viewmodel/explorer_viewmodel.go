@@ -14,7 +14,6 @@ import (
 
 	fyne "fyne.io/fyne/v2"
 	binding "fyne.io/fyne/v2/data/binding"
-	connection_deck "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
 	viewmodel "github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	gomock "go.uber.org/mock/gomock"
@@ -92,20 +91,6 @@ func (m *MockExplorerViewModel) CreateEmptyFile(parent *directory.Directory, nam
 func (mr *MockExplorerViewModelMockRecorder) CreateEmptyFile(parent, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEmptyFile", reflect.TypeOf((*MockExplorerViewModel)(nil).CreateEmptyFile), parent, name)
-}
-
-// CurrentSelectedConnection mocks base method.
-func (m *MockExplorerViewModel) CurrentSelectedConnection() *connection_deck.Connection {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CurrentSelectedConnection")
-	ret0, _ := ret[0].(*connection_deck.Connection)
-	return ret0
-}
-
-// CurrentSelectedConnection indicates an expected call of CurrentSelectedConnection.
-func (mr *MockExplorerViewModelMockRecorder) CurrentSelectedConnection() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentSelectedConnection", reflect.TypeOf((*MockExplorerViewModel)(nil).CurrentSelectedConnection))
 }
 
 // DeleteDirectory mocks base method.
@@ -372,20 +357,6 @@ func (m *MockExplorerViewModel) RollbackRename(dir *directory.Directory) error {
 func (mr *MockExplorerViewModelMockRecorder) RollbackRename(dir any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RollbackRename", reflect.TypeOf((*MockExplorerViewModel)(nil).RollbackRename), dir)
-}
-
-// SelectedConnection mocks base method.
-func (m *MockExplorerViewModel) SelectedConnection() binding.Item[*connection_deck.Connection] {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectedConnection")
-	ret0, _ := ret[0].(binding.Item[*connection_deck.Connection])
-	return ret0
-}
-
-// SelectedConnection indicates an expected call of SelectedConnection.
-func (mr *MockExplorerViewModelMockRecorder) SelectedConnection() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectedConnection", reflect.TypeOf((*MockExplorerViewModel)(nil).SelectedConnection))
 }
 
 // SelectedDirectory mocks base method.

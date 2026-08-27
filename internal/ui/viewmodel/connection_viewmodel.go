@@ -143,7 +143,14 @@ func (v *connectionViewModelImpl) Select(conn *connection_deck.Connection) {
 
 func (v *connectionViewModelImpl) handleUpdate(evt event.Event) {
 	pl := evt.Payload().(connection_deck.ConnectionGetter)
-	v.updateConnectionBinding(evt, pl.Connection())
+	updatedConn := pl.Connection()
+	if err := v.state.Connection().Update(updatedConn); err != nil {
+		v.bus.Publish(evt.NewFollowup(connection_deck.UpdateConnectionFailed{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: v.state.Connection().FindOrNil(updatedConn.ID())},
+			Err:               err,
+		}))
+		return
+	}
 	v.state.Connection().Deck().Notify(evt)
 	u.Skip(v.state.Connection().Selected().Set(pl.Connection()))
 	u.Skip(v.loading.Set(false))
@@ -171,7 +178,13 @@ func (v *connectionViewModelImpl) handleDelete(evt event.Event) {
 		u.Skip(v.state.Connection().Selected().Set(nil))
 	}
 
-	if err := v.deleteFromBinding(evt, pl.Connection()); err != nil {
+	if err := v.state.Connection().Remove(pl.Connection()); err != nil {
+		v.bus.Publish(evt.NewFollowup(connection_deck.RemoveConnectionFailed{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: pl.Connection()},
+			Err:               errConnNotInBinding,
+			RemovedIndex:      v.state.Connection().List().Length(),
+			WasSelected:       false,
+		}))
 		return
 	}
 	v.state.Connection().Deck().Notify(evt)
@@ -199,60 +212,6 @@ func (v *connectionViewModelImpl) ExportAsJSON(writer io.Writer) error {
 	}
 
 	return nil
-}
-
-// TODO: move to state
-func (v *connectionViewModelImpl) deleteFromBinding(evt event.Event, deletedConn *connection_deck.Connection) error {
-	found := false
-	allConnections, _ := v.state.Connection().List().Get()
-	for _, prevConn := range allConnections {
-		if prevConn.Is(deletedConn) {
-			found = v.state.Connection().List().Remove(prevConn) == nil
-		}
-	}
-
-	if !found {
-		v.bus.Publish(evt.NewFollowup(connection_deck.RemoveConnectionFailed{
-			ConnectionPayload: connection_deck.ConnectionPayload{Conn: deletedConn},
-			Err:               errConnNotInBinding,
-			RemovedIndex:      len(allConnections),
-			WasSelected:       false,
-		}))
-		return errConnNotInBinding
-	}
-
-	return nil
-}
-
-// TODO: move to state
-func (v *connectionViewModelImpl) updateConnectionBinding(evt event.Event, c *connection_deck.Connection) {
-	found := false
-	for i, conn := range v.state.Connection().Deck().Get() {
-		if conn.Is(c) {
-			found = true
-			updatedConn := *c // Create a copy to have a new ref in the binding
-			if err := v.state.Connection().List().SetValue(i, &updatedConn); err != nil {
-				v.bus.Publish(evt.NewFollowup(connection_deck.UpdateConnectionFailed{
-					ConnectionPayload: connection_deck.ConnectionPayload{Conn: v.state.Connection().FindOrNil(c.ID())},
-					Err:               err,
-				}))
-				return
-			}
-
-			// Necessary workaround to trigger the refresh in the UI
-			placeholderConn := &connection_deck.Connection{}
-			u.Skip(v.state.Connection().List().Append(placeholderConn))
-			u.Skip(v.state.Connection().List().Remove(placeholderConn))
-		}
-	}
-
-	if !found {
-		v.bus.Publish(evt.NewFollowup(connection_deck.UpdateConnectionFailed{
-			ConnectionPayload: connection_deck.ConnectionPayload{Conn: nil},
-			Err:               errConnNotInBinding,
-		}))
-		return
-	}
 }
 
 func (v *connectionViewModelImpl) handleOnLoading(_ event.Event) {

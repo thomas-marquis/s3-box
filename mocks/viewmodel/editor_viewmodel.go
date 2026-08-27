@@ -13,7 +13,6 @@ import (
 	reflect "reflect"
 
 	binding "fyne.io/fyne/v2/data/binding"
-	connection_deck "github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
 	editor "github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	gomock "go.uber.org/mock/gomock"
@@ -138,18 +137,4 @@ func (m *MockEditorViewModel) RegisterEditorFactory(name string, initializer edi
 func (mr *MockEditorViewModelMockRecorder) RegisterEditorFactory(name, initializer any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterEditorFactory", reflect.TypeOf((*MockEditorViewModel)(nil).RegisterEditorFactory), name, initializer)
-}
-
-// SelectedConnection mocks base method.
-func (m *MockEditorViewModel) SelectedConnection() *connection_deck.Connection {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectedConnection")
-	ret0, _ := ret[0].(*connection_deck.Connection)
-	return ret0
-}
-
-// SelectedConnection indicates an expected call of SelectedConnection.
-func (mr *MockEditorViewModelMockRecorder) SelectedConnection() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectedConnection", reflect.TypeOf((*MockEditorViewModel)(nil).SelectedConnection))
 }

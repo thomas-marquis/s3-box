@@ -1,9 +1,15 @@
 package state
 
 import (
+	"errors"
+
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/u"
+)
+
+var (
+	ErrConnectionNotFound = errors.New("connection not found")
 )
 
 type ConnectionState struct {
@@ -66,4 +72,45 @@ func (s *ConnectionState) Selected() binding.Item[*connection_deck.Connection] {
 // HasSelected returns true if a connection has been selected.
 func (s *ConnectionState) HasSelected() bool {
 	return s.deck.SelectedConnection() != nil
+}
+
+func (s *ConnectionState) Remove(conn *connection_deck.Connection) error {
+	found := false
+	allConnections, _ := s.connections.Get()
+	for _, prevConn := range allConnections {
+		if prevConn.Is(conn) {
+			found = s.connections.Remove(prevConn) == nil
+		}
+	}
+
+	if !found {
+		return ErrConnectionNotFound
+	}
+
+	return nil
+
+}
+
+func (s *ConnectionState) Update(c *connection_deck.Connection) error {
+	found := false
+	for i, conn := range s.deck.Get() {
+		if conn.Is(c) {
+			found = true
+			updatedConn := *c // Create a copy to have a new ref in the binding
+			if err := s.connections.SetValue(i, &updatedConn); err != nil {
+				return err
+			}
+
+			// Necessary workaround to trigger the refresh in the UI
+			placeholderConn := &connection_deck.Connection{}
+			u.Skip(s.connections.Append(placeholderConn))
+			u.Skip(s.connections.Remove(placeholderConn))
+		}
+	}
+
+	if !found {
+		return ErrConnectionNotFound
+	}
+
+	return nil
 }
