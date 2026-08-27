@@ -69,7 +69,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 					return
 				}
 
-				deck := ctx.ConnectionViewModel().Deck()
+				deck := ctx.State().Connection().Deck()
 				msg := fmt.Sprintf("%d connection(s) exported as JSON", len(deck.Get()))
 				dialog.ShowInformation("Export", msg, ctx.Window())
 			}, ctx.Window())

@@ -159,8 +159,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	w.reloadAction.SetOnTapped(w.makeOnReload(vm, dir))
 	w.deleteAction.SetOnTapped(w.makeOnDelete(vm, dir))
 
-	w.reloadAction.Enable()
-
 	if dir.IsRoot() {
 		w.renameAction.Disable()
 		w.deleteAction.Disable()
@@ -192,11 +190,10 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.renameErrContent.OnAbort = func() {}
 	}
 
-	if w.appCtx.ConnectionViewModel().IsReadOnly() || !dir.IsLoaded() || dir.HasError() {
+	if w.appCtx.State().Connection().IsReadOnly() || !dir.IsLoaded() || dir.HasError() {
 		w.newDirectoryAction.Disable()
 		w.createFileAction.Disable()
 		w.renameAction.Disable()
-		w.reloadAction.Disable()
 		w.dropZone.Hide()
 		w.deleteAction.Disable()
 	} else {

@@ -12,20 +12,19 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
 )
 
 type ConnectionList struct {
 	widget.BaseWidget
-	connections binding.List[*connection_deck.Connection]
-	appCtx      appcontext.AppContext
+	appCtx appcontext.AppContext
+	state  *state.ConnectionState
 }
 
 func NewConnectionList(appCtx appcontext.AppContext) *ConnectionList {
-	vm := appCtx.ConnectionViewModel()
-
 	w := &ConnectionList{
-		connections: vm.Connections(),
-		appCtx:      appCtx,
+		appCtx: appCtx,
+		state:  appCtx.State().Connection(),
 	}
 	w.ExtendBaseWidget(w)
 	return w
@@ -34,7 +33,7 @@ func NewConnectionList(appCtx appcontext.AppContext) *ConnectionList {
 func (w *ConnectionList) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 	return widget.NewSimpleRenderer(widget.NewListWithData(
-		w.connections,
+		w.state.List(),
 		w.makeRowListItem,
 		w.updateListItem,
 	))
@@ -80,7 +79,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 	selected := leftGroup.Objects[0].(*widget.Button)
 	viewFilesBtn := btnGroup.Objects[0].(*widget.Button)
 
-	if conn.Is(vm.Deck().SelectedConnection()) {
+	if conn.Is(w.state.Deck().SelectedConnection()) {
 		selected.SetIcon(theme.RadioButtonCheckedIcon())
 		viewFilesBtn.Show()
 	} else {
@@ -88,7 +87,7 @@ func (w *ConnectionList) updateListItem(di binding.DataItem, o fyne.CanvasObject
 		viewFilesBtn.Hide()
 	}
 	selected.OnTapped = func() {
-		if conn.Is(vm.Deck().SelectedConnection()) {
+		if conn.Is(w.state.Deck().SelectedConnection()) {
 			return
 		}
 		dialog.ShowConfirm(

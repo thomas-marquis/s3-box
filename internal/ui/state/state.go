@@ -12,10 +12,8 @@ var (
 	logger = log.New(os.Stdout, "[state] ", log.LstdFlags|log.Lshortfile)
 )
 
-type ConnectionsState struct{}
-
 type State struct {
-	connections *ConnectionsState
+	connections *ConnectionState
 	explorer    *ExplorerState
 	settings    *SettingsState
 	tags        *TagsState
@@ -23,7 +21,7 @@ type State struct {
 
 func New() *State {
 	return &State{
-		connections: &ConnectionsState{},
+		connections: newConnectionState(),
 		explorer: &ExplorerState{
 			fileTree: binding.NewTree[node.Node](func(n1 node.Node, n2 node.Node) bool {
 				return n1.ID() == n2.ID()
@@ -38,7 +36,7 @@ func (s *State) Explorer() *ExplorerState {
 	return s.explorer
 }
 
-func (s *State) Connections() *ConnectionsState {
+func (s *State) Connection() *ConnectionState {
 	return s.connections
 }
 

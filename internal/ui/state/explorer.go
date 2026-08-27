@@ -17,9 +17,7 @@ func (s *ExplorerState) FileTree() binding.Tree[node.Node] {
 }
 
 func (s *ExplorerState) InitFileTree(rootDir *directory.Directory, bucketName string) error {
-	s.fileTree = binding.NewTree[node.Node](func(n1 node.Node, n2 node.Node) bool {
-		return n1.ID() == n2.ID()
-	})
+	s.ResetTree()
 
 	displayLabel := "Bucket: " + bucketName
 	rootNode := node.NewDirectoryNode(rootDir, node.WithDisplayName(displayLabel))
@@ -28,6 +26,12 @@ func (s *ExplorerState) InitFileTree(rootDir *directory.Directory, bucketName st
 	}
 
 	return nil
+}
+
+func (s *ExplorerState) ResetTree() {
+	s.fileTree = binding.NewTree[node.Node](func(n1 node.Node, n2 node.Node) bool {
+		return n1.ID() == n2.ID()
+	})
 }
 
 func (s *ExplorerState) ClearChildren(dir *directory.Directory) {

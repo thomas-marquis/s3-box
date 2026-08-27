@@ -3,9 +3,13 @@ package widget_test
 import (
 	"testing"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	fyne_test "fyne.io/fyne/v2/test"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/tu"
+	"github.com/thomas-marquis/s3-box/internal/u"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 	mocks_appcontext "github.com/thomas-marquis/s3-box/mocks/context"
 	mocks_viewmodel "github.com/thomas-marquis/s3-box/mocks/viewmodel"
@@ -30,17 +34,24 @@ func TestDirectoryDetails(t *testing.T) {
 		mockExplorerVM.EXPECT().IsSelectedDirectoryLoading().Return(fakeIsLoadingBinding).AnyTimes()
 		mockExplorerVM.EXPECT().OnUploadReady(gomock.Any()).AnyTimes()
 
-		dir := tu.FakeNotLoadedRootDirectory(t)
+		dir := tu.MakeDirectory(t, "test",
+			tu.WithRootParent(),
+			tu.IsLoaded())
 
-		mockConnVM.EXPECT().IsReadOnly().Return(false)
+		st := state.New()
+		deck := connection_deck.New()
+		st.Connection().Init(deck)
+		mockAppCtx.EXPECT().State().Return(st).AnyTimes()
 
 		// When
 		res := widget.NewDirectoryDetails(mockAppCtx)
 		res.Select(dir)
-		c := fyne_test.NewWindow(res).Canvas()
+		w := fyne_test.NewWindow(res)
+		w.Resize(fyne.NewSize(600, 400))
+		c := w.Canvas()
 
 		// Then
-		fyne_test.AssertRendersToMarkup(t, "directory_details", c)
+		tu.AssertImageMatches(t, "images/directory-details.png", c.Capture())
 	})
 
 	t.Run("should display directory details in read-only mode", func(t *testing.T) {
@@ -58,16 +69,28 @@ func TestDirectoryDetails(t *testing.T) {
 		mockExplorerVM.EXPECT().IsSelectedDirectoryLoading().Return(fakeIsLoadingBinding).AnyTimes()
 		mockExplorerVM.EXPECT().OnUploadReady(gomock.Any()).AnyTimes()
 
-		dir := tu.FakeNotLoadedRootDirectory(t)
+		st := state.New()
+		deck := connection_deck.New()
+		conn := deck.New("Conn 1", "ak1", "sk1", "b1",
+			connection_deck.WithReadOnlyOption(true)).
+			Payload().(connection_deck.CreateConnectionTriggered).Connection()
+		u.SkipV(deck.Select(conn.ID()))
+		st.Connection().Init(deck)
+		mockAppCtx.EXPECT().State().Return(st).AnyTimes()
 
-		mockConnVM.EXPECT().IsReadOnly().Return(true)
+		dir := tu.MakeDirectory(t, "test",
+			tu.WithParent("home", tu.WithRootParent()),
+			tu.IsLoaded(),
+			tu.WithConnectionId(conn.ID()))
 
 		// When
 		res := widget.NewDirectoryDetails(mockAppCtx)
 		res.Select(dir)
-		c := fyne_test.NewWindow(res).Canvas()
+		w := fyne_test.NewWindow(res)
+		w.Resize(fyne.NewSize(600, 400))
+		c := w.Canvas()
 
 		// Then
-		fyne_test.AssertRendersToMarkup(t, "directory_details_readonly", c)
+		tu.AssertImageMatches(t, "images/directory-details-read-only.png", c.Capture())
 	})
 }

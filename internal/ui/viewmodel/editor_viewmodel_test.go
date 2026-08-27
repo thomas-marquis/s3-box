@@ -11,14 +11,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/it-happened/eventest"
 	"github.com/thomas-marquis/it-happened/inmemory"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/tu"
+	"github.com/thomas-marquis/s3-box/internal/u"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	mock_editor "github.com/thomas-marquis/s3-box/mocks/editor"
-	mocks_event "github.com/thomas-marquis/s3-box/mocks/event"
 	mocks_fyne "github.com/thomas-marquis/s3-box/mocks/fyne"
 	mocks_notification "github.com/thomas-marquis/s3-box/mocks/notification"
 	"go.uber.org/mock/gomock"
@@ -43,6 +45,7 @@ type editorVMFixture struct {
 	notifier  *mocks_notification.MockRepository
 	t         *testing.T
 	ready     chan struct{}
+	state     *state.State
 }
 
 func setupEditorVM(t *testing.T) *editorVMFixture {
@@ -54,6 +57,7 @@ func setupEditorVM(t *testing.T) *editorVMFixture {
 		app:   fyne_test.NewApp(),
 		t:     t,
 		ready: make(chan struct{}),
+		state: state.New(),
 	}
 
 	f.ctx, f.cancel = context.WithCancel(context.Background())
@@ -70,6 +74,9 @@ func (f *editorVMFixture) Deck() *connection_deck.Deck {
 	}
 	return f.deck
 }
+func (f *editorVMFixture) State() *state.State {
+	return f.state
+}
 
 func (f *editorVMFixture) Connection() *connection_deck.Connection {
 	f.t.Helper()
@@ -80,6 +87,7 @@ func (f *editorVMFixture) Connection() *connection_deck.Connection {
 			connection_deck.WithID(fakeConnID)).
 			Payload().(connection_deck.CreateConnectionTriggered).Connection()
 	}
+	u.Skip(f.state.Connection().Selected().Set(f.conn))
 	return f.conn
 }
 
@@ -113,7 +121,7 @@ func (f *editorVMFixture) BusReady() chan struct{} {
 
 func (f *editorVMFixture) Instance() viewmodel.EditorViewModel {
 	f.t.Helper()
-	vm := viewmodel.NewEditorViewModel(f.ctx, f.Bus(), f.Notifier(), f.Connection())
+	vm := viewmodel.NewEditorViewModel(f.ctx, f.Bus(), f.Notifier(), f.State())
 	<-f.BusReady()
 	return vm
 }
@@ -230,32 +238,6 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		}, time.Second, 10*time.Millisecond)
 	})
 
-	t.Run("should return an error when no connection is selected", func(t *testing.T) {
-		// Given
-		fxt := setupEditorVM(t)
-		vm := fxt.Instance()
-
-		var file *directory.File
-		tu.MakeDirectory(t, "",
-			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
-			tu.WithFileTo("test.txt", &file))
-
-		// When
-		fxt.Bus().Publish(event.New(connection_deck.RemoveConnectionSucceeded{
-			ConnectionPayload: connection_deck.ConnectionPayload{Conn: fxt.Connection()},
-			Deck:              fxt.Deck(),
-		}))
-		require.Eventually(t, func() bool {
-			return vm.SelectedConnection() == nil
-		}, time.Second, 10*time.Millisecond)
-
-		_, err := vm.Open(file)
-
-		// Then
-		assert.Equal(t, viewmodel.ErrNoConnectionSelected, err)
-		assert.Len(t, fxt.Harvester().Events(), 1)
-	})
-
 	t.Run("should focus on an already opened file", func(t *testing.T) {
 		// Given
 		fxt := setupEditorVM(t)
@@ -300,8 +282,8 @@ func TestEditorViewModelImpl_IsOpen(t *testing.T) {
 		assert.False(t, vm.IsOpen(file2))
 		assert.False(t, vm.IsOpen(file3))
 
-		vm.Open(file1) // nolint:errcheck
-		vm.Open(file2) // nolint:errcheck
+		require.NoError(t, u.SkipE(vm.Open(file1)))
+		require.NoError(t, u.SkipE(vm.Open(file2)))
 
 		assert.True(t, vm.IsOpen(file1))
 		assert.True(t, vm.IsOpen(file2))
@@ -309,118 +291,40 @@ func TestEditorViewModelImpl_IsOpen(t *testing.T) {
 	})
 }
 
-func TestEditorViewModelImpl_connectionChanged(t *testing.T) {
-	fakeDeck := connection_deck.New()
-
-	fakeConnID1 := connection_deck.NewConnectionID()
-	conn1 := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
-		connection_deck.AsS3Like(fakeEndpoint, false),
-		connection_deck.WithID(fakeConnID1)).
-		Payload().(connection_deck.CreateConnectionTriggered).Connection()
-
-	conn1updated := fakeDeck.New("Test connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
-		connection_deck.AsS3Like(fakeEndpoint, false),
-		connection_deck.WithID(fakeConnID1)).
-		Payload().(connection_deck.CreateConnectionTriggered).Connection()
-
-	fakeConnID2 := connection_deck.NewConnectionID()
-	conn2 := fakeDeck.New("New connection", fakeAccessKeyId, fakeSecretAccessKey, fakeBucketName,
-		connection_deck.AsS3Like(fakeEndpoint, true),
-		connection_deck.WithID(fakeConnID2)).
-		Payload().(connection_deck.CreateConnectionTriggered).Connection()
-
-	t.Run("should set the new connection when selected", func(t *testing.T) {
+func TestEditorViewModelImpl(t *testing.T) {
+	t.Run("should request to close all opened editors when selected connection changed", func(t *testing.T) {
 		// Given
-		fyne_test.NewApp()
-		fyne_test.NewWindow(nil)
+		fxt := setupEditorVM(t)
+		vm := fxt.Instance()
 
-		ctrl := gomock.NewController(t)
-		mockBus := mocks_event.NewMockBus(ctrl)
-		mockNotifier := mocks_notification.NewMockRepository(ctrl)
+		var file1, file2, file3 *directory.File
+		tu.MakeDirectory(t, "", tu.AsRoot(),
+			tu.WithConnectionId(fxt.Connection().ID()),
+			tu.WithFileTo("test1.txt", &file1),
+			tu.WithFileTo("test2.txt", &file2),
+			tu.WithFileTo("test3.txt", &file3))
 
-		eventsChan := make(chan event.Event)
-		defer close(eventsChan)
+		require.NoError(t, u.SkipE(vm.Open(file1)))
+		require.NoError(t, u.SkipE(vm.Open(file2)))
+		require.NoError(t, u.SkipE(vm.Open(file3)))
 
-		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
-			eventsChan <- event
-		}).AnyTimes()
-
-		vm := viewmodel.NewEditorViewModel(context.TODO(), mockBus, mockNotifier, conn1)
+		require.True(t, vm.IsOpen(file1))
+		require.True(t, vm.IsOpen(file2))
+		require.True(t, vm.IsOpen(file3))
 
 		// When
-		eventsChan <- event.New(connection_deck.SelectConnectionSucceeded{
-			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn2},
-			Deck:              fakeDeck,
-		})
+		u.Skip(fxt.state.Connection().Selected().Set(nil))
 
 		// Then
-		assert.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.NotNil(t, vm.SelectedConnection())
-			assert.Equal(t, conn2, vm.SelectedConnection())
-		}, 5*time.Second, 100*time.Millisecond)
-	})
+		assert.True(t, vm.IsOpen(file1))
+		assert.True(t, vm.IsOpen(file2))
+		assert.True(t, vm.IsOpen(file3))
 
-	t.Run("should set the new connection when updated", func(t *testing.T) {
-		// Given
-		fyne_test.NewApp()
-		fyne_test.NewWindow(nil)
-
-		ctrl := gomock.NewController(t)
-		mockBus := mocks_event.NewMockBus(ctrl)
-		mockNotifier := mocks_notification.NewMockRepository(ctrl)
-
-		eventsChan := make(chan event.Event)
-		defer close(eventsChan)
-
-		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
-			eventsChan <- event
-		}).AnyTimes()
-
-		vm := viewmodel.NewEditorViewModel(context.TODO(), mockBus, mockNotifier, conn1)
-
-		// When
-		eventsChan <- event.New(connection_deck.UpdateConnectionSucceeded{
-			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn1updated},
-			Deck:              fakeDeck,
-		})
-
-		// Then
-		assert.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.NotNil(t, vm.SelectedConnection())
-			assert.Equal(t, conn1updated, vm.SelectedConnection())
-		}, 5*time.Second, 100*time.Millisecond)
-	})
-
-	t.Run("should reset the connection when deleted", func(t *testing.T) {
-		// Given
-		fyne_test.NewApp()
-		fyne_test.NewWindow(nil)
-
-		ctrl := gomock.NewController(t)
-		mockBus := mocks_event.NewMockBus(ctrl)
-		mockNotifier := mocks_notification.NewMockRepository(ctrl)
-
-		eventsChan := make(chan event.Event)
-		defer close(eventsChan)
-
-		mockBus.EXPECT().Subscribe().Return(event.NewSubscriber(eventsChan)).Times(1)
-		mockBus.EXPECT().Publish(gomock.Any()).Do(func(event event.Event) {
-			eventsChan <- event
-		}).AnyTimes()
-
-		vm := viewmodel.NewEditorViewModel(context.TODO(), mockBus, mockNotifier, conn1)
-
-		// When
-		eventsChan <- event.New(connection_deck.RemoveConnectionSucceeded{
-			ConnectionPayload: connection_deck.ConnectionPayload{Conn: conn2},
-			Deck:              fakeDeck,
-		})
-
-		// Then
-		assert.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.Nil(t, vm.SelectedConnection())
-		}, 5*time.Second, 100*time.Millisecond)
+		evts := fxt.Harvester().Events()
+		assert.GreaterOrEqual(t, len(evts), 3)
+		closReqEvts := evts[len(evts)-3:]
+		eventest.AssertIsType(t, closReqEvts[0], editor.CloseRequestedType)
+		eventest.AssertIsType(t, closReqEvts[1], editor.CloseRequestedType)
+		eventest.AssertIsType(t, closReqEvts[2], editor.CloseRequestedType)
 	})
 }

@@ -6,6 +6,7 @@ import (
 
 	fyne_test "fyne.io/fyne/v2/test"
 	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
 	"github.com/thomas-marquis/s3-box/internal/tu"
@@ -44,6 +45,11 @@ func setupFileDetailsMocksWithLimit(t *testing.T, limitBytes uint64) fileDetails
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
+
+	st := state.New()
+	deck := connection_deck.New()
+	st.Connection().Init(deck)
+
 	m := fileDetailsMocks{
 		mockAppCtx:     mocks_appcontext.NewMockAppContext(ctrl),
 		mockExplorerVM: mocks_viewmodel.NewMockExplorerViewModel(ctrl),
@@ -51,7 +57,7 @@ func setupFileDetailsMocksWithLimit(t *testing.T, limitBytes uint64) fileDetails
 		mockSettingsVM: mocks_viewmodel.NewMockSettingsViewModel(ctrl),
 		mockEditorVM:   mocks_viewmodel.NewMockEditorViewModel(ctrl),
 		mockTagsVM:     mocks_viewmodel.NewMockTagsViewModel(ctrl),
-		mockState:      state.New(),
+		mockState:      st,
 	}
 
 	m.mockTagsVM.EXPECT().Select(gomock.Any()).AnyTimes()
@@ -85,7 +91,6 @@ func TestFileDetails(t *testing.T) {
 	t.Run("should display file details", func(t *testing.T) {
 		// Given
 		m := setupFileDetailsMocks(t)
-		m.mockConnVM.EXPECT().IsReadOnly().Return(false).AnyTimes()
 
 		// When
 		res := widget.NewFileDetails(m.mockAppCtx)
@@ -99,7 +104,6 @@ func TestFileDetails(t *testing.T) {
 	t.Run("should disable edit button when file is too large", func(t *testing.T) {
 		// Given
 		m := setupFileDetailsMocksWithLimit(t, 512)
-		m.mockConnVM.EXPECT().IsReadOnly().Return(false).AnyTimes()
 
 		// When
 		res := widget.NewFileDetails(m.mockAppCtx)
@@ -113,7 +117,12 @@ func TestFileDetails(t *testing.T) {
 	t.Run("should disable delete if read-only", func(t *testing.T) {
 		// Given
 		m := setupFileDetailsMocks(t)
-		m.mockConnVM.EXPECT().IsReadOnly().Return(true).AnyTimes()
+
+		deck := m.mockAppCtx.State().Connection().Deck()
+		conn := deck.New("Conn 1", "ak1", "sk1", "b1",
+			connection_deck.WithReadOnlyOption(true)).
+			Payload().(connection_deck.CreateConnectionTriggered).Connection()
+		u.SkipV(deck.Select(conn.ID()))
 
 		// When
 		res := widget.NewFileDetails(m.mockAppCtx)
