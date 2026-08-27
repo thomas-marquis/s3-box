@@ -13,8 +13,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 )
 
-var errConnNotInBinding = fmt.Errorf("connection not found in binding list")
-
 // ConnectionViewModel provides methods to manage, update, and query connections within the application.
 type ConnectionViewModel interface {
 	ViewModel
@@ -181,7 +179,7 @@ func (v *connectionViewModelImpl) handleDelete(evt event.Event) {
 	if err := v.state.Connection().Remove(pl.Connection()); err != nil {
 		v.bus.Publish(evt.NewFollowup(connection_deck.RemoveConnectionFailed{
 			ConnectionPayload: connection_deck.ConnectionPayload{Conn: pl.Connection()},
-			Err:               errConnNotInBinding,
+			Err:               state.ErrConnectionNotFound,
 			RemovedIndex:      v.state.Connection().List().Length(),
 			WasSelected:       false,
 		}))
