@@ -9,11 +9,13 @@ import (
 type ConnectionState struct {
 	connections binding.List[*connection_deck.Connection]
 	deck        *connection_deck.Deck
+	selected    binding.Item[*connection_deck.Connection]
 }
 
 func newConnectionState() *ConnectionState {
 	return &ConnectionState{
 		connections: binding.NewList[*connection_deck.Connection](connection_deck.Compare),
+		selected:    binding.NewItem[*connection_deck.Connection](connection_deck.Compare),
 	}
 }
 
@@ -21,6 +23,10 @@ func (s *ConnectionState) Init(deck *connection_deck.Deck) {
 	s.deck = deck
 	for _, c := range deck.Get() {
 		u.Skip(s.connections.Append(c))
+	}
+
+	if selected := deck.SelectedConnection(); selected != nil {
+		u.Skip(s.selected.Set(selected))
 	}
 }
 
@@ -47,8 +53,17 @@ func (s *ConnectionState) FindOrNil(id connection_deck.ConnectionID) *connection
 }
 
 func (s *ConnectionState) IsReadOnly() bool {
-	if s.deck.SelectedConnection() == nil {
+	if !s.HasSelected() {
 		return false
 	}
 	return s.deck.SelectedConnection().ReadOnly()
+}
+
+func (s *ConnectionState) Selected() binding.Item[*connection_deck.Connection] {
+	return s.selected
+}
+
+// HasSelected returns true if a connection has been selected.
+func (s *ConnectionState) HasSelected() bool {
+	return s.deck.SelectedConnection() != nil
 }

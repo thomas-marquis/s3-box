@@ -41,10 +41,6 @@ type ExplorerViewModel interface {
 	// State methods
 	////////////////////////
 
-	SelectedConnection() binding.Item[*connection_deck.Connection]
-
-	CurrentSelectedConnection() *connection_deck.Connection
-
 	// LastDownloadLocation returns the URI of the last used save directory
 	LastDownloadLocation() fyne.ListableURI
 
@@ -114,9 +110,6 @@ type explorerViewModelImpl struct {
 	baseViewModel
 	sync.Mutex
 
-	selectedConnection    binding.Item[*connection_deck.Connection]
-	selectedConnectionVal *connection_deck.Connection
-
 	settingsVm           SettingsViewModel
 	lastDownloadLocation fyne.ListableURI
 	lastUploadDir        fyne.ListableURI
@@ -149,8 +142,6 @@ func NewExplorerViewModel(
 		},
 		settingsVm:             settingsVm,
 		notifier:               notifier,
-		selectedConnectionVal:  initialConnection,
-		selectedConnection:     binding.NewItem[*connection_deck.Connection](connection_deck.Compare),
 		bus:                    bus,
 		selectedDirectory:      nil,
 		isSelectedDirLoading:   binding.NewBool(),
@@ -160,19 +151,23 @@ func NewExplorerViewModel(
 	}
 
 	if err := v.initializeTreeData(initialConnection); err != nil {
-		if errors.Is(err, ErrNoConnectionSelected) {
-			u.Skip(v.selectedConnection.Set(nil))
-			v.selectedConnectionVal = nil
-		}
 		notifier.NotifyError(fmt.Errorf("error setting initial connection: %w", err))
 	}
 
+	st.Connection().Selected().AddListener(binding.NewDataListener(func() {
+		newSelected := u.SkipV(st.Connection().Selected().Get())
+		if newSelected == nil {
+			st.Explorer().ResetTree()
+			return
+		}
+
+		if err := v.initializeTreeData(newSelected); err != nil {
+			u.Skip(v.errorMessage.Set(err.Error()))
+			return
+		}
+	}))
+
 	bus.Subscribe().
-		On(event.IsOneOf(
-			connection_deck.SelectConnectionSucceededType,
-			connection_deck.UpdateConnectionSucceededType,
-		), v.handleConnectionChange).
-		On(event.Is(connection_deck.RemoveConnectionSucceededType), v.handleConnectionRemoved).
 		On(event.Is(directory.UploadFileSucceededType), v.handleFileUploadSuccess).
 		On(event.Is(directory.UploadFileFailedType), v.handleFileUploadFailure).
 		On(event.Is(directory.CreateFileSucceededType), v.handleCreateFileSuccess).
@@ -254,16 +249,6 @@ func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
 	v.triggerStateListeners()
 }
 
-func (v *explorerViewModelImpl) SelectedConnection() binding.Item[*connection_deck.Connection] {
-	return v.selectedConnection
-}
-
-func (v *explorerViewModelImpl) CurrentSelectedConnection() *connection_deck.Connection {
-	v.Lock()
-	defer v.Unlock()
-	return v.selectedConnectionVal
-}
-
 func (v *explorerViewModelImpl) SelectedDirectory() *directory.Directory {
 	return v.selectedDirectory
 }
@@ -277,7 +262,7 @@ func (v *explorerViewModelImpl) IsSelectedDirectoryLoading() binding.Bool {
 }
 
 func (v *explorerViewModelImpl) LoadDirectory(dir *directory.Directory) error {
-	if v.selectedConnectionVal == nil {
+	if !v.state.Connection().HasSelected() {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
 		return err
@@ -289,14 +274,14 @@ func (v *explorerViewModelImpl) LoadDirectory(dir *directory.Directory) error {
 		v.notifier.NotifyError(wErr)
 		return wErr
 	}
-	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	u.Skip(v.isSelectedDirLoading.Set(true))
 	v.bus.Publish(evt)
 
 	return nil
 }
 
 func (v *explorerViewModelImpl) ReloadDirectory(dir *directory.Directory) error {
-	if v.selectedConnectionVal == nil {
+	if !v.state.Connection().HasSelected() {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
 		return err
@@ -310,7 +295,7 @@ func (v *explorerViewModelImpl) ReloadDirectory(dir *directory.Directory) error 
 	}
 	v.bus.Publish(evt)
 
-	v.isSelectedDirLoading.Set(true) // nolint:errcheck
+	u.Skip(v.isSelectedDirLoading.Set(true))
 
 	return nil
 }
@@ -326,7 +311,7 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 	v.state.Explorer().UpdateChildren(dir)
 
 	if dir.Is(v.selectedDirectory) {
-		v.isSelectedDirLoading.Set(false) // nolint:errcheck
+		u.Skip(v.isSelectedDirLoading.Set(false))
 	}
 
 	v.triggerStateListeners()
@@ -349,7 +334,7 @@ func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
-	evt := f.Download(v.selectedConnectionVal.ID(), dest)
+	evt := f.Download(u.SkipV(v.state.Connection().Selected().Get()).ID(), dest)
 	v.bus.Publish(evt)
 }
 
@@ -372,7 +357,7 @@ func (v *explorerViewModelImpl) DoUpload(localBasePath string, preview *director
 }
 
 func (v *explorerViewModelImpl) UploadOne(localPath string, dir *directory.Directory, overwrite bool) error {
-	if v.selectedConnectionVal == nil {
+	if !v.state.Connection().HasSelected() {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
 		return nil
@@ -659,7 +644,7 @@ func (v *explorerViewModelImpl) UpdateLastUploadLocation(filePath string) {
 }
 
 func (v *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory, name string) {
-	if v.selectedConnectionVal == nil {
+	if !v.state.Connection().HasSelected() {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
 		return
@@ -704,7 +689,7 @@ func (v *explorerViewModelImpl) handleCreateDirFailure(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, name string) {
-	if v.selectedConnectionVal == nil {
+	if !v.state.Connection().HasSelected() {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
 		return
@@ -748,7 +733,7 @@ func (v *explorerViewModelImpl) handleCreateFileFailure(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newName string) {
-	if v.selectedConnectionVal == nil {
+	if !v.state.Connection().HasSelected() {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
 		return
@@ -852,7 +837,7 @@ func (v *explorerViewModelImpl) AbortRename(dir *directory.Directory) error {
 }
 
 func (v *explorerViewModelImpl) RenameFile(file *directory.File, newName string) {
-	if v.selectedConnectionVal == nil {
+	if !v.state.Connection().HasSelected() {
 		err := ErrNoConnectionSelected
 		v.notifier.NotifyError(err)
 		return
@@ -932,41 +917,4 @@ func (v *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection
 	}
 
 	return nil
-}
-
-func (v *explorerViewModelImpl) handleConnectionChange(evt event.Event) {
-	var conn *connection_deck.Connection
-	pl, ok := evt.Payload().(connection_deck.SelectConnectionSucceeded)
-	if ok {
-		conn = pl.Connection()
-	} else {
-		e := evt.Payload().(connection_deck.UpdateConnectionSucceeded)
-		conn = e.Connection()
-		if conn.ID() != v.selectedConnectionVal.ID() {
-			return
-		}
-	}
-	hasChanged := (v.selectedConnectionVal == nil && conn != nil) ||
-		(v.selectedConnectionVal != nil && conn == nil) ||
-		(v.selectedConnectionVal != nil && !v.selectedConnectionVal.Is(conn))
-	if hasChanged {
-		v.Lock()
-		v.selectedConnectionVal = conn
-		u.Skip(v.selectedConnection.Set(conn))
-		v.Unlock()
-
-		if err := v.initializeTreeData(conn); err != nil {
-			u.Skip(v.errorMessage.Set(err.Error()))
-			return
-		}
-	}
-}
-
-func (v *explorerViewModelImpl) handleConnectionRemoved(evt event.Event) {
-	pl := evt.Payload().(connection_deck.RemoveConnectionSucceeded)
-	conn := pl.Connection()
-	if v.selectedConnectionVal != nil && v.selectedConnectionVal.Is(conn) {
-		v.selectedConnectionVal = nil
-		u.Skip(v.selectedConnection.Set(nil))
-	}
 }

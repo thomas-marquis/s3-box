@@ -142,9 +142,10 @@ func (v *connectionViewModelImpl) Select(conn *connection_deck.Connection) {
 }
 
 func (v *connectionViewModelImpl) handleUpdate(evt event.Event) {
-	cg := evt.Payload().(connection_deck.ConnectionGetter)
-	v.updateConnectionBinding(evt, cg.Connection())
+	pl := evt.Payload().(connection_deck.ConnectionGetter)
+	v.updateConnectionBinding(evt, pl.Connection())
 	v.state.Connection().Deck().Notify(evt)
+	u.Skip(v.state.Connection().Selected().Set(pl.Connection()))
 	u.Skip(v.loading.Set(false))
 }
 
@@ -163,6 +164,13 @@ func (v *connectionViewModelImpl) Delete(conn *connection_deck.Connection) {
 
 func (v *connectionViewModelImpl) handleDelete(evt event.Event) {
 	pl := evt.Payload().(connection_deck.RemoveConnectionSucceeded)
+
+	rmConn := pl.Connection()
+	selected := u.SkipV(v.state.Connection().Selected().Get())
+	if selected != nil && rmConn.Is(selected) {
+		u.Skip(v.state.Connection().Selected().Set(nil))
+	}
+
 	if err := v.deleteFromBinding(evt, pl.Connection()); err != nil {
 		return
 	}
@@ -193,6 +201,7 @@ func (v *connectionViewModelImpl) ExportAsJSON(writer io.Writer) error {
 	return nil
 }
 
+// TODO: move to state
 func (v *connectionViewModelImpl) deleteFromBinding(evt event.Event, deletedConn *connection_deck.Connection) error {
 	found := false
 	allConnections, _ := v.state.Connection().List().Get()
@@ -215,6 +224,7 @@ func (v *connectionViewModelImpl) deleteFromBinding(evt event.Event, deletedConn
 	return nil
 }
 
+// TODO: move to state
 func (v *connectionViewModelImpl) updateConnectionBinding(evt event.Event, c *connection_deck.Connection) {
 	found := false
 	for i, conn := range v.state.Connection().Deck().Get() {

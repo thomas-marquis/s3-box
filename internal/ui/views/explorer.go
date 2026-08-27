@@ -42,8 +42,8 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 
 	content := container.NewHSplit(fyne_widget.NewLabel(""), fyne_widget.NewLabel(""))
 
-	vm.SelectedConnection().AddListener(binding.NewDataListener(func() {
-		conn := vm.CurrentSelectedConnection()
+	appCtx.State().Connection().Selected().AddListener(binding.NewDataListener(func() {
+		conn := u.SkipV(appCtx.State().Connection().Selected().Get())
 		if conn == nil {
 			noConn.Show()
 			content.Hide()

@@ -8,10 +8,12 @@ import (
 	"sync"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/it-happened/event"
-	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/u"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
@@ -23,8 +25,6 @@ var (
 
 type EditorViewModel interface {
 	ViewModel
-
-	SelectedConnection() *connection_deck.Connection
 
 	RegisterEditorFactory(name string, initializer editor.Initializer)
 
@@ -39,41 +39,37 @@ type editorViewModelImpl struct {
 	baseViewModel
 	mu sync.Mutex
 
-	openedEditors      map[string]editor.Editor
-	loadedContents     map[string]directory.FileContent
-	selectedConnection *connection_deck.Connection
-	editorFactories    map[string]editor.Initializer
-
-	bus      event.Bus
-	notifier notification.Repository
+	openedEditors   map[string]editor.Editor
+	loadedContents  map[string]directory.FileContent
+	editorFactories map[string]editor.Initializer
+	state           *state.State
+	bus             event.Bus
+	notifier        notification.Repository
 }
 
 func NewEditorViewModel(
 	ctx context.Context,
 	bus event.Bus,
 	notifier notification.Repository,
-	initialConnection *connection_deck.Connection,
+	st *state.State,
 ) EditorViewModel {
 	vm := &editorViewModelImpl{
-		openedEditors:      make(map[string]editor.Editor),
-		loadedContents:     make(map[string]directory.FileContent),
-		bus:                bus,
-		notifier:           notifier,
-		selectedConnection: initialConnection,
+		openedEditors:  make(map[string]editor.Editor),
+		loadedContents: make(map[string]directory.FileContent),
+		bus:            bus,
+		notifier:       notifier,
 		editorFactories: map[string]editor.Initializer{
 			"text": texteditor.New,
 			"csv":  csveditor.New,
 		},
+		state: st,
 	}
+
+	st.Connection().Selected().AddListener(binding.NewDataListener(vm.closeAll))
 
 	bus.Subscribe().
 		On(event.Is(directory.LoadFileSucceededType), vm.handleFileLoadingSuccess).
 		On(event.Is(directory.LoadFileFailedType), vm.handleFileLoadingFailure).
-		On(event.IsOneOf(
-			connection_deck.SelectConnectionSucceededType,
-			connection_deck.UpdateConnectionSucceededType,
-			connection_deck.RemoveConnectionSucceededType,
-		), vm.handleConnectionChanged).
 		On(event.Is(editor.CloseConfirmedType), vm.handleEditorCloseConfirmed).
 		On(event.Is(editor.CloseCanceledType), vm.handleEditorCloseCanceled).
 		ListenNonBlocking()
@@ -88,21 +84,11 @@ func NewEditorViewModel(
 	return vm
 }
 
-func (v *editorViewModelImpl) SelectedConnection() *connection_deck.Connection {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-	return v.selectedConnection
-}
-
 func (v *editorViewModelImpl) RegisterEditorFactory(name string, initializer editor.Initializer) {
 	v.editorFactories[name] = initializer
 }
 
 func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) {
-	if v.selectedConnection == nil {
-		return nil, ErrNoConnectionSelected
-	}
-
 	if e, ok := v.openedEditors[file.FullPath()]; ok {
 		fyne.Do(e.Window().RequestFocus)
 		return e, ErrEditorAlreadyOpened
@@ -125,7 +111,7 @@ func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) 
 		v.requestClose(e, cancel)
 	})
 
-	v.bus.Publish(file.Load(v.selectedConnection.ID(), event.WithContext(ctx)))
+	v.bus.Publish(file.Load(u.SkipV(v.state.Connection().Selected().Get()).ID(), event.WithContext(ctx)))
 
 	return e, nil
 }
@@ -204,37 +190,9 @@ func (v *editorViewModelImpl) unregisterEditor(file *directory.File) {
 	delete(v.loadedContents, path)
 }
 
-func (v *editorViewModelImpl) handleConnectionChanged(evt event.Event) {
-	var hasChanged bool
-	var conn *connection_deck.Connection
-	if _, ok := evt.Payload().(connection_deck.RemoveConnectionSucceeded); ok {
-		hasChanged = true
-	} else {
-		pl, ok := evt.Payload().(connection_deck.SelectConnectionSucceeded)
-		if ok {
-			conn = pl.Connection()
-		} else {
-			pl := evt.Payload().(connection_deck.UpdateConnectionSucceeded)
-			conn = pl.Connection()
-			if conn.ID() != v.selectedConnection.ID() {
-				return
-			}
-		}
-
-		hasChanged = (v.selectedConnection == nil && conn != nil) ||
-			(v.selectedConnection != nil && conn == nil) ||
-			(v.selectedConnection != nil && !v.selectedConnection.Is(conn))
-	}
-
-	if hasChanged {
-		v.mu.Lock()
-		v.closeAll()
-		v.selectedConnection = conn
-		v.mu.Unlock()
-	}
-}
-
 func (v *editorViewModelImpl) closeAll() {
+	v.mu.Lock()
+	defer v.mu.Unlock()
 	for _, oe := range v.openedEditors {
 		v.requestClose(oe, func() {}) // TODO: move this when the connection change is triggered and warn the user for unsaved changes before closing the editors
 	}
