@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/storage"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 func FromFyneUrisToPaths(uris []fyne.URI) []string {
@@ -30,4 +32,9 @@ func GetCommonParentPath(paths []string) string {
 
 	return filepath.Dir(res)
 
+}
+
+func ToListableURI(path string) fyne.ListableURI {
+	uri := storage.NewFileURI(path)
+	return u.SkipV(storage.ListerForURI(uri))
 }

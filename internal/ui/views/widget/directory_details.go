@@ -13,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 )
@@ -281,10 +282,9 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 				}
 				dialog.ShowError(err, w.appCtx.Window())
 			}
-			vm.UpdateLastUploadLocation(localDestFilePath)
 		}, w.appCtx.Window())
 
-		selectDialog.SetLocation(vm.LastUploadLocation())
+		selectDialog.SetLocation(u.SkipV(w.appCtx.State().Explorer().UploadLocation().Get()))
 		selectDialog.Show()
 	}
 }
@@ -292,6 +292,9 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 func (w *DirectoryDetails) makeOnDownload(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
 	return func() {
 		d := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
+			if uri == nil {
+				return
+			}
 			vm.DownloadDirectory(dir, uri.Path())
 		}, w.appCtx.Window())
 		d.SetConfirmText("Select")

@@ -3,13 +3,34 @@ package state
 import (
 	"fmt"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
+	"github.com/thomas-marquis/s3-box/internal/ui/values"
 )
 
 type ExplorerState struct {
-	fileTree binding.Tree[node.Node]
+	fileTree         binding.Tree[node.Node]
+	downloadLocation binding.Item[fyne.ListableURI]
+	uploadLocation   binding.Item[fyne.ListableURI]
+}
+
+func newExplorerState() *ExplorerState {
+	s := &ExplorerState{
+		fileTree: binding.NewTree[node.Node](func(n1 node.Node, n2 node.Node) bool {
+			return n1.ID() == n2.ID()
+		}),
+		downloadLocation: binding.NewItem[fyne.ListableURI](compareListableURI),
+		uploadLocation:   binding.NewItem[fyne.ListableURI](compareListableURI),
+	}
+	prefs := fyne.CurrentApp().Preferences()
+	u.Skip(s.downloadLocation.Set(uu.ToListableURI(prefs.String(values.PrefDownloadLocation))))
+	u.Skip(s.uploadLocation.Set(uu.ToListableURI(prefs.String(values.PrefUploadLocation))))
+
+	return s
 }
 
 func (s *ExplorerState) FileTree() binding.Tree[node.Node] {
@@ -153,4 +174,21 @@ func (s *ExplorerState) GetDirectoryNode(path directory.Path) (node.DirectoryNod
 		return nil, NewError(fmt.Sprintf("call the police, node '%s' is not a directory", path.String()))
 	}
 	return dirNode, nil
+}
+
+// DownloadLocation returns the URI of the last used save directory
+func (s *ExplorerState) DownloadLocation() binding.Item[fyne.ListableURI] {
+	return s.downloadLocation
+}
+
+// UploadLocation returns the URI of the last used upload directory
+func (s *ExplorerState) UploadLocation() binding.Item[fyne.ListableURI] {
+	return s.uploadLocation
+}
+
+func compareListableURI(a, b fyne.ListableURI) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Path() == b.Path()
 }

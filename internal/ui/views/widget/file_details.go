@@ -209,13 +209,11 @@ func (w *FileDetails) Select(file *directory.File) {
 			}
 			localDestFilePath := writer.URI().Path()
 			exVm.DownloadFile(file, localDestFilePath)
-			if err := exVm.UpdateLastDownloadLocation(localDestFilePath); err != nil { //nolint:staticcheck
-				// TODO: handle error
-			}
 			fyne.CurrentApp().SendNotification(fyne.NewNotification("File download", "success"))
 		}, w.appCtx.Window())
 		saveDialog.SetFileName(file.Name().String())
-		saveDialog.SetLocation(exVm.LastDownloadLocation())
+		saveDialog.SetLocation(
+			u.SkipV(w.appCtx.State().Explorer().DownloadLocation().Get()))
 		saveDialog.Show()
 	})
 

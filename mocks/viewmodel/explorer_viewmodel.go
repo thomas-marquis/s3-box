@@ -209,34 +209,6 @@ func (mr *MockExplorerViewModelMockRecorder) IsSelectedDirectoryLoading() *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsSelectedDirectoryLoading", reflect.TypeOf((*MockExplorerViewModel)(nil).IsSelectedDirectoryLoading))
 }
 
-// LastDownloadLocation mocks base method.
-func (m *MockExplorerViewModel) LastDownloadLocation() fyne.ListableURI {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LastDownloadLocation")
-	ret0, _ := ret[0].(fyne.ListableURI)
-	return ret0
-}
-
-// LastDownloadLocation indicates an expected call of LastDownloadLocation.
-func (mr *MockExplorerViewModelMockRecorder) LastDownloadLocation() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LastDownloadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).LastDownloadLocation))
-}
-
-// LastUploadLocation mocks base method.
-func (m *MockExplorerViewModel) LastUploadLocation() fyne.ListableURI {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LastUploadLocation")
-	ret0, _ := ret[0].(fyne.ListableURI)
-	return ret0
-}
-
-// LastUploadLocation indicates an expected call of LastUploadLocation.
-func (mr *MockExplorerViewModelMockRecorder) LastUploadLocation() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LastUploadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).LastUploadLocation))
-}
-
 // LoadDirectory mocks base method.
 func (m *MockExplorerViewModel) LoadDirectory(dir *directory.Directory) error {
 	m.ctrl.T.Helper()
@@ -395,32 +367,6 @@ func (m *MockExplorerViewModel) SetSelectedDirectory(dir *directory.Directory) {
 func (mr *MockExplorerViewModelMockRecorder) SetSelectedDirectory(dir any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSelectedDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).SetSelectedDirectory), dir)
-}
-
-// UpdateLastDownloadLocation mocks base method.
-func (m *MockExplorerViewModel) UpdateLastDownloadLocation(filePath string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateLastDownloadLocation", filePath)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateLastDownloadLocation indicates an expected call of UpdateLastDownloadLocation.
-func (mr *MockExplorerViewModelMockRecorder) UpdateLastDownloadLocation(filePath any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLastDownloadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).UpdateLastDownloadLocation), filePath)
-}
-
-// UpdateLastUploadLocation mocks base method.
-func (m *MockExplorerViewModel) UpdateLastUploadLocation(filePath string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "UpdateLastUploadLocation", filePath)
-}
-
-// UpdateLastUploadLocation indicates an expected call of UpdateLastUploadLocation.
-func (mr *MockExplorerViewModelMockRecorder) UpdateLastUploadLocation(filePath any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLastUploadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).UpdateLastUploadLocation), filePath)
 }
 
 // UploadOne mocks base method.

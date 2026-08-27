@@ -10,13 +10,13 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/uu"
+	"github.com/thomas-marquis/s3-box/internal/ui/values"
 
 	"fmt"
 	"path/filepath"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/storage"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
@@ -40,12 +40,6 @@ type ExplorerViewModel interface {
 	////////////////////////
 	// State methods
 	////////////////////////
-
-	// LastDownloadLocation returns the URI of the last used save directory
-	LastDownloadLocation() fyne.ListableURI
-
-	// LastUploadLocation returns the URI of the last used upload directory
-	LastUploadLocation() fyne.ListableURI
 
 	SelectedDirectory() *directory.Directory
 	SetSelectedDirectory(dir *directory.Directory)
@@ -83,12 +77,6 @@ type ExplorerViewModel interface {
 
 	DeleteDirectory(dir *directory.Directory)
 
-	// UpdateLastDownloadLocation updates the last used save directory path
-	UpdateLastDownloadLocation(filePath string) error
-
-	// UpdateLastUploadLocation updates the last used upload directory path
-	UpdateLastUploadLocation(filePath string)
-
 	// CreateEmptyDirectory creates an empty subdirectory in the given parent directory
 	CreateEmptyDirectory(parent *directory.Directory, name string)
 
@@ -112,9 +100,7 @@ type explorerViewModelImpl struct {
 	baseViewModel
 	sync.Mutex
 
-	settingsVm           SettingsViewModel
-	lastDownloadLocation fyne.ListableURI
-	lastUploadDir        fyne.ListableURI
+	settingsVm SettingsViewModel
 
 	selectedDirectory    *directory.Directory
 	isSelectedDirLoading binding.Bool
@@ -335,6 +321,12 @@ func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
 
 func (v *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
 	evt := f.Download(u.SkipV(v.state.Connection().Selected().Get()).ID(), dest)
+
+	dirPath := filepath.Dir(dest)
+	uriLister := uu.ToListableURI(dirPath)
+	fyne.CurrentApp().Preferences().SetString(values.PrefDownloadLocation, uriLister.Path())
+	u.Skip(v.state.Explorer().DownloadLocation().Set(uriLister))
+
 	v.bus.Publish(evt)
 }
 
@@ -352,6 +344,10 @@ func (v *explorerViewModelImpl) handleDownloadFileFailure(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) DownloadDirectory(dir *directory.Directory, destParent string) {
+	uriLister := uu.ToListableURI(destParent)
+	fyne.CurrentApp().Preferences().SetString(values.PrefDownloadLocation, uriLister.Path())
+	u.Skip(v.state.Explorer().DownloadLocation().Set(uriLister))
+
 	v.bus.Publish(event.New(directory.DownloadTriggered{
 		Directory:      dir,
 		DestParentPath: destParent,
@@ -397,6 +393,11 @@ func (v *explorerViewModelImpl) UploadOne(localPath string, dir *directory.Direc
 		v.notifier.NotifyError(err)
 		return nil
 	}
+
+	uriLister := uu.ToListableURI(filepath.Dir(localPath))
+	fyne.CurrentApp().Preferences().SetString(values.PrefUploadLocation, uriLister.Path())
+	u.Skip(v.state.Explorer().UploadLocation().Set(uriLister))
+
 	v.bus.Publish(evt)
 	return nil
 }
@@ -634,38 +635,6 @@ func (v *explorerViewModelImpl) handleDeleteFileFailure(evt event.Event) {
 	v.notifier.NotifyError(err)
 	u.Skip(v.errorMessage.Set(err.Error()))
 	v.triggerStateListeners()
-}
-
-func (v *explorerViewModelImpl) LastDownloadLocation() fyne.ListableURI {
-	return v.lastDownloadLocation
-}
-
-func (v *explorerViewModelImpl) UpdateLastDownloadLocation(filePath string) error {
-	dirPath := filepath.Dir(filePath)
-	uri := storage.NewFileURI(dirPath)
-	uriLister, err := storage.ListerForURI(uri)
-	if err != nil {
-		wErr := fmt.Errorf("update download location: %w", err)
-		v.notifier.NotifyError(wErr)
-		return wErr
-	}
-	v.lastDownloadLocation = uriLister
-	return nil
-}
-
-func (v *explorerViewModelImpl) LastUploadLocation() fyne.ListableURI {
-	return v.lastUploadDir
-}
-
-func (v *explorerViewModelImpl) UpdateLastUploadLocation(filePath string) {
-	dirPath := filepath.Dir(filePath)
-	uri := storage.NewFileURI(dirPath)
-	uriLister, err := storage.ListerForURI(uri)
-	if err != nil {
-		v.notifier.NotifyError(fmt.Errorf("update upload location: %w", err))
-		return
-	}
-	v.lastUploadDir = uriLister
 }
 
 func (v *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory, name string) {
