@@ -29,12 +29,13 @@ type DirectoryDetails struct {
 	pathLabel        *widget.Label
 	renameErrContent *renameFailedPanel
 
-	toolbar            *widget.Toolbar
+	toolbar            *fyne.Container
 	newDirectoryAction *ToolbarButton
 	createFileAction   *ToolbarButton
 	renameAction       *ToolbarButton
 	reloadAction       *ToolbarButton
 	deleteAction       *ToolbarButton
+	downloadAction     *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
 
 	dropZone *DropZone
@@ -52,13 +53,13 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	createFileAction := NewToolbarButton("Create file", theme.ContentAddIcon(), func() {})
 	renameAction := NewToolbarButton("Rename", theme.FileTextIcon(), func() {})
 	deleteAction := NewToolbarButton("Delete", theme.DeleteIcon(), func() {})
-	toolbar := widget.NewToolbar(
-		reloadAction,
-		createDirAction,
-		createFileAction,
-		renameAction,
-		deleteAction,
+	downloadAction := NewToolbarButton("Download", theme.DownloadIcon(), func() {})
+
+	toolbar := container.NewVBox(
+		widget.NewToolbar(reloadAction, downloadAction),
+		widget.NewToolbar(createDirAction, createFileAction, renameAction, deleteAction),
 	)
+
 	loadingBar := widget.NewProgressBarInfinite()
 	loadingBar.Hide()
 
@@ -71,6 +72,7 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 		renameAction:       renameAction,
 		reloadAction:       reloadAction,
 		deleteAction:       deleteAction,
+		downloadAction:     downloadAction,
 		loadingBar:         loadingBar,
 		renameErrContent:   newRenameFailedPanel(appCtx.Window()),
 		dropZone:           NewDropZone(dropZoneInitialText, appCtx.Window()),
@@ -158,6 +160,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	w.renameAction.SetOnTapped(w.makeOnRename(vm, dir))
 	w.reloadAction.SetOnTapped(w.makeOnReload(vm, dir))
 	w.deleteAction.SetOnTapped(w.makeOnDelete(vm, dir))
+	w.downloadAction.SetOnTapped(w.makeOnDownload(vm, dir))
 
 	if dir.IsRoot() {
 		w.renameAction.Disable()
@@ -283,6 +286,17 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 
 		selectDialog.SetLocation(vm.LastUploadLocation())
 		selectDialog.Show()
+	}
+}
+
+func (w *DirectoryDetails) makeOnDownload(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
+	return func() {
+		d := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
+			vm.DownloadDirectory(dir, uri.Path())
+		}, w.appCtx.Window())
+		d.SetConfirmText("Select")
+		d.SetTitleText(fmt.Sprintf("Select where to download '%s'", dir.Name()))
+		d.Show()
 	}
 }
 

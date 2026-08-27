@@ -219,3 +219,35 @@ type UploadSucceeded LoadSucceeded
 func (e UploadSucceeded) EventType() event.Type {
 	return UploadSucceededType
 }
+
+const (
+	DownloadTriggeredType event.Type = "event.directory.download.triggered"
+	DownloadSucceededType event.Type = "event.directory.download.succeeded"
+	DownloadFailedType    event.Type = "event.directory.download.failed"
+)
+
+type DownloadTriggered struct {
+	Directory      *Directory
+	DestParentPath string
+}
+
+func (DownloadTriggered) EventType() event.Type {
+	return DownloadTriggeredType
+}
+
+type DownloadSucceeded struct {
+	Directory *Directory
+}
+
+func (DownloadSucceeded) EventType() event.Type {
+	return DownloadSucceededType
+}
+
+type DownloadFailed struct {
+	Directory *Directory
+	Err       error
+}
+
+func (DownloadFailed) EventType() event.Type {
+	return DownloadFailedType
+}

@@ -58,6 +58,7 @@ func (h *EventHandler) Listen() {
 		On(event.Is(directory.RenameFileTriggeredType), h.handleRenameFile).
 		On(event.Is(directory.RenameTriggeredType), h.handleRenameRequest).
 		On(event.Is(directory.RenameRecoveryTriggeredType), h.handleRenameRecovery).
+		On(event.Is(directory.DownloadTriggeredType), h.handleDownload).
 		On(event.IsOneOf(
 			connection_deck.RemoveConnectionSucceededType,
 			connection_deck.UpdateConnectionSucceededType,

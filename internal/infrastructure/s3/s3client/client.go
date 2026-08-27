@@ -21,6 +21,7 @@ type BaseAPI interface {
 	ListObjects(ctx context.Context, prefix string, recursive bool, opts ...Option) (ListObjectsResult, error)
 	ListObjectsWithCallback(ctx context.Context, prefix string, recursive bool, callback func(page *s3.ListObjectsV2Output) error, opts ...Option) error
 	Download(ctx context.Context, key string, writer io.WriterAt, opts ...Option) error
+	DownloadDirectory(ctx context.Context, keyPrefix, dest string, opts ...Option) error
 	Upload(ctx context.Context, key string, body io.Reader, opts ...Option) error
 	PutObjectTagging(ctx context.Context, key string, tags []s3types.Tag, opts ...Option) (*s3.PutObjectTaggingOutput, error)
 	GetObjectTagging(ctx context.Context, key string, opts ...Option) (*s3.GetObjectTaggingOutput, error)
@@ -147,6 +148,10 @@ func (c *clientImpl) GetObjectTagging(ctx context.Context, key string, opts ...O
 }
 func (c *clientImpl) PutObjectTagging(ctx context.Context, key string, tags []s3types.Tag, opts ...Option) (*s3.PutObjectTaggingOutput, error) {
 	return c.api.PutObjectTagging(ctx, key, tags, opts...)
+}
+
+func (c *clientImpl) DownloadDirectory(ctx context.Context, keyPrefix, dest string, opts ...Option) error {
+	return c.api.DownloadDirectory(ctx, keyPrefix, dest, opts...)
 }
 
 type Option func(any)
