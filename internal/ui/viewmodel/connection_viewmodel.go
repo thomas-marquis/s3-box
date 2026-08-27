@@ -176,12 +176,12 @@ func (v *connectionViewModelImpl) handleDelete(evt event.Event) {
 		u.Skip(v.state.Connection().Selected().Set(nil))
 	}
 
-	if err := v.state.Connection().Remove(pl.Connection()); err != nil {
+	if err := v.state.Connection().Remove(rmConn); err != nil {
 		v.bus.Publish(evt.NewFollowup(connection_deck.RemoveConnectionFailed{
-			ConnectionPayload: connection_deck.ConnectionPayload{Conn: pl.Connection()},
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: rmConn},
 			Err:               state.ErrConnectionNotFound,
 			RemovedIndex:      v.state.Connection().List().Length(),
-			WasSelected:       false,
+			WasSelected:       rmConn.Is(selected),
 		}))
 		return
 	}
