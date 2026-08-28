@@ -20,13 +20,15 @@ func newLoadedState(previous baseState, subDirs map[Path]*Directory, files map[F
 	bs := previous.Clone()
 	if subDirs == nil {
 		bs.subDirs = make(map[Path]*Directory)
+	} else {
+		bs.subDirs = subDirs
 	}
 	if files == nil {
 		bs.files = make(map[FileName]*File)
+	} else {
+		bs.files = files
 	}
-	bs.subDirs = subDirs
-	bs.files = files
-	return &loadedState{bs}
+	return &loadedState{baseState: bs}
 }
 
 func (s *loadedState) Type() StateType {

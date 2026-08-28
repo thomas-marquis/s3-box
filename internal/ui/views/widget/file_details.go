@@ -135,16 +135,10 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 	)
 }
 
-func makeSeparator() fyne.CanvasObject {
-	return container.New(
-		layout.NewCustomPaddedLayout(10, 20, 0, 0),
-		widget.NewSeparator(),
-	)
-}
-
 func (w *FileDetails) Select(file *directory.File) {
 	exVm := w.appCtx.ExplorerViewModel()
 	edVm := w.appCtx.EditorViewModel()
+	st := w.appCtx.State()
 
 	w.currentSelectedFile = file
 
@@ -169,19 +163,19 @@ func (w *FileDetails) Select(file *directory.File) {
 	u.Skip(w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05")))
 	u.Skip(w.fileSizeBinding.Set(humanize.Bytes(file.SizeBytes())))
 
-	w.appCtx.State().Settings().EditorFileSizeLimitBytes().RemoveListener(w.maxFileSizeListener)
+	st.Settings().EditorFileSizeLimitBytes().RemoveListener(w.maxFileSizeListener)
 	dl := binding.NewDataListener(func() {
-		if file.SizeBytes() > w.appCtx.State().Settings().EditorFileSizeLimitBytesValue() {
+		if file.SizeBytes() > st.Settings().EditorFileSizeLimitBytesValue() {
 			w.editAction.Disable()
 		} else {
-			if w.appCtx.State().Connection().IsReadOnly() {
+			if st.Connection().IsReadOnly() {
 				w.editAction.Disable()
 			} else {
 				w.editAction.Enable()
 			}
 		}
 	})
-	w.appCtx.State().Settings().EditorFileSizeLimitBytes().AddListener(dl)
+	st.Settings().EditorFileSizeLimitBytes().AddListener(dl)
 	w.maxFileSizeListener = dl
 
 	w.editAction.SetOnTapped(func() {
@@ -213,7 +207,7 @@ func (w *FileDetails) Select(file *directory.File) {
 		}, w.appCtx.Window())
 		saveDialog.SetFileName(file.Name().String())
 		saveDialog.SetLocation(
-			u.SkipV(w.appCtx.State().Explorer().DownloadLocation().Get()))
+			u.SkipV(st.Explorer().DownloadLocation().Get()))
 		saveDialog.Show()
 	})
 
@@ -263,9 +257,16 @@ func (w *FileDetails) Select(file *directory.File) {
 				}
 			}, w.appCtx.Window())
 	})
-	if w.appCtx.State().Connection().IsReadOnly() {
+	if st.Connection().IsReadOnly() {
 		w.deleteAction.Disable()
 		w.editAction.Disable()
 		w.renameAction.Disable()
 	}
+}
+
+func makeSeparator() fyne.CanvasObject {
+	return container.New(
+		layout.NewCustomPaddedLayout(10, 20, 0, 0),
+		widget.NewSeparator(),
+	)
 }

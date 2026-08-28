@@ -12,11 +12,16 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/values"
 )
 
+const (
+	ObsNameOnStateChange = "directory.observer.onStateChange"
+)
+
 type ExplorerState struct {
 	fileTree         binding.Tree[node.Node]
 	downloadLocation binding.Item[fyne.ListableURI]
 	uploadLocation   binding.Item[fyne.ListableURI]
-	selected         binding.Item[*directory.Directory]
+	selectedDir      binding.Item[*directory.Directory]
+	selectedFile     binding.Item[*directory.File]
 }
 
 func newExplorerState() *ExplorerState {
@@ -26,7 +31,8 @@ func newExplorerState() *ExplorerState {
 		}),
 		downloadLocation: binding.NewItem[fyne.ListableURI](compareListableURI),
 		uploadLocation:   binding.NewItem[fyne.ListableURI](compareListableURI),
-		selected:         binding.NewItem[*directory.Directory](directory.Compare),
+		selectedDir:      binding.NewItem[*directory.Directory](directory.Compare),
+		selectedFile:     binding.NewItem[*directory.File](directory.CompareFile),
 	}
 	prefs := fyne.CurrentApp().Preferences()
 	u.Skip(s.downloadLocation.Set(uu.ToListableURI(prefs.String(values.PrefDownloadLocation))))
@@ -39,16 +45,31 @@ func (s *ExplorerState) FileTree() binding.Tree[node.Node] {
 	return s.fileTree
 }
 
-func (s *ExplorerState) Selected() binding.Item[*directory.Directory] {
-	return s.selected
+func (s *ExplorerState) SelectedDir() binding.Item[*directory.Directory] {
+	return s.selectedDir
 }
 
-func (s *ExplorerState) Select(newDir *directory.Directory) {
-	u.Skip(s.selected.Set(newDir))
+func (s *ExplorerState) SelectDir(newDir *directory.Directory) {
+	prevSelected := u.SkipV(s.selectedDir.Get())
+	if prevSelected != nil {
+		prevSelected.OnStateChange().RemoveObserversWithName(ObsNameOnStateChange)
+	}
+
+	u.Skip(s.selectedDir.Set(newDir))
+	u.Skip(s.selectedFile.Set(nil))
 }
 
-func (s *ExplorerState) IsSelected(dir *directory.Directory) bool {
-	return directory.Compare(dir, u.SkipV(s.selected.Get()))
+func (s *ExplorerState) IsSelectedDir(dir *directory.Directory) bool {
+	return directory.Compare(dir, u.SkipV(s.selectedDir.Get()))
+}
+
+func (s *ExplorerState) SelectedFile() binding.Item[*directory.File] {
+	return s.selectedFile
+}
+
+func (s *ExplorerState) SelectFile(newFile *directory.File) {
+	u.Skip(s.selectedFile.Set(newFile))
+	u.Skip(s.selectedDir.Set(nil))
 }
 
 func (s *ExplorerState) InitFileTree(rootDir *directory.Directory, bucketName string) error {

@@ -57,18 +57,6 @@ func (mr *MockExplorerViewModelMockRecorder) AbortRename(dir any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AbortRename", reflect.TypeOf((*MockExplorerViewModel)(nil).AbortRename), dir)
 }
 
-// AddStateListener mocks base method.
-func (m *MockExplorerViewModel) AddStateListener(arg0 func()) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AddStateListener", arg0)
-}
-
-// AddStateListener indicates an expected call of AddStateListener.
-func (mr *MockExplorerViewModelMockRecorder) AddStateListener(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddStateListener", reflect.TypeOf((*MockExplorerViewModel)(nil).AddStateListener), arg0)
-}
-
 // CreateEmptyDirectory mocks base method.
 func (m *MockExplorerViewModel) CreateEmptyDirectory(parent *directory.Directory, name string) {
 	m.ctrl.T.Helper()

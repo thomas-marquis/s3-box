@@ -71,14 +71,14 @@ func New(
 	}
 
 	d := &Directory{
-		connectionID: connectionID,
-		name:         name,
-		parent:       parent,
-		path:         parent.Path().NewSubPath(name),
+		connectionID:  connectionID,
+		name:          name,
+		parent:        parent,
+		path:          parent.Path().NewSubPath(name),
+		onStateChange: u.NewObservable[*Directory](),
 	}
 
-	d.currentState = newNotLoadedState(d, nil)
-	d.onStateChange = u.NewObservable[*Directory]()
+	d.setState(newNotLoadedState(d, nil))
 
 	return d, nil
 }
@@ -360,11 +360,12 @@ func (d *Directory) OnStateChange() *u.Observable[*Directory] {
 	return d.onStateChange
 }
 
-func (d *Directory) setState(state state) {
-	if d.currentState.Type() != state.Type() {
+func (d *Directory) setState(newState state) {
+	trigger := d.currentState != nil && d.currentState.Type() != newState.Type()
+	d.currentState = newState
+	if trigger {
 		d.onStateChange.TriggerAll(d)
 	}
-	d.currentState = state
 }
 
 func (d *Directory) updatePath(newParentPath Path) {

@@ -14,12 +14,12 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 )
 
 const (
 	dropZoneInitialText = "Drop files here to upload"
-	dirStateObserverKey = "directory.observer.onStateChange"
 )
 
 type DirectoryDetails struct {
@@ -78,18 +78,8 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 		renameErrContent:   newRenameFailedPanel(appCtx.Window()),
 		dropZone:           NewDropZone(dropZoneInitialText, appCtx.Window()),
 	}
-	w.ExtendBaseWidget(w)
 
-	//appCtx.ExplorerViewModel().IsSelectedDirectoryLoading().AddListener(binding.NewDataListener(func() {
-	//	loading, _ := appCtx.ExplorerViewModel().IsSelectedDirectoryLoading().Get()
-	//	if loading {
-	//		loadingBar.Show()
-	//		loadingBar.Start()
-	//	} else {
-	//		w.loadingBar.Stop()
-	//		w.loadingBar.Hide()
-	//	}
-	//}))
+	w.ExtendBaseWidget(w)
 
 	return w
 }
@@ -98,7 +88,7 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
 	copyPath := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		sd := u.SkipV(w.appCtx.State().Explorer().Selected().Get())
+		sd := u.SkipV(w.appCtx.State().Explorer().SelectedDir().Get())
 		if sd == nil {
 			return
 		}
@@ -133,31 +123,26 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (w *DirectoryDetails) Select(dir *directory.Directory) {
-	st := w.appCtx.State()
-	prevSelected := u.SkipV(st.Explorer().Selected().Get())
-	if prevSelected != nil {
-		prevSelected.OnStateChange().RemoveObserversWithName(dirStateObserverKey)
-	}
-	dir.OnStateChange().ObserveWithName(dirStateObserverKey, func(d *directory.Directory) {
-		if d.IsLoading() {
-			w.loadingBar.Show()
-			w.loadingBar.Start()
-		} else {
-			w.loadingBar.Stop()
-			w.loadingBar.Hide()
-		}
+	dir.OnStateChange().ObserveWithName(state.ObsNameOnStateChange, func(d *directory.Directory) {
+		fyne.Do(func() {
+			if d.IsLoading() {
+				w.loadingBar.Show()
+				w.loadingBar.Start()
+			} else {
+				w.loadingBar.Stop()
+				w.loadingBar.Hide()
+			}
+
+			if !d.IsLoaded() || d.HasError() {
+				w.disableWriteActions()
+			} else {
+				w.enableWriteActions(d)
+			}
+		})
 	})
-	st.Explorer().Select(dir)
+	dir.OnStateChange().TriggerWithName(state.ObsNameOnStateChange, dir)
 
 	vm := w.appCtx.ExplorerViewModel()
-
-	if dir.IsLoading() {
-		w.loadingBar.Show()
-		w.loadingBar.Start()
-	} else {
-		w.loadingBar.Stop()
-		w.loadingBar.Hide()
-	}
 
 	var path string
 	originalPath := dir.Path().String()
@@ -178,14 +163,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	w.reloadAction.SetOnTapped(w.makeOnReload(vm, dir))
 	w.deleteAction.SetOnTapped(w.makeOnDelete(vm, dir))
 	w.downloadAction.SetOnTapped(w.makeOnDownload(vm, dir))
-
-	if dir.IsRoot() {
-		w.renameAction.Disable()
-		w.deleteAction.Disable()
-	} else {
-		w.renameAction.Enable()
-		w.deleteAction.Enable()
-	}
 
 	if dir.HasError() {
 		w.renameErrContent.Show()
@@ -208,18 +185,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.renameErrContent.OnResume = func() {}
 		w.renameErrContent.OnRollback = func() {}
 		w.renameErrContent.OnAbort = func() {}
-	}
-
-	if st.Connection().IsReadOnly() || !dir.IsLoaded() || dir.HasError() {
-		w.newDirectoryAction.Disable()
-		w.createFileAction.Disable()
-		w.renameAction.Disable()
-		w.dropZone.Hide()
-		w.deleteAction.Disable()
-	} else {
-		w.newDirectoryAction.Enable()
-		w.createFileAction.Enable()
-		w.dropZone.Show()
 	}
 
 	w.dropZone.Reset()
@@ -264,6 +229,33 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 			proceed()
 		}
 	})
+}
+
+func (w *DirectoryDetails) enableWriteActions(dir *directory.Directory) {
+	if w.appCtx.State().Connection().IsReadOnly() {
+		w.disableWriteActions()
+		return
+	}
+
+	w.newDirectoryAction.Enable()
+	w.createFileAction.Enable()
+	w.dropZone.Show()
+
+	if dir.IsRoot() {
+		w.renameAction.Disable()
+		w.deleteAction.Disable()
+	} else {
+		w.renameAction.Enable()
+		w.deleteAction.Enable()
+	}
+}
+
+func (w *DirectoryDetails) disableWriteActions() {
+	w.newDirectoryAction.Disable()
+	w.createFileAction.Disable()
+	w.renameAction.Disable()
+	w.dropZone.Hide()
+	w.deleteAction.Disable()
 }
 
 func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func(bool) {
