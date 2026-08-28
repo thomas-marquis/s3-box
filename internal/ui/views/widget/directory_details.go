@@ -6,7 +6,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
@@ -20,6 +19,7 @@ import (
 
 const (
 	dropZoneInitialText = "Drop files here to upload"
+	dirStateObserverKey = "directory.observer.onStateChange"
 )
 
 type DirectoryDetails struct {
@@ -80,16 +80,16 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	}
 	w.ExtendBaseWidget(w)
 
-	appCtx.ExplorerViewModel().IsSelectedDirectoryLoading().AddListener(binding.NewDataListener(func() {
-		loading, _ := appCtx.ExplorerViewModel().IsSelectedDirectoryLoading().Get()
-		if loading {
-			loadingBar.Show()
-			loadingBar.Start()
-		} else {
-			w.loadingBar.Stop()
-			w.loadingBar.Hide()
-		}
-	}))
+	//appCtx.ExplorerViewModel().IsSelectedDirectoryLoading().AddListener(binding.NewDataListener(func() {
+	//	loading, _ := appCtx.ExplorerViewModel().IsSelectedDirectoryLoading().Get()
+	//	if loading {
+	//		loadingBar.Show()
+	//		loadingBar.Start()
+	//	} else {
+	//		w.loadingBar.Stop()
+	//		w.loadingBar.Hide()
+	//	}
+	//}))
 
 	return w
 }
@@ -98,7 +98,7 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
 	copyPath := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		sd := w.appCtx.ExplorerViewModel().SelectedDirectory()
+		sd := u.SkipV(w.appCtx.State().Explorer().Selected().Get())
 		if sd == nil {
 			return
 		}
@@ -133,6 +133,22 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (w *DirectoryDetails) Select(dir *directory.Directory) {
+	st := w.appCtx.State()
+	prevSelected := u.SkipV(st.Explorer().Selected().Get())
+	if prevSelected != nil {
+		prevSelected.OnStateChange().RemoveObserversWithName(dirStateObserverKey)
+	}
+	dir.OnStateChange().ObserveWithName(dirStateObserverKey, func(d *directory.Directory) {
+		if d.IsLoading() {
+			w.loadingBar.Show()
+			w.loadingBar.Start()
+		} else {
+			w.loadingBar.Stop()
+			w.loadingBar.Hide()
+		}
+	})
+	st.Explorer().Select(dir)
+
 	vm := w.appCtx.ExplorerViewModel()
 
 	if dir.IsLoading() {
@@ -194,7 +210,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.renameErrContent.OnAbort = func() {}
 	}
 
-	if w.appCtx.State().Connection().IsReadOnly() || !dir.IsLoaded() || dir.HasError() {
+	if st.Connection().IsReadOnly() || !dir.IsLoaded() || dir.HasError() {
 		w.newDirectoryAction.Disable()
 		w.createFileAction.Disable()
 		w.renameAction.Disable()

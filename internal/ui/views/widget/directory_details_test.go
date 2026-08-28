@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/data/binding"
 	fyne_test "fyne.io/fyne/v2/test"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/tu"
@@ -30,8 +29,6 @@ func TestDirectoryDetails(t *testing.T) {
 		mockAppCtx.EXPECT().ConnectionViewModel().Return(mockConnVM).AnyTimes()
 		mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
 
-		fakeIsLoadingBinding := binding.NewBool()
-		mockExplorerVM.EXPECT().IsSelectedDirectoryLoading().Return(fakeIsLoadingBinding).AnyTimes()
 		mockExplorerVM.EXPECT().OnUploadReady(gomock.Any()).AnyTimes()
 
 		dir := tu.MakeDirectory(t, "test",
@@ -65,8 +62,6 @@ func TestDirectoryDetails(t *testing.T) {
 		mockAppCtx.EXPECT().ConnectionViewModel().Return(mockConnVM).AnyTimes()
 		mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
 
-		fakeIsLoadingBinding := binding.NewBool()
-		mockExplorerVM.EXPECT().IsSelectedDirectoryLoading().Return(fakeIsLoadingBinding).AnyTimes()
 		mockExplorerVM.EXPECT().OnUploadReady(gomock.Any()).AnyTimes()
 
 		st := state.New()

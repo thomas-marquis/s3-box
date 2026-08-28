@@ -195,20 +195,6 @@ func (mr *MockExplorerViewModelMockRecorder) IsLoading() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsLoading", reflect.TypeOf((*MockExplorerViewModel)(nil).IsLoading))
 }
 
-// IsSelectedDirectoryLoading mocks base method.
-func (m *MockExplorerViewModel) IsSelectedDirectoryLoading() binding.Bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsSelectedDirectoryLoading")
-	ret0, _ := ret[0].(binding.Bool)
-	return ret0
-}
-
-// IsSelectedDirectoryLoading indicates an expected call of IsSelectedDirectoryLoading.
-func (mr *MockExplorerViewModelMockRecorder) IsSelectedDirectoryLoading() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsSelectedDirectoryLoading", reflect.TypeOf((*MockExplorerViewModel)(nil).IsSelectedDirectoryLoading))
-}
-
 // LoadDirectory mocks base method.
 func (m *MockExplorerViewModel) LoadDirectory(dir *directory.Directory) error {
 	m.ctrl.T.Helper()
@@ -341,32 +327,6 @@ func (m *MockExplorerViewModel) RollbackRename(dir *directory.Directory) error {
 func (mr *MockExplorerViewModelMockRecorder) RollbackRename(dir any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RollbackRename", reflect.TypeOf((*MockExplorerViewModel)(nil).RollbackRename), dir)
-}
-
-// SelectedDirectory mocks base method.
-func (m *MockExplorerViewModel) SelectedDirectory() *directory.Directory {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectedDirectory")
-	ret0, _ := ret[0].(*directory.Directory)
-	return ret0
-}
-
-// SelectedDirectory indicates an expected call of SelectedDirectory.
-func (mr *MockExplorerViewModelMockRecorder) SelectedDirectory() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectedDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).SelectedDirectory))
-}
-
-// SetSelectedDirectory mocks base method.
-func (m *MockExplorerViewModel) SetSelectedDirectory(dir *directory.Directory) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetSelectedDirectory", dir)
-}
-
-// SetSelectedDirectory indicates an expected call of SetSelectedDirectory.
-func (mr *MockExplorerViewModelMockRecorder) SetSelectedDirectory(dir any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSelectedDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).SetSelectedDirectory), dir)
 }
 
 // UploadOne mocks base method.

@@ -7,6 +7,7 @@ import (
 
 	"github.com/thomas-marquis/it-happened/carrier"
 	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/s3-box/internal/u"
 
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 )
@@ -25,6 +26,13 @@ const (
 	RootPath      = Path("/")
 )
 
+func Compare(d1, d2 *Directory) bool {
+	if d1 == nil || d2 == nil {
+		return false
+	}
+	return d1.Is(d2)
+}
+
 // Directory is the entity that represents a directory in S3.
 // This is a root entity.
 type Directory struct {
@@ -34,7 +42,8 @@ type Directory struct {
 	parent       *Directory
 	isOpen       bool
 
-	currentState state
+	currentState  state
+	onStateChange *u.Observable[*Directory]
 }
 
 func NewRoot(connectionID connection_deck.ConnectionID) (*Directory, error) {
@@ -69,6 +78,7 @@ func New(
 	}
 
 	d.currentState = newNotLoadedState(d, nil)
+	d.onStateChange = u.NewObservable[*Directory]()
 
 	return d, nil
 }
@@ -346,7 +356,14 @@ func (d *Directory) Preview() (*Preview, error) {
 	return d.currentState.Preview()
 }
 
+func (d *Directory) OnStateChange() *u.Observable[*Directory] {
+	return d.onStateChange
+}
+
 func (d *Directory) setState(state state) {
+	if d.currentState.Type() != state.Type() {
+		d.onStateChange.TriggerAll(d)
+	}
 	d.currentState = state
 }
 

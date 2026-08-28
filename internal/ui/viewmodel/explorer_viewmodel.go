@@ -41,10 +41,6 @@ type ExplorerViewModel interface {
 	// State methods
 	////////////////////////
 
-	SelectedDirectory() *directory.Directory
-	SetSelectedDirectory(dir *directory.Directory)
-	IsSelectedDirectoryLoading() binding.Bool
-
 	PendingUserValidations() <-chan directory.UserValidationAsked
 
 	// AddStateListener registers a callback function to be notified of any changes in directories or files.
@@ -102,9 +98,6 @@ type explorerViewModelImpl struct {
 
 	settingsVm SettingsViewModel
 
-	selectedDirectory    *directory.Directory
-	isSelectedDirLoading binding.Bool
-
 	pendingUserValidations chan directory.UserValidationAsked
 
 	stateListeners []func()
@@ -119,7 +112,6 @@ type explorerViewModelImpl struct {
 func NewExplorerViewModel(
 	settingsVm SettingsViewModel,
 	notifier notification.Repository,
-	initialConnection *connection_deck.Connection,
 	bus event.Bus,
 	st *state.State,
 ) ExplorerViewModel {
@@ -131,8 +123,6 @@ func NewExplorerViewModel(
 		settingsVm:             settingsVm,
 		notifier:               notifier,
 		bus:                    bus,
-		selectedDirectory:      nil,
-		isSelectedDirLoading:   binding.NewBool(),
 		pendingUserValidations: make(chan directory.UserValidationAsked, maxPendingUserValidations),
 		stateListeners:         make([]func(), 0),
 		state:                  st,
@@ -228,23 +218,7 @@ func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
 		return
 	}
 
-	if dir.Is(v.selectedDirectory) {
-		v.isSelectedDirLoading.Set(false) // nolint:errcheck
-	}
-
 	v.triggerStateListeners()
-}
-
-func (v *explorerViewModelImpl) SelectedDirectory() *directory.Directory {
-	return v.selectedDirectory
-}
-
-func (v *explorerViewModelImpl) SetSelectedDirectory(dir *directory.Directory) {
-	v.selectedDirectory = dir
-}
-
-func (v *explorerViewModelImpl) IsSelectedDirectoryLoading() binding.Bool {
-	return v.isSelectedDirLoading
 }
 
 func (v *explorerViewModelImpl) LoadDirectory(dir *directory.Directory) error {
@@ -260,7 +234,6 @@ func (v *explorerViewModelImpl) LoadDirectory(dir *directory.Directory) error {
 		v.notifier.NotifyError(wErr)
 		return wErr
 	}
-	u.Skip(v.isSelectedDirLoading.Set(true))
 	v.bus.Publish(evt)
 
 	return nil
@@ -281,8 +254,6 @@ func (v *explorerViewModelImpl) ReloadDirectory(dir *directory.Directory) error 
 	}
 	v.bus.Publish(evt)
 
-	u.Skip(v.isSelectedDirLoading.Set(true))
-
 	return nil
 }
 
@@ -296,10 +267,6 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 
 	v.state.Explorer().UpdateChildren(dir)
 
-	if dir.Is(v.selectedDirectory) {
-		u.Skip(v.isSelectedDirLoading.Set(false))
-	}
-
 	v.triggerStateListeners()
 }
 
@@ -311,10 +278,6 @@ func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
 		return
 	}
 	u.Skip(v.infoMessage.Set(pl.Err.Error()))
-
-	if dir.Is(v.selectedDirectory) {
-		u.Skip(v.isSelectedDirLoading.Set(false))
-	}
 
 	v.triggerStateListeners()
 }
@@ -542,8 +505,6 @@ func (v *explorerViewModelImpl) DeleteDirectory(dir *directory.Directory) {
 		return
 	}
 
-	u.Skip(v.isSelectedDirLoading.Set(true))
-
 	v.bus.Publish(evt)
 }
 
@@ -564,10 +525,6 @@ func (v *explorerViewModelImpl) handleDeleteDirectorySuccess(evt event.Event) {
 		return
 	}
 
-	if pl.Directory.Is(v.selectedDirectory) {
-		v.isSelectedDirLoading.Set(false) // nolint:errcheck
-	}
-
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("Directory deleted",
 		fmt.Sprintf("Directory %s deleted", pl.Directory.Name())))
 	v.triggerStateListeners()
@@ -578,10 +535,6 @@ func (v *explorerViewModelImpl) handleDeleteDirectoryFailure(evt event.Event) {
 	if err := pl.Parent.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
-	}
-
-	if pl.Directory.Is(v.selectedDirectory) {
-		u.Skip(v.isSelectedDirLoading.Set(false))
 	}
 
 	err := fmt.Errorf("error deleting directory: %w", pl.Err)
@@ -740,19 +693,12 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 		return
 	}
 
-	v.isSelectedDirLoading.Set(true) // nolint:errcheck
 	v.bus.Publish(evt)
 }
 
 func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 	pl := evt.Payload().(directory.RenameSucceeded)
 	dir := pl.Directory
-
-	defer func() {
-		if dir.Is(v.selectedDirectory) {
-			v.isSelectedDirLoading.Set(false) // nolint:errcheck
-		}
-	}()
 
 	oldPath := dir.Path().String()
 
@@ -784,12 +730,6 @@ func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
 	pl := evt.Payload().(directory.RenameFailed)
 	dir := pl.Directory
 
-	defer func() {
-		if dir.Is(v.selectedDirectory) {
-			u.Skip(v.isSelectedDirLoading.Set(false))
-		}
-	}()
-
 	err := fmt.Errorf("error renaming directory: %w", pl.Err)
 	if err := dir.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
@@ -806,7 +746,6 @@ func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) error {
 		return fmt.Errorf("impossible to resume rename: %w", err)
 	}
 	v.bus.Publish(evt)
-	u.Skip(v.isSelectedDirLoading.Set(true))
 	return nil
 }
 
@@ -816,7 +755,6 @@ func (v *explorerViewModelImpl) RollbackRename(dir *directory.Directory) error {
 		return fmt.Errorf("impossible to rollback rename: %w", err)
 	}
 	v.bus.Publish(evt)
-	u.Skip(v.isSelectedDirLoading.Set(true))
 	return nil
 }
 
@@ -826,7 +764,6 @@ func (v *explorerViewModelImpl) AbortRename(dir *directory.Directory) error {
 		return fmt.Errorf("impossible to abort rename: %w", err)
 	}
 	v.bus.Publish(evt)
-	u.Skip(v.isSelectedDirLoading.Set(true))
 	return nil
 }
 

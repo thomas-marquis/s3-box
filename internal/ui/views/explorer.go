@@ -90,12 +90,10 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 
 	tree := widget.NewExplorerTree(appCtx,
 		func(dir *directory.Directory) {
-			vm.SetSelectedDirectory(dir)
 			dirDetails.Select(dir)
 			detailsContainer.Objects = []fyne.CanvasObject{dirDetails}
 		},
 		func(file *directory.File) {
-			vm.SetSelectedDirectory(nil)
 			fileDetails.Select(file)
 			detailsContainer.Objects = []fyne.CanvasObject{fileDetails}
 		},
@@ -103,7 +101,7 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 
 	vm.AddStateListener(func() {
 		tree.Refresh()
-		currSelected := vm.SelectedDirectory()
+		currSelected := u.SkipV(appCtx.State().Explorer().Selected().Get())
 		if currSelected == nil {
 			return
 		}

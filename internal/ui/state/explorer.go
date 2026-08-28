@@ -16,6 +16,7 @@ type ExplorerState struct {
 	fileTree         binding.Tree[node.Node]
 	downloadLocation binding.Item[fyne.ListableURI]
 	uploadLocation   binding.Item[fyne.ListableURI]
+	selected         binding.Item[*directory.Directory]
 }
 
 func newExplorerState() *ExplorerState {
@@ -25,6 +26,7 @@ func newExplorerState() *ExplorerState {
 		}),
 		downloadLocation: binding.NewItem[fyne.ListableURI](compareListableURI),
 		uploadLocation:   binding.NewItem[fyne.ListableURI](compareListableURI),
+		selected:         binding.NewItem[*directory.Directory](directory.Compare),
 	}
 	prefs := fyne.CurrentApp().Preferences()
 	u.Skip(s.downloadLocation.Set(uu.ToListableURI(prefs.String(values.PrefDownloadLocation))))
@@ -35,6 +37,18 @@ func newExplorerState() *ExplorerState {
 
 func (s *ExplorerState) FileTree() binding.Tree[node.Node] {
 	return s.fileTree
+}
+
+func (s *ExplorerState) Selected() binding.Item[*directory.Directory] {
+	return s.selected
+}
+
+func (s *ExplorerState) Select(newDir *directory.Directory) {
+	u.Skip(s.selected.Set(newDir))
+}
+
+func (s *ExplorerState) IsSelected(dir *directory.Directory) bool {
+	return directory.Compare(dir, u.SkipV(s.selected.Get()))
 }
 
 func (s *ExplorerState) InitFileTree(rootDir *directory.Directory, bucketName string) error {
