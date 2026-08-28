@@ -6,6 +6,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
@@ -38,6 +39,8 @@ type DirectoryDetails struct {
 	deleteAction       *ToolbarButton
 	downloadAction     *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
+
+	uploadPreviewDataListener binding.DataListener
 
 	dropZone *DropZone
 }
@@ -196,7 +199,15 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	}
 	w.dropZone.OnClick = w.makeOnUpload(vm, dir)
 
-	vm.OnUploadReady(func(prev viewmodel.UploadPreviewState) {
+	uploadPreviewState := w.appCtx.State().Explorer().UploadPreview()
+	if w.uploadPreviewDataListener != nil {
+		uploadPreviewState.RemoveListener(w.uploadPreviewDataListener)
+	}
+	w.uploadPreviewDataListener = binding.NewDataListener(func() {
+		prev := u.SkipV(uploadPreviewState.Get())
+		if prev.Preview == nil {
+			return
+		}
 		proceed := func() {
 			dirPreview := NewDirectoryPreview(w.appCtx, prev.Preview)
 
@@ -206,7 +217,10 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 				container.NewScroll(dirPreview),
 				w.appCtx.Window())
 			dial.Resize(fyne.NewSize(800, 600))
-			dial.SetOnClosed(w.dropZone.Reset)
+			dial.SetOnClosed(func() {
+				w.dropZone.Reset()
+				u.Skip(uploadPreviewState.Set(state.UploadPreviewState{}))
+			})
 
 			dirPreview.OnValidate = func(selectedStrategy directory.MaterializeStrategy) {
 				vm.DoUpload(prev.BaseUri, prev.Preview, selectedStrategy)
@@ -229,6 +243,7 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 			proceed()
 		}
 	})
+	uploadPreviewState.AddListener(w.uploadPreviewDataListener)
 }
 
 func (w *DirectoryDetails) enableWriteActions(dir *directory.Directory) {

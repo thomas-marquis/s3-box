@@ -43,9 +43,6 @@ type ExplorerViewModel interface {
 
 	PendingUserValidations() <-chan directory.UserValidationAsked
 
-	// OnUploadReady registers a callback function to be notified when the upload is ready.
-	OnUploadReady(func(previewState UploadPreviewState))
-
 	////////////////////////
 	// Action methods
 	////////////////////////
@@ -93,16 +90,11 @@ type explorerViewModelImpl struct {
 	baseViewModel
 	sync.Mutex
 
-	settingsVm SettingsViewModel
-
+	settingsVm             SettingsViewModel
 	pendingUserValidations chan directory.UserValidationAsked
-
-	onUploadReady func(previewState UploadPreviewState)
-
-	notifier notification.Repository
-	bus      event.Bus
-
-	state *state.State
+	notifier               notification.Repository
+	bus                    event.Bus
+	state                  *state.State
 }
 
 func NewExplorerViewModel(
@@ -163,10 +155,6 @@ func NewExplorerViewModel(
 		ListenWithWorkers(3)
 
 	return v
-}
-
-func (v *explorerViewModelImpl) OnUploadReady(listener func(previewState UploadPreviewState)) {
-	v.onUploadReady = listener
 }
 
 func (v *explorerViewModelImpl) Validate(evt directory.UserValidationAsked, accepted bool) {
@@ -458,12 +446,11 @@ func (v *explorerViewModelImpl) handleUploadReady(evt event.Event) {
 		v.notifier.NotifyError(err)
 		return
 	}
-	if v.onUploadReady != nil {
-		v.onUploadReady(UploadPreviewState{
-			Preview: prev,
-			BaseUri: localParentDirUri,
-		})
-	}
+
+	u.Skip(v.state.Explorer().UploadPreview().Set(state.UploadPreviewState{
+		Preview: prev,
+		BaseUri: localParentDirUri,
+	}))
 }
 
 func (v *explorerViewModelImpl) DeleteDirectory(dir *directory.Directory) {

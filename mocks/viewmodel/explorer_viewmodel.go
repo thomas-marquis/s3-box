@@ -15,7 +15,6 @@ import (
 	fyne "fyne.io/fyne/v2"
 	binding "fyne.io/fyne/v2/data/binding"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
-	viewmodel "github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -209,18 +208,6 @@ func (m *MockExplorerViewModel) Loading() binding.Bool {
 func (mr *MockExplorerViewModelMockRecorder) Loading() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Loading", reflect.TypeOf((*MockExplorerViewModel)(nil).Loading))
-}
-
-// OnUploadReady mocks base method.
-func (m *MockExplorerViewModel) OnUploadReady(arg0 func(viewmodel.UploadPreviewState)) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "OnUploadReady", arg0)
-}
-
-// OnUploadReady indicates an expected call of OnUploadReady.
-func (mr *MockExplorerViewModelMockRecorder) OnUploadReady(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnUploadReady", reflect.TypeOf((*MockExplorerViewModel)(nil).OnUploadReady), arg0)
 }
 
 // PendingUserValidations mocks base method.

@@ -16,12 +16,22 @@ const (
 	ObsNameOnStateChange = "directory.observer.onStateChange"
 )
 
+type UploadPreviewState struct {
+	Preview *directory.Preview
+	BaseUri string
+}
+
+func compareUploadPreviewState(p1, p2 UploadPreviewState) bool {
+	return p1.Preview == p2.Preview && p1.BaseUri == p2.BaseUri
+}
+
 type ExplorerState struct {
 	fileTree         binding.Tree[node.Node]
 	downloadLocation binding.Item[fyne.ListableURI]
 	uploadLocation   binding.Item[fyne.ListableURI]
 	selectedDir      binding.Item[*directory.Directory]
 	selectedFile     binding.Item[*directory.File]
+	uploadPreview    binding.Item[UploadPreviewState]
 }
 
 func newExplorerState() *ExplorerState {
@@ -33,6 +43,7 @@ func newExplorerState() *ExplorerState {
 		uploadLocation:   binding.NewItem[fyne.ListableURI](compareListableURI),
 		selectedDir:      binding.NewItem[*directory.Directory](directory.Compare),
 		selectedFile:     binding.NewItem[*directory.File](directory.CompareFile),
+		uploadPreview:    binding.NewItem[UploadPreviewState](compareUploadPreviewState),
 	}
 	prefs := fyne.CurrentApp().Preferences()
 	u.Skip(s.downloadLocation.Set(uu.ToListableURI(prefs.String(values.PrefDownloadLocation))))
@@ -47,6 +58,10 @@ func (s *ExplorerState) FileTree() binding.Tree[node.Node] {
 
 func (s *ExplorerState) SelectedDir() binding.Item[*directory.Directory] {
 	return s.selectedDir
+}
+
+func (s *ExplorerState) UploadPreview() binding.Item[UploadPreviewState] {
+	return s.uploadPreview
 }
 
 func (s *ExplorerState) SelectDir(newDir *directory.Directory) {

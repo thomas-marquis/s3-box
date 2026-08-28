@@ -29,8 +29,6 @@ func TestDirectoryDetails(t *testing.T) {
 		mockAppCtx.EXPECT().ConnectionViewModel().Return(mockConnVM).AnyTimes()
 		mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
 
-		mockExplorerVM.EXPECT().OnUploadReady(gomock.Any()).AnyTimes()
-
 		dir := tu.MakeDirectory(t, "test",
 			tu.WithRootParent(),
 			tu.IsLoaded())
@@ -61,8 +59,6 @@ func TestDirectoryDetails(t *testing.T) {
 		mockAppCtx.EXPECT().ExplorerViewModel().Return(mockExplorerVM).AnyTimes()
 		mockAppCtx.EXPECT().ConnectionViewModel().Return(mockConnVM).AnyTimes()
 		mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
-
-		mockExplorerVM.EXPECT().OnUploadReady(gomock.Any()).AnyTimes()
 
 		st := state.New()
 		deck := connection_deck.New()
