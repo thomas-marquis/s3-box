@@ -210,20 +210,6 @@ func (mr *MockExplorerViewModelMockRecorder) Loading() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Loading", reflect.TypeOf((*MockExplorerViewModel)(nil).Loading))
 }
 
-// PendingUserValidations mocks base method.
-func (m *MockExplorerViewModel) PendingUserValidations() <-chan directory.UserValidationAsked {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PendingUserValidations")
-	ret0, _ := ret[0].(<-chan directory.UserValidationAsked)
-	return ret0
-}
-
-// PendingUserValidations indicates an expected call of PendingUserValidations.
-func (mr *MockExplorerViewModelMockRecorder) PendingUserValidations() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PendingUserValidations", reflect.TypeOf((*MockExplorerViewModel)(nil).PendingUserValidations))
-}
-
 // PrepareUpload mocks base method.
 func (m *MockExplorerViewModel) PrepareUpload(uris []fyne.URI, dir *directory.Directory) error {
 	m.ctrl.T.Helper()

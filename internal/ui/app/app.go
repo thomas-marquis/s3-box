@@ -107,7 +107,6 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 		eventBus,
 	)
 	explorerViewModel := viewmodel.NewExplorerViewModel(
-		settingsViewModel,
 		notifier,
 		eventBus,
 		appState,

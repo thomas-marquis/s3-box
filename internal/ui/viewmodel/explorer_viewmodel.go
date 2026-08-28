@@ -22,30 +22,11 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 )
 
-const (
-	maxPendingUserValidations = 30
-)
-
-type UploadPreviewState struct {
-	Preview *directory.Preview
-	BaseUri string
-}
-
 // ExplorerViewModel represents the view model for the file explorer interface.
 // It handles the tree structure display, file operations, and directory management
 // while maintaining the connection with the underlying storage system.
 type ExplorerViewModel interface {
 	ViewModel
-
-	////////////////////////
-	// State methods
-	////////////////////////
-
-	PendingUserValidations() <-chan directory.UserValidationAsked
-
-	////////////////////////
-	// Action methods
-	////////////////////////
 
 	// LoadDirectory sync a directory with the actual s3 one and load its files and children.
 	// If the directory is already open, it will do nothing.
@@ -90,15 +71,12 @@ type explorerViewModelImpl struct {
 	baseViewModel
 	sync.Mutex
 
-	settingsVm             SettingsViewModel
-	pendingUserValidations chan directory.UserValidationAsked
-	notifier               notification.Repository
-	bus                    event.Bus
-	state                  *state.State
+	notifier notification.Repository
+	bus      event.Bus
+	state    *state.State
 }
 
 func NewExplorerViewModel(
-	settingsVm SettingsViewModel,
 	notifier notification.Repository,
 	bus event.Bus,
 	st *state.State,
@@ -108,11 +86,9 @@ func NewExplorerViewModel(
 			errorMessage: binding.NewString(),
 			infoMessage:  binding.NewString(),
 		},
-		settingsVm:             settingsVm,
-		notifier:               notifier,
-		bus:                    bus,
-		pendingUserValidations: make(chan directory.UserValidationAsked, maxPendingUserValidations),
-		state:                  st,
+		notifier: notifier,
+		bus:      bus,
+		state:    st,
 	}
 
 	st.Connection().Selected().AddListener(binding.NewDataListener(func() {
@@ -152,7 +128,7 @@ func NewExplorerViewModel(
 		On(event.Is(directory.DeleteSucceededType), v.handleDeleteDirectorySuccess).
 		On(event.Is(directory.DownloadSucceededType), v.handleDownloadSuccess).
 		On(event.Is(directory.DownloadFailedType), v.handleDownloadFailure).
-		ListenWithWorkers(3)
+		ListenWithWorkers(values.ExplorerNbWorkers)
 
 	return v
 }
@@ -171,13 +147,9 @@ func (v *explorerViewModelImpl) Validate(evt directory.UserValidationAsked, acce
 	}
 }
 
-func (v *explorerViewModelImpl) PendingUserValidations() <-chan directory.UserValidationAsked {
-	return v.pendingUserValidations
-}
-
 func (v *explorerViewModelImpl) handleUserValidationRequest(evt event.Event) {
 	pl := evt.Payload().(directory.UserValidationAsked)
-	v.pendingUserValidations <- pl
+	v.state.Explorer().PendingUserValidations() <- pl
 }
 
 func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {

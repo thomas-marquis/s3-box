@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	ObsNameOnStateChange = "directory.observer.onStateChange"
+	ObsNameOnStateChange      = "directory.observer.onStateChange"
+	maxPendingUserValidations = 30
 )
 
 type UploadPreviewState struct {
@@ -26,12 +27,13 @@ func compareUploadPreviewState(p1, p2 UploadPreviewState) bool {
 }
 
 type ExplorerState struct {
-	fileTree         binding.Tree[node.Node]
-	downloadLocation binding.Item[fyne.ListableURI]
-	uploadLocation   binding.Item[fyne.ListableURI]
-	selectedDir      binding.Item[*directory.Directory]
-	selectedFile     binding.Item[*directory.File]
-	uploadPreview    binding.Item[UploadPreviewState]
+	fileTree          binding.Tree[node.Node]
+	downloadLocation  binding.Item[fyne.ListableURI]
+	uploadLocation    binding.Item[fyne.ListableURI]
+	selectedDir       binding.Item[*directory.Directory]
+	selectedFile      binding.Item[*directory.File]
+	uploadPreview     binding.Item[UploadPreviewState]
+	pendingValidation chan directory.UserValidationAsked
 }
 
 func newExplorerState() *ExplorerState {
@@ -39,11 +41,12 @@ func newExplorerState() *ExplorerState {
 		fileTree: binding.NewTree[node.Node](func(n1 node.Node, n2 node.Node) bool {
 			return n1.ID() == n2.ID()
 		}),
-		downloadLocation: binding.NewItem[fyne.ListableURI](compareListableURI),
-		uploadLocation:   binding.NewItem[fyne.ListableURI](compareListableURI),
-		selectedDir:      binding.NewItem[*directory.Directory](directory.Compare),
-		selectedFile:     binding.NewItem[*directory.File](directory.CompareFile),
-		uploadPreview:    binding.NewItem[UploadPreviewState](compareUploadPreviewState),
+		downloadLocation:  binding.NewItem[fyne.ListableURI](compareListableURI),
+		uploadLocation:    binding.NewItem[fyne.ListableURI](compareListableURI),
+		selectedDir:       binding.NewItem[*directory.Directory](directory.Compare),
+		selectedFile:      binding.NewItem[*directory.File](directory.CompareFile),
+		uploadPreview:     binding.NewItem[UploadPreviewState](compareUploadPreviewState),
+		pendingValidation: make(chan directory.UserValidationAsked, maxPendingUserValidations),
 	}
 	prefs := fyne.CurrentApp().Preferences()
 	u.Skip(s.downloadLocation.Set(uu.ToListableURI(prefs.String(values.PrefDownloadLocation))))
@@ -62,6 +65,10 @@ func (s *ExplorerState) SelectedDir() binding.Item[*directory.Directory] {
 
 func (s *ExplorerState) UploadPreview() binding.Item[UploadPreviewState] {
 	return s.uploadPreview
+}
+
+func (s *ExplorerState) PendingUserValidations() chan directory.UserValidationAsked {
+	return s.pendingValidation
 }
 
 func (s *ExplorerState) SelectDir(newDir *directory.Directory) {
