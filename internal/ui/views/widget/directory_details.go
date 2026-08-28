@@ -13,7 +13,9 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 )
 
@@ -37,6 +39,8 @@ type DirectoryDetails struct {
 	deleteAction       *ToolbarButton
 	downloadAction     *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
+
+	uploadPreviewDataListener binding.DataListener
 
 	dropZone *DropZone
 }
@@ -77,18 +81,8 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 		renameErrContent:   newRenameFailedPanel(appCtx.Window()),
 		dropZone:           NewDropZone(dropZoneInitialText, appCtx.Window()),
 	}
-	w.ExtendBaseWidget(w)
 
-	appCtx.ExplorerViewModel().IsSelectedDirectoryLoading().AddListener(binding.NewDataListener(func() {
-		loading, _ := appCtx.ExplorerViewModel().IsSelectedDirectoryLoading().Get()
-		if loading {
-			loadingBar.Show()
-			loadingBar.Start()
-		} else {
-			w.loadingBar.Stop()
-			w.loadingBar.Hide()
-		}
-	}))
+	w.ExtendBaseWidget(w)
 
 	return w
 }
@@ -97,7 +91,7 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
 	copyPath := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
-		sd := w.appCtx.ExplorerViewModel().SelectedDirectory()
+		sd := u.SkipV(w.appCtx.State().Explorer().SelectedDir().Get())
 		if sd == nil {
 			return
 		}
@@ -132,15 +126,26 @@ func (w *DirectoryDetails) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (w *DirectoryDetails) Select(dir *directory.Directory) {
-	vm := w.appCtx.ExplorerViewModel()
+	dir.OnStateChange().ObserveWithName(state.ObsNameOnStateChange, func(d *directory.Directory) {
+		fyne.Do(func() {
+			if d.IsLoading() {
+				w.loadingBar.Show()
+				w.loadingBar.Start()
+			} else {
+				w.loadingBar.Stop()
+				w.loadingBar.Hide()
+			}
 
-	if dir.IsLoading() {
-		w.loadingBar.Show()
-		w.loadingBar.Start()
-	} else {
-		w.loadingBar.Stop()
-		w.loadingBar.Hide()
-	}
+			if !d.IsLoaded() || d.HasError() {
+				w.disableWriteActions()
+			} else {
+				w.enableWriteActions(d)
+			}
+		})
+	})
+	dir.OnStateChange().TriggerWithName(state.ObsNameOnStateChange, dir)
+
+	vm := w.appCtx.ExplorerViewModel()
 
 	var path string
 	originalPath := dir.Path().String()
@@ -161,14 +166,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	w.reloadAction.SetOnTapped(w.makeOnReload(vm, dir))
 	w.deleteAction.SetOnTapped(w.makeOnDelete(vm, dir))
 	w.downloadAction.SetOnTapped(w.makeOnDownload(vm, dir))
-
-	if dir.IsRoot() {
-		w.renameAction.Disable()
-		w.deleteAction.Disable()
-	} else {
-		w.renameAction.Enable()
-		w.deleteAction.Enable()
-	}
 
 	if dir.HasError() {
 		w.renameErrContent.Show()
@@ -193,18 +190,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		w.renameErrContent.OnAbort = func() {}
 	}
 
-	if w.appCtx.State().Connection().IsReadOnly() || !dir.IsLoaded() || dir.HasError() {
-		w.newDirectoryAction.Disable()
-		w.createFileAction.Disable()
-		w.renameAction.Disable()
-		w.dropZone.Hide()
-		w.deleteAction.Disable()
-	} else {
-		w.newDirectoryAction.Enable()
-		w.createFileAction.Enable()
-		w.dropZone.Show()
-	}
-
 	w.dropZone.Reset()
 	w.dropZone.OnFilesDropped = func(uris []fyne.URI) {
 		if err := vm.PrepareUpload(uris, dir); err != nil {
@@ -214,7 +199,15 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 	}
 	w.dropZone.OnClick = w.makeOnUpload(vm, dir)
 
-	vm.OnUploadReady(func(prev viewmodel.UploadPreviewState) {
+	uploadPreviewState := w.appCtx.State().Explorer().UploadPreview()
+	if w.uploadPreviewDataListener != nil {
+		uploadPreviewState.RemoveListener(w.uploadPreviewDataListener)
+	}
+	w.uploadPreviewDataListener = binding.NewDataListener(func() {
+		prev := u.SkipV(uploadPreviewState.Get())
+		if prev.Preview == nil {
+			return
+		}
 		proceed := func() {
 			dirPreview := NewDirectoryPreview(w.appCtx, prev.Preview)
 
@@ -224,7 +217,10 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 				container.NewScroll(dirPreview),
 				w.appCtx.Window())
 			dial.Resize(fyne.NewSize(800, 600))
-			dial.SetOnClosed(w.dropZone.Reset)
+			dial.SetOnClosed(func() {
+				w.dropZone.Reset()
+				u.Skip(uploadPreviewState.Set(state.UploadPreviewState{}))
+			})
 
 			dirPreview.OnValidate = func(selectedStrategy directory.MaterializeStrategy) {
 				vm.DoUpload(prev.BaseUri, prev.Preview, selectedStrategy)
@@ -247,6 +243,34 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 			proceed()
 		}
 	})
+	uploadPreviewState.AddListener(w.uploadPreviewDataListener)
+}
+
+func (w *DirectoryDetails) enableWriteActions(dir *directory.Directory) {
+	if w.appCtx.State().Connection().IsReadOnly() {
+		w.disableWriteActions()
+		return
+	}
+
+	w.newDirectoryAction.Enable()
+	w.createFileAction.Enable()
+	w.dropZone.Show()
+
+	if dir.IsRoot() {
+		w.renameAction.Disable()
+		w.deleteAction.Disable()
+	} else {
+		w.renameAction.Enable()
+		w.deleteAction.Enable()
+	}
+}
+
+func (w *DirectoryDetails) disableWriteActions() {
+	w.newDirectoryAction.Disable()
+	w.createFileAction.Disable()
+	w.renameAction.Disable()
+	w.dropZone.Hide()
+	w.deleteAction.Disable()
 }
 
 func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func(bool) {
@@ -281,10 +305,9 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 				}
 				dialog.ShowError(err, w.appCtx.Window())
 			}
-			vm.UpdateLastUploadLocation(localDestFilePath)
 		}, w.appCtx.Window())
 
-		selectDialog.SetLocation(vm.LastUploadLocation())
+		selectDialog.SetLocation(u.SkipV(w.appCtx.State().Explorer().UploadLocation().Get()))
 		selectDialog.Show()
 	}
 }
@@ -292,6 +315,9 @@ func (w *DirectoryDetails) makeOnUpload(vm viewmodel.ExplorerViewModel, dir *dir
 func (w *DirectoryDetails) makeOnDownload(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
 	return func() {
 		d := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
+			if uri == nil {
+				return
+			}
 			vm.DownloadDirectory(dir, uri.Path())
 		}, w.appCtx.Window())
 		d.SetConfirmText("Select")

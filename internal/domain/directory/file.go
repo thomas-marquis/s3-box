@@ -27,6 +27,13 @@ func (name FileName) String() string {
 	return string(name)
 }
 
+func CompareFile(f1, f2 *File) bool {
+	if f1 == nil || f2 == nil {
+		return false
+	}
+	return f1.Is(f2)
+}
+
 // File is an entity representing a file in a directory.
 // This is a Directory sub-entity.
 type File struct {

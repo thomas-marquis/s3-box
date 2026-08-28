@@ -1,6 +1,8 @@
 package directory
 
-import "github.com/thomas-marquis/it-happened/event"
+import (
+	"github.com/thomas-marquis/it-happened/event"
+)
 
 type StateType int
 

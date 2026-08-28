@@ -3,17 +3,95 @@ package state
 import (
 	"fmt"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/node"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
+	"github.com/thomas-marquis/s3-box/internal/ui/values"
 )
 
+const (
+	ObsNameOnStateChange      = "directory.observer.onStateChange"
+	maxPendingUserValidations = 30
+)
+
+type UploadPreviewState struct {
+	Preview *directory.Preview
+	BaseUri string
+}
+
+func compareUploadPreviewState(p1, p2 UploadPreviewState) bool {
+	return p1.Preview == p2.Preview && p1.BaseUri == p2.BaseUri
+}
+
 type ExplorerState struct {
-	fileTree binding.Tree[node.Node]
+	fileTree          binding.Tree[node.Node]
+	downloadLocation  binding.Item[fyne.ListableURI]
+	uploadLocation    binding.Item[fyne.ListableURI]
+	selectedDir       binding.Item[*directory.Directory]
+	selectedFile      binding.Item[*directory.File]
+	uploadPreview     binding.Item[UploadPreviewState]
+	pendingValidation chan directory.UserValidationAsked
+}
+
+func newExplorerState() *ExplorerState {
+	s := &ExplorerState{
+		fileTree: binding.NewTree[node.Node](func(n1 node.Node, n2 node.Node) bool {
+			return n1.ID() == n2.ID()
+		}),
+		downloadLocation:  binding.NewItem[fyne.ListableURI](compareListableURI),
+		uploadLocation:    binding.NewItem[fyne.ListableURI](compareListableURI),
+		selectedDir:       binding.NewItem[*directory.Directory](directory.Compare),
+		selectedFile:      binding.NewItem[*directory.File](directory.CompareFile),
+		uploadPreview:     binding.NewItem[UploadPreviewState](compareUploadPreviewState),
+		pendingValidation: make(chan directory.UserValidationAsked, maxPendingUserValidations),
+	}
+	prefs := fyne.CurrentApp().Preferences()
+	u.Skip(s.downloadLocation.Set(uu.ToListableURI(prefs.String(values.PrefDownloadLocation))))
+	u.Skip(s.uploadLocation.Set(uu.ToListableURI(prefs.String(values.PrefUploadLocation))))
+
+	return s
 }
 
 func (s *ExplorerState) FileTree() binding.Tree[node.Node] {
 	return s.fileTree
+}
+
+func (s *ExplorerState) SelectedDir() binding.Item[*directory.Directory] {
+	return s.selectedDir
+}
+
+func (s *ExplorerState) UploadPreview() binding.Item[UploadPreviewState] {
+	return s.uploadPreview
+}
+
+func (s *ExplorerState) PendingUserValidations() chan directory.UserValidationAsked {
+	return s.pendingValidation
+}
+
+func (s *ExplorerState) SelectDir(newDir *directory.Directory) {
+	prevSelected := u.SkipV(s.selectedDir.Get())
+	if prevSelected != nil {
+		prevSelected.OnStateChange().RemoveObserversWithName(ObsNameOnStateChange)
+	}
+
+	u.Skip(s.selectedDir.Set(newDir))
+	u.Skip(s.selectedFile.Set(nil))
+}
+
+func (s *ExplorerState) IsSelectedDir(dir *directory.Directory) bool {
+	return directory.Compare(dir, u.SkipV(s.selectedDir.Get()))
+}
+
+func (s *ExplorerState) SelectedFile() binding.Item[*directory.File] {
+	return s.selectedFile
+}
+
+func (s *ExplorerState) SelectFile(newFile *directory.File) {
+	u.Skip(s.selectedFile.Set(newFile))
+	u.Skip(s.selectedDir.Set(nil))
 }
 
 func (s *ExplorerState) InitFileTree(rootDir *directory.Directory, bucketName string) error {
@@ -153,4 +231,21 @@ func (s *ExplorerState) GetDirectoryNode(path directory.Path) (node.DirectoryNod
 		return nil, NewError(fmt.Sprintf("call the police, node '%s' is not a directory", path.String()))
 	}
 	return dirNode, nil
+}
+
+// DownloadLocation returns the URI of the last used save directory
+func (s *ExplorerState) DownloadLocation() binding.Item[fyne.ListableURI] {
+	return s.downloadLocation
+}
+
+// UploadLocation returns the URI of the last used upload directory
+func (s *ExplorerState) UploadLocation() binding.Item[fyne.ListableURI] {
+	return s.uploadLocation
+}
+
+func compareListableURI(a, b fyne.ListableURI) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Path() == b.Path()
 }

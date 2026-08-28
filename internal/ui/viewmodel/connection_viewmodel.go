@@ -151,6 +151,11 @@ func (v *connectionViewModelImpl) handleUpdate(evt event.Event) {
 	}
 	v.state.Connection().Deck().Notify(evt)
 	u.Skip(v.state.Connection().Selected().Set(pl.Connection()))
+
+	if evt.Type() == connection_deck.SelectConnectionSucceededType {
+		v.state.Explorer().SelectDir(nil)
+	}
+
 	u.Skip(v.loading.Set(false))
 }
 

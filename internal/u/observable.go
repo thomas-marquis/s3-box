@@ -50,7 +50,6 @@ func (o *Observable[T]) TriggerAll(value T) {
 			observer(value)
 		}
 	}
-
 }
 
 func (o *Observable[T]) TriggerWithName(name string, value T) {

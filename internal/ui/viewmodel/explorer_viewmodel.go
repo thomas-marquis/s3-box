@@ -10,58 +10,23 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/uu"
+	"github.com/thomas-marquis/s3-box/internal/ui/values"
 
 	"fmt"
 	"path/filepath"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/storage"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 )
-
-const (
-	maxPendingUserValidations = 30
-)
-
-type UploadPreviewState struct {
-	Preview *directory.Preview
-	BaseUri string
-}
 
 // ExplorerViewModel represents the view model for the file explorer interface.
 // It handles the tree structure display, file operations, and directory management
 // while maintaining the connection with the underlying storage system.
 type ExplorerViewModel interface {
 	ViewModel
-
-	////////////////////////
-	// State methods
-	////////////////////////
-
-	// LastDownloadLocation returns the URI of the last used save directory
-	LastDownloadLocation() fyne.ListableURI
-
-	// LastUploadLocation returns the URI of the last used upload directory
-	LastUploadLocation() fyne.ListableURI
-
-	SelectedDirectory() *directory.Directory
-	SetSelectedDirectory(dir *directory.Directory)
-	IsSelectedDirectoryLoading() binding.Bool
-
-	PendingUserValidations() <-chan directory.UserValidationAsked
-
-	// AddStateListener registers a callback function to be notified of any changes in directories or files.
-	AddStateListener(func())
-
-	// OnUploadReady registers a callback function to be notified when the upload is ready.
-	OnUploadReady(func(previewState UploadPreviewState))
-
-	////////////////////////
-	// Action methods
-	////////////////////////
 
 	// LoadDirectory sync a directory with the actual s3 one and load its files and children.
 	// If the directory is already open, it will do nothing.
@@ -82,12 +47,6 @@ type ExplorerViewModel interface {
 	DeleteFile(file *directory.File)
 
 	DeleteDirectory(dir *directory.Directory)
-
-	// UpdateLastDownloadLocation updates the last used save directory path
-	UpdateLastDownloadLocation(filePath string) error
-
-	// UpdateLastUploadLocation updates the last used upload directory path
-	UpdateLastUploadLocation(filePath string)
 
 	// CreateEmptyDirectory creates an empty subdirectory in the given parent directory
 	CreateEmptyDirectory(parent *directory.Directory, name string)
@@ -112,28 +71,13 @@ type explorerViewModelImpl struct {
 	baseViewModel
 	sync.Mutex
 
-	settingsVm           SettingsViewModel
-	lastDownloadLocation fyne.ListableURI
-	lastUploadDir        fyne.ListableURI
-
-	selectedDirectory    *directory.Directory
-	isSelectedDirLoading binding.Bool
-
-	pendingUserValidations chan directory.UserValidationAsked
-
-	stateListeners []func()
-	onUploadReady  func(previewState UploadPreviewState)
-
 	notifier notification.Repository
 	bus      event.Bus
-
-	state *state.State
+	state    *state.State
 }
 
 func NewExplorerViewModel(
-	settingsVm SettingsViewModel,
 	notifier notification.Repository,
-	initialConnection *connection_deck.Connection,
 	bus event.Bus,
 	st *state.State,
 ) ExplorerViewModel {
@@ -142,14 +86,9 @@ func NewExplorerViewModel(
 			errorMessage: binding.NewString(),
 			infoMessage:  binding.NewString(),
 		},
-		settingsVm:             settingsVm,
-		notifier:               notifier,
-		bus:                    bus,
-		selectedDirectory:      nil,
-		isSelectedDirLoading:   binding.NewBool(),
-		pendingUserValidations: make(chan directory.UserValidationAsked, maxPendingUserValidations),
-		stateListeners:         make([]func(), 0),
-		state:                  st,
+		notifier: notifier,
+		bus:      bus,
+		state:    st,
 	}
 
 	st.Connection().Selected().AddListener(binding.NewDataListener(func() {
@@ -189,25 +128,9 @@ func NewExplorerViewModel(
 		On(event.Is(directory.DeleteSucceededType), v.handleDeleteDirectorySuccess).
 		On(event.Is(directory.DownloadSucceededType), v.handleDownloadSuccess).
 		On(event.Is(directory.DownloadFailedType), v.handleDownloadFailure).
-		ListenWithWorkers(3)
+		ListenWithWorkers(values.ExplorerNbWorkers)
 
 	return v
-}
-
-func (v *explorerViewModelImpl) AddStateListener(listener func()) {
-	v.stateListeners = append(v.stateListeners, listener)
-}
-
-func (v *explorerViewModelImpl) OnUploadReady(listener func(previewState UploadPreviewState)) {
-	v.onUploadReady = listener
-}
-
-func (v *explorerViewModelImpl) triggerStateListeners() {
-	fyne.Do(func() {
-		for _, listener := range v.stateListeners {
-			listener()
-		}
-	})
 }
 
 func (v *explorerViewModelImpl) Validate(evt directory.UserValidationAsked, accepted bool) {
@@ -224,13 +147,9 @@ func (v *explorerViewModelImpl) Validate(evt directory.UserValidationAsked, acce
 	}
 }
 
-func (v *explorerViewModelImpl) PendingUserValidations() <-chan directory.UserValidationAsked {
-	return v.pendingUserValidations
-}
-
 func (v *explorerViewModelImpl) handleUserValidationRequest(evt event.Event) {
 	pl := evt.Payload().(directory.UserValidationAsked)
-	v.pendingUserValidations <- pl
+	v.state.Explorer().PendingUserValidations() <- pl
 }
 
 func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
@@ -241,24 +160,6 @@ func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
 		v.notifier.NotifyError(err)
 		return
 	}
-
-	if dir.Is(v.selectedDirectory) {
-		v.isSelectedDirLoading.Set(false) // nolint:errcheck
-	}
-
-	v.triggerStateListeners()
-}
-
-func (v *explorerViewModelImpl) SelectedDirectory() *directory.Directory {
-	return v.selectedDirectory
-}
-
-func (v *explorerViewModelImpl) SetSelectedDirectory(dir *directory.Directory) {
-	v.selectedDirectory = dir
-}
-
-func (v *explorerViewModelImpl) IsSelectedDirectoryLoading() binding.Bool {
-	return v.isSelectedDirLoading
 }
 
 func (v *explorerViewModelImpl) LoadDirectory(dir *directory.Directory) error {
@@ -274,7 +175,6 @@ func (v *explorerViewModelImpl) LoadDirectory(dir *directory.Directory) error {
 		v.notifier.NotifyError(wErr)
 		return wErr
 	}
-	u.Skip(v.isSelectedDirLoading.Set(true))
 	v.bus.Publish(evt)
 
 	return nil
@@ -295,8 +195,6 @@ func (v *explorerViewModelImpl) ReloadDirectory(dir *directory.Directory) error 
 	}
 	v.bus.Publish(evt)
 
-	u.Skip(v.isSelectedDirLoading.Set(true))
-
 	return nil
 }
 
@@ -309,12 +207,6 @@ func (v *explorerViewModelImpl) handleLoadDirSuccess(evt event.Event) {
 	}
 
 	v.state.Explorer().UpdateChildren(dir)
-
-	if dir.Is(v.selectedDirectory) {
-		u.Skip(v.isSelectedDirLoading.Set(false))
-	}
-
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
@@ -325,16 +217,16 @@ func (v *explorerViewModelImpl) handleLoadDirFailure(evt event.Event) {
 		return
 	}
 	u.Skip(v.infoMessage.Set(pl.Err.Error()))
-
-	if dir.Is(v.selectedDirectory) {
-		u.Skip(v.isSelectedDirLoading.Set(false))
-	}
-
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) DownloadFile(f *directory.File, dest string) {
 	evt := f.Download(u.SkipV(v.state.Connection().Selected().Get()).ID(), dest)
+
+	dirPath := filepath.Dir(dest)
+	uriLister := uu.ToListableURI(dirPath)
+	fyne.CurrentApp().Preferences().SetString(values.PrefDownloadLocation, uriLister.Path())
+	u.Skip(v.state.Explorer().DownloadLocation().Set(uriLister))
+
 	v.bus.Publish(evt)
 }
 
@@ -352,6 +244,10 @@ func (v *explorerViewModelImpl) handleDownloadFileFailure(evt event.Event) {
 }
 
 func (v *explorerViewModelImpl) DownloadDirectory(dir *directory.Directory, destParent string) {
+	uriLister := uu.ToListableURI(destParent)
+	fyne.CurrentApp().Preferences().SetString(values.PrefDownloadLocation, uriLister.Path())
+	u.Skip(v.state.Explorer().DownloadLocation().Set(uriLister))
+
 	v.bus.Publish(event.New(directory.DownloadTriggered{
 		Directory:      dir,
 		DestParentPath: destParent,
@@ -397,6 +293,11 @@ func (v *explorerViewModelImpl) UploadOne(localPath string, dir *directory.Direc
 		v.notifier.NotifyError(err)
 		return nil
 	}
+
+	uriLister := uu.ToListableURI(filepath.Dir(localPath))
+	fyne.CurrentApp().Preferences().SetString(values.PrefUploadLocation, uriLister.Path())
+	u.Skip(v.state.Explorer().UploadLocation().Set(uriLister))
+
 	v.bus.Publish(evt)
 	return nil
 }
@@ -415,7 +316,6 @@ func (v *explorerViewModelImpl) handleFileUploadSuccess(evt event.Event) {
 		return
 	}
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("File upload", "success"))
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
@@ -426,7 +326,6 @@ func (v *explorerViewModelImpl) handleFileUploadFailure(evt event.Event) {
 	}
 	v.notifier.NotifyError(err)
 	u.Skip(v.errorMessage.Set(err.Error()))
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) PrepareUpload(uris []fyne.URI, dir *directory.Directory) error {
@@ -519,12 +418,11 @@ func (v *explorerViewModelImpl) handleUploadReady(evt event.Event) {
 		v.notifier.NotifyError(err)
 		return
 	}
-	if v.onUploadReady != nil {
-		v.onUploadReady(UploadPreviewState{
-			Preview: prev,
-			BaseUri: localParentDirUri,
-		})
-	}
+
+	u.Skip(v.state.Explorer().UploadPreview().Set(state.UploadPreviewState{
+		Preview: prev,
+		BaseUri: localParentDirUri,
+	}))
 }
 
 func (v *explorerViewModelImpl) DeleteDirectory(dir *directory.Directory) {
@@ -540,8 +438,6 @@ func (v *explorerViewModelImpl) DeleteDirectory(dir *directory.Directory) {
 		u.Skip(v.errorMessage.Set(err.Error()))
 		return
 	}
-
-	u.Skip(v.isSelectedDirLoading.Set(true))
 
 	v.bus.Publish(evt)
 }
@@ -563,13 +459,10 @@ func (v *explorerViewModelImpl) handleDeleteDirectorySuccess(evt event.Event) {
 		return
 	}
 
-	if pl.Directory.Is(v.selectedDirectory) {
-		v.isSelectedDirLoading.Set(false) // nolint:errcheck
-	}
+	v.state.Explorer().SelectDir(pl.Directory.Parent())
 
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("Directory deleted",
 		fmt.Sprintf("Directory %s deleted", pl.Directory.Name())))
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleDeleteDirectoryFailure(evt event.Event) {
@@ -579,14 +472,9 @@ func (v *explorerViewModelImpl) handleDeleteDirectoryFailure(evt event.Event) {
 		return
 	}
 
-	if pl.Directory.Is(v.selectedDirectory) {
-		u.Skip(v.isSelectedDirLoading.Set(false))
-	}
-
 	err := fmt.Errorf("error deleting directory: %w", pl.Err)
 	v.notifier.NotifyError(err)
 	u.Skip(v.errorMessage.Set(err.Error()))
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) DeleteFile(file *directory.File) {
@@ -619,9 +507,10 @@ func (v *explorerViewModelImpl) handleDeleteFileSuccess(evt event.Event) {
 		return
 	}
 
+	v.state.Explorer().SelectDir(pl.ParentDirectory)
+
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("File deleted",
 		fmt.Sprintf("File %s deleted", pl.File.Name())))
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleDeleteFileFailure(evt event.Event) {
@@ -633,39 +522,6 @@ func (v *explorerViewModelImpl) handleDeleteFileFailure(evt event.Event) {
 	err := fmt.Errorf("error deleting file: %w", pl.Err)
 	v.notifier.NotifyError(err)
 	u.Skip(v.errorMessage.Set(err.Error()))
-	v.triggerStateListeners()
-}
-
-func (v *explorerViewModelImpl) LastDownloadLocation() fyne.ListableURI {
-	return v.lastDownloadLocation
-}
-
-func (v *explorerViewModelImpl) UpdateLastDownloadLocation(filePath string) error {
-	dirPath := filepath.Dir(filePath)
-	uri := storage.NewFileURI(dirPath)
-	uriLister, err := storage.ListerForURI(uri)
-	if err != nil {
-		wErr := fmt.Errorf("update download location: %w", err)
-		v.notifier.NotifyError(wErr)
-		return wErr
-	}
-	v.lastDownloadLocation = uriLister
-	return nil
-}
-
-func (v *explorerViewModelImpl) LastUploadLocation() fyne.ListableURI {
-	return v.lastUploadDir
-}
-
-func (v *explorerViewModelImpl) UpdateLastUploadLocation(filePath string) {
-	dirPath := filepath.Dir(filePath)
-	uri := storage.NewFileURI(dirPath)
-	uriLister, err := storage.ListerForURI(uri)
-	if err != nil {
-		v.notifier.NotifyError(fmt.Errorf("update upload location: %w", err))
-		return
-	}
-	v.lastUploadDir = uriLister
 }
 
 func (v *explorerViewModelImpl) CreateEmptyDirectory(parent *directory.Directory, name string) {
@@ -698,7 +554,6 @@ func (v *explorerViewModelImpl) handleCreateDirSuccess(evt event.Event) {
 	if err := pl.ParentDirectory.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 	}
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleCreateDirFailure(evt event.Event) {
@@ -710,7 +565,6 @@ func (v *explorerViewModelImpl) handleCreateDirFailure(evt event.Event) {
 	err := fmt.Errorf("error creating directory: %w", pl.Err)
 	v.notifier.NotifyError(err)
 	u.Skip(v.errorMessage.Set(err.Error()))
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) CreateEmptyFile(parent *directory.Directory, name string) {
@@ -743,7 +597,6 @@ func (v *explorerViewModelImpl) handleCreateFileSuccess(evt event.Event) {
 		v.notifier.NotifyError(err)
 		return
 	}
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleCreateFileFailure(evt event.Event) {
@@ -754,7 +607,6 @@ func (v *explorerViewModelImpl) handleCreateFileFailure(evt event.Event) {
 	}
 	v.notifier.NotifyError(err)
 	u.Skip(v.errorMessage.Set(err.Error()))
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newName string) {
@@ -771,19 +623,12 @@ func (v *explorerViewModelImpl) RenameDirectory(dir *directory.Directory, newNam
 		return
 	}
 
-	v.isSelectedDirLoading.Set(true) // nolint:errcheck
 	v.bus.Publish(evt)
 }
 
 func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 	pl := evt.Payload().(directory.RenameSucceeded)
 	dir := pl.Directory
-
-	defer func() {
-		if dir.Is(v.selectedDirectory) {
-			v.isSelectedDirLoading.Set(false) // nolint:errcheck
-		}
-	}()
 
 	oldPath := dir.Path().String()
 
@@ -808,18 +653,11 @@ func (v *explorerViewModelImpl) handleRenameDirectorySuccess(evt event.Event) {
 
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("Directory renamed",
 		fmt.Sprintf("Directory %s renamed to %s", oldPath, dir.Name())))
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
 	pl := evt.Payload().(directory.RenameFailed)
 	dir := pl.Directory
-
-	defer func() {
-		if dir.Is(v.selectedDirectory) {
-			u.Skip(v.isSelectedDirLoading.Set(false))
-		}
-	}()
 
 	err := fmt.Errorf("error renaming directory: %w", pl.Err)
 	if err := dir.Notify(evt); err != nil {
@@ -828,7 +666,6 @@ func (v *explorerViewModelImpl) handleRenameDirectoryFailure(evt event.Event) {
 	}
 	v.notifier.NotifyError(err)
 	u.Skip(v.errorMessage.Set(err.Error()))
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) error {
@@ -837,7 +674,6 @@ func (v *explorerViewModelImpl) ResumeRename(dir *directory.Directory) error {
 		return fmt.Errorf("impossible to resume rename: %w", err)
 	}
 	v.bus.Publish(evt)
-	u.Skip(v.isSelectedDirLoading.Set(true))
 	return nil
 }
 
@@ -847,7 +683,6 @@ func (v *explorerViewModelImpl) RollbackRename(dir *directory.Directory) error {
 		return fmt.Errorf("impossible to rollback rename: %w", err)
 	}
 	v.bus.Publish(evt)
-	u.Skip(v.isSelectedDirLoading.Set(true))
 	return nil
 }
 
@@ -857,7 +692,6 @@ func (v *explorerViewModelImpl) AbortRename(dir *directory.Directory) error {
 		return fmt.Errorf("impossible to abort rename: %w", err)
 	}
 	v.bus.Publish(evt)
-	u.Skip(v.isSelectedDirLoading.Set(true))
 	return nil
 }
 
@@ -899,9 +733,10 @@ func (v *explorerViewModelImpl) handleRenameFileSuccess(evt event.Event) {
 		return
 	}
 
+	v.state.Explorer().SelectFile(file)
+
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("File renamed",
 		fmt.Sprintf("File renamed to %s", file.Name())))
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) handleRenameFileFailure(evt event.Event) {
@@ -913,7 +748,6 @@ func (v *explorerViewModelImpl) handleRenameFileFailure(evt event.Event) {
 	}
 	v.notifier.NotifyError(err)
 	u.Skip(v.errorMessage.Set(err.Error()))
-	v.triggerStateListeners()
 }
 
 func (v *explorerViewModelImpl) initializeTreeData(c *connection_deck.Connection) error {

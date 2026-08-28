@@ -36,14 +36,15 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 	noConn := makeNoConnectionTopBanner(appCtx)
 	noConn.Hide()
 	vm := appCtx.ExplorerViewModel()
+	st := appCtx.State()
 
 	headingData := binding.NewString()
 	u.Skip(headingData.Set("File explorer"))
 
 	content := container.NewHSplit(fyne_widget.NewLabel(""), fyne_widget.NewLabel(""))
 
-	appCtx.State().Connection().Selected().AddListener(binding.NewDataListener(func() {
-		conn := u.SkipV(appCtx.State().Connection().Selected().Get())
+	st.Connection().Selected().AddListener(binding.NewDataListener(func() {
+		conn := u.SkipV(st.Connection().Selected().Get())
 		if conn == nil {
 			noConn.Show()
 			content.Hide()
@@ -77,39 +78,51 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 	}))
 
 	go func() {
-		for evt := range vm.PendingUserValidations() {
+		for evt := range st.Explorer().PendingUserValidations() {
 			dialog.ShowConfirm("It's up to you!", evt.Message, func(validated bool) {
 				vm.Validate(evt, validated)
 			}, appCtx.Window())
 		}
 	}()
 
-	detailsContainer := container.NewStack()
 	fileDetails := widget.NewFileDetails(appCtx)
+	fileDetails.Hide()
+
 	dirDetails := widget.NewDirectoryDetails(appCtx)
+	dirDetails.Hide()
+
+	detailsContainer := container.NewStack(fileDetails, dirDetails)
+
+	st.Explorer().SelectedDir().AddListener(binding.NewDataListener(func() {
+		dir := u.SkipV(st.Explorer().SelectedDir().Get())
+		if dir == nil {
+			dirDetails.Hide()
+			return
+		}
+		dirDetails.Select(dir)
+		dirDetails.Show()
+		fileDetails.Hide()
+	}))
+
+	st.Explorer().SelectedFile().AddListener(binding.NewDataListener(func() {
+		file := u.SkipV(st.Explorer().SelectedFile().Get())
+		if file == nil {
+			fileDetails.Hide()
+			return
+		}
+		fileDetails.Select(file)
+		fileDetails.Show()
+		dirDetails.Hide()
+	}))
 
 	tree := widget.NewExplorerTree(appCtx,
 		func(dir *directory.Directory) {
-			vm.SetSelectedDirectory(dir)
-			dirDetails.Select(dir)
-			detailsContainer.Objects = []fyne.CanvasObject{dirDetails}
+			st.Explorer().SelectDir(dir)
 		},
 		func(file *directory.File) {
-			vm.SetSelectedDirectory(nil)
-			fileDetails.Select(file)
-			detailsContainer.Objects = []fyne.CanvasObject{fileDetails}
+			st.Explorer().SelectFile(file)
 		},
 	)
-
-	vm.AddStateListener(func() {
-		tree.Refresh()
-		currSelected := vm.SelectedDirectory()
-		if currSelected == nil {
-			return
-		}
-		// Refresh the details view
-		dirDetails.Select(currSelected)
-	})
 
 	content.Leading = container.NewScroll(tree)
 	content.Trailing = detailsContainer

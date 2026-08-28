@@ -15,7 +15,6 @@ import (
 	fyne "fyne.io/fyne/v2"
 	binding "fyne.io/fyne/v2/data/binding"
 	directory "github.com/thomas-marquis/s3-box/internal/domain/directory"
-	viewmodel "github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -55,18 +54,6 @@ func (m *MockExplorerViewModel) AbortRename(dir *directory.Directory) error {
 func (mr *MockExplorerViewModelMockRecorder) AbortRename(dir any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AbortRename", reflect.TypeOf((*MockExplorerViewModel)(nil).AbortRename), dir)
-}
-
-// AddStateListener mocks base method.
-func (m *MockExplorerViewModel) AddStateListener(arg0 func()) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AddStateListener", arg0)
-}
-
-// AddStateListener indicates an expected call of AddStateListener.
-func (mr *MockExplorerViewModelMockRecorder) AddStateListener(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddStateListener", reflect.TypeOf((*MockExplorerViewModel)(nil).AddStateListener), arg0)
 }
 
 // CreateEmptyDirectory mocks base method.
@@ -195,48 +182,6 @@ func (mr *MockExplorerViewModelMockRecorder) IsLoading() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsLoading", reflect.TypeOf((*MockExplorerViewModel)(nil).IsLoading))
 }
 
-// IsSelectedDirectoryLoading mocks base method.
-func (m *MockExplorerViewModel) IsSelectedDirectoryLoading() binding.Bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsSelectedDirectoryLoading")
-	ret0, _ := ret[0].(binding.Bool)
-	return ret0
-}
-
-// IsSelectedDirectoryLoading indicates an expected call of IsSelectedDirectoryLoading.
-func (mr *MockExplorerViewModelMockRecorder) IsSelectedDirectoryLoading() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsSelectedDirectoryLoading", reflect.TypeOf((*MockExplorerViewModel)(nil).IsSelectedDirectoryLoading))
-}
-
-// LastDownloadLocation mocks base method.
-func (m *MockExplorerViewModel) LastDownloadLocation() fyne.ListableURI {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LastDownloadLocation")
-	ret0, _ := ret[0].(fyne.ListableURI)
-	return ret0
-}
-
-// LastDownloadLocation indicates an expected call of LastDownloadLocation.
-func (mr *MockExplorerViewModelMockRecorder) LastDownloadLocation() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LastDownloadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).LastDownloadLocation))
-}
-
-// LastUploadLocation mocks base method.
-func (m *MockExplorerViewModel) LastUploadLocation() fyne.ListableURI {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LastUploadLocation")
-	ret0, _ := ret[0].(fyne.ListableURI)
-	return ret0
-}
-
-// LastUploadLocation indicates an expected call of LastUploadLocation.
-func (mr *MockExplorerViewModelMockRecorder) LastUploadLocation() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LastUploadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).LastUploadLocation))
-}
-
 // LoadDirectory mocks base method.
 func (m *MockExplorerViewModel) LoadDirectory(dir *directory.Directory) error {
 	m.ctrl.T.Helper()
@@ -263,32 +208,6 @@ func (m *MockExplorerViewModel) Loading() binding.Bool {
 func (mr *MockExplorerViewModelMockRecorder) Loading() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Loading", reflect.TypeOf((*MockExplorerViewModel)(nil).Loading))
-}
-
-// OnUploadReady mocks base method.
-func (m *MockExplorerViewModel) OnUploadReady(arg0 func(viewmodel.UploadPreviewState)) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "OnUploadReady", arg0)
-}
-
-// OnUploadReady indicates an expected call of OnUploadReady.
-func (mr *MockExplorerViewModelMockRecorder) OnUploadReady(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnUploadReady", reflect.TypeOf((*MockExplorerViewModel)(nil).OnUploadReady), arg0)
-}
-
-// PendingUserValidations mocks base method.
-func (m *MockExplorerViewModel) PendingUserValidations() <-chan directory.UserValidationAsked {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PendingUserValidations")
-	ret0, _ := ret[0].(<-chan directory.UserValidationAsked)
-	return ret0
-}
-
-// PendingUserValidations indicates an expected call of PendingUserValidations.
-func (mr *MockExplorerViewModelMockRecorder) PendingUserValidations() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PendingUserValidations", reflect.TypeOf((*MockExplorerViewModel)(nil).PendingUserValidations))
 }
 
 // PrepareUpload mocks base method.
@@ -369,58 +288,6 @@ func (m *MockExplorerViewModel) RollbackRename(dir *directory.Directory) error {
 func (mr *MockExplorerViewModelMockRecorder) RollbackRename(dir any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RollbackRename", reflect.TypeOf((*MockExplorerViewModel)(nil).RollbackRename), dir)
-}
-
-// SelectedDirectory mocks base method.
-func (m *MockExplorerViewModel) SelectedDirectory() *directory.Directory {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectedDirectory")
-	ret0, _ := ret[0].(*directory.Directory)
-	return ret0
-}
-
-// SelectedDirectory indicates an expected call of SelectedDirectory.
-func (mr *MockExplorerViewModelMockRecorder) SelectedDirectory() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectedDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).SelectedDirectory))
-}
-
-// SetSelectedDirectory mocks base method.
-func (m *MockExplorerViewModel) SetSelectedDirectory(dir *directory.Directory) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetSelectedDirectory", dir)
-}
-
-// SetSelectedDirectory indicates an expected call of SetSelectedDirectory.
-func (mr *MockExplorerViewModelMockRecorder) SetSelectedDirectory(dir any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSelectedDirectory", reflect.TypeOf((*MockExplorerViewModel)(nil).SetSelectedDirectory), dir)
-}
-
-// UpdateLastDownloadLocation mocks base method.
-func (m *MockExplorerViewModel) UpdateLastDownloadLocation(filePath string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateLastDownloadLocation", filePath)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateLastDownloadLocation indicates an expected call of UpdateLastDownloadLocation.
-func (mr *MockExplorerViewModelMockRecorder) UpdateLastDownloadLocation(filePath any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLastDownloadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).UpdateLastDownloadLocation), filePath)
-}
-
-// UpdateLastUploadLocation mocks base method.
-func (m *MockExplorerViewModel) UpdateLastUploadLocation(filePath string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "UpdateLastUploadLocation", filePath)
-}
-
-// UpdateLastUploadLocation indicates an expected call of UpdateLastUploadLocation.
-func (mr *MockExplorerViewModelMockRecorder) UpdateLastUploadLocation(filePath any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLastUploadLocation", reflect.TypeOf((*MockExplorerViewModel)(nil).UpdateLastUploadLocation), filePath)
 }
 
 // UploadOne mocks base method.
