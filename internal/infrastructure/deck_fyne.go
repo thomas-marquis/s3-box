@@ -56,7 +56,7 @@ func (r *FyneConnectionsRepository) Export(_ context.Context, file io.Writer) er
 	}
 
 	dtos := dto.NewConnectionsDTO(deck)
-	jsonContent, err := json.Marshal(dtos)
+	jsonContent, err := json.MarshalIndent(dtos, "", "  ")
 	if err != nil {
 		return fmt.Errorf("serialize connections: %w", errors.Join(err, connection_deck.ErrTechnical))
 	}

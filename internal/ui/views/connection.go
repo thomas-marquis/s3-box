@@ -2,6 +2,7 @@ package views
 
 import (
 	"errors"
+	"fmt"
 
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
@@ -41,6 +42,35 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 			},
 		).AsDialog("New connection").Show)
 
+	exportConnectionsBtn := fyne_widget.NewButtonWithIcon(
+		"Export",
+		theme.DocumentSaveIcon(),
+		func() {
+			saveDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
+				if err != nil {
+					dialog.ShowError(err, appCtx.Window())
+					return
+				}
+				if writer == nil {
+					return
+				}
+				defer u.SkipD(writer.Close)
+
+				if err := vm.ExportAsJSON(writer); err != nil {
+					dialog.ShowError(err, appCtx.Window())
+					return
+				}
+
+				deck := appCtx.State().Connection().Deck()
+				msg := fmt.Sprintf("%d connection(s) exported as JSON", len(deck.Get()))
+				dialog.ShowInformation("Export", msg, appCtx.Window())
+			}, appCtx.Window())
+			saveDialog.SetFileName("connections.json")
+			saveDialog.Show()
+		},
+	)
+	exportConnectionsBtn.Resize(fyne.NewSize(100, 100))
+
 	return container.NewBorder(
 		container.NewVBox(
 			widget.NewHeading("Manage connections"),
@@ -50,7 +80,9 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 		container.NewPadded(
 			container.NewBorder(
 				nil,
-				container.NewCenter(createBtn),
+				container.NewBorder(nil, nil,
+					nil, exportConnectionsBtn,
+					container.NewCenter(createBtn)),
 				nil,
 				nil,
 				connectionsList,
