@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/s3box"
@@ -21,8 +22,9 @@ const (
 )
 
 type FyneConnectionsRepository struct {
-	prefs fyne.Preferences
-	bus   event.Bus
+	prefs     fyne.Preferences
+	bus       event.Bus
+	dtoSchema *jsonschema.Schema
 }
 
 var _ connection_deck.Repository = &FyneConnectionsRepository{}
@@ -31,7 +33,12 @@ func NewFyneConnectionsRepository(
 	prefs fyne.Preferences,
 	bus event.Bus,
 ) *FyneConnectionsRepository {
-	r := &FyneConnectionsRepository{prefs: prefs, bus: bus}
+	schema, err := jsonschema.For[[]dto.ConnectionDTO](nil)
+	if err != nil {
+		panic(err)
+	}
+
+	r := &FyneConnectionsRepository{prefs: prefs, bus: bus, dtoSchema: schema}
 
 	bus.Subscribe().
 		On(event.Is(connection_deck.SelectConnectionTriggeredType), r.handleSelect).
@@ -92,6 +99,26 @@ func (r *FyneConnectionsRepository) handleImportTriggered(evt event.Event) {
 	dtos, err := dto.NewConnectionsDTOFromJSON(content)
 	if err != nil {
 		handleErr(fmt.Errorf("invalid JSON: %w", errors.Join(err, connection_deck.ErrTechnical)))
+		return
+	}
+
+	rs, err := r.dtoSchema.Resolve(nil)
+	if err != nil {
+		handleErr(fmt.Errorf("resolve schema: %w", errors.Join(err, connection_deck.ErrTechnical)))
+		return
+	}
+
+	var dataToValidate []map[string]any
+	if err := json.Unmarshal(content, &dataToValidate); err != nil {
+		handleErr(fmt.Errorf("invalid JSON format: %w", errors.Join(err, connection_deck.ErrTechnical)))
+		return
+	}
+
+	err = rs.Validate(dataToValidate)
+	if err != nil {
+		handleErr(
+			fmt.Errorf("invalid JSON format: %w", errors.Join(err, connection_deck.ErrTechnical)),
+		)
 		return
 	}
 

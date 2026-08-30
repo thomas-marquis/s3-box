@@ -8,32 +8,32 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
-type connectionDTO struct {
-	ID        uuid.UUID `json:"id"`
-	Revision  int       `json:"revision,omitempty"`
-	Name      string    `json:"name"`
-	Server    string    `json:"server,omitempty"`
-	AccessKey string    `json:"accessKey"`
-	SecretKey string    `json:"secretKey"`
-	Bucket    string    `json:"bucket"`
-	Selected  bool      `json:"selected,omitempty"`
-	Region    string    `json:"region,omitempty"`
-	Type      string    `json:"type,omitempty"`
-	UseTls    bool      `json:"useTls,omitempty"`
-	ReadOnly  bool      `json:"readOnly,omitempty"`
+type ConnectionDTO struct {
+	ID        string `json:"id"`
+	Revision  int    `json:"revision,omitempty"`
+	Name      string `json:"name"`
+	Server    string `json:"server,omitempty"`
+	AccessKey string `json:"accessKey"`
+	SecretKey string `json:"secretKey"`
+	Bucket    string `json:"bucket"`
+	Selected  bool   `json:"selected,omitempty"`
+	Region    string `json:"region,omitempty"`
+	Type      string `json:"type,omitempty"`
+	UseTls    bool   `json:"useTls,omitempty"`
+	ReadOnly  bool   `json:"readOnly,omitempty"`
 }
 
 type ConnectionsDTO struct {
-	connections []*connectionDTO
+	Connections []*ConnectionDTO `json:"connections"`
 }
 
 func NewConnectionsDTO(c *connection_deck.Deck) *ConnectionsDTO {
-	dtos := make([]*connectionDTO, 0, len(c.Get()))
+	dtos := make([]*ConnectionDTO, 0, len(c.Get()))
 	selectedID := c.SelectedConnection()
 
 	for _, conn := range c.Get() {
-		dto := &connectionDTO{
-			ID:        uuid.UUID(conn.ID()),
+		dto := &ConnectionDTO{
+			ID:        conn.ID().String(),
 			Revision:  conn.Revision(),
 			Name:      conn.Name(),
 			Server:    conn.Server(),
@@ -53,15 +53,15 @@ func NewConnectionsDTO(c *connection_deck.Deck) *ConnectionsDTO {
 	}
 
 	return &ConnectionsDTO{
-		connections: dtos,
+		Connections: dtos,
 	}
 }
 
 func NewConnectionsDTOFromList(conns []*connection_deck.Connection) *ConnectionsDTO {
-	dtos := make([]*connectionDTO, 0, len(conns))
+	dtos := make([]*ConnectionDTO, 0, len(conns))
 	for _, conn := range conns {
-		dto := &connectionDTO{
-			ID:        uuid.UUID(conn.ID()),
+		dto := &ConnectionDTO{
+			ID:        conn.ID().String(),
 			Revision:  conn.Revision(),
 			Name:      conn.Name(),
 			Server:    conn.Server(),
@@ -77,27 +77,33 @@ func NewConnectionsDTOFromList(conns []*connection_deck.Connection) *Connections
 		dtos = append(dtos, dto)
 	}
 	return &ConnectionsDTO{
-		connections: dtos,
+		Connections: dtos,
 	}
 }
 
 func NewConnectionsDTOFromJSON(content []byte) (*ConnectionsDTO, error) {
-	var dtos []*connectionDTO
+	var dtos []*ConnectionDTO
 	if err := json.Unmarshal(content, &dtos); err != nil {
 		return nil, err
 	}
-	return &ConnectionsDTO{connections: dtos}, nil
+	return &ConnectionsDTO{Connections: dtos}, nil
 }
 
 func (c *ConnectionsDTO) ToConnections() *connection_deck.Deck {
 	conns := connection_deck.New()
 	nilID := connection_deck.ConnectionID(uuid.Nil)
 	selectedID := nilID
-	for _, dto := range c.connections {
-		if dto.ID == uuid.Nil {
+	for _, dto := range c.Connections {
+		if dto.ID == "" {
 			continue
 		}
-		connID := connection_deck.ConnectionID(dto.ID)
+
+		id, err := uuid.Parse(dto.ID)
+		if err != nil || id == uuid.Nil {
+			continue
+		}
+
+		connID := connection_deck.ConnectionID(id)
 		evt := conns.New(
 			dto.Name, dto.AccessKey, dto.SecretKey, dto.Bucket,
 			connection_deck.WithRevision(dto.Revision),
@@ -123,5 +129,5 @@ func (c *ConnectionsDTO) ToConnections() *connection_deck.Deck {
 }
 
 func (c *ConnectionsDTO) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.connections)
+	return json.Marshal(c.Connections)
 }
