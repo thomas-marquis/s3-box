@@ -77,14 +77,6 @@ func GetFileExplorerView(appCtx appcontext.AppContext) (*fyne.Container, error) 
 		u.Skip(vm.InfoMessage().Set(""))
 	}))
 
-	go func() {
-		for evt := range st.Explorer().PendingUserValidations() {
-			dialog.ShowConfirm("It's up to you!", evt.Message, func(validated bool) {
-				vm.Validate(evt, validated)
-			}, appCtx.Window())
-		}
-	}()
-
 	fileDetails := widget.NewFileDetails(appCtx)
 	fileDetails.Hide()
 

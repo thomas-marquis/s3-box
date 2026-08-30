@@ -57,6 +57,30 @@ func NewConnectionsDTO(c *connection_deck.Deck) *ConnectionsDTO {
 	}
 }
 
+func NewConnectionsDTOFromList(conns []*connection_deck.Connection) *ConnectionsDTO {
+	dtos := make([]*connectionDTO, 0, len(conns))
+	for _, conn := range conns {
+		dto := &connectionDTO{
+			ID:        uuid.UUID(conn.ID()),
+			Revision:  conn.Revision(),
+			Name:      conn.Name(),
+			Server:    conn.Server(),
+			AccessKey: conn.AccessKey(),
+			SecretKey: conn.SecretKey(),
+			Bucket:    conn.Bucket(),
+			Selected:  false,
+			Region:    conn.Region(),
+			Type:      conn.Provider().String(),
+			UseTls:    conn.IsTLSActivated(),
+			ReadOnly:  conn.ReadOnly(),
+		}
+		dtos = append(dtos, dto)
+	}
+	return &ConnectionsDTO{
+		connections: dtos,
+	}
+}
+
 func NewConnectionsDTOFromJSON(content []byte) (*ConnectionsDTO, error) {
 	var dtos []*connectionDTO
 	if err := json.Unmarshal(content, &dtos); err != nil {

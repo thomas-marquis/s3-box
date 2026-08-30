@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/s3-box/internal/domain/s3box"
 )
 
 type loadingState struct {
@@ -90,7 +91,10 @@ func (s *loadingState) Notify(evt event.Event) error {
 		}
 		s.d.setState(newNotLoadedState(s.d, ErrorStatus{Err: pl.Err}))
 
-	case UserValidationRefused:
+	case s3box.UserValidationRefused:
+		if _, ok := pl.Reason.Payload().(RenameTriggered); !ok {
+			return nil
+		}
 		s.d.setState(newLoadedState(s.baseState, s.subDirs, s.files))
 	}
 

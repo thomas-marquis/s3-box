@@ -7,6 +7,7 @@ import (
 
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
+	"github.com/thomas-marquis/s3-box/internal/domain/s3box"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -54,7 +55,7 @@ func (h *EventHandler) Listen() {
 		On(event.Is(directory.LoadFileTriggeredType), h.handleLoadFile).
 		On(event.Is(directory.TagsLoadTriggeredType), h.handleLoadTags).
 		On(event.Is(directory.TagsSaveTriggeredType), h.handleSaveTags).
-		On(event.Is(directory.UserValidationAcceptedType), h.handleRenameDirectory).
+		On(event.Is(s3box.UserValidationAcceptedType), h.handleRenameDirectory).
 		On(event.Is(directory.RenameFileTriggeredType), h.handleRenameFile).
 		On(event.Is(directory.RenameTriggeredType), h.handleRenameRequest).
 		On(event.Is(directory.RenameRecoveryTriggeredType), h.handleRenameRecovery).

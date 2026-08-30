@@ -182,5 +182,11 @@ func (d *Deck) Notify(evt event.Event) {
 				return
 			}
 		}
+
+	case ImportSucceeded:
+		newConns := pl.NewConnections
+		d.connections = make([]*Connection, len(newConns))
+		copy(d.connections, newConns)
+		d.selectedID = nilConnectionID
 	}
 }

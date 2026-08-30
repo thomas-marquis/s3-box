@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/s3-box/internal/domain/s3box"
 	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/uu"
@@ -59,8 +60,6 @@ type ExplorerViewModel interface {
 
 	// RenameFile renames a file
 	RenameFile(file *directory.File, newName string)
-
-	Validate(event directory.UserValidationAsked, validated bool)
 
 	ResumeRename(dir *directory.Directory) error
 	RollbackRename(dir *directory.Directory) error
@@ -121,8 +120,7 @@ func NewExplorerViewModel(
 		On(event.Is(directory.RenameFailedType), v.handleRenameDirectoryFailure).
 		On(event.Is(directory.RenameFileSucceededType), v.handleRenameFileSuccess).
 		On(event.Is(directory.RenameFileFailedType), v.handleRenameFileFailure).
-		On(event.Is(directory.UserValidationAskedType), v.handleUserValidationRequest).
-		On(event.Is(directory.UserValidationRefusedType), v.handleUserValidationRefused).
+		On(event.Is(s3box.UserValidationRefusedType), v.handleUserValidationRefused).
 		On(event.Is(directory.UploadReadyType), v.handleUploadReady).
 		On(event.Is(directory.DeleteFailedType), v.handleDeleteDirectoryFailure).
 		On(event.Is(directory.DeleteSucceededType), v.handleDeleteDirectorySuccess).
@@ -133,30 +131,14 @@ func NewExplorerViewModel(
 	return v
 }
 
-func (v *explorerViewModelImpl) Validate(evt directory.UserValidationAsked, accepted bool) {
-	if accepted {
-		v.bus.Publish(event.New(directory.UserValidationAccepted{
-			Directory: evt.Directory,
-			Reason:    evt.Reason,
-		}))
-	} else {
-		v.bus.Publish(event.New(directory.UserValidationRefused{
-			Directory: evt.Directory,
-			Reason:    evt.Reason,
-		}))
-	}
-}
-
-func (v *explorerViewModelImpl) handleUserValidationRequest(evt event.Event) {
-	pl := evt.Payload().(directory.UserValidationAsked)
-	v.state.Explorer().PendingUserValidations() <- pl
-}
-
 func (v *explorerViewModelImpl) handleUserValidationRefused(evt event.Event) {
-	pl := evt.Payload().(directory.UserValidationRefused)
-	dir := pl.Directory
+	pl := evt.Payload().(s3box.UserValidationRefused)
+	reason, ok := pl.Reason.Payload().(directory.RenameTriggered)
+	if !ok {
+		return
+	}
 
-	if err := dir.Notify(evt); err != nil {
+	if err := reason.Directory.Notify(evt); err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}

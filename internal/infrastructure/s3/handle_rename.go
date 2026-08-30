@@ -14,6 +14,7 @@ import (
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/domain/s3box"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 	"github.com/thomas-marquis/s3-box/internal/u"
 )
@@ -150,17 +151,16 @@ func (h *EventHandler) handleRenameRequest(e event.Event) {
 
 		msg := fmt.Sprintf("Directory %s is not empty.\nIt contains %d objects (%d kB).\nThis operation will modify all of them. Are you sure you want to proceed?",
 			dir.Path(), len(lsSrc.Keys), lsSrc.SizeBytesTot/1024)
-		h.bus.Publish(e.NewFollowup(directory.UserValidationAsked{
-			Directory: dir,
-			Reason:    e,
-			Message:   msg,
+		h.bus.Publish(e.NewFollowup(s3box.UserValidationAsked{
+			Reason:  e,
+			Message: msg,
 		}))
 	}
 }
 
 func (h *EventHandler) handleRenameDirectory(e event.Event) {
 	ctx := e.Context()
-	uve := e.Payload().(directory.UserValidationAccepted)
+	uve := e.Payload().(s3box.UserValidationAccepted)
 
 	rePl, ok := uve.Reason.Payload().(directory.RenameTriggered)
 	if !ok {

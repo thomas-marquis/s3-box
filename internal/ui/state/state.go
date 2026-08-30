@@ -14,6 +14,7 @@ type State struct {
 	explorer    *ExplorerState
 	settings    *SettingsState
 	tags        *TagsState
+	ui          *UIState
 }
 
 func New() *State {
@@ -22,6 +23,7 @@ func New() *State {
 		explorer:    newExplorerState(),
 		settings:    newSettingsState(),
 		tags:        newTagsState(),
+		ui:          newUiState(),
 	}
 }
 
@@ -39,4 +41,8 @@ func (s *State) Settings() *SettingsState {
 
 func (s *State) Tags() *TagsState {
 	return s.tags
+}
+
+func (s *State) UI() *UIState {
+	return s.ui
 }

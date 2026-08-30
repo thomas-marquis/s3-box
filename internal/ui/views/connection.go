@@ -42,7 +42,7 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 			},
 		).AsDialog("New connection").Show)
 
-	exportConnectionsBtn := fyne_widget.NewButtonWithIcon(
+	exportBtn := fyne_widget.NewButtonWithIcon(
 		"Export",
 		theme.DocumentSaveIcon(),
 		func() {
@@ -69,7 +69,26 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 			saveDialog.Show()
 		},
 	)
-	exportConnectionsBtn.Resize(fyne.NewSize(100, 100))
+
+	importBtn := fyne_widget.NewButtonWithIcon("Import", theme.UploadIcon(),
+		func() {
+			d := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+				if err != nil {
+					dialog.ShowError(err, appCtx.Window())
+					return
+				}
+				if reader == nil {
+					return
+				}
+
+				if err := vm.ImportFromJSON(reader); err != nil {
+					dialog.ShowError(err, appCtx.Window())
+					return
+				}
+			}, appCtx.Window())
+			d.SetTitleText("Select a valid JSON file to import")
+			d.Show()
+		})
 
 	return container.NewBorder(
 		container.NewVBox(
@@ -81,7 +100,7 @@ func GetConnectionView(appCtx appcontext.AppContext) (*fyne.Container, error) {
 			container.NewBorder(
 				nil,
 				container.NewBorder(nil, nil,
-					nil, exportConnectionsBtn,
+					nil, container.NewHBox(exportBtn, importBtn),
 					container.NewCenter(createBtn)),
 				nil,
 				nil,
