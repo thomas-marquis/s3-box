@@ -2,6 +2,7 @@ package appcontext
 
 import (
 	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/s3-box/internal/domain/s3box"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
@@ -91,7 +92,14 @@ func New(
 		appState:              appState,
 	}
 
-	ctx.mainWidget = newAppWidget(appName, menuList, ctx.Navigate)
+	bus.Subscribe().
+		On(event.Is(s3box.UserValidationAskedType), func(evt event.Event) {
+			pl := evt.Payload().(s3box.UserValidationAsked)
+			appState.Global().PendingUserValidation() <- pl
+		}).
+		ListenWithWorkers(1)
+
+	ctx.mainWidget = newAppWidget(appName, menuList, ctx.Navigate, appState, bus, window)
 
 	return ctx
 }

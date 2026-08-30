@@ -6,11 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"fyne.io/fyne/v2"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
+	"github.com/thomas-marquis/s3-box/internal/domain/s3box"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/dto"
+	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 const (
@@ -18,8 +22,9 @@ const (
 )
 
 type FyneConnectionsRepository struct {
-	prefs fyne.Preferences
-	bus   event.Bus
+	prefs     fyne.Preferences
+	bus       event.Bus
+	dtoSchema *jsonschema.Schema
 }
 
 var _ connection_deck.Repository = &FyneConnectionsRepository{}
@@ -28,13 +33,20 @@ func NewFyneConnectionsRepository(
 	prefs fyne.Preferences,
 	bus event.Bus,
 ) *FyneConnectionsRepository {
-	r := &FyneConnectionsRepository{prefs: prefs, bus: bus}
+	schema, err := jsonschema.For[[]dto.ConnectionDTO](nil)
+	if err != nil {
+		panic(err)
+	}
+
+	r := &FyneConnectionsRepository{prefs: prefs, bus: bus, dtoSchema: schema}
 
 	bus.Subscribe().
 		On(event.Is(connection_deck.SelectConnectionTriggeredType), r.handleSelect).
 		On(event.Is(connection_deck.CreateConnectionTriggeredType), r.handleCreate).
 		On(event.Is(connection_deck.RemoveConnectionTriggeredType), r.handleRemove).
 		On(event.Is(connection_deck.UpdateConnectionTriggeredType), r.handleUpdate).
+		On(event.Is(connection_deck.ImportTriggeredType), r.handleImportTriggered).
+		On(event.Is(s3box.UserValidationAcceptedType), r.handleUserValidationAccepted).
 		ListenWithWorkers(1)
 
 	return r
@@ -56,7 +68,7 @@ func (r *FyneConnectionsRepository) Export(_ context.Context, file io.Writer) er
 	}
 
 	dtos := dto.NewConnectionsDTO(deck)
-	jsonContent, err := json.Marshal(dtos)
+	jsonContent, err := json.MarshalIndent(dtos, "", "  ")
 	if err != nil {
 		return fmt.Errorf("serialize connections: %w", errors.Join(err, connection_deck.ErrTechnical))
 	}
@@ -65,6 +77,89 @@ func (r *FyneConnectionsRepository) Export(_ context.Context, file io.Writer) er
 		return fmt.Errorf("write connections: %w", errors.Join(err, connection_deck.ErrTechnical))
 	}
 	return nil
+}
+
+func (r *FyneConnectionsRepository) handleImportTriggered(evt event.Event) {
+	pl := evt.Payload().(connection_deck.ImportTriggered)
+	defer u.SkipD(pl.JSONFile.Close)
+
+	handleErr := func(err error) {
+		r.bus.Publish(evt.NewFollowup(connection_deck.ImportFailed{
+			Deck: pl.Deck,
+			Err:  err,
+		}))
+	}
+
+	content, err := io.ReadAll(pl.JSONFile)
+	if err != nil {
+		handleErr(fmt.Errorf("read connections from file: %w", errors.Join(err, connection_deck.ErrTechnical)))
+		return
+	}
+
+	dtos, err := dto.NewConnectionsDTOFromJSON(content)
+	if err != nil {
+		handleErr(fmt.Errorf("invalid JSON: %w", errors.Join(err, connection_deck.ErrTechnical)))
+		return
+	}
+
+	rs, err := r.dtoSchema.Resolve(nil)
+	if err != nil {
+		handleErr(fmt.Errorf("resolve schema: %w", errors.Join(err, connection_deck.ErrTechnical)))
+		return
+	}
+
+	var dataToValidate []map[string]any
+	if err := json.Unmarshal(content, &dataToValidate); err != nil {
+		handleErr(fmt.Errorf("invalid JSON format: %w", errors.Join(err, connection_deck.ErrTechnical)))
+		return
+	}
+
+	err = rs.Validate(dataToValidate)
+	if err != nil {
+		handleErr(
+			fmt.Errorf("invalid JSON format: %w", errors.Join(err, connection_deck.ErrTechnical)),
+		)
+		return
+	}
+
+	newConns := dtos.ToConnections().Get()
+
+	nextEvt := evt.NewFollowup(connection_deck.ImportConfirmationAsked{
+		Deck:           pl.Deck,
+		NewConnections: newConns,
+	})
+
+	msg := strings.Builder{}
+	u.SkipV(fmt.Fprintf(&msg, "%d connections will be imported:\n", len(newConns)))
+	for _, conn := range newConns {
+		u.SkipV(fmt.Fprintf(&msg, "- %s\n", conn.Name()))
+	}
+	u.SkipV(fmt.Fprintf(&msg, "\n⚠️ All %d previous connections will be overwritten ⚠️\nProceed?\n", len(pl.Deck.Get())))
+
+	r.bus.Publish(evt.NewFollowup(s3box.UserValidationAsked{
+		Reason:  nextEvt,
+		Message: msg.String(),
+	}))
+}
+
+func (r *FyneConnectionsRepository) handleUserValidationAccepted(evt event.Event) {
+	pl := evt.Payload().(s3box.UserValidationAccepted)
+	reasonPl, ok := pl.Reason.Payload().(connection_deck.ImportConfirmationAsked)
+	if !ok {
+		return
+	}
+
+	dtos := dto.NewConnectionsDTOFromList(reasonPl.NewConnections)
+	jsonContent, err := json.Marshal(dtos)
+	if err != nil {
+		r.bus.Publish(pl.Reason.NewFollowup(connection_deck.ImportFailed{
+			Deck: reasonPl.Deck,
+			Err:  err,
+		}))
+		return
+	}
+	r.prefs.SetString(allConnectionsKey, string(jsonContent))
+	r.bus.Publish(pl.Reason.NewFollowup(connection_deck.ImportSucceeded(reasonPl)))
 }
 
 func (r *FyneConnectionsRepository) saveDeck(_ context.Context, deck *connection_deck.Deck) error {

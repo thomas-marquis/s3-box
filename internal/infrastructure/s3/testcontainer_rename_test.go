@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
+	"github.com/thomas-marquis/s3-box/internal/domain/s3box"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 	"github.com/thomas-marquis/s3-box/internal/tu"
@@ -108,7 +109,7 @@ func TestS3EventHandler_rename(t *testing.T) {
 		mockBus.EXPECT().
 			Publish(gomock.Any()).
 			Do(func(evt event.Event) {
-				pl, ok := evt.Payload().(directory.UserValidationAsked)
+				pl, ok := evt.Payload().(s3box.UserValidationAsked)
 				assert.True(t, ok)
 				assert.Equal(t, inputEvt, pl.Reason)
 				close(done)
@@ -183,9 +184,8 @@ func TestS3EventHandler_rename(t *testing.T) {
 			Directory: originalDir,
 			NewName:   "newname",
 		})
-		fakeEventChan <- event.New(directory.UserValidationAccepted{
-			Directory: originalDir,
-			Reason:    originalEvt,
+		fakeEventChan <- event.New(s3box.UserValidationAccepted{
+			Reason: originalEvt,
 		})
 
 		// Then
@@ -256,9 +256,8 @@ func TestS3EventHandler_rename(t *testing.T) {
 			Directory: subdir,
 			NewName:   "newname",
 		})
-		fakeEventChan <- event.New(directory.UserValidationAccepted{
-			Directory: subdir,
-			Reason:    originalEvt,
+		fakeEventChan <- event.New(s3box.UserValidationAccepted{
+			Reason: originalEvt,
 		})
 
 		// Then
@@ -392,8 +391,7 @@ func TestS3EventHandler_rename(t *testing.T) {
 				})
 			}).Listen()
 
-		fakeEventChan <- event.New(directory.UserValidationAccepted{
-			Directory: originalDir,
+		fakeEventChan <- event.New(s3box.UserValidationAccepted{
 			Reason: event.New(directory.RenameTriggered{
 				Directory: originalDir,
 				NewName:   "newname",

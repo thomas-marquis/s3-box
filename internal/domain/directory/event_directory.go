@@ -157,40 +157,6 @@ func (e RenameRecoveryTriggered) EventType() event.Type {
 }
 
 const (
-	UserValidationAskedType    event.Type = "event.directory.user.validation.asked"
-	UserValidationAcceptedType event.Type = "event.directory.user.validation.accepted"
-	UserValidationRefusedType  event.Type = "event.directory.user.validation.refused"
-)
-
-type UserValidationAsked struct {
-	Directory *Directory
-	Reason    event.Event
-	Message   string
-}
-
-func (e UserValidationAsked) EventType() event.Type {
-	return UserValidationAskedType
-}
-
-type UserValidationAccepted struct {
-	Directory *Directory
-	Reason    event.Event
-}
-
-func (e UserValidationAccepted) EventType() event.Type {
-	return UserValidationAcceptedType
-}
-
-type UserValidationRefused struct {
-	Directory *Directory
-	Reason    event.Event
-}
-
-func (e UserValidationRefused) EventType() event.Type {
-	return UserValidationRefusedType
-}
-
-const (
 	UploadReadyType     event.Type = "event.directory.upload.ready"
 	UploadFailedType    event.Type = "event.directory.upload.failed"
 	UploadSucceededType event.Type = "event.directory.upload.succeeded"

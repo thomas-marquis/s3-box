@@ -1,15 +1,12 @@
 package views
 
 import (
-	"fmt"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/theme"
 	fyne_widget "fyne.io/fyne/v2/widget"
-	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/values"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
@@ -50,35 +47,6 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		},
 	}
 
-	exportConnectionsBtn := fyne_widget.NewButtonWithIcon(
-		"Export connections as JSON",
-		theme.DocumentSaveIcon(),
-		func() {
-			saveDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
-				if err != nil {
-					dialog.ShowError(err, ctx.Window())
-					return
-				}
-				if writer == nil {
-					return
-				}
-				defer u.SkipD(writer.Close)
-
-				if err := ctx.ConnectionViewModel().ExportAsJSON(writer); err != nil {
-					dialog.ShowError(err, ctx.Window())
-					return
-				}
-
-				deck := ctx.State().Connection().Deck()
-				msg := fmt.Sprintf("%d connection(s) exported as JSON", len(deck.Get()))
-				dialog.ShowInformation("Export", msg, ctx.Window())
-			}, ctx.Window())
-			saveDialog.SetFileName("connections.json")
-			saveDialog.Show()
-		},
-	)
-	exportConnectionsBtn.Resize(fyne.NewSize(100, 100))
-
 	statusLabel := fyne_widget.NewLabelWithData(ctx.State().Settings().StatusMessage())
 
 	return container.NewBorder(
@@ -89,10 +57,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 		container.NewVBox(
 			container.NewBorder(nil, nil, nil, statusLabel),
 			container.NewPadded(
-				container.NewGridWrap(fyne.NewSize(700, 400), container.NewVBox(
-					form,
-					container.NewHBox(exportConnectionsBtn),
-				)),
+				container.NewGridWrap(fyne.NewSize(700, 400), form),
 			),
 		),
 	), nil

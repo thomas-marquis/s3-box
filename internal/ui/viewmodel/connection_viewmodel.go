@@ -2,6 +2,7 @@ package viewmodel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -11,6 +12,10 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/notification"
 	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
+)
+
+var (
+	ErrNoDeckFound = errors.New("no connection deck found")
 )
 
 // ConnectionViewModel provides methods to manage, update, and query connections within the application.
@@ -30,6 +35,8 @@ type ConnectionViewModel interface {
 	// The JSON object will be written in the writer.
 	// It's up to you to effectively write the writer into a file or whatever.
 	ExportAsJSON(writer io.Writer) error
+
+	ImportFromJSON(reader io.ReadCloser) error
 }
 
 type connectionViewModelImpl struct {
@@ -81,10 +88,12 @@ func NewConnectionViewModel(
 
 	appState.Connection().Init(deck)
 
-	bus.Publish(event.New(connection_deck.SelectConnectionTriggered{
-		ConnectionPayload: connection_deck.ConnectionPayload{Conn: deck.SelectedConnection()},
-		Deck:              deck,
-	}))
+	if selected := deck.SelectedConnection(); selected != nil {
+		bus.Publish(event.New(connection_deck.SelectConnectionTriggered{
+			ConnectionPayload: connection_deck.ConnectionPayload{Conn: selected},
+			Deck:              deck,
+		}))
+	}
 
 	vm.bus.Subscribe().
 		On(event.IsOneOf(
@@ -93,18 +102,14 @@ func NewConnectionViewModel(
 			connection_deck.RemoveConnectionTriggeredType,
 			connection_deck.UpdateConnectionTriggeredType,
 		), vm.handleOnLoading).
-		On(event.IsOneOf(
-			connection_deck.SelectConnectionFailedType,
-			connection_deck.CreateConnectionFailedType,
-			connection_deck.RemoveConnectionFailedType,
-			connection_deck.UpdateConnectionFailedType,
-		), vm.handleFailure).
+		On(event.IsPayloadImplements[connection_deck.ErrorGetter](), vm.handleFailure).
 		On(event.IsOneOf(
 			connection_deck.SelectConnectionSucceededType,
 			connection_deck.UpdateConnectionSucceededType,
 		), vm.handleUpdate).
 		On(event.Is(connection_deck.CreateConnectionSucceededType), vm.handleCreate).
 		On(event.Is(connection_deck.RemoveConnectionSucceededType), vm.handleDelete).
+		On(event.Is(connection_deck.ImportSucceededType), vm.handleConnectionImported).
 		ListenWithWorkers(1)
 
 	return vm
@@ -215,6 +220,27 @@ func (v *connectionViewModelImpl) ExportAsJSON(writer io.Writer) error {
 	}
 
 	return nil
+}
+
+func (v *connectionViewModelImpl) ImportFromJSON(reader io.ReadCloser) error {
+	deck := v.state.Connection().Deck()
+	if deck == nil {
+		return ErrNoDeckFound
+	}
+
+	v.bus.Publish(event.New(connection_deck.ImportTriggered{
+		Deck:     deck,
+		JSONFile: reader,
+	}))
+	return nil
+}
+
+func (v *connectionViewModelImpl) handleConnectionImported(evt event.Event) {
+	pl := evt.Payload().(connection_deck.ImportSucceeded)
+	pl.Deck.Notify(evt)
+	v.state.Connection().Reset()
+	v.state.Connection().Init(pl.Deck)
+	u.Skip(v.infoMessage.Set("New connections imported"))
 }
 
 func (v *connectionViewModelImpl) handleOnLoading(_ event.Event) {

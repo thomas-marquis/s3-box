@@ -10,9 +10,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.107.1
 	github.com/aws/smithy-go v1.27.7
 	github.com/dustin/go-humanize v1.0.1
+	github.com/google/jsonschema-go v0.4.3
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.43.0
-	github.com/thomas-marquis/it-happened v0.8.0
+	github.com/thomas-marquis/it-happened v0.9.0
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
 )

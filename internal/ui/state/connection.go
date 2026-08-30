@@ -36,6 +36,13 @@ func (s *ConnectionState) Init(deck *connection_deck.Deck) {
 	}
 }
 
+func (s *ConnectionState) Reset() {
+	for _, c := range u.SkipV(s.connections.Get()) {
+		u.Skip(s.connections.Remove(c))
+	}
+	u.Skip(s.selected.Set(nil))
+}
+
 func (s *ConnectionState) List() binding.List[*connection_deck.Connection] {
 	return s.connections
 }

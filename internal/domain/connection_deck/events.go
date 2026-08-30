@@ -1,6 +1,10 @@
 package connection_deck
 
-import "github.com/thomas-marquis/it-happened/event"
+import (
+	"io"
+
+	"github.com/thomas-marquis/it-happened/event"
+)
 
 type ConnectionGetter interface {
 	Connection() *Connection
@@ -174,7 +178,7 @@ type UpdateConnectionTriggered struct {
 	Previous *Connection
 }
 
-func (e UpdateConnectionTriggered) EventType() event.Type {
+func (UpdateConnectionTriggered) EventType() event.Type {
 	return UpdateConnectionTriggeredType
 }
 
@@ -183,7 +187,7 @@ type UpdateConnectionSucceeded struct {
 	Deck *Deck
 }
 
-func (e UpdateConnectionSucceeded) EventType() event.Type {
+func (UpdateConnectionSucceeded) EventType() event.Type {
 	return UpdateConnectionSucceededType
 }
 
@@ -192,10 +196,61 @@ type UpdateConnectionFailed struct {
 	Err error
 }
 
-func (e UpdateConnectionFailed) EventType() event.Type {
+func (UpdateConnectionFailed) EventType() event.Type {
 	return UpdateConnectionFailedType
 }
 
 func (e UpdateConnectionFailed) Error() error {
 	return e.Err
+}
+
+const (
+	ImportTriggeredType         event.Type = "deck.connection.import.triggered"
+	ImportFailedType            event.Type = "deck.connection.import.failed"
+	ImportConfirmationAskedType event.Type = "deck.connection.import.confirmation.asked"
+	ImportSucceededType         event.Type = "deck.connection.import.succeeded"
+)
+
+type ImportTriggered struct {
+	Deck     *Deck
+	JSONFile io.ReadCloser
+}
+
+func (ImportTriggered) EventType() event.Type {
+	return ImportTriggeredType
+}
+
+type ImportFailed struct {
+	Deck *Deck
+	Err  error
+}
+
+var (
+	_ ErrorGetter = (*ImportFailed)(nil)
+)
+
+func (ImportFailed) EventType() event.Type {
+	return ImportFailedType
+}
+
+func (e ImportFailed) Error() error {
+	return e.Err
+}
+
+type ImportConfirmationAsked struct {
+	Deck           *Deck
+	NewConnections []*Connection
+}
+
+func (ImportConfirmationAsked) EventType() event.Type {
+	return ImportConfirmationAskedType
+}
+
+type ImportSucceeded struct {
+	Deck           *Deck
+	NewConnections []*Connection
+}
+
+func (ImportSucceeded) EventType() event.Type {
+	return ImportSucceededType
 }

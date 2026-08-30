@@ -303,15 +303,3 @@ func (mr *MockExplorerViewModelMockRecorder) UploadOne(localPath, dir, overwrite
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadOne", reflect.TypeOf((*MockExplorerViewModel)(nil).UploadOne), localPath, dir, overwrite)
 }
-
-// Validate mocks base method.
-func (m *MockExplorerViewModel) Validate(event directory.UserValidationAsked, validated bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Validate", event, validated)
-}
-
-// Validate indicates an expected call of Validate.
-func (mr *MockExplorerViewModelMockRecorder) Validate(event, validated any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Validate", reflect.TypeOf((*MockExplorerViewModel)(nil).Validate), event, validated)
-}

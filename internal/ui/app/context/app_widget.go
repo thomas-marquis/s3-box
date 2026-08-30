@@ -4,8 +4,12 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+	"github.com/thomas-marquis/it-happened/event"
+	"github.com/thomas-marquis/s3-box/internal/domain/s3box"
 	"github.com/thomas-marquis/s3-box/internal/ui/app/navigation"
+	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/theme/resources"
 )
 
@@ -20,13 +24,39 @@ type AppWidget struct {
 
 var _ fyne.Widget = (*AppWidget)(nil)
 
-func newAppWidget(appTitle string, menus []Menu, navCb func(navigation.Route) (*fyne.Container, error)) *AppWidget {
+func newAppWidget(
+	appTitle string,
+	menus []Menu,
+	navCb func(navigation.Route) (*fyne.Container, error),
+	st *state.State,
+	bus event.Bus,
+	window fyne.Window,
+) *AppWidget {
 	a := &AppWidget{
 		menu:  menus,
 		navCb: navCb,
 		title: appTitle,
 	}
 	a.ExtendBaseWidget(a)
+
+	go func() {
+		for evt := range st.Global().PendingUserValidation() {
+			dialog.ShowConfirm("It's up to you!", evt.Message, func(accepted bool) {
+				fyne.Do(func() {
+					if accepted {
+						bus.Publish(event.New(s3box.UserValidationAccepted{
+							Reason: evt.Reason,
+						}))
+					} else {
+						bus.Publish(event.New(s3box.UserValidationRefused{
+							Reason: evt.Reason,
+						}))
+					}
+				})
+			}, window)
+		}
+	}()
+
 	return a
 }
 
