@@ -95,7 +95,7 @@ func New(
 	bus.Subscribe().
 		On(event.Is(s3box.UserValidationAskedType), func(evt event.Event) {
 			pl := evt.Payload().(s3box.UserValidationAsked)
-			appState.UI().PendingUserValidation() <- pl
+			appState.Global().PendingUserValidation() <- pl
 		}).
 		ListenWithWorkers(1)
 

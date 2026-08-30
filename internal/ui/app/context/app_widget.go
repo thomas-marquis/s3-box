@@ -40,7 +40,7 @@ func newAppWidget(
 	a.ExtendBaseWidget(a)
 
 	go func() {
-		for evt := range st.UI().PendingUserValidation() {
+		for evt := range st.Global().PendingUserValidation() {
 			dialog.ShowConfirm("It's up to you!", evt.Message, func(accepted bool) {
 				fyne.Do(func() {
 					if accepted {

@@ -6,7 +6,7 @@ import (
 
 type ConnectionID uuid.UUID
 
-var nilConnectionID ConnectionID = ConnectionID(uuid.Nil)
+var nilConnectionID = ConnectionID(uuid.Nil)
 
 func NewConnectionID() ConnectionID {
 	return ConnectionID(uuid.New())
@@ -37,7 +37,7 @@ type Connection struct {
 	provider  Provider
 }
 
-func newConnection(
+func NewConnection(
 	name, accessKey, secretKey, bucket string,
 	options ...ConnectionOption,
 ) *Connection {

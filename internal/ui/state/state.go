@@ -14,7 +14,7 @@ type State struct {
 	explorer    *ExplorerState
 	settings    *SettingsState
 	tags        *TagsState
-	ui          *UIState
+	global      *GlobalState
 }
 
 func New() *State {
@@ -23,7 +23,7 @@ func New() *State {
 		explorer:    newExplorerState(),
 		settings:    newSettingsState(),
 		tags:        newTagsState(),
-		ui:          newUiState(),
+		global:      newUiState(),
 	}
 }
 
@@ -43,6 +43,6 @@ func (s *State) Tags() *TagsState {
 	return s.tags
 }
 
-func (s *State) UI() *UIState {
-	return s.ui
+func (s *State) Global() *GlobalState {
+	return s.global
 }

@@ -26,7 +26,7 @@ func (d *Deck) New(
 	name, accessKey, secretKey, bucket string,
 	options ...ConnectionOption,
 ) event.Event {
-	conn := newConnection(name, accessKey, secretKey, bucket, options...)
+	conn := NewConnection(name, accessKey, secretKey, bucket, options...)
 	d.connections = append(d.connections, conn)
 	return event.New(CreateConnectionTriggered{
 		ConnectionPayload: ConnectionPayload{Conn: conn},

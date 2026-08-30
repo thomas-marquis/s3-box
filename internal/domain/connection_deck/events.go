@@ -208,8 +208,6 @@ const (
 	ImportTriggeredType         event.Type = "deck.connection.import.triggered"
 	ImportFailedType            event.Type = "deck.connection.import.failed"
 	ImportConfirmationAskedType event.Type = "deck.connection.import.confirmation.asked"
-	ImportConfirmedType         event.Type = "deck.connection.import.confirmed"
-	ImportCanceledType          event.Type = "deck.connection.import.canceled"
 	ImportSucceededType         event.Type = "deck.connection.import.succeeded"
 )
 
@@ -246,23 +244,6 @@ type ImportConfirmationAsked struct {
 
 func (ImportConfirmationAsked) EventType() event.Type {
 	return ImportConfirmationAskedType
-}
-
-type ImportConfirmed struct {
-	Deck           *Deck
-	NewConnections []*Connection
-}
-
-func (ImportConfirmed) EventType() event.Type {
-	return ImportConfirmedType
-}
-
-type ImportCanceled struct {
-	Deck *Deck
-}
-
-func (ImportCanceled) EventType() event.Type {
-	return ImportCanceledType
 }
 
 type ImportSucceeded struct {
