@@ -99,6 +99,20 @@ func (mr *MockConnectionViewModelMockRecorder) ExportAsJSON(writer any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExportAsJSON", reflect.TypeOf((*MockConnectionViewModel)(nil).ExportAsJSON), writer)
 }
 
+// ImportFromJSON mocks base method.
+func (m *MockConnectionViewModel) ImportFromJSON(reader io.ReadCloser) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ImportFromJSON", reader)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ImportFromJSON indicates an expected call of ImportFromJSON.
+func (mr *MockConnectionViewModelMockRecorder) ImportFromJSON(reader any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImportFromJSON", reflect.TypeOf((*MockConnectionViewModel)(nil).ImportFromJSON), reader)
+}
+
 // InfoMessage mocks base method.
 func (m *MockConnectionViewModel) InfoMessage() binding.String {
 	m.ctrl.T.Helper()

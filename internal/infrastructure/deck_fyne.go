@@ -74,7 +74,7 @@ func (r *FyneConnectionsRepository) Export(_ context.Context, file io.Writer) er
 
 func (r *FyneConnectionsRepository) handleImportTriggered(evt event.Event) {
 	pl := evt.Payload().(connection_deck.ImportTriggered)
-	defer pl.JSONFile.Close()
+	defer u.SkipD(pl.JSONFile.Close)
 
 	handleErr := func(err error) {
 		r.bus.Publish(evt.NewFollowup(connection_deck.ImportFailed{
