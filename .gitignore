@@ -44,3 +44,5 @@ go.work.sum
 /.ai-next-actions.md
 /.diff_images
 /.junie
+/.vscode/**
+!/.vscode/launch.json
