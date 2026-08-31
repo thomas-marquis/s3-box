@@ -1,7 +1,6 @@
 package directory_test
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/tu"
-	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 func TestPreview_Materialize(t *testing.T) {
