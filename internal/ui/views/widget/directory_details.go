@@ -39,10 +39,7 @@ type DirectoryDetails struct {
 	deleteAction       *ToolbarButton
 	downloadAction     *ToolbarButton
 	loadingBar         *widget.ProgressBarInfinite
-
-	uploadPreviewDataListener binding.DataListener
-
-	dropZone *DropZone
+	dropZone           *DropZone
 }
 
 func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
@@ -83,6 +80,9 @@ func NewDirectoryDetails(appCtx appcontext.AppContext) *DirectoryDetails {
 	}
 
 	w.ExtendBaseWidget(w)
+
+	w.appCtx.State().Explorer().UploadPreview().AddListener(
+		binding.NewDataListener(w.makeOnUploadPreview(appCtx.ExplorerViewModel(), appCtx.State())))
 
 	return w
 }
@@ -198,52 +198,6 @@ func (w *DirectoryDetails) Select(dir *directory.Directory) {
 		}
 	}
 	w.dropZone.OnClick = w.makeOnUpload(vm, dir)
-
-	uploadPreviewState := w.appCtx.State().Explorer().UploadPreview()
-	if w.uploadPreviewDataListener != nil {
-		uploadPreviewState.RemoveListener(w.uploadPreviewDataListener)
-	}
-	w.uploadPreviewDataListener = binding.NewDataListener(func() {
-		prev := u.SkipV(uploadPreviewState.Get())
-		if prev.Preview == nil {
-			return
-		}
-		proceed := func() {
-			dirPreview := NewDirectoryPreview(w.appCtx, prev.Preview)
-
-			dial := dialog.NewCustom(
-				"Confirm upload",
-				"Cancel",
-				container.NewScroll(dirPreview),
-				w.appCtx.Window())
-			dial.Resize(fyne.NewSize(800, 600))
-			dial.SetOnClosed(func() {
-				w.dropZone.Reset()
-				u.Skip(uploadPreviewState.Set(state.UploadPreviewState{}))
-			})
-
-			dirPreview.OnValidate = func(selectedStrategy directory.MaterializeStrategy) {
-				vm.DoUpload(prev.BaseUri, prev.Preview, selectedStrategy)
-				dial.Dismiss()
-			}
-
-			dial.Show()
-		}
-
-		if objCount := prev.Preview.Count().Total(); objCount > 1000 {
-			dialog.ShowConfirm("Massive upload warning",
-				fmt.Sprintf("You are about to upload %d files and directories. Such a high number of objects may crash your application. Do you still want to continue?", objCount),
-				func(confirmed bool) {
-					if confirmed {
-						proceed()
-					}
-				},
-				w.appCtx.Window())
-		} else {
-			proceed()
-		}
-	})
-	uploadPreviewState.AddListener(w.uploadPreviewDataListener)
 }
 
 func (w *DirectoryDetails) enableWriteActions(dir *directory.Directory) {
@@ -413,6 +367,50 @@ func (w *DirectoryDetails) makeOnReload(vm viewmodel.ExplorerViewModel, dir *dir
 func (w *DirectoryDetails) makeOnDelete(vm viewmodel.ExplorerViewModel, dir *directory.Directory) func() {
 	return func() {
 		vm.DeleteDirectory(dir)
+	}
+}
+
+func (w *DirectoryDetails) makeOnUploadPreview(vm viewmodel.ExplorerViewModel, st *state.State) func() {
+	uploadPreviewState := st.Explorer().UploadPreview()
+	return func() {
+		prev := u.SkipV(uploadPreviewState.Get())
+		if prev.Preview == nil {
+			return
+		}
+		proceed := func() {
+			dirPreview := NewDirectoryPreview(w.appCtx, prev.Preview)
+
+			dial := dialog.NewCustom(
+				"Confirm upload",
+				"Cancel",
+				container.NewScroll(dirPreview),
+				w.appCtx.Window())
+			dial.Resize(fyne.NewSize(800, 600))
+			dial.SetOnClosed(func() {
+				w.dropZone.Reset()
+				u.Skip(uploadPreviewState.Set(state.UploadPreviewState{}))
+			})
+
+			dirPreview.OnValidate = func(selectedStrategy directory.MaterializeStrategy) {
+				vm.DoUpload(prev.BaseUri, prev.Preview, selectedStrategy)
+				dial.Dismiss()
+			}
+
+			dial.Show()
+		}
+
+		if objCount := prev.Preview.Count().Total(); objCount > 1000 {
+			dialog.ShowConfirm("Massive upload warning",
+				fmt.Sprintf("You are about to upload %d files and directories. Such a high number of objects may crash your application. Do you still want to continue?", objCount),
+				func(confirmed bool) {
+					if confirmed {
+						proceed()
+					}
+				},
+				w.appCtx.Window())
+		} else {
+			proceed()
+		}
 	}
 }
 
