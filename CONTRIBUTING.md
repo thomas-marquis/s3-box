@@ -18,8 +18,20 @@ understanding the project structure, and submitting your contributions.
 
 ### Windows setup
 
-- Install WSL
-- VS Code: Install the WSL extension
+- Install WSL. If needed, update it with the PowerShell command:
+  ```powershell
+  wsl --update
+  ```
+- Ensure Go is installed on it. 
+  If needed, download it from [here](https://go.dev/dl/) and follow the [installation instructions](https://go.dev/doc/install).
+  To move the archive to WSL:
+   ```bash
+   # In WSL terminal
+   mv /mnt/c/Users/<your-user>/Downloads/go<version>.linux-amd64.tar.gz ~/
+   ```
+- Ensure docker is available on it. 
+  You can use the [Docker Desktop backend](https://docs.docker.com/desktop/features/wsl/)). If so, don't forget to enable the WSL integration in Docker Desktop settings (in resources AND General).
+- For VS Code: Install the WSL extension
 
 ### Installing a Development Environment
 
