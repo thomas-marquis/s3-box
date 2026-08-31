@@ -7,7 +7,7 @@ understanding the project structure, and submitting your contributions.
 
 ### Prerequisites (Linux)
 
-- Go 1.24.6 or later
+- Go 1.25 or later
 - `make`
 - Git
 - Development libraries for Fyne (GUI framework):
@@ -15,6 +15,11 @@ understanding the project structure, and submitting your contributions.
   - Fedora: `sudo dnf install golang gcc libX11-devel libXcursor-devel libXrandr-devel libXinerama-devel mesa-libGL-devel libXi-devel libXxf86vm-devel`
   - Arch: `sudo pacman -S go gcc libx11 libxcursor libxrandr libxinerama mesa libxi libxxf86vm`
 - python 3.13 and uv installed (see [here](https://docs.astral.sh/uv/getting-started/installation/) for detailed setup instructions).
+
+### Windows setup
+
+- Install WSL
+- VS Code: Install the WSL extension
 
 ### Installing a Development Environment
 
