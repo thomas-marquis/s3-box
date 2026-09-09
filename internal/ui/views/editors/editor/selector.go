@@ -110,7 +110,7 @@ func (s *Selector) Mappings() []Mapping {
 		})
 	}
 	slices.SortFunc(mappings, func(a, b Mapping) int {
-		return len(a.RegexpPattern) - len(b.RegexpPattern)
+		return len(b.RegexpPattern) - len(a.RegexpPattern)
 	})
 	return mappings
 }

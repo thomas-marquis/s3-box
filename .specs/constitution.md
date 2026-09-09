@@ -29,6 +29,7 @@
 - Structure tests with `t.Run("should ...")` subtests and `// Given`, `// When`, `// Then` comments (or `// Given & Then`) for readability.
 - Prefer explicit error checks: `assert.ErrorIs` for sentinel errors and `assert.Contains` for error message fragments when needed.
 - Use `gomock` for dependencies; mocks live under `mocks/...` directories. Create a controller via `gomock.NewController(t)`
+- With `gomock`, it is not necessary to use `defer ctrl.Finish()`, `gomock` already handle it automatically
 - For event-driven tests, stub the bus with `Subscribe()` returning a channel, and assert published events via `gomock.Eq` or `gomock.Cond` for payload inspection.
 - Tests must be written under a `*_test` package for regular test files `*_test.go`. You must test exported functions and methods in priority.
 - To test internal functions or methods (not recommended), put tests under a `*_internal_test.go` file and use the same package name as the file you want to test.
@@ -56,7 +57,7 @@
 ### UI Tests (Fyne)
 
 - Initialize Fyne with `fyne_test.NewApp()` (or `fyne_test.NewTempApp(t)` when appropriate).
-- Render widgets with `fyne_test.NewWindow(res).Canvas()` and compare using `fyne_test.AssertRendersToMarkup(t, "<name>", canvas)`.
+- Render widgets with `fyne_test.NewWindow(res).Canvas()` and compare using `tu.AssertImageMatches(t, "images/<name>.png", canvas)`.
 - Simulate interactions with `fyne_test.Tap` when needed.
 - Use data bindings (`binding.NewTree`, `binding.NewList`, `binding.NewString`) to feed viewmodels.
 - Mock app context and viewmodels via `mocks/context` and `mocks/viewmodel`, using `AnyTimes()` for repeated calls.

@@ -16,6 +16,8 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// uv run ./tools/diff_images.py --folders internal/ui/views/widget/testdata/images internal/ui/views/widget/testdata/failed/images --color "red"
+
 func TestEditorMapping(t *testing.T) {
 	fyne_test.NewApp()
 
@@ -45,7 +47,7 @@ func TestEditorMapping(t *testing.T) {
 		selector.RegisterEditor(csvFactory)
 
 		u.Skip(selector.RegisterMapping("csv", "\\.csv$"))
-		u.Skip(selector.RegisterMapping("text", "\\.txt$"))
+		u.Skip(selector.RegisterMapping("text", "\\.(txt|md)$"))
 
 		mockAppCtx.EXPECT().State().Return(st).AnyTimes()
 

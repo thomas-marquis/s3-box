@@ -12,7 +12,6 @@ import (
 
 func TestConnectionForm(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	fyne_test.NewApp()
 	mockAppCtx := mocks_appcontext.NewMockAppContext(ctrl)

@@ -271,7 +271,7 @@ func TestSelector_DeleteMapping(t *testing.T) {
 }
 
 func TestSelector_Mappings(t *testing.T) {
-	t.Run("should return mappings in correct order by pattern length ascending", func(t *testing.T) {
+	t.Run("should return mappings in correct order by pattern length descending", func(t *testing.T) {
 		// Given
 		ctrl := gomock.NewController(t)
 		mockFactory := mock_editor.NewMockFactory(ctrl)
@@ -288,9 +288,9 @@ func TestSelector_Mappings(t *testing.T) {
 		// Then
 		mappings := selector.Mappings()
 		assert.Len(t, mappings, 3)
-		assert.Equal(t, `\.t$`, mappings[0].RegexpPattern)
+		assert.Equal(t, `\.t$`, mappings[2].RegexpPattern)
 		assert.Equal(t, `\.txt$`, mappings[1].RegexpPattern)
-		assert.Equal(t, `\.txt\.backup$`, mappings[2].RegexpPattern)
+		assert.Equal(t, `\.txt\.backup$`, mappings[0].RegexpPattern)
 	})
 
 	t.Run("should return empty slice when no mappings exist", func(t *testing.T) {

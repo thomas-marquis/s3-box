@@ -166,7 +166,7 @@ func (w *EditorMappingsTable) CreateRenderer() fyne.WidgetRenderer {
 	})
 
 	c := container.NewBorder(
-		widget.NewLabel("Map a file path to the editor."),
+		widget.NewLabel("Map a file path pattern with a default editor"),
 		addBtn,
 		nil, nil,
 		w.table,
