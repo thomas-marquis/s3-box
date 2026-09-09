@@ -45,6 +45,7 @@ type MappingRepository interface {
 type Selector struct {
 	registeredEditors map[string]Factory
 	mapping           map[filePattern]string
+	mappingObs        *u.ObservableValue[[]Mapping]
 }
 
 // NewSelector creates a new Selector instance.
@@ -52,6 +53,7 @@ func NewSelector() *Selector {
 	return &Selector{
 		registeredEditors: make(map[string]Factory),
 		mapping:           make(map[filePattern]string),
+		mappingObs:        u.NewObservableValue([]Mapping{}),
 	}
 }
 
@@ -77,6 +79,24 @@ func (s *Selector) RegisterMapping(editorName, regexpPattern string) error {
 		return ErrEditorNotRegistered
 	}
 	s.mapping[filePattern(regexpPattern)] = editorName
+	s.mappingObs.Set(s.Mappings())
+	return nil
+}
+
+func (s *Selector) UpdateMapping(editorName, oldRegexp, newRegexp string) error {
+	if _, exists := s.registeredEditors[editorName]; !exists {
+		return ErrEditorNotRegistered
+	}
+	delete(s.mapping, filePattern(oldRegexp))
+	s.mapping[filePattern(newRegexp)] = editorName
+	return nil
+}
+
+func (s *Selector) DeleteMapping(mapping Mapping) error {
+	if _, exists := s.registeredEditors[mapping.EditorName]; !exists {
+		return ErrEditorNotRegistered
+	}
+	delete(s.mapping, filePattern(mapping.RegexpPattern))
 	return nil
 }
 
@@ -95,6 +115,10 @@ func (s *Selector) Mappings() []Mapping {
 	return mappings
 }
 
+func (s *Selector) MappingsObservable() *u.ObservableValue[[]Mapping] {
+	return s.mappingObs
+}
+
 // Select returns the factory function for the editor that matches the given file path.
 // If no editor matches the file path, an ErrNoMatchingEditor error is returned.
 func (s *Selector) Select(filePath string) (Factory, error) {
@@ -106,4 +130,12 @@ func (s *Selector) Select(filePath string) (Factory, error) {
 		}
 	}
 	return nil, ErrNoMatchingEditor
+}
+
+func (s *Selector) GetRegisteredEditorByName(name string) (Factory, error) {
+	f, ok := s.registeredEditors[name]
+	if !ok {
+		return nil, ErrEditorNotRegistered
+	}
+	return f, nil
 }

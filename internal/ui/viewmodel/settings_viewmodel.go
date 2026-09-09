@@ -8,11 +8,13 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	apptheme "github.com/thomas-marquis/s3-box/internal/ui/theme"
-	"github.com/thomas-marquis/s3-box/internal/ui/values"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
 
 	"fyne.io/fyne/v2"
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
+	"github.com/thomas-marquis/s3-box/internal/ui/values"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
 
 type SettingsViewModel interface {
@@ -22,11 +24,11 @@ type SettingsViewModel interface {
 }
 
 type settingsViewModelImpl struct {
-	notifier              notification.Repository
-	fyneSettings          fyne.Settings
-	fynePrefs             fyne.Preferences
-	state                 *state.State
-	bus                   event.Bus
+	notifier                 notification.Repository
+	fyneSettings             fyne.Settings
+	fynePrefs                fyne.Preferences
+	state                    *state.State
+	bus                      event.Bus
 	editorMappingsRepository editor.MappingRepository
 }
 
@@ -82,7 +84,7 @@ func NewSettingsViewModel(
 	}
 	bus.Publish(evt)
 
-	vm.loadEditorSelectors()
+	vm.loadEditorMappings()
 
 	return vm
 }
@@ -116,14 +118,8 @@ func (v *settingsViewModelImpl) Cancel() {
 
 // SaveEditorSelectors saves editor selectors to preferences and updates the state
 func (v *settingsViewModelImpl) SaveEditorSelectors() {
-	selectors := u.SkipV(v.state.Settings().EditorSelectors().Get())
-
-	mappings := make([]editor.Mapping, 0, len(selectors))
-	for _, selector := range selectors {
-		for _, mapping := range selector.Mappings() {
-			mappings = append(mappings, mapping)
-		}
-	}
+	selector := v.state.Editors().Selector()
+	mappings := selector.Mappings()
 
 	if err := v.editorMappingsRepository.SaveAll(mappings); err != nil {
 		v.notifier.NotifyError(err)
@@ -164,29 +160,37 @@ func (v *settingsViewModelImpl) handleFailure(evt event.Event) {
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("Ooops...", err.Error()))
 }
 
-func (v *settingsViewModelImpl) loadEditorSelectors() []*editor.Selector {
-	if v.state.Settings().EditorSelectors().Length() > 0 {
-		return u.SkipV(v.state.Settings().EditorSelectors().Get())
+func (v *settingsViewModelImpl) loadEditorMappings() {
+	selector := v.state.Editors().Selector()
+
+	defaultEditors := []editor.Factory{
+		&texteditor.Factory{},
+		&csveditor.Factory{},
 	}
 
-	var selectors []*editor.Selector
-	storedJSON := v.fynePrefs.String(values.SettingFileSelectors)
-	if storedJSON == "" {
-		selectors = initSelectors()
-		v.state.Settings().EditorSelectors().Set(selectors)
-		return selectors
+	for _, factory := range defaultEditors {
+		selector.RegisterEditor(factory)
 	}
 
-	if err := json.Unmarshal([]byte(storedJSON), &selectors); err != nil {
-		selectors = initSelectors()
-		v.state.Settings().EditorSelectors().Set(selectors)
-		return selectors
+	mappings, err := v.editorMappingsRepository.GetAll()
+	if err != nil {
+		return
 	}
 
-	if len(selectors) == 0 {
-		selectors = initSelectors()
+	if len(mappings) == 0 {
+		for _, factory := range defaultEditors {
+			mappings = append(mappings, editor.Mapping{
+				RegexpPattern: factory.DefaultFileRegexpPattern(),
+				EditorName:    factory.Name(),
+			})
+		}
+
+		if saveErr := v.editorMappingsRepository.SaveAll(mappings); saveErr != nil {
+			return
+		}
 	}
 
-	u.Skip(v.state.Settings().EditorSelectors().Set(selectors))
-	return selectors
+	for _, mapping := range mappings {
+		u.Skip(selector.RegisterMapping(mapping.EditorName, mapping.RegexpPattern))
+	}
 }

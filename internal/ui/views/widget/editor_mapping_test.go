@@ -5,12 +5,9 @@ import (
 
 	"fyne.io/fyne/v2"
 	fyne_test "fyne.io/fyne/v2/test"
-	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
-	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/tu"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 	mocks_appcontext "github.com/thomas-marquis/s3-box/mocks/context"
 	mock_editor "github.com/thomas-marquis/s3-box/mocks/editor"
@@ -18,7 +15,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestFileMatchersTable(t *testing.T) {
+func TestEditorMapping(t *testing.T) {
 	fyne_test.NewApp()
 
 	t.Run("should display file matchers table with data", func(t *testing.T) {
@@ -27,21 +24,13 @@ func TestFileMatchersTable(t *testing.T) {
 		mockAppCtx := mocks_appcontext.NewMockAppContext(ctrl)
 		mockSettingsVM := mocks_viewmodel.NewMockSettingsViewModel(ctrl)
 
-		fakeFactory := func(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {
-			return mock_editor.NewMockEditor(ctrl)
-		}
+		textFactory := mock_editor.NewMockFactory(ctrl)
+		textFactory.EXPECT().DisplayLabel().Return("Text Editor").AnyTimes()
+		textFactory.EXPECT().Name().Return("text").AnyTimes()
 
-		textSelector := &editor.Selector{
-			Name:    "text",
-			Factory: fakeFactory,
-			Pattern: ".*\\.(txt|md)$",
-		}
-
-		csvSelector := &editor.Selector{
-			Name:    "csv",
-			Factory: fakeFactory,
-			Pattern: ".*\\.(csv|tsv)$",
-		}
+		csvFactory := mock_editor.NewMockFactory(ctrl)
+		csvFactory.EXPECT().DisplayLabel().Return("CSV Editor").AnyTimes()
+		csvFactory.EXPECT().Name().Return("csv").AnyTimes()
 
 		mockAppCtx.EXPECT().SettingsViewModel().Return(mockSettingsVM).AnyTimes()
 		mockAppCtx.EXPECT().Window().Return(fyne_test.NewWindow(nil)).AnyTimes()
@@ -49,7 +38,14 @@ func TestFileMatchersTable(t *testing.T) {
 		st := state.New()
 		deck := connection_deck.New()
 		st.Connection().Init(deck)
-		st.Settings().EditorSelectors().Set([]*editor.Selector{textSelector, csvSelector})
+
+		selector := st.Editors().Selector()
+		selector.RegisterEditor(textFactory)
+		selector.RegisterEditor(csvFactory)
+
+		selector.RegisterMapping("csv", "\\.csv$")
+		selector.RegisterMapping("text", "\\.txt$")
+
 		mockAppCtx.EXPECT().State().Return(st).AnyTimes()
 
 		// When

@@ -135,6 +135,12 @@ func (f *editorVMFixture) NewMockEditor() *mock_editor.MockEditor {
 	return mock
 }
 
+func (f *editorVMFixture) NewMockEditorFactory() *mock_editor.MockFactory {
+	f.t.Helper()
+	mock := mock_editor.NewMockFactory(f.ctrl)
+	return mock
+}
+
 func (f *editorVMFixture) Notifier() *mocks_notification.MockRepository {
 	f.t.Helper()
 	if f.notifier == nil {
@@ -154,20 +160,24 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 
 		mockEditor := fxt.NewMockEditor()
 
-		edFactory := func(bus event.Bus, win fyne.Window, file *directory.File) editor.Editor {
-			assert.Equal(t, "test.txt", win.Title())
+		mockFactory := fxt.NewMockEditorFactory()
+		mockFactory.EXPECT().Name().Return("todo").AnyTimes()
+		mockFactory.EXPECT().DefaultFileRegexpPattern().Return("\\.todo$").AnyTimes()
+		mockFactory.EXPECT().DisplayLabel().Return("Todo List Editor").AnyTimes()
+		mockFactory.EXPECT().New(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {
 			return mockEditor
-		}
+		}).Times(1)
+
+		fxt.State().Editors().Selector().RegisterEditor(mockFactory)
 
 		fo := &directory.InMemoryContent{Data: []byte("Hello world!")}
 
 		vm := fxt.Instance()
-		vm.RegisterEditorFactory("text", edFactory)
 
 		var file *directory.File
 		tu.MakeDirectory(t, "",
 			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
-			tu.WithFileTo("test.txt", &file))
+			tu.WithFileTo("test.todo", &file))
 
 		// When opening the editor
 		require.False(t, vm.IsOpen(file))

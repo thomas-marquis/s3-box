@@ -42,7 +42,7 @@ func NewEditorSelectorTable(appCtx appcontext.AppContext) *EditorSelectorTable {
 
 	w.table = widget.NewTableWithHeaders(
 		func() (rows, cols int) {
-			return w.state.Settings().EditorSelectors().Length(), 3
+			return len(w.state.Editors().Selector().Mappings()), 3
 		},
 		func() fyne.CanvasObject {
 			label := widget.NewLabel("")
@@ -51,8 +51,12 @@ func NewEditorSelectorTable(appCtx appcontext.AppContext) *EditorSelectorTable {
 			editBtn := widget.NewButtonWithIcon("", theme.DocumentCreateIcon(), func() {})
 			editBtn.Importance = widget.LowImportance
 
+			deleteBtn := widget.NewButtonWithIcon("", theme.DeleteIcon(), func() {})
+			editBtn.Importance = widget.LowImportance
+
 			rowActions := container.NewHBox(
 				editBtn,
+				deleteBtn,
 			)
 			rowActions.Hide()
 
@@ -65,39 +69,39 @@ func NewEditorSelectorTable(appCtx appcontext.AppContext) *EditorSelectorTable {
 			actions := c.Objects[1].(*fyne.Container)
 
 			editBtn := actions.Objects[0].(*widget.Button)
+			deleteBtn := actions.Objects[1].(*widget.Button)
 
-			selectors := w.state.Settings().EditorSelectors()
-			if id.Row >= selectors.Length() {
+			selector := w.state.Editors().Selector()
+			mappings := selector.Mappings()
+			if id.Row >= len(mappings) {
 				return
 			}
 
-			di, err := selectors.GetItem(id.Row)
+			m := mappings[id.Row]
+
+			factory, err := selector.GetRegisteredEditorByName(m.EditorName)
 			if err != nil {
-				return
-			}
-			bi := di.(binding.Item[*editor.Selector])
-			selector, getErr := bi.Get()
-			if getErr != nil {
-				return
+				panic(err) // should not happened
 			}
 
 			switch id.Col {
 			case fileMatchersColEditorType:
 				label.Show()
 				actions.Hide()
-				label.SetText(selector.Name)
+				label.SetText(factory.DisplayLabel())
 
 			case fileMatchersColPattern:
 				label.Show()
 				actions.Hide()
-				label.SetText(selector.Pattern)
+				label.SetText(m.RegexpPattern)
 
 			case fileMatchersColActions:
 				label.SetText("")
 				label.Hide()
 				actions.Show()
 
-				editBtn.OnTapped = w.makeOnMatcherEdit(selector)
+				editBtn.OnTapped = w.makeOnMappingEdit(selector, factory, m)
+				deleteBtn.OnTapped = w.makeOnMappingDelete(selector, m)
 			}
 		},
 	)
@@ -115,7 +119,9 @@ func NewEditorSelectorTable(appCtx appcontext.AppContext) *EditorSelectorTable {
 	}
 	w.table.ShowHeaderColumn = false
 
-	w.state.Settings().EditorSelectors().AddListener(binding.NewDataListener(w.table.Refresh))
+	w.state.Editors().Selector().MappingsObservable().Observe(func([]editor.Mapping) {
+		w.table.Refresh()
+	})
 
 	return w
 }
@@ -127,9 +133,42 @@ func (w *EditorSelectorTable) CreateRenderer() fyne.WidgetRenderer {
 	w.table.SetColumnWidth(1, 300)
 	w.table.HideSeparators = true
 
+	addBtn := widget.NewButtonWithIcon("New mapping", theme.ContentAddIcon(), func() {
+		patternBinding := binding.NewString()
+		selector := w.state.Editors().Selector()
+		editorNameBinding := binding.NewString()
+
+		var availableEditorNames []string
+		for _, e := range selector.RegisteredEditors() {
+			availableEditorNames = append(availableEditorNames, e.Name())
+		}
+
+		d := dialog.NewForm("Add a new mapping", "Save", "Cancel", []*widget.FormItem{
+			widget.NewFormItem("Editor", widget.NewSelectWithData(availableEditorNames, editorNameBinding)),
+			widget.NewFormItem("Pattern (regexp)", widget.NewEntryWithData(patternBinding)),
+		}, func(confirmed bool) {
+			if !confirmed {
+				return
+			}
+
+			pattern := u.SkipV(patternBinding.Get())
+			editorName := u.SkipV(editorNameBinding.Get())
+
+			if err := selector.RegisterMapping(editorName, pattern); err != nil {
+				w.state.Settings().StatusMessage().Set("Failed to add a new mapping")
+				// TODO: send the error to the notifications
+				return
+			}
+			w.appCtx.SettingsViewModel().SaveEditorSelectors()
+		}, w.appCtx.Window())
+		d.Resize(fyne.NewSize(450, 120))
+		d.Show()
+	})
+
 	c := container.NewBorder(
-		widget.NewLabel("Configure the default file editors."),
-		nil, nil, nil,
+		widget.NewLabel("Map a file path to the editor."),
+		addBtn,
+		nil, nil,
 		w.table,
 	)
 
@@ -151,25 +190,48 @@ func (w *EditorSelectorTable) makeEditFormDialog(title string, patternData bindi
 	return d
 }
 
-func (w *EditorSelectorTable) makeOnMatcherEdit(selector *editor.Selector) func() {
+func (w *EditorSelectorTable) makeOnMappingEdit(selector *editor.Selector, factory editor.Factory, mapping editor.Mapping) func() {
 	return func() {
 		pattern := binding.NewString()
-		u.Skip(pattern.Set(selector.Pattern))
+		u.Skip(pattern.Set(mapping.RegexpPattern))
 
 		dial := w.makeEditFormDialog(
-			fmt.Sprintf("Update pattern for %s editor", selector.Name),
+			fmt.Sprintf("Update pattern for %s editor", factory.DisplayLabel()),
 			pattern,
 			func(confirmed bool) {
 				if !confirmed {
 					return
 				}
 
-				p, _ := pattern.Get()
-				selector.Pattern = p
+				newPattern := u.SkipV(pattern.Get())
+				if err := selector.UpdateMapping(mapping.EditorName, mapping.RegexpPattern, newPattern); err != nil {
+					w.state.Settings().StatusMessage().Set("Failed updating a mapping")
+					// TODO: send the error to the notifications
+					return
+				}
 				w.table.Refresh()
 				w.appCtx.SettingsViewModel().SaveEditorSelectors()
 			},
 		)
 		dial.Show()
+	}
+}
+
+func (w *EditorSelectorTable) makeOnMappingDelete(selector *editor.Selector, mapping editor.Mapping) func() {
+	return func() {
+		dialog.ShowConfirm("Are you sure?", "The mapping will be deleted.",
+			func(b bool) {
+				if !b {
+					return
+				}
+				if err := selector.DeleteMapping(mapping); err != nil {
+					w.state.Settings().StatusMessage().Set("Failed deleting a mapping")
+					// TODO: send the error to the notifications
+					return
+				}
+				w.appCtx.SettingsViewModel().SaveEditorSelectors()
+			},
+			w.appCtx.Window(),
+		)
 	}
 }

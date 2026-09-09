@@ -36,11 +36,9 @@ type FileDetails struct {
 
 	downloadAction *ToolbarButton
 	deleteAction   *ToolbarButton
-	editAction     *ToolbarButton
+	openAction     *ToolbarButton
 	renameAction   *ToolbarButton
-	editWithAction *ToolbarButton
-
-	actionToolbar *widget.Toolbar
+	openWithAction *ToolbarButton
 
 	fileSizeBinding     binding.String
 	lastModifiedBinding binding.String
@@ -65,20 +63,12 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 
 		downloadAction: NewToolbarButton("Download", theme.DownloadIcon(), func() {}),
 		deleteAction:   NewToolbarButton("Delete", theme.DeleteIcon(), func() {}),
-		editAction:     NewToolbarButton("Edit", theme.DocumentCreateIcon(), func() {}),
+		openAction:     NewToolbarButton("Open", theme.DocumentCreateIcon(), func() {}),
 		renameAction:   NewToolbarButton("Rename", theme.FileTextIcon(), func() {}),
-		editWithAction: NewToolbarButton("Edit with...", theme.DocumentCreateIcon(), func() {}),
+		openWithAction: NewToolbarButton("Open with...", theme.DocumentCreateIcon(), func() {}),
 
 		currentSelectedFile: nil,
 	}
-
-	w.actionToolbar = widget.NewToolbar(
-		w.downloadAction,
-		w.editAction,
-		w.editWithAction,
-		w.renameAction,
-		w.deleteAction,
-	)
 
 	w.tags = NewTagsTable(w.appCtx, w.appCtx.TagsViewModel())
 
@@ -125,7 +115,18 @@ func (w *FileDetails) CreateRenderer() fyne.WidgetRenderer {
 				container.NewVBox(
 					container.New(
 						layout.NewCustomPaddedLayout(0, 0, 5, 5),
-						w.actionToolbar,
+						widget.NewToolbar(
+							w.openAction,
+							w.openWithAction,
+						),
+					),
+					container.New(
+						layout.NewCustomPaddedLayout(0, 0, 5, 5),
+						widget.NewToolbar(
+							w.downloadAction,
+							w.renameAction,
+							w.deleteAction,
+						),
 					),
 					container.New(
 						layout.NewCustomPaddedLayout(30, 0, 5, 5),
@@ -170,19 +171,22 @@ func (w *FileDetails) Select(file *directory.File) {
 	st.Settings().EditorFileSizeLimitBytes().RemoveListener(w.maxFileSizeListener)
 	dl := binding.NewDataListener(func() {
 		if file.SizeBytes() > st.Settings().EditorFileSizeLimitBytesValue() {
-			w.editAction.Disable()
+			w.openAction.Disable()
+			w.openWithAction.Disable()
 		} else {
 			if st.Connection().IsReadOnly() {
-				w.editAction.Disable()
+				w.openAction.Disable()
+				w.openWithAction.Disable()
 			} else {
-				w.editAction.Enable()
+				w.openAction.Enable()
+				w.openWithAction.Enable()
 			}
 		}
 	})
 	st.Settings().EditorFileSizeLimitBytes().AddListener(dl)
 	w.maxFileSizeListener = dl
 
-	w.editAction.SetOnTapped(func() {
+	w.openAction.SetOnTapped(func() {
 		ed, err := edVm.Open(file)
 		if err != nil && !errors.Is(err, viewmodel.ErrEditorAlreadyOpened) {
 			dialog.ShowError(err, w.appCtx.Window())
@@ -203,11 +207,11 @@ func (w *FileDetails) Select(file *directory.File) {
 		})
 	}
 
-	w.editWithAction.SetOnTapped(func() {
+	w.openWithAction.SetOnTapped(func() {
 		widget.NewPopUpMenu(
-			fyne.NewMenu("Edit with...", openWithItems...),
+			fyne.NewMenu("", openWithItems...),
 			w.appCtx.Window().Canvas()).
-			Show()
+			ShowAtRelativePosition(fyne.NewPos(170, 20), w.openAction.ToolbarObject())
 	})
 
 	w.downloadAction.SetOnTapped(func() {
@@ -277,7 +281,8 @@ func (w *FileDetails) Select(file *directory.File) {
 	})
 	if st.Connection().IsReadOnly() {
 		w.deleteAction.Disable()
-		w.editAction.Disable()
+		w.openAction.Disable()
+		w.openWithAction.Disable()
 		w.renameAction.Disable()
 	}
 }

@@ -1,6 +1,8 @@
 package state
 
-import "github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
+import (
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
+)
 
 type EditorsState struct {
 	selector *editor.Selector

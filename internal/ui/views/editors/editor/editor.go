@@ -55,6 +55,14 @@ func NewBase(bus event.Bus, window fyne.Window, file *directory.File) *Base {
 	return e
 }
 
+func (b *Base) Window() fyne.Window {
+	return b.window
+}
+
+func (b *Base) File() *directory.File {
+	return b.file
+}
+
 func (b *Base) ExtendBaseEditor(e Editor) {
 	b.Sub = b.Bus.Subscribe(forCurrentEditor{Editor: e}).
 		DetachOn(event.Is(ClosedType))

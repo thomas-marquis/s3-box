@@ -8,7 +8,6 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 	"github.com/thomas-marquis/s3-box/internal/ui/values"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
 
 type SettingsState struct {
@@ -18,9 +17,8 @@ type SettingsState struct {
 	fileLimit  binding.Item[uint64]
 	colorTheme binding.String
 
-	isReady         binding.Bool
-	statusMessage   binding.String
-	editorSelectors binding.List[*editor.Selector]
+	isReady       binding.Bool
+	statusMessage binding.String
 }
 
 func newSettingsState() *SettingsState {
@@ -40,7 +38,6 @@ func newSettingsState() *SettingsState {
 		colorTheme:      uu.NewSettingsBindingString(settingsAgg, values.SettingColorTheme),
 		isReady:         binding.NewBool(),
 		statusMessage:   binding.NewString(),
-		editorSelectors: binding.NewList(editor.CompareSelector),
 	}
 
 	state.SyncStatusMessage()
@@ -100,8 +97,4 @@ func (s *SettingsState) SyncStatusMessage() {
 	default:
 		u.Skip(s.statusMessage.Set(""))
 	}
-}
-
-func (s *SettingsState) EditorSelectors() binding.List[*editor.Selector] {
-	return s.editorSelectors
 }
