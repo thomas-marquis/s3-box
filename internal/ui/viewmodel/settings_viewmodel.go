@@ -1,7 +1,6 @@
 package viewmodel
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/thomas-marquis/it-happened/event"
@@ -23,11 +22,12 @@ type SettingsViewModel interface {
 }
 
 type settingsViewModelImpl struct {
-	notifier     notification.Repository
-	fyneSettings fyne.Settings
-	fynePrefs    fyne.Preferences
-	state        *state.State
-	bus          event.Bus
+	notifier              notification.Repository
+	fyneSettings          fyne.Settings
+	fynePrefs             fyne.Preferences
+	state                 *state.State
+	bus                   event.Bus
+	editorMappingsRepository editor.MappingRepository
 }
 
 func NewSettingsViewModel(
@@ -36,13 +36,15 @@ func NewSettingsViewModel(
 	notifier notification.Repository,
 	appState *state.State,
 	bus event.Bus,
+	editorMappingsRepository editor.MappingRepository,
 ) SettingsViewModel {
 	vm := &settingsViewModelImpl{
-		notifier:     notifier,
-		fyneSettings: fyneSettings,
-		fynePrefs:    fynePrefs,
-		state:        appState,
-		bus:          bus,
+		notifier:                 notifier,
+		fyneSettings:             fyneSettings,
+		fynePrefs:                fynePrefs,
+		state:                    appState,
+		bus:                      bus,
+		editorMappingsRepository: editorMappingsRepository,
 	}
 
 	s := appState.Settings().Get()
@@ -116,13 +118,18 @@ func (v *settingsViewModelImpl) Cancel() {
 func (v *settingsViewModelImpl) SaveEditorSelectors() {
 	selectors := u.SkipV(v.state.Settings().EditorSelectors().Get())
 
-	jsonBytes, err := json.Marshal(selectors)
-	if err != nil {
+	mappings := make([]editor.Mapping, 0, len(selectors))
+	for _, selector := range selectors {
+		for _, mapping := range selector.Mappings() {
+			mappings = append(mappings, mapping)
+		}
+	}
+
+	if err := v.editorMappingsRepository.SaveAll(mappings); err != nil {
 		v.notifier.NotifyError(err)
 		return
 	}
 
-	v.fynePrefs.SetString(values.SettingFileSelectors, string(jsonBytes))
 	u.Skip(v.state.Settings().StatusMessage().Set("New settings saved"))
 }
 
