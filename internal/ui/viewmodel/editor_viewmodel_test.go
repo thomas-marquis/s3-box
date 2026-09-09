@@ -210,15 +210,20 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		// Given
 		fxt := setupEditorVM(t)
 
-		edFactory := func(bus event.Bus, win fyne.Window, file *directory.File) editor.Editor {
+		mockFactory := fxt.NewMockEditorFactory()
+		mockFactory.EXPECT().Name().Return("text").AnyTimes()
+		mockFactory.EXPECT().DefaultFileRegexpPattern().Return("\\.txt$").AnyTimes()
+		mockFactory.EXPECT().DisplayLabel().Return("Text Editor").AnyTimes()
+		mockFactory.EXPECT().New(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {
 			return fxt.NewMockEditor()
-		}
+		}).Times(1)
 
 		expectedErr := errors.New("file loading failed")
 		fxt.Notifier().EXPECT().NotifyError(gomock.Eq(expectedErr)).Times(1)
 
+		fxt.State().Editors().Selector().RegisterEditor(mockFactory)
+
 		vm := fxt.Instance()
-		vm.RegisterEditorFactory("text", edFactory)
 
 		var file *directory.File
 		tu.MakeDirectory(t, "",
@@ -301,7 +306,7 @@ func TestEditorViewModelImpl_IsOpen(t *testing.T) {
 	})
 }
 
-func TestEditorViewModelImpl(t *testing.T) {
+func TestEditorViewModelImpl_CloseAll(t *testing.T) {
 	t.Run("should request to close all opened editors when selected connection changed", func(t *testing.T) {
 		// Given
 		fxt := setupEditorVM(t)

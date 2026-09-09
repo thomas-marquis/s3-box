@@ -7,6 +7,7 @@ import (
 	fyne_test "fyne.io/fyne/v2/test"
 	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/tu"
+	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/widget"
 	mocks_appcontext "github.com/thomas-marquis/s3-box/mocks/context"
@@ -43,8 +44,8 @@ func TestEditorMapping(t *testing.T) {
 		selector.RegisterEditor(textFactory)
 		selector.RegisterEditor(csvFactory)
 
-		selector.RegisterMapping("csv", "\\.csv$")
-		selector.RegisterMapping("text", "\\.txt$")
+		u.Skip(selector.RegisterMapping("csv", "\\.csv$"))
+		u.Skip(selector.RegisterMapping("text", "\\.txt$"))
 
 		mockAppCtx.EXPECT().State().Return(st).AnyTimes()
 

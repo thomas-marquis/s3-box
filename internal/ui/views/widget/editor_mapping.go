@@ -155,7 +155,7 @@ func (w *EditorSelectorTable) CreateRenderer() fyne.WidgetRenderer {
 			editorName := u.SkipV(editorNameBinding.Get())
 
 			if err := selector.RegisterMapping(editorName, pattern); err != nil {
-				w.state.Settings().StatusMessage().Set("Failed to add a new mapping")
+				u.Skip(w.state.Settings().StatusMessage().Set("Failed to add a new mapping"))
 				// TODO: send the error to the notifications
 				return
 			}
@@ -205,7 +205,7 @@ func (w *EditorSelectorTable) makeOnMappingEdit(selector *editor.Selector, facto
 
 				newPattern := u.SkipV(pattern.Get())
 				if err := selector.UpdateMapping(mapping.EditorName, mapping.RegexpPattern, newPattern); err != nil {
-					w.state.Settings().StatusMessage().Set("Failed updating a mapping")
+					u.Skip(w.state.Settings().StatusMessage().Set("Failed updating a mapping"))
 					// TODO: send the error to the notifications
 					return
 				}
@@ -225,7 +225,7 @@ func (w *EditorSelectorTable) makeOnMappingDelete(selector *editor.Selector, map
 					return
 				}
 				if err := selector.DeleteMapping(mapping); err != nil {
-					w.state.Settings().StatusMessage().Set("Failed deleting a mapping")
+					u.Skip(w.state.Settings().StatusMessage().Set("Failed deleting a mapping"))
 					// TODO: send the error to the notifications
 					return
 				}
