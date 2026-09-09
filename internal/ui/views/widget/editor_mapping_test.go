@@ -50,7 +50,7 @@ func TestEditorMapping(t *testing.T) {
 		mockAppCtx.EXPECT().State().Return(st).AnyTimes()
 
 		// When
-		res := widget.NewEditorSelectorTable(mockAppCtx)
+		res := widget.NewEditorMappingsTable(mockAppCtx)
 		w := fyne_test.NewWindow(res)
 		w.Resize(fyne.NewSize(600, 400))
 		c := w.Canvas()

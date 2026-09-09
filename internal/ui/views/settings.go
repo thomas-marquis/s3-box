@@ -49,7 +49,7 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 
 	statusLabel := fyne_widget.NewLabelWithData(ctx.State().Settings().StatusMessage())
 
-	fileEditorsTable := widget.NewEditorSelectorTable(ctx)
+	fileEditorsTable := widget.NewEditorMappingsTable(ctx)
 
 	tabGlobal := container.NewTabItem("Global", container.NewGridWrap(fyne.NewSize(700, 400), form))
 	tabEditors := container.NewTabItem("File editors", fileEditorsTable)

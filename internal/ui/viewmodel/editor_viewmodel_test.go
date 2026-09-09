@@ -131,6 +131,7 @@ func (f *editorVMFixture) NewMockEditor() *mock_editor.MockEditor {
 	mock := mock_editor.NewMockEditor(f.ctrl)
 	mockWindow := mocks_fyne.NewMockWindow(f.ctrl)
 	mockWindow.EXPECT().Close().AnyTimes()
+	mockWindow.EXPECT().RequestFocus().AnyTimes()
 	mock.EXPECT().Window().Return(mockWindow).AnyTimes()
 	return mock
 }
@@ -169,6 +170,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		}).Times(1)
 
 		fxt.State().Editors().Selector().RegisterEditor(mockFactory)
+		u.Skip(fxt.State().Editors().Selector().RegisterMapping("todo", "\\.todo$"))
 
 		fo := &directory.InMemoryContent{Data: []byte("Hello world!")}
 
@@ -222,6 +224,7 @@ func TestEditorViewModelImpl_Open(t *testing.T) {
 		fxt.Notifier().EXPECT().NotifyError(gomock.Eq(expectedErr)).Times(1)
 
 		fxt.State().Editors().Selector().RegisterEditor(mockFactory)
+		u.Skip(fxt.State().Editors().Selector().RegisterMapping("text", "\\.txt$"))
 
 		vm := fxt.Instance()
 
@@ -303,6 +306,81 @@ func TestEditorViewModelImpl_IsOpen(t *testing.T) {
 		assert.True(t, vm.IsOpen(file1))
 		assert.True(t, vm.IsOpen(file2))
 		assert.False(t, vm.IsOpen(file3))
+	})
+}
+
+func TestEditorViewModelImpl_OpenWith(t *testing.T) {
+	t.Run("should open with a specific factory", func(t *testing.T) {
+		// Given
+		fxt := setupEditorVM(t)
+
+		mockEditor := fxt.NewMockEditor()
+		mockFactory := fxt.NewMockEditorFactory()
+		mockFactory.EXPECT().Name().Return("custom").AnyTimes()
+		mockFactory.EXPECT().DisplayLabel().Return("Custom Editor").AnyTimes()
+		mockFactory.EXPECT().DefaultFileRegexpPattern().Return("\\.custom$").AnyTimes()
+		mockFactory.EXPECT().New(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {
+			return mockEditor
+		}).Times(1)
+
+		fxt.State().Editors().Selector().RegisterEditor(mockFactory)
+		u.Skip(fxt.State().Editors().Selector().RegisterMapping("todo", "\\.todo$"))
+
+		vm := fxt.Instance()
+
+		var file *directory.File
+		tu.MakeDirectory(t, "",
+			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
+			tu.WithFileTo("test.custom", &file))
+
+		// When opening the editor with specific factory
+		require.False(t, vm.IsOpen(file))
+		ed, err := vm.OpenWith(file, mockFactory)
+
+		// Then
+		assert.Equal(t, mockEditor, ed)
+		assert.NoError(t, err)
+		assert.True(t, vm.IsOpen(file))
+	})
+
+	t.Run("should return error when file is already opened", func(t *testing.T) {
+		// Given
+		fxt := setupEditorVM(t)
+
+		mockEditor := fxt.NewMockEditor()
+		mockFactory := fxt.NewMockEditorFactory()
+		mockFactory.EXPECT().Name().Return("custom").AnyTimes()
+		mockFactory.EXPECT().DisplayLabel().Return("Custom Editor").AnyTimes()
+		mockFactory.EXPECT().DefaultFileRegexpPattern().Return("\\.custom$").AnyTimes()
+		mockFactory.EXPECT().New(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {
+			return mockEditor
+		}).Times(1)
+
+		fxt.State().Editors().Selector().RegisterEditor(mockFactory)
+		u.Skip(fxt.State().Editors().Selector().RegisterMapping("todo", "\\.todo$"))
+
+		vm := fxt.Instance()
+
+		var file *directory.File
+		tu.MakeDirectory(t, "",
+			tu.AsRoot(), tu.WithConnectionId(fxt.Connection().ID()),
+			tu.WithFileTo("test.custom", &file))
+
+		// When opening the file twice with OpenWith
+		ed1, err1 := vm.OpenWith(file, mockFactory)
+		assert.NoError(t, err1)
+		assert.True(t, vm.IsOpen(file))
+
+		// Reset the factory expectation for the second call
+		mockFactory.EXPECT().New(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {
+			return mockEditor
+		}).Times(0) // Won't be called since already opened
+
+		ed2, err2 := vm.OpenWith(file, mockFactory)
+
+		// Then - should return already opened error
+		assert.Equal(t, ed1, ed2)
+		assert.ErrorIs(t, err2, viewmodel.ErrEditorAlreadyOpened)
 	})
 }
 

@@ -16,13 +16,13 @@ import (
 )
 
 const (
-	fileMatchersColEditorType = 0
-	fileMatchersColPattern    = 1
-	fileMatchersColActions    = 2
+	fileMappingColEditorType = 0
+	fileMappingColPattern    = 1
+	fileMappingColActions    = 2
 )
 
-// EditorSelectorTable is a widget that displays and allows editing of file editor matchers.
-type EditorSelectorTable struct {
+// EditorMappingsTable is a widget that displays and allows editing of file editor matchers.
+type EditorMappingsTable struct {
 	widget.BaseWidget
 	state  *state.State
 	appCtx appcontext.AppContext
@@ -31,8 +31,8 @@ type EditorSelectorTable struct {
 	noMatchersBinding binding.String
 }
 
-func NewEditorSelectorTable(appCtx appcontext.AppContext) *EditorSelectorTable {
-	w := &EditorSelectorTable{
+func NewEditorMappingsTable(appCtx appcontext.AppContext) *EditorMappingsTable {
+	w := &EditorMappingsTable{
 		appCtx:            appCtx,
 		state:             appCtx.State(),
 		noMatchersBinding: binding.NewString(),
@@ -85,17 +85,17 @@ func NewEditorSelectorTable(appCtx appcontext.AppContext) *EditorSelectorTable {
 			}
 
 			switch id.Col {
-			case fileMatchersColEditorType:
+			case fileMappingColEditorType:
 				label.Show()
 				actions.Hide()
 				label.SetText(factory.DisplayLabel())
 
-			case fileMatchersColPattern:
+			case fileMappingColPattern:
 				label.Show()
 				actions.Hide()
 				label.SetText(m.RegexpPattern)
 
-			case fileMatchersColActions:
+			case fileMappingColActions:
 				label.SetText("")
 				label.Hide()
 				actions.Show()
@@ -111,9 +111,9 @@ func NewEditorSelectorTable(appCtx appcontext.AppContext) *EditorSelectorTable {
 	}
 	w.table.UpdateHeader = func(id widget.TableCellID, template fyne.CanvasObject) {
 		switch id.Col {
-		case fileMatchersColEditorType:
+		case fileMappingColEditorType:
 			template.(*widget.Label).SetText("Editor")
-		case fileMatchersColPattern:
+		case fileMappingColPattern:
 			template.(*widget.Label).SetText("Pattern")
 		}
 	}
@@ -126,7 +126,7 @@ func NewEditorSelectorTable(appCtx appcontext.AppContext) *EditorSelectorTable {
 	return w
 }
 
-func (w *EditorSelectorTable) CreateRenderer() fyne.WidgetRenderer {
+func (w *EditorMappingsTable) CreateRenderer() fyne.WidgetRenderer {
 	w.ExtendBaseWidget(w)
 
 	w.table.SetColumnWidth(0, 120)
@@ -159,7 +159,7 @@ func (w *EditorSelectorTable) CreateRenderer() fyne.WidgetRenderer {
 				// TODO: send the error to the notifications
 				return
 			}
-			w.appCtx.SettingsViewModel().SaveEditorSelectors()
+			w.appCtx.SettingsViewModel().SaveEditorMappings()
 		}, w.appCtx.Window())
 		d.Resize(fyne.NewSize(450, 120))
 		d.Show()
@@ -175,11 +175,11 @@ func (w *EditorSelectorTable) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(c)
 }
 
-func (w *EditorSelectorTable) Refresh() {
+func (w *EditorMappingsTable) Refresh() {
 	w.table.Refresh()
 }
 
-func (w *EditorSelectorTable) makeEditFormDialog(title string, patternData binding.String, cb func(bool)) *dialog.FormDialog {
+func (w *EditorMappingsTable) makeEditFormDialog(title string, patternData binding.String, cb func(bool)) *dialog.FormDialog {
 	patternEntry := widget.NewEntryWithData(patternData)
 
 	d := dialog.NewForm(title, "Save", "Cancel", []*widget.FormItem{
@@ -190,7 +190,7 @@ func (w *EditorSelectorTable) makeEditFormDialog(title string, patternData bindi
 	return d
 }
 
-func (w *EditorSelectorTable) makeOnMappingEdit(selector *editor.Selector, factory editor.Factory, mapping editor.Mapping) func() {
+func (w *EditorMappingsTable) makeOnMappingEdit(selector *editor.Selector, factory editor.Factory, mapping editor.Mapping) func() {
 	return func() {
 		pattern := binding.NewString()
 		u.Skip(pattern.Set(mapping.RegexpPattern))
@@ -210,14 +210,14 @@ func (w *EditorSelectorTable) makeOnMappingEdit(selector *editor.Selector, facto
 					return
 				}
 				w.table.Refresh()
-				w.appCtx.SettingsViewModel().SaveEditorSelectors()
+				w.appCtx.SettingsViewModel().SaveEditorMappings()
 			},
 		)
 		dial.Show()
 	}
 }
 
-func (w *EditorSelectorTable) makeOnMappingDelete(selector *editor.Selector, mapping editor.Mapping) func() {
+func (w *EditorMappingsTable) makeOnMappingDelete(selector *editor.Selector, mapping editor.Mapping) func() {
 	return func() {
 		dialog.ShowConfirm("Are you sure?", "The mapping will be deleted.",
 			func(b bool) {
@@ -229,7 +229,7 @@ func (w *EditorSelectorTable) makeOnMappingDelete(selector *editor.Selector, map
 					// TODO: send the error to the notifications
 					return
 				}
-				w.appCtx.SettingsViewModel().SaveEditorSelectors()
+				w.appCtx.SettingsViewModel().SaveEditorMappings()
 			},
 			w.appCtx.Window(),
 		)

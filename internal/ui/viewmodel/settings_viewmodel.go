@@ -20,7 +20,7 @@ import (
 type SettingsViewModel interface {
 	Save()
 	Cancel()
-	SaveEditorSelectors()
+	SaveEditorMappings()
 }
 
 type settingsViewModelImpl struct {
@@ -116,8 +116,8 @@ func (v *settingsViewModelImpl) Cancel() {
 	v.state.Settings().SyncStatusMessage()
 }
 
-// SaveEditorSelectors saves editor selectors to preferences and updates the state
-func (v *settingsViewModelImpl) SaveEditorSelectors() {
+// SaveEditorMappings saves editor selectors to preferences and updates the state
+func (v *settingsViewModelImpl) SaveEditorMappings() {
 	selector := v.state.Editors().Selector()
 	mappings := selector.Mappings()
 
