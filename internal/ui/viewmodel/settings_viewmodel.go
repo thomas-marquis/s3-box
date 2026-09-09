@@ -10,9 +10,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	apptheme "github.com/thomas-marquis/s3-box/internal/ui/theme"
 	"github.com/thomas-marquis/s3-box/internal/ui/values"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
 
 	"fyne.io/fyne/v2"
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
@@ -184,11 +182,4 @@ func (v *settingsViewModelImpl) loadEditorSelectors() []*editor.Selector {
 
 	u.Skip(v.state.Settings().EditorSelectors().Set(selectors))
 	return selectors
-}
-
-func initSelectors() []*editor.Selector {
-	return []*editor.Selector{
-		{Name: texteditor.Name, Pattern: texteditor.DefaultPattern, Factory: texteditor.New},
-		{Name: csveditor.Name, Pattern: csveditor.DefaultPattern, Factory: csveditor.New},
-	}
 }

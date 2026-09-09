@@ -18,6 +18,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/u"
 	appcontext "github.com/thomas-marquis/s3-box/internal/ui/app/context"
 	"github.com/thomas-marquis/s3-box/internal/ui/viewmodel"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
 
 const (
@@ -37,6 +38,7 @@ type FileDetails struct {
 	deleteAction   *ToolbarButton
 	editAction     *ToolbarButton
 	renameAction   *ToolbarButton
+	editWithAction *ToolbarButton
 
 	actionToolbar *widget.Toolbar
 
@@ -65,6 +67,7 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 		deleteAction:   NewToolbarButton("Delete", theme.DeleteIcon(), func() {}),
 		editAction:     NewToolbarButton("Edit", theme.DocumentCreateIcon(), func() {}),
 		renameAction:   NewToolbarButton("Rename", theme.FileTextIcon(), func() {}),
+		editWithAction: NewToolbarButton("Edit with...", theme.DocumentCreateIcon(), func() {}),
 
 		currentSelectedFile: nil,
 	}
@@ -72,6 +75,7 @@ func NewFileDetails(appCtx appcontext.AppContext) *FileDetails {
 	w.actionToolbar = widget.NewToolbar(
 		w.downloadAction,
 		w.editAction,
+		w.editWithAction,
 		w.renameAction,
 		w.deleteAction,
 	)
@@ -183,13 +187,27 @@ func (w *FileDetails) Select(file *directory.File) {
 		if err != nil && !errors.Is(err, viewmodel.ErrEditorAlreadyOpened) {
 			dialog.ShowError(err, w.appCtx.Window())
 		}
+		showEditor(ed)
+	})
 
-		ed.Window().SetContent(ed.CreateWidget())
-		ed.Window().SetFixedSize(false)
-		ed.Window().Resize(fyne.NewSize(700, 500))
-		ed.Window().Show()
+	s := w.appCtx.State().Editors().Selector()
+	registered := s.RegisteredEditors()
+	openWithItems := make([]*fyne.MenuItem, len(registered))
+	for i, f := range registered {
+		openWithItems[i] = fyne.NewMenuItem(f.DisplayLabel(), func() {
+			ed, err := edVm.OpenWith(file, f)
+			if err != nil {
+				dialog.ShowError(err, w.appCtx.Window())
+			}
+			showEditor(ed)
+		})
+	}
 
-		ed.Window().RequestFocus()
+	w.editWithAction.SetOnTapped(func() {
+		widget.NewPopUpMenu(
+			fyne.NewMenu("Edit with...", openWithItems...),
+			w.appCtx.Window().Canvas()).
+			Show()
 	})
 
 	w.downloadAction.SetOnTapped(func() {
@@ -269,4 +287,12 @@ func makeSeparator() fyne.CanvasObject {
 		layout.NewCustomPaddedLayout(10, 20, 0, 0),
 		widget.NewSeparator(),
 	)
+}
+
+func showEditor(ed editor.Editor) {
+	ed.Window().SetContent(ed.CreateWidget())
+	ed.Window().SetFixedSize(false)
+	ed.Window().Resize(fyne.NewSize(700, 500))
+	ed.Window().Show()
+	ed.Window().RequestFocus()
 }

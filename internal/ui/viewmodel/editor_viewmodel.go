@@ -2,9 +2,9 @@ package viewmodel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"slices"
 	"sync"
 
 	"fyne.io/fyne/v2"
@@ -28,6 +28,8 @@ type EditorViewModel interface {
 	// Open opens the given file in a new editor window.
 	// Returns an ErrAlreadyOpened error if the file is already opened.
 	Open(file *directory.File) (editor.Editor, error)
+
+	OpenWith(file *directory.File, factory editor.Factory) (editor.Editor, error)
 
 	IsOpen(file *directory.File) bool
 }
@@ -84,22 +86,42 @@ func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) 
 
 	newWin := fyne.CurrentApp().NewWindow(file.Name().String())
 
-	selectors := u.SkipV(v.state.Settings().EditorSelectors().Get())
-	slices.SortFunc(selectors, func(s1, s2 *editor.Selector) int {
-		return len(s1.Pattern) - len(s2.Pattern)
-	})
-	var e editor.Editor
-	for _, s := range selectors {
-		if s.CanOpen(file.Name().String()) {
-			e = s.Factory(v.bus, newWin, file)
-			v.openedEditors[file.FullPath()] = e
+	selector := v.state.Editors().Selector()
+	factory, err := selector.Select(file.FullPath())
+	if err != nil {
+		if errors.Is(err, editor.ErrNoMatchingEditor) {
+			factory = &texteditor.Factory{} // Use as default
+		} else {
+			return nil, err
 		}
 	}
 
-	if e == nil {
-		e = texteditor.New(v.bus, newWin, file)
-		v.openedEditors[file.FullPath()] = e
+	e := factory.New(v.bus, newWin, file)
+	v.openedEditors[file.FullPath()] = e
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	newWin.SetCloseIntercept(func() {
+		v.requestClose(e, cancel)
+	})
+
+	connID := u.SkipV(v.state.Connection().Selected().Get()).ID()
+	loadEvt := file.Load(connID, event.WithContext(ctx))
+	v.bus.Publish(loadEvt)
+
+	return e, nil
+}
+
+func (v *editorViewModelImpl) OpenWith(file *directory.File, factory editor.Factory) (editor.Editor, error) {
+	if e, ok := v.openedEditors[file.FullPath()]; ok {
+		fyne.Do(e.Window().RequestFocus)
+		return e, ErrEditorAlreadyOpened
 	}
+
+	newWin := fyne.CurrentApp().NewWindow(file.Name().String())
+
+	e := factory.New(v.bus, newWin, file)
+	v.openedEditors[file.FullPath()] = e
 
 	ctx, cancel := context.WithCancel(context.Background())
 

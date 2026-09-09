@@ -48,6 +48,18 @@ func New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor 
 	return e
 }
 
+func (e *textEditor) Name() string {
+	return Name
+}
+
+func (e *textEditor) DisplayLabel() string {
+	return DisplayLabel
+}
+
+func (e *textEditor) DefaultFileRegexpPattern() string {
+	return DefaultPattern
+}
+
 func (e *textEditor) CreateWidget() fyne.CanvasObject {
 	return newWidget(e)
 }

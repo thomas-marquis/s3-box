@@ -126,3 +126,18 @@ func (mr *MockEditorViewModelMockRecorder) Open(file any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockEditorViewModel)(nil).Open), file)
 }
+
+// OpenWith mocks base method.
+func (m *MockEditorViewModel) OpenWith(file *directory.File, selector *editor.Selector) (editor.Editor, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OpenWith", file, selector)
+	ret0, _ := ret[0].(editor.Editor)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// OpenWith indicates an expected call of OpenWith.
+func (mr *MockEditorViewModelMockRecorder) OpenWith(file, selector any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenWith", reflect.TypeOf((*MockEditorViewModel)(nil).OpenWith), file, selector)
+}

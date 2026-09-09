@@ -19,8 +19,7 @@ var (
 	}
 )
 
-type Factory func(bus event.Bus, window fyne.Window, file *directory.File) Editor
-
+// Editor defines the interface for an editor that can open and edit files.
 type Editor interface {
 	Window() fyne.Window
 	File() *directory.File
@@ -65,14 +64,6 @@ func (b *Base) ExtendBaseEditor(e Editor) {
 			Editor: e,
 		}))
 	})
-}
-
-func (b *Base) Window() fyne.Window {
-	return b.window
-}
-
-func (b *Base) File() *directory.File {
-	return b.file
 }
 
 func (b *Base) MarshalJSON() ([]byte, error) {

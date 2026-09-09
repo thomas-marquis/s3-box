@@ -9,4 +9,5 @@ const (
 const (
 	DefaultPattern = `.*\.csv$`
 	Name           = "csv"
+	DisplayLabel   = "CSV Editor"
 )
