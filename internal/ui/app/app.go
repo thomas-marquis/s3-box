@@ -82,6 +82,8 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 
 	connectionsRepository := infrastructure.NewFyneConnectionsRepository(a.Preferences(), eventBus)
 
+	editorMappingsRepository := infrastructure.NewEditorMappingsRepository(a.Preferences())
+
 	s3.NewS3EventHandler(
 		connectionsRepository,
 		eventBus,
@@ -96,9 +98,11 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 
 	settingsViewModel := viewmodel.NewSettingsViewModel(
 		fyneSettings,
+		a.Preferences(),
 		notifier,
 		appState,
-		eventBus)
+		eventBus,
+		editorMappingsRepository)
 	connectionViewModel := viewmodel.NewConnectionViewModel(
 		connectionsRepository,
 		settingsViewModel,

@@ -5,3 +5,9 @@ const (
 	colMaxWidth ColWidth = 500
 	colMinWidth ColWidth = 70
 )
+
+const (
+	DefaultPattern = `.*\.csv$`
+	Name           = "csv"
+	DisplayLabel   = "CSV Editor"
+)

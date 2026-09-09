@@ -127,14 +127,17 @@ func (mr *MockEditorViewModelMockRecorder) Open(file any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockEditorViewModel)(nil).Open), file)
 }
 
-// RegisterEditorFactory mocks base method.
-func (m *MockEditorViewModel) RegisterEditorFactory(name string, initializer editor.Initializer) {
+// OpenWith mocks base method.
+func (m *MockEditorViewModel) OpenWith(file *directory.File, factory editor.Factory) (editor.Editor, error) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RegisterEditorFactory", name, initializer)
+	ret := m.ctrl.Call(m, "OpenWith", file, factory)
+	ret0, _ := ret[0].(editor.Editor)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// RegisterEditorFactory indicates an expected call of RegisterEditorFactory.
-func (mr *MockEditorViewModelMockRecorder) RegisterEditorFactory(name, initializer any) *gomock.Call {
+// OpenWith indicates an expected call of OpenWith.
+func (mr *MockEditorViewModelMockRecorder) OpenWith(file, factory any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterEditorFactory", reflect.TypeOf((*MockEditorViewModel)(nil).RegisterEditorFactory), name, initializer)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenWith", reflect.TypeOf((*MockEditorViewModel)(nil).OpenWith), file, factory)
 }

@@ -62,3 +62,15 @@ func (mr *MockSettingsViewModelMockRecorder) Save() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockSettingsViewModel)(nil).Save))
 }
+
+// SaveEditorMappings mocks base method.
+func (m *MockSettingsViewModel) SaveEditorMappings() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SaveEditorMappings")
+}
+
+// SaveEditorMappings indicates an expected call of SaveEditorMappings.
+func (mr *MockSettingsViewModelMockRecorder) SaveEditorMappings() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveEditorMappings", reflect.TypeOf((*MockSettingsViewModel)(nil).SaveEditorMappings))
+}

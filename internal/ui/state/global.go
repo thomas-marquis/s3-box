@@ -10,7 +10,7 @@ type GlobalState struct {
 	pendingUserValidation chan s3box.UserValidationAsked
 }
 
-func newUiState() *GlobalState {
+func newGlobalState() *GlobalState {
 	return &GlobalState{
 		pendingUserValidation: make(chan s3box.UserValidationAsked, maxPendingUserValidations),
 	}
