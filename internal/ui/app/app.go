@@ -96,6 +96,7 @@ func New(logger *zap.Logger, initRoute navigation.Route) (*Go2S3App, error) {
 
 	settingsViewModel := viewmodel.NewSettingsViewModel(
 		fyneSettings,
+		a.Preferences(),
 		notifier,
 		appState,
 		eventBus)

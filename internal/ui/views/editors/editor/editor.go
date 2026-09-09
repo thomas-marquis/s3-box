@@ -19,7 +19,7 @@ var (
 	}
 )
 
-type Initializer func(bus event.Bus, window fyne.Window, file *directory.File) Editor
+type Factory func(bus event.Bus, window fyne.Window, file *directory.File) Editor
 
 type Editor interface {
 	Window() fyne.Window

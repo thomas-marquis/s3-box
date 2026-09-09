@@ -18,6 +18,7 @@ const (
 	SettingColorTheme            = "app.colorTheme"
 	SettingEditFileSizeLimitByte = "app.editFileSizeLimitByte"
 	SettingTimeoutSec            = "app.timeoutSec"
+	SettingFileSelectors         = "settings.editor.selectors"
 )
 
 // hard-coded config

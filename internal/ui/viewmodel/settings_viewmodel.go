@@ -1,6 +1,7 @@
 package viewmodel
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/thomas-marquis/it-happened/event"
@@ -9,6 +10,9 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	apptheme "github.com/thomas-marquis/s3-box/internal/ui/theme"
 	"github.com/thomas-marquis/s3-box/internal/ui/values"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
 
 	"fyne.io/fyne/v2"
 	"github.com/thomas-marquis/s3-box/internal/domain/settings"
@@ -17,17 +21,20 @@ import (
 type SettingsViewModel interface {
 	Save()
 	Cancel()
+	SaveEditorSelectors()
 }
 
 type settingsViewModelImpl struct {
 	notifier     notification.Repository
 	fyneSettings fyne.Settings
+	fynePrefs    fyne.Preferences
 	state        *state.State
 	bus          event.Bus
 }
 
 func NewSettingsViewModel(
 	fyneSettings fyne.Settings,
+	fynePrefs fyne.Preferences,
 	notifier notification.Repository,
 	appState *state.State,
 	bus event.Bus,
@@ -35,6 +42,7 @@ func NewSettingsViewModel(
 	vm := &settingsViewModelImpl{
 		notifier:     notifier,
 		fyneSettings: fyneSettings,
+		fynePrefs:    fynePrefs,
 		state:        appState,
 		bus:          bus,
 	}
@@ -74,6 +82,8 @@ func NewSettingsViewModel(
 	}
 	bus.Publish(evt)
 
+	vm.loadEditorSelectors()
+
 	return vm
 }
 
@@ -102,6 +112,20 @@ func (v *settingsViewModelImpl) Cancel() {
 	s := v.state.Settings().Get()
 	s.Cancel()
 	v.state.Settings().SyncStatusMessage()
+}
+
+// SaveEditorSelectors saves editor selectors to preferences and updates the state
+func (v *settingsViewModelImpl) SaveEditorSelectors() {
+	selectors := u.SkipV(v.state.Settings().EditorSelectors().Get())
+
+	jsonBytes, err := json.Marshal(selectors)
+	if err != nil {
+		v.notifier.NotifyError(err)
+		return
+	}
+
+	v.fynePrefs.SetString(values.SettingFileSelectors, string(jsonBytes))
+	u.Skip(v.state.Settings().StatusMessage().Set("New settings saved"))
 }
 
 func (v *settingsViewModelImpl) updateStatusMessage(evt event.Event) {
@@ -133,4 +157,38 @@ func (v *settingsViewModelImpl) handleFailure(evt event.Event) {
 	}
 	v.notifier.NotifyError(err)
 	fyne.CurrentApp().SendNotification(fyne.NewNotification("Ooops...", err.Error()))
+}
+
+func (v *settingsViewModelImpl) loadEditorSelectors() []*editor.Selector {
+	if v.state.Settings().EditorSelectors().Length() > 0 {
+		return u.SkipV(v.state.Settings().EditorSelectors().Get())
+	}
+
+	var selectors []*editor.Selector
+	storedJSON := v.fynePrefs.String(values.SettingFileSelectors)
+	if storedJSON == "" {
+		selectors = initSelectors()
+		v.state.Settings().EditorSelectors().Set(selectors)
+		return selectors
+	}
+
+	if err := json.Unmarshal([]byte(storedJSON), &selectors); err != nil {
+		selectors = initSelectors()
+		v.state.Settings().EditorSelectors().Set(selectors)
+		return selectors
+	}
+
+	if len(selectors) == 0 {
+		selectors = initSelectors()
+	}
+
+	u.Skip(v.state.Settings().EditorSelectors().Set(selectors))
+	return selectors
+}
+
+func initSelectors() []*editor.Selector {
+	return []*editor.Selector{
+		{Name: texteditor.Name, Pattern: texteditor.DefaultPattern, Factory: texteditor.New},
+		{Name: csveditor.Name, Pattern: csveditor.DefaultPattern, Factory: csveditor.New},
+	}
 }

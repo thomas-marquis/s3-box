@@ -49,16 +49,21 @@ func GetSettingsView(ctx appcontext.AppContext) (*fyne.Container, error) {
 
 	statusLabel := fyne_widget.NewLabelWithData(ctx.State().Settings().StatusMessage())
 
+	fileEditorsTable := widget.NewEditorSelectorTable(ctx)
+
+	tabGlobal := container.NewTabItem("Global", container.NewGridWrap(fyne.NewSize(700, 400), form))
+	tabEditors := container.NewTabItem("File editors", fileEditorsTable)
+	tabs := container.NewAppTabs(tabGlobal, tabEditors)
+
 	return container.NewBorder(
 		container.NewVBox(
 			widget.NewHeading("Settings"),
 			fyne_widget.NewSeparator(),
 		), nil, nil, nil,
-		container.NewVBox(
+		container.NewBorder(
 			container.NewBorder(nil, nil, nil, statusLabel),
-			container.NewPadded(
-				container.NewGridWrap(fyne.NewSize(700, 400), form),
-			),
+			nil, nil, nil,
+			container.NewPadded(tabs),
 		),
 	), nil
 }

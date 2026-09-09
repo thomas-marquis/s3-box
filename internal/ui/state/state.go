@@ -23,7 +23,7 @@ func New() *State {
 		explorer:    newExplorerState(),
 		settings:    newSettingsState(),
 		tags:        newTagsState(),
-		global:      newUiState(),
+		global:      newGlobalState(),
 	}
 }
 
