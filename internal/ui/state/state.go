@@ -19,14 +19,17 @@ type State struct {
 }
 
 func New() *State {
-	return &State{
+	st := &State{
 		connections: newConnectionState(),
-		explorer:    newExplorerState(),
 		settings:    newSettingsState(),
 		tags:        newTagsState(),
 		global:      newGlobalState(),
 		editors:     newEditorsState(),
 	}
+
+	st.explorer = newExplorerState(st)
+
+	return st
 }
 
 func (s *State) Explorer() *ExplorerState {

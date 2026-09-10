@@ -168,19 +168,24 @@ func (w *FileDetails) Select(file *directory.File) {
 	u.Skip(w.lastModifiedBinding.Set(file.LastModified().Format("2006-01-02 15:04:05")))
 	u.Skip(w.fileSizeBinding.Set(humanize.Bytes(file.SizeBytes())))
 
+	s := w.appCtx.State().Editors().Selector()
+
 	st.Settings().EditorFileSizeLimitBytes().RemoveListener(w.maxFileSizeListener)
 	dl := binding.NewDataListener(func() {
-		if file.SizeBytes() > st.Settings().EditorFileSizeLimitBytesValue() {
-			w.openAction.Disable()
-			w.openWithAction.Disable()
+		fileIsEditable := st.Explorer().IsFileEditable(file)
+		defaultFactory := st.Editors().GetDefaultFactory(file.FullPath())
+		defaultIsNonEditable := defaultFactory != nil && !defaultFactory.Capabilities().Editable
+
+		if fileIsEditable || defaultIsNonEditable {
+			w.openAction.Enable()
 		} else {
-			if st.Connection().IsReadOnly() {
-				w.openAction.Disable()
-				w.openWithAction.Disable()
-			} else {
-				w.openAction.Enable()
-				w.openWithAction.Enable()
-			}
+			w.openAction.Disable()
+		}
+
+		if fileIsEditable {
+			w.openWithAction.Enable()
+		} else {
+			w.openWithAction.Disable()
 		}
 	})
 	st.Settings().EditorFileSizeLimitBytes().AddListener(dl)
@@ -194,10 +199,19 @@ func (w *FileDetails) Select(file *directory.File) {
 		showEditor(ed)
 	})
 
-	s := w.appCtx.State().Editors().Selector()
 	registered := s.RegisteredEditors()
-	openWithItems := make([]*fyne.MenuItem, len(registered))
-	for i, f := range registered {
+
+	showOnlyNonEditable := !st.Explorer().IsFileEditable(file)
+
+	var filteredEditors []editor.Factory
+	if showOnlyNonEditable {
+		filteredEditors = s.FilterRegistered(editor.Capabilities{Editable: false})
+	} else {
+		filteredEditors = registered
+	}
+
+	openWithItems := make([]*fyne.MenuItem, len(filteredEditors))
+	for i, f := range filteredEditors {
 		openWithItems[i] = fyne.NewMenuItem(f.DisplayLabel(), func() {
 			ed, err := edVm.OpenWith(file, f)
 			if err != nil {
@@ -281,8 +295,6 @@ func (w *FileDetails) Select(file *directory.File) {
 	})
 	if st.Connection().IsReadOnly() {
 		w.deleteAction.Disable()
-		w.openAction.Disable()
-		w.openWithAction.Disable()
 		w.renameAction.Disable()
 	}
 }

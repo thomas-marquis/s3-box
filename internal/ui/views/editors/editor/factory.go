@@ -17,4 +17,6 @@ type Factory interface {
 	// DefaultFileRegexpPattern return the default regexp used to decide - given the file path- when to use this editor to open a file.
 	// The user can change this pattern from the main application.
 	DefaultFileRegexpPattern() string
+	// Capabilities returns the capabilities of the editor.
+	Capabilities() Capabilities
 }

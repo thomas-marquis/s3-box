@@ -30,3 +30,9 @@ func (f *Factory) DisplayLabel() string {
 func (f *Factory) DefaultFileRegexpPattern() string {
 	return DefaultPattern
 }
+
+func (f *Factory) Capabilities() editor.Capabilities {
+	return editor.Capabilities{
+		Editable: false,
+	}
+}

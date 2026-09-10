@@ -71,6 +71,17 @@ func (s *Selector) RegisteredEditors() []Factory {
 	return editors
 }
 
+// FilterRegistered returns the factories that match exactly the given capabilities.
+func (s *Selector) FilterRegistered(cap Capabilities) []Factory {
+	var filtered []Factory
+	for _, editor := range s.registeredEditors {
+		if editor.Capabilities().Editable == cap.Editable {
+			filtered = append(filtered, editor)
+		}
+	}
+	return filtered
+}
+
 // RegisterMapping registers a mapping between a file pattern and an editor name.
 // Multiple mappings can be registered for the same editor, allowing it to handle different file types.
 // An editor must be registered before it can be mapped to a file pattern, an error will be returned otherwise.

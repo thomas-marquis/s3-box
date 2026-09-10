@@ -43,6 +43,20 @@ func (m *MockFactory) EXPECT() *MockFactoryMockRecorder {
 	return m.recorder
 }
 
+// Capabilities mocks base method.
+func (m *MockFactory) Capabilities() editor.Capabilities {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Capabilities")
+	ret0, _ := ret[0].(editor.Capabilities)
+	return ret0
+}
+
+// Capabilities indicates an expected call of Capabilities.
+func (mr *MockFactoryMockRecorder) Capabilities() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Capabilities", reflect.TypeOf((*MockFactory)(nil).Capabilities))
+}
+
 // DefaultFileRegexpPattern mocks base method.
 func (m *MockFactory) DefaultFileRegexpPattern() string {
 	m.ctrl.T.Helper()

@@ -32,9 +32,10 @@ type ExplorerState struct {
 	selectedDir      binding.Item[*directory.Directory]
 	selectedFile     binding.Item[*directory.File]
 	uploadPreview    binding.Item[UploadPreviewState]
+	state            *State
 }
 
-func newExplorerState() *ExplorerState {
+func newExplorerState(rootState *State) *ExplorerState {
 	s := &ExplorerState{
 		fileTree: binding.NewTree[node.Node](func(n1 node.Node, n2 node.Node) bool {
 			return n1.ID() == n2.ID()
@@ -44,6 +45,7 @@ func newExplorerState() *ExplorerState {
 		selectedDir:      binding.NewItem[*directory.Directory](directory.Compare),
 		selectedFile:     binding.NewItem[*directory.File](directory.CompareFile),
 		uploadPreview:    binding.NewItem[UploadPreviewState](compareUploadPreviewState),
+		state:            rootState,
 	}
 	prefs := fyne.CurrentApp().Preferences()
 	u.Skip(s.downloadLocation.Set(uu.ToListableURI(prefs.String(values.PrefDownloadLocation))))
@@ -241,4 +243,12 @@ func compareListableURI(a, b fyne.ListableURI) bool {
 		return false
 	}
 	return a.Path() == b.Path()
+}
+
+// IsFileEditable returns true if the given file can be edited with the current settings and connection.
+func (s *ExplorerState) IsFileEditable(file *directory.File) bool {
+	if file == nil || s.state == nil {
+		return false
+	}
+	return file.SizeBytes() <= s.state.Settings().EditorFileSizeLimitBytesValue() && !s.state.Connection().IsReadOnly()
 }
