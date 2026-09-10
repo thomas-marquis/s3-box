@@ -47,7 +47,6 @@ func (w *ImageViewerWidget) CreateRenderer() fyne.WidgetRenderer {
 	// Create the loader
 	loader := widget.NewProgressBarInfinite()
 	loader.Stop()
-	loader.Hide()
 
 	// Create cancel button for loading
 	var cancelBtn *widget.Button
@@ -83,12 +82,6 @@ func (w *ImageViewerWidget) CreateRenderer() fyne.WidgetRenderer {
 			loaderContainer.Hide()
 			loader.Stop()
 			cancelBtn.Hide()
-
-			// Check if we have image data
-			imageData, err := w.editor.ImageData.Get()
-			if err == nil && imageData != nil {
-				scrollContainer.Show()
-			}
 		}
 	}))
 
@@ -100,7 +93,6 @@ func (w *ImageViewerWidget) CreateRenderer() fyne.WidgetRenderer {
 			return
 		}
 
-		// Create new image from bytes
 		img.Resource = fyne.NewStaticResource(w.editor.File().Name().String(), imageData)
 		img.Refresh()
 		scrollContainer.Show()

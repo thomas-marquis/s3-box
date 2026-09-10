@@ -11,7 +11,6 @@ import (
 	fyne_test "fyne.io/fyne/v2/test"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/it-happened/inmemory"
-	"github.com/thomas-marquis/s3-box/internal/domain/connection_deck"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/tu"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
@@ -46,10 +45,11 @@ func setup(t *testing.T) *fixture {
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 	f.bus = inmemory.NewBus(f.ctx)
 
-	rootDir, _ := directory.NewRoot(connection_deck.NewConnectionID())
-	f.file, _ = directory.NewFile("test.png", rootDir,
-		directory.WithFileSize(1024),
-		directory.WithFileLastModified(lastModified),
+	tu.MakeDirectory(t, "", tu.AsRoot(),
+		tu.WithFileTo("test.png", &f.file,
+			directory.WithFileSize(1024),
+			directory.WithFileLastModified(lastModified),
+		),
 	)
 
 	f.window = fyne_test.NewWindow(nil)
@@ -104,6 +104,9 @@ func TestImageViewerWidget(t *testing.T) {
 		ed.Window().SetContent(widget)
 		canvas := ed.Window().Canvas()
 
+		time.Sleep(300 * time.Millisecond)
+		widget.Refresh()
+
 		// When & Then - should initially show loading state
 		tu.AssertImageMatches(t, "images/is-loading.png", canvas.Capture())
 	})
@@ -131,8 +134,8 @@ func TestImageViewerWidget(t *testing.T) {
 			Content: mockContent,
 		}))
 
-		// Wait for the widget to process the event
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
+		widget.Refresh()
 
 		// Then
 		tu.AssertImageMatches(t, "images/loaded.png", canvas.Capture())
@@ -156,8 +159,8 @@ func TestImageViewerWidget(t *testing.T) {
 			Err:    errors.New("failed to load image"),
 		}))
 
-		// Wait for the widget to process the event
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
+		widget.Refresh()
 
 		// Then
 		tu.AssertImageMatches(t, "images/load-error.png", canvas.Capture())
