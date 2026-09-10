@@ -59,10 +59,6 @@ func (e *Editor) Cancel() {
 	e.cancelFunc = nil
 }
 
-func (e *Editor) HasChanged() bool {
-	return false // Image viewer is read-only
-}
-
 func (e *Editor) handleLoaded(evt event.Event) {
 	defer u.SkipD1(e.IsLoading.Set, false)
 	pl := evt.Payload().(editor.Loaded)
