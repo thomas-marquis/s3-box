@@ -20,7 +20,11 @@ func (p filePattern) String() string {
 }
 
 func (p filePattern) Matches(filePath string) bool {
-	return u.SkipV(regexp.MatchString(p.String(), filePath))
+	re, err := regexp.Compile("(?i)" + p.String())
+	if err != nil {
+		return false
+	}
+	return re.MatchString(filePath)
 }
 
 // Mapping represents a mapping between a file pattern and an editor name.

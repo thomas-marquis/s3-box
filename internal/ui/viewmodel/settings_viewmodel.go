@@ -192,6 +192,25 @@ func (v *settingsViewModelImpl) loadEditorMappings() {
 		}
 	}
 
+	var shouldSave bool
+	for _, f := range defaultEditors {
+		var found bool
+		for _, mapping := range mappings {
+			if mapping.EditorName == f.Name() {
+				found = true
+				break
+			}
+		}
+		if !found {
+			mappings = append(mappings, editor.Mapping{EditorName: f.Name(), RegexpPattern: f.DefaultFileRegexpPattern()})
+			shouldSave = true
+		}
+	}
+
+	if shouldSave {
+		u.Skip(v.editorMappingsRepository.SaveAll(mappings))
+	}
+
 	for _, mapping := range mappings {
 		u.Skip(selector.RegisterMapping(mapping.EditorName, mapping.RegexpPattern))
 	}

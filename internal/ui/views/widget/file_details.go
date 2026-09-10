@@ -181,12 +181,6 @@ func (w *FileDetails) Select(file *directory.File) {
 		} else {
 			w.openAction.Disable()
 		}
-
-		if fileIsEditable {
-			w.openWithAction.Enable()
-		} else {
-			w.openWithAction.Disable()
-		}
 	})
 	st.Settings().EditorFileSizeLimitBytes().AddListener(dl)
 	w.maxFileSizeListener = dl
