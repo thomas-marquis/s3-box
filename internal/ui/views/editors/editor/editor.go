@@ -1,3 +1,47 @@
+/*
+Package editor contains everything needed to implement a custom file editor.
+
+Usage:
+
+	// first, define your own Editor implementation by embedding an editor.Base pointer
+	type MyEditor struct {
+		*editor.Base
+	}
+
+	// then, define a constructor for you editor. Don't forget to init the base editor pointer and to call the method ExtendBaseEditor:
+	func NewMyEditor(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
+		e := &MyEditor{
+			Base:      editor.NewBase(bus, w, file),
+		}
+		e.ExtendBaseEditor(e)
+		return e
+	}
+
+	// you need to implement the method CreateWidget.
+	// CreateWidget returns the CanvasObject (usually a fyne.Widget) that will be displayed in the editor
+	func (e *Editor) CreateWidget() fyne.CanvasObject {
+		return ...
+	}
+
+	// eventually, you must define a factory for your editor, that implements the editor.Factory interface:
+	type Factory struct {}
+
+	func (f *Factory) New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {
+		return New(bus, window, file)
+	}
+
+	func (f *Factory) Name() string {
+		return "myeditor"
+	}
+
+	func (f *Factory) DisplayLabel() string {
+		return "My Editor"
+	}
+
+	func (f *Factory) DefaultFileRegexpPattern() string {
+		return "\\.(toto|lolo)$"
+	}
+*/
 package editor
 
 import (
