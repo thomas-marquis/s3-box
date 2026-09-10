@@ -9,6 +9,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	apptheme "github.com/thomas-marquis/s3-box/internal/ui/theme"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/imgviewer"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
 
 	"fyne.io/fyne/v2"
@@ -166,6 +167,7 @@ func (v *settingsViewModelImpl) loadEditorMappings() {
 	defaultEditors := []editor.Factory{
 		&texteditor.Factory{},
 		&csveditor.Factory{},
+		&imgviewer.Factory{},
 	}
 
 	for _, factory := range defaultEditors {

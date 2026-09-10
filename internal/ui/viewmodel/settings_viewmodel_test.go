@@ -46,11 +46,11 @@ func TestSettingsViewModel_LoadEditorMappings(t *testing.T) {
 		// Then - default editors should be registered
 		selector := appState.Editors().Selector()
 		registeredEditors := selector.RegisteredEditors()
-		assert.Len(t, registeredEditors, 2) // text and csv
+		assert.Len(t, registeredEditors, 3) // text, csv, and imgviewer
 
 		// Check that default mappings were created
 		mappings := selector.Mappings()
-		assert.Len(t, mappings, 2)
+		assert.Len(t, mappings, 3)
 	})
 
 	t.Run("should load saved mappings from repository", func(t *testing.T) {
@@ -112,7 +112,7 @@ func TestSettingsViewModel_LoadEditorMappings(t *testing.T) {
 		// Then - default editors should still be registered even if loading mappings fails
 		selector := appState.Editors().Selector()
 		registeredEditors := selector.RegisteredEditors()
-		assert.Len(t, registeredEditors, 2) // text and csv
+		assert.Len(t, registeredEditors, 3) // text, csv, and imgviewer
 	})
 }
 
