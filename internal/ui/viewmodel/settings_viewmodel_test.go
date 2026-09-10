@@ -27,7 +27,7 @@ func TestSettingsViewModel_LoadEditorMappings(t *testing.T) {
 
 		mockEditorMappingsRepo := mock_editor.NewMockMappingRepository(ctrl)
 		mockEditorMappingsRepo.EXPECT().GetAll().Return([]editor.Mapping{}, nil)
-		mockEditorMappingsRepo.EXPECT().SaveAll(gomock.Any()).Return(nil)
+		mockEditorMappingsRepo.EXPECT().SaveAll(gomock.Any()).Return(nil).AnyTimes()
 
 		appState := state.New()
 		ctx := context.Background()
@@ -46,11 +46,11 @@ func TestSettingsViewModel_LoadEditorMappings(t *testing.T) {
 		// Then - default editors should be registered
 		selector := appState.Editors().Selector()
 		registeredEditors := selector.RegisteredEditors()
-		assert.Len(t, registeredEditors, 2) // text and csv
+		assert.Len(t, registeredEditors, 3) // text, csv, and imgviewer
 
 		// Check that default mappings were created
 		mappings := selector.Mappings()
-		assert.Len(t, mappings, 2)
+		assert.Len(t, mappings, 3)
 	})
 
 	t.Run("should load saved mappings from repository", func(t *testing.T) {
@@ -64,6 +64,7 @@ func TestSettingsViewModel_LoadEditorMappings(t *testing.T) {
 
 		mockEditorMappingsRepo := mock_editor.NewMockMappingRepository(ctrl)
 		mockEditorMappingsRepo.EXPECT().GetAll().Return(savedMappings, nil)
+		mockEditorMappingsRepo.EXPECT().SaveAll(gomock.Any()).Return(nil).AnyTimes()
 
 		appState := state.New()
 		ctx := context.Background()
@@ -82,9 +83,9 @@ func TestSettingsViewModel_LoadEditorMappings(t *testing.T) {
 		// Then - saved mappings should be loaded
 		selector := appState.Editors().Selector()
 		mappings := selector.Mappings()
-		assert.Len(t, mappings, 2)
-		assert.True(t, editor.CompareMappings(mappings[0], savedMappings[0]))
-		assert.True(t, editor.CompareMappings(mappings[1], savedMappings[1]))
+		assert.Len(t, mappings, 3)
+		assert.True(t, editor.CompareMappings(mappings[1], savedMappings[0]))
+		assert.True(t, editor.CompareMappings(mappings[2], savedMappings[1]))
 	})
 
 	t.Run("should handle error from repository", func(t *testing.T) {
@@ -94,6 +95,7 @@ func TestSettingsViewModel_LoadEditorMappings(t *testing.T) {
 
 		mockEditorMappingsRepo := mock_editor.NewMockMappingRepository(ctrl)
 		mockEditorMappingsRepo.EXPECT().GetAll().Return(nil, expectedErr)
+		mockEditorMappingsRepo.EXPECT().SaveAll(gomock.Any()).Return(nil).AnyTimes()
 
 		appState := state.New()
 		ctx := context.Background()
@@ -112,7 +114,7 @@ func TestSettingsViewModel_LoadEditorMappings(t *testing.T) {
 		// Then - default editors should still be registered even if loading mappings fails
 		selector := appState.Editors().Selector()
 		registeredEditors := selector.RegisteredEditors()
-		assert.Len(t, registeredEditors, 2) // text and csv
+		assert.Len(t, registeredEditors, 3) // text, csv, and imgviewer
 	})
 }
 

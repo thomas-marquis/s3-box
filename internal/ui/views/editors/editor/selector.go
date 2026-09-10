@@ -20,7 +20,11 @@ func (p filePattern) String() string {
 }
 
 func (p filePattern) Matches(filePath string) bool {
-	return u.SkipV(regexp.MatchString(p.String(), filePath))
+	re, err := regexp.Compile("(?i)" + p.String())
+	if err != nil {
+		return false
+	}
+	return re.MatchString(filePath)
 }
 
 // Mapping represents a mapping between a file pattern and an editor name.
@@ -69,6 +73,17 @@ func (s *Selector) RegisteredEditors() []Factory {
 		editors = append(editors, editor)
 	}
 	return editors
+}
+
+// FilterRegistered returns the factories that match exactly the given capabilities.
+func (s *Selector) FilterRegistered(cap Capabilities) []Factory {
+	var filtered []Factory
+	for _, editor := range s.registeredEditors {
+		if editor.Capabilities().Editable == cap.Editable {
+			filtered = append(filtered, editor)
+		}
+	}
+	return filtered
 }
 
 // RegisterMapping registers a mapping between a file pattern and an editor name.

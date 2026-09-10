@@ -9,6 +9,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/ui/state"
 	apptheme "github.com/thomas-marquis/s3-box/internal/ui/theme"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/imgviewer"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/texteditor"
 
 	"fyne.io/fyne/v2"
@@ -166,6 +167,7 @@ func (v *settingsViewModelImpl) loadEditorMappings() {
 	defaultEditors := []editor.Factory{
 		&texteditor.Factory{},
 		&csveditor.Factory{},
+		&imgviewer.Factory{},
 	}
 
 	for _, factory := range defaultEditors {
@@ -188,6 +190,25 @@ func (v *settingsViewModelImpl) loadEditorMappings() {
 		if saveErr := v.editorMappingsRepository.SaveAll(mappings); saveErr != nil {
 			return
 		}
+	}
+
+	var shouldSave bool
+	for _, f := range defaultEditors {
+		var found bool
+		for _, mapping := range mappings {
+			if mapping.EditorName == f.Name() {
+				found = true
+				break
+			}
+		}
+		if !found {
+			mappings = append(mappings, editor.Mapping{EditorName: f.Name(), RegexpPattern: f.DefaultFileRegexpPattern()})
+			shouldSave = true
+		}
+	}
+
+	if shouldSave {
+		u.Skip(v.editorMappingsRepository.SaveAll(mappings))
 	}
 
 	for _, mapping := range mappings {

@@ -1,10 +1,16 @@
-package csveditor
+package imgviewer
 
 import (
 	"fyne.io/fyne/v2"
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
+)
+
+const (
+	Name           = "imgviewer"
+	DisplayLabel   = "Image Viewer"
+	DefaultPattern = "\\.(png|jpg|jpeg|gif)$"
 )
 
 type Factory struct{}
@@ -27,6 +33,6 @@ func (f *Factory) DefaultFileRegexpPattern() string {
 
 func (f *Factory) Capabilities() editor.Capabilities {
 	return editor.Capabilities{
-		Editable: true,
+		Editable: false,
 	}
 }
