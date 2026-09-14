@@ -58,7 +58,7 @@ func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
 		PageLabel: binding.NewString(),
 		Base:      editor.NewBase(bus, w, file),
 		Records:   binding.NewList[[]string](slices.Equal),
-		Columns: binding.NewList[ColWidth](func(c1, c2 ColWidth) bool {
+		Columns: binding.NewList(func(c1, c2 ColWidth) bool {
 			return cmp.Compare(c1, c2) == 0
 		}),
 		dataListeners: make(map[string]func()),
@@ -223,6 +223,12 @@ func (e *Editor) GetContent() string {
 		}
 	}
 	return builder.String()
+}
+
+const fileSizeROThreshold = 5 * 1024 // TODO: define it in factory
+
+func (e *Editor) IsReadOnly() bool {
+	return e.File().SizeBytes() > fileSizeROThreshold
 }
 
 func (e *Editor) updateContentHash(newContent string) {

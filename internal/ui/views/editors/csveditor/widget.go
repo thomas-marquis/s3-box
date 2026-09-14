@@ -79,6 +79,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			rawVal, _ := w.editor.Records.GetValue(id.Row)
 			cellVal := rawVal[id.Col]
 			cell.SetText(cellVal)
+			cell.IsReadOnly = w.editor.IsReadOnly()
 
 			if id.Row == 0 && u.SkipV(w.editor.Paginator.HasHeader.Get()) {
 				cell.TextStyle.Bold = true

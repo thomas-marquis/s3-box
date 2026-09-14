@@ -21,9 +21,10 @@ var (
 
 type CellEntry struct {
 	widget.Entry
-	records  binding.List[[]string]
-	row, col int
-	val      binding.String
+	records    binding.List[[]string]
+	row, col   int
+	val        binding.String
+	IsReadOnly bool
 
 	OnClose, OnSave func()
 }
@@ -72,12 +73,21 @@ func newCellEntry(records binding.List[[]string]) *CellEntry {
 
 func (e *CellEntry) TypedShortcut(s fyne.Shortcut) {
 	if sc, ok := s.(*desktop.CustomShortcut); ok {
-		if e.OnSave != nil && *sc == shortcutSave {
+		if e.OnSave != nil && !e.IsReadOnly && *sc == shortcutSave {
 			e.OnSave()
 		} else if e.OnClose != nil && *sc == shortcutQuit {
 			e.OnClose()
 		}
+
+		// TODO: disable paste shortcut when read only is true
 	}
+}
+
+func (e *CellEntry) TypedRune(r rune) {
+	if e.IsReadOnly {
+		return
+	}
+	e.Entry.TypedRune(r)
 }
 
 func (e *CellEntry) UpdateCoords(row, col int) {

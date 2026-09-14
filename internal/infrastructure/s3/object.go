@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 )
@@ -95,6 +97,7 @@ type s3ObjectState directory.FileContent
 var (
 	_ s3ObjectState = (*s3ObjectNotExists)(nil)
 	_ s3ObjectState = (*s3ObjectExists)(nil)
+	_ s3ObjectState = (*s3ObjectLazyReadOnly)(nil)
 )
 
 type withCancelCbs struct {
@@ -251,4 +254,184 @@ func (s *s3ObjectExists) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	return s.position, nil
+}
+
+// s3ObjectLazyReadOnly represents a lazy-loaded, read-only S3 object.
+// It fetches data in ranges from S3 on-demand and caches all loaded parts.
+type s3ObjectLazyReadOnly struct {
+	withCancelCbs
+
+	obj          *Object
+	position     int64
+	totalSize    int64
+	nextFetchPos int64
+	cache        map[int64][]byte
+}
+
+// NewLazyObject creates a new Object in lazy read-only mode.
+func NewLazyObject(ctx context.Context, client s3client.Client, file *directory.File) (*Object, error) {
+	obj := &Object{
+		file:   file,
+		client: client,
+	}
+
+	key := buildS3Key(file)
+
+	// Use GetObject to get file size from metadata
+	// We close the body immediately without reading to avoid downloading content
+	resp, err := client.GetObject(ctx, key)
+	if err != nil {
+		if isNotFoundError(err) {
+			obj.setState(&s3ObjectNotExists{obj: obj})
+		} else {
+			return nil, fmt.Errorf("failed to check object existence: %w", err)
+		}
+		return obj, nil
+	}
+
+	contentLength := int64(0)
+	if resp.ContentLength != nil {
+		contentLength = *resp.ContentLength
+	}
+	if contentLength == 0 {
+		contentLength = 1 // At least one byte exists
+	}
+
+	// Close the body without reading to avoid downloading content
+	if resp.Body != nil {
+		resp.Body.Close()
+	}
+
+	obj.setState(&s3ObjectLazyReadOnly{
+		obj:          obj,
+		position:     0,
+		totalSize:    contentLength,
+		nextFetchPos: 0,
+		cache:        make(map[int64][]byte),
+	})
+
+	return obj, nil
+}
+
+func (s *s3ObjectLazyReadOnly) Read(p []byte) (n int, err error) {
+	if s.position >= s.totalSize {
+		return 0, io.EOF
+	}
+
+	remainingInFile := s.totalSize - s.position
+	if remainingInFile <= 0 {
+		return 0, io.EOF
+	}
+
+	bytesToRead := len(p)
+	if int64(bytesToRead) > remainingInFile {
+		bytesToRead = int(remainingInFile)
+	}
+
+	cachedData, ok := s.getCachedData(s.position, int64(bytesToRead))
+	if ok {
+		n = copy(p, cachedData)
+		s.position += int64(n)
+		return n, nil
+	}
+
+	// Use continuous range counter - fetch from nextFetchPos
+	// For simplicity, fetch exactly what we need from position
+	fetchStart := s.position
+	fetchSize := int64(bytesToRead)
+
+	maxFetchSize := s.totalSize - fetchStart
+	if fetchSize > maxFetchSize {
+		fetchSize = maxFetchSize
+		if fetchSize <= 0 {
+			return 0, io.EOF
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.addCallback(cancel)
+
+	data, fetchErr := s.fetchRange(ctx, fetchStart, fetchSize)
+	if fetchErr != nil {
+		return 0, fmt.Errorf("failed to fetch range %d-%d: %w", fetchStart, fetchStart+fetchSize-1, fetchErr)
+	}
+
+	s.cache[fetchStart] = data
+	// Update nextFetchPos for continuous counter
+	if fetchStart+fetchSize > s.nextFetchPos {
+		s.nextFetchPos = fetchStart + fetchSize
+	}
+
+	n = copy(p, data)
+	s.position += int64(n)
+
+	return n, nil
+}
+
+func (s *s3ObjectLazyReadOnly) getCachedData(start, length int64) ([]byte, bool) {
+	// Check if the range [start, start+length) is fully cached
+	if start+length > s.nextFetchPos {
+		return nil, false
+	}
+
+	// For sequential caching, find which cache entry contains the start position
+	for cacheStart, cacheData := range s.cache {
+		cacheEnd := cacheStart + int64(len(cacheData))
+		if cacheStart <= start && cacheEnd >= start+length {
+			offset := start - cacheStart
+			return cacheData[offset : offset+length], true
+		}
+	}
+
+	return nil, false
+}
+
+func (s *s3ObjectLazyReadOnly) fetchRange(ctx context.Context, start, length int64) ([]byte, error) {
+	key := buildS3Key(s.obj.file)
+	rangeStr := fmt.Sprintf("bytes=%d-%d", start, start+length-1)
+
+	resp, err := s.obj.client.GetObject(ctx, key, func(in any) {
+		if getInput, ok := in.(*s3.GetObjectInput); ok {
+			getInput.Range = aws.String(rangeStr)
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	return io.ReadAll(resp.Body)
+}
+
+func (s *s3ObjectLazyReadOnly) Write(p []byte) (n int, err error) {
+	return 0, errors.New("write not supported in lazy read-only mode")
+}
+
+func (s *s3ObjectLazyReadOnly) Close() error {
+	return nil
+}
+
+func (s *s3ObjectLazyReadOnly) Seek(offset int64, whence int) (int64, error) {
+	var newPos int64
+
+	switch whence {
+	case io.SeekStart:
+		newPos = offset
+	case io.SeekCurrent:
+		newPos = s.position + offset
+	case io.SeekEnd:
+		newPos = s.totalSize + offset
+	default:
+		return 0, directory.ErrInvalidSeek
+	}
+
+	if newPos < 0 {
+		return 0, directory.ErrInvalidSeek
+	}
+	if newPos > s.totalSize {
+		newPos = s.totalSize
+	}
+
+	s.position = newPos
+	return newPos, nil
 }
