@@ -67,7 +67,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			return nbLines, nbCols
 		},
 		func() fyne.CanvasObject {
-			cell := newCellEntry(w.editor.Records)
+			cell := newCellEntry()
 			cell.OnSave = w.editor.Save
 			cell.OnClose = w.editor.RequestClose
 			return cell
@@ -76,9 +76,10 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			cell := object.(*CellEntry)
 			cell.UpdateCoords(id.Row, id.Col)
 
-			rawVal, _ := w.editor.Records.GetValue(id.Row)
-			cellVal := rawVal[id.Col]
-			cell.SetText(cellVal)
+			rowData := u.SkipV(w.editor.Records.GetValue(id.Row))
+			cellData := rowData[id.Col]
+
+			cell.Bind(cellData)
 			cell.IsReadOnly = w.editor.IsReadOnly()
 
 			if id.Row == 0 && u.SkipV(w.editor.Paginator.HasHeader.Get()) {

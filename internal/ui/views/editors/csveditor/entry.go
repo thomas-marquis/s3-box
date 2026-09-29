@@ -2,7 +2,6 @@ package csveditor
 
 import (
 	"errors"
-	"sync/atomic"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -21,40 +20,77 @@ var (
 
 type CellEntry struct {
 	widget.Entry
-	records    binding.List[[]string]
 	row, col   int
 	val        binding.String
 	IsReadOnly bool
 
 	OnClose, OnSave func()
+
+	dl binding.DataListener
 }
 
-func newCellEntry(records binding.List[[]string]) *CellEntry {
-	val := binding.NewString()
+func newCellEntry() *CellEntry {
+	// val := binding.NewString()
 	e := &CellEntry{
-		records: records,
-		val:     val,
+		// val: val,
 	}
 
+	// th := e.Theme()
+	// textSize := th.Size(theme.SizeNameText)
+
+	// var initialized atomic.Bool
+	// initialized.Store(false)
+
+	// val.AddListener(binding.NewDataListener(func() {
+	// 	if !initialized.Load() {
+	// 		initialized.Store(true)
+	// 		return
+	// 	}
+
+	// 	text, err := val.Get()
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// 	if err := e.updateRecord(text); err != nil {
+	// 		return
+	// 	}
+	// 	currWidth := e.Size().Width
+	// 	textWidth := colWidth(text, textSize)
+	// 	if textWidth > currWidth {
+	// 		e.Scroll = fyne.ScrollHorizontalOnly
+	// 	} else {
+	// 		e.Scroll = fyne.ScrollNone
+	// 	}
+	// }))
+	// e.Bind(val)
+
+	e.Validator = nil
+
+	e.ExtendBaseWidget(e)
+	return e
+}
+
+func (e *CellEntry) Bind(data binding.String) {
 	th := e.Theme()
 	textSize := th.Size(theme.SizeNameText)
 
-	var initialized atomic.Bool
-	initialized.Store(false)
+	if e.dl != nil {
+		data.RemoveListener(e.dl)
+	}
 
-	val.AddListener(binding.NewDataListener(func() {
-		if !initialized.Load() {
-			initialized.Store(true)
-			return
-		}
+	e.dl = binding.NewDataListener(func() {
+		// if !initialized.Load() {
+		// 	initialized.Store(true)
+		// 	return
+		// }
 
-		text, err := val.Get()
+		text, err := data.Get()
 		if err != nil {
 			return
 		}
-		if err := e.updateRecord(text); err != nil {
-			return
-		}
+		// if err := e.updateRecord(text); err != nil {
+		// 	return
+		// }
 		currWidth := e.Size().Width
 		textWidth := colWidth(text, textSize)
 		if textWidth > currWidth {
@@ -62,13 +98,9 @@ func newCellEntry(records binding.List[[]string]) *CellEntry {
 		} else {
 			e.Scroll = fyne.ScrollNone
 		}
-	}))
-	e.Bind(val)
+	})
 
-	e.Validator = nil
-
-	e.ExtendBaseWidget(e)
-	return e
+	data.AddListener(e.dl)
 }
 
 func (e *CellEntry) TypedShortcut(s fyne.Shortcut) {
@@ -95,15 +127,15 @@ func (e *CellEntry) UpdateCoords(row, col int) {
 	e.col = col
 }
 
-func (e *CellEntry) updateRecord(text string) error {
-	row, err := e.records.GetValue(e.row)
-	if err != nil {
-		return err
-	}
-	if len(row) <= e.col {
-		return errOutOfBounds
-	}
+// func (e *CellEntry) updateRecord(text string) error {
+// 	row, err := e.records.GetValue(e.row)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if len(row) <= e.col {
+// 		return errOutOfBounds
+// 	}
 
-	row[e.col] = text
-	return nil
-}
+// 	row[e.col] = text
+// 	return nil
+// }

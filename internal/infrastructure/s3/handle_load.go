@@ -92,7 +92,7 @@ func (h *EventHandler) loadDirectory(ctx context.Context, client s3client.Client
 func (h *EventHandler) handleLoadFile(e event.Event) {
 	ctx := e.Context()
 	pl := e.Payload().(directory.LoadFileTriggered)
-	obj, err := h.loadFile(ctx, pl.File, pl.ConnectionID)
+	obj, err := h.loadFile(ctx, pl.File, pl.ConnectionID, pl.Lazy)
 	if err != nil {
 		h.notifier.NotifyError(fmt.Errorf("failed loading file: %w", err))
 		h.bus.Publish(e.NewFollowup(directory.LoadFileFailed{
@@ -107,10 +107,15 @@ func (h *EventHandler) handleLoadFile(e event.Event) {
 	}))
 }
 
-func (h *EventHandler) loadFile(ctx context.Context, file *directory.File, connID connection_deck.ConnectionID) (directory.FileContent, error) {
+func (h *EventHandler) loadFile(
+	ctx context.Context,
+	file *directory.File,
+	connID connection_deck.ConnectionID,
+	lazy bool,
+) (directory.FileContent, error) {
 	client, err := h.clientFactory.Get(ctx, connID)
 	if err != nil {
 		return nil, err
 	}
-	return NewObject(ctx, client, file)
+	return NewObject(ctx, client, file, lazy)
 }

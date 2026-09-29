@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"slices"
 	"strings"
 	"time"
 
@@ -46,18 +45,38 @@ type Editor struct {
 	// For example, for binding.List, the event listeners are triggered only if the list size has changed...
 	dataListeners map[string]func()
 
-	Records   binding.List[[]string]
+	Records   binding.List[[]binding.String]
 	Columns   binding.List[ColWidth]
 	Paginator *Paginator
-
+	IsLazy    bool
 	PageLabel binding.String
 }
 
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
+	return newEditor(bus, w, file)
+}
+
+func NewLazy(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
+	e := newEditor(bus, w, file)
+	e.IsLazy = true
+	return e
+}
+
+func newEditor(bus event.Bus, w fyne.Window, file *directory.File) *Editor {
 	ed := &Editor{
 		PageLabel: binding.NewString(),
 		Base:      editor.NewBase(bus, w, file),
-		Records:   binding.NewList[[]string](slices.Equal),
+		Records: binding.NewList[[]binding.String](func(r1, r2 []binding.String) bool {
+			if len(r1) != len(r2) {
+				return false
+			}
+			for i := range len(r1) {
+				if u.SkipV(r1[i].Get()) != u.SkipV(r2[i].Get()) {
+					return false
+				}
+			}
+			return true
+		}),
 		Columns: binding.NewList(func(c1, c2 ColWidth) bool {
 			return cmp.Compare(c1, c2) == 0
 		}),

@@ -31,15 +31,29 @@ var (
 // NewObject creates a new Object and initializes its state based on
 // whether the object exists in S3. If the object exists, it downloads the content
 // and initializes the state with it. If not, it starts in a non-existent state.
-func NewObject(ctx context.Context, client s3client.Client, file *directory.File) (*Object, error) {
+// If lazy is true, it creates a lazy-loaded, read-only object.
+func NewObject(ctx context.Context, client s3client.Client, file *directory.File, lazy bool) (*Object, error) {
 	obj := &Object{
 		file:   file,
 		client: client,
 	}
 
-	// Check if an object exists to determine the initial state
-	buff := types.NewWriteAtBuffer([]byte{})
 	key := buildS3Key(file)
+
+	if lazy {
+		// Lazy loading: don't download content
+		obj.setState(&s3ObjectLazyReadOnly{
+			obj:          obj,
+			position:     0,
+			totalSize:    int64(file.SizeBytes()),
+			nextFetchPos: 0,
+			cache:        make(map[int64][]byte),
+		})
+		return obj, nil
+	}
+
+	// Standard loading: download full content
+	buff := types.NewWriteAtBuffer([]byte{})
 	if err := client.Download(ctx, key, buff); err != nil {
 		if isNotFoundError(err) {
 			obj.setState(&s3ObjectNotExists{obj: obj})
@@ -54,17 +68,14 @@ func NewObject(ctx context.Context, client s3client.Client, file *directory.File
 	return obj, nil
 }
 
-// Read delegates to the current state's Read implementation
 func (o *Object) Read(p []byte) (n int, err error) {
 	return o.currentState.Read(p)
 }
 
-// Write delegates to the current state's Write implementation
 func (o *Object) Write(p []byte) (n int, err error) {
 	return o.currentState.Write(p)
 }
 
-// Close delegates to the current state's Close implementation
 func (o *Object) Close() error {
 	return o.currentState.Close()
 }
@@ -268,51 +279,6 @@ type s3ObjectLazyReadOnly struct {
 	cache        map[int64][]byte
 }
 
-// NewLazyObject creates a new Object in lazy read-only mode.
-func NewLazyObject(ctx context.Context, client s3client.Client, file *directory.File) (*Object, error) {
-	obj := &Object{
-		file:   file,
-		client: client,
-	}
-
-	key := buildS3Key(file)
-
-	// Use GetObject to get file size from metadata
-	// We close the body immediately without reading to avoid downloading content
-	resp, err := client.GetObject(ctx, key)
-	if err != nil {
-		if isNotFoundError(err) {
-			obj.setState(&s3ObjectNotExists{obj: obj})
-		} else {
-			return nil, fmt.Errorf("failed to check object existence: %w", err)
-		}
-		return obj, nil
-	}
-
-	contentLength := int64(0)
-	if resp.ContentLength != nil {
-		contentLength = *resp.ContentLength
-	}
-	if contentLength == 0 {
-		contentLength = 1 // At least one byte exists
-	}
-
-	// Close the body without reading to avoid downloading content
-	if resp.Body != nil {
-		resp.Body.Close()
-	}
-
-	obj.setState(&s3ObjectLazyReadOnly{
-		obj:          obj,
-		position:     0,
-		totalSize:    contentLength,
-		nextFetchPos: 0,
-		cache:        make(map[int64][]byte),
-	})
-
-	return obj, nil
-}
-
 func (s *s3ObjectLazyReadOnly) Read(p []byte) (n int, err error) {
 	if s.position >= s.totalSize {
 		return 0, io.EOF
@@ -335,10 +301,17 @@ func (s *s3ObjectLazyReadOnly) Read(p []byte) (n int, err error) {
 		return n, nil
 	}
 
-	// Use continuous range counter - fetch from nextFetchPos
-	// For simplicity, fetch exactly what we need from position
-	fetchStart := s.position
+	// Use continuous range counter - always fetch from nextFetchPos
+	// This ensures non-overlapping, sequential S3 range requests
+	fetchStart := s.nextFetchPos
 	fetchSize := int64(bytesToRead)
+
+	// If position is beyond nextFetchPos (gap due to Seek), fill the gap
+	if s.position > s.nextFetchPos {
+		gapSize := s.position - s.nextFetchPos
+		fetchSize = gapSize + int64(bytesToRead)
+		fetchStart = s.nextFetchPos
+	}
 
 	maxFetchSize := s.totalSize - fetchStart
 	if fetchSize > maxFetchSize {
@@ -356,16 +329,53 @@ func (s *s3ObjectLazyReadOnly) Read(p []byte) (n int, err error) {
 		return 0, fmt.Errorf("failed to fetch range %d-%d: %w", fetchStart, fetchStart+fetchSize-1, fetchErr)
 	}
 
+	// Cache the fetched data
 	s.cache[fetchStart] = data
 	// Update nextFetchPos for continuous counter
-	if fetchStart+fetchSize > s.nextFetchPos {
-		s.nextFetchPos = fetchStart + fetchSize
+	s.nextFetchPos = fetchStart + fetchSize
+
+	cachedData, ok = s.getCachedData(s.position, int64(bytesToRead))
+	if !ok {
+		return 0, fmt.Errorf("data not found in cache after fetching")
 	}
 
-	n = copy(p, data)
+	n = copy(p, cachedData)
 	s.position += int64(n)
 
 	return n, nil
+}
+
+func (s *s3ObjectLazyReadOnly) Write(p []byte) (n int, err error) {
+	return 0, errors.New("write not supported in lazy read-only mode")
+}
+
+func (s *s3ObjectLazyReadOnly) Close() error {
+	return nil
+}
+
+func (s *s3ObjectLazyReadOnly) Seek(offset int64, whence int) (int64, error) {
+	var newPos int64
+
+	switch whence {
+	case io.SeekStart:
+		newPos = offset
+	case io.SeekCurrent:
+		newPos = s.position + offset
+	case io.SeekEnd:
+		newPos = s.totalSize + offset
+	default:
+		return 0, directory.ErrInvalidSeek
+	}
+
+	if newPos < 0 {
+		return 0, directory.ErrInvalidSeek
+	}
+	if newPos > s.totalSize {
+		newPos = s.totalSize
+	}
+
+	s.position = newPos
+	return newPos, nil
 }
 
 func (s *s3ObjectLazyReadOnly) getCachedData(start, length int64) ([]byte, bool) {
@@ -401,37 +411,4 @@ func (s *s3ObjectLazyReadOnly) fetchRange(ctx context.Context, start, length int
 	defer resp.Body.Close()
 
 	return io.ReadAll(resp.Body)
-}
-
-func (s *s3ObjectLazyReadOnly) Write(p []byte) (n int, err error) {
-	return 0, errors.New("write not supported in lazy read-only mode")
-}
-
-func (s *s3ObjectLazyReadOnly) Close() error {
-	return nil
-}
-
-func (s *s3ObjectLazyReadOnly) Seek(offset int64, whence int) (int64, error) {
-	var newPos int64
-
-	switch whence {
-	case io.SeekStart:
-		newPos = offset
-	case io.SeekCurrent:
-		newPos = s.position + offset
-	case io.SeekEnd:
-		newPos = s.totalSize + offset
-	default:
-		return 0, directory.ErrInvalidSeek
-	}
-
-	if newPos < 0 {
-		return 0, directory.ErrInvalidSeek
-	}
-	if newPos > s.totalSize {
-		newPos = s.totalSize
-	}
-
-	s.position = newPos
-	return newPos, nil
 }

@@ -21,7 +21,7 @@ func (h *EventHandler) handleCreateFile(evt event.Event) {
 			evt.NewFollowup(directory.CreateFileFailed{Err: err, Directory: pl.Directory}))
 	}
 
-	obj, err := h.loadFile(ctx, pl.File, pl.ConnectionID)
+	obj, err := h.loadFile(ctx, pl.File, pl.ConnectionID, false)
 	if err != nil {
 		handleError(err)
 		return

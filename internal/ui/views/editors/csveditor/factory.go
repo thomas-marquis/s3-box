@@ -30,3 +30,27 @@ func (f *Factory) Capabilities() editor.Capabilities {
 		Editable: true,
 	}
 }
+
+type FactoryRO struct{}
+
+func (f *FactoryRO) New(bus event.Bus, window fyne.Window, file *directory.File) editor.Editor {
+	return NewLazy(bus, window, file)
+}
+
+func (f *FactoryRO) Name() string {
+	return Name + ".ro"
+}
+
+func (f *FactoryRO) DisplayLabel() string {
+	return DisplayLabel + " (Read-Only)"
+}
+
+func (f *FactoryRO) DefaultFileRegexpPattern() string {
+	return DefaultPattern
+}
+
+func (f *FactoryRO) Capabilities() editor.Capabilities {
+	return editor.Capabilities{
+		Editable: false,
+	}
+}

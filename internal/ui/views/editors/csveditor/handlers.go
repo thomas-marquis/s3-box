@@ -15,16 +15,18 @@ func (e *Editor) handleLoaded(evt event.Event) {
 
 	r := csv.NewReader(pl.Content)
 
-	nbRows := 0
-	e.Paginator.Reset()
-	for {
-		record, err := r.Read()
-		if err != nil {
-			break
-		}
-		nbRows++
-		e.Paginator.Append(record)
-	}
+	e.Paginator.MarksReady(r, e.IsLazy)
+
+	// nbRows := 0
+	// // e.Paginator.Reset()
+	// for {
+	// 	record, err := r.Read()
+	// 	if err != nil {
+	// 		break
+	// 	}
+	// 	nbRows++
+	// 	e.Paginator.Append(record)
+	// }
 
 	if len(e.Paginator.Records) == 0 {
 		return
