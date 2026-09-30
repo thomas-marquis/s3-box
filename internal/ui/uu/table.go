@@ -2,9 +2,9 @@ package uu
 
 import (
 	"errors"
+	"sync"
 
 	"fyne.io/fyne/v2/data/binding"
-	"github.com/thomas-marquis/s3-box/internal/u"
 )
 
 var (
@@ -12,138 +12,127 @@ var (
 )
 
 type TableBinding[T any] struct {
-	comparator      func(T, T) bool
-	internalBinding binding.List[T]
-	data            []T
-	nbRows, nbCols  int
+	comparator func(T, T) bool
+	data       []T
+	nbRows, nbCols int
+	listeners    []binding.DataListener
+	lock         sync.RWMutex
 }
 
 // NewTableBinding constructs a binding object that holds a 2-dimension data table.
 func NewTableBinding[T any](comparator func(T, T) bool) *TableBinding[T] {
-	b := &TableBinding[T]{
-		comparator:      comparator,
-		internalBinding: binding.NewList(comparator),
-		data:            make([]T, 0),
+	return NewTableBindingWithDim(comparator, 0, 0)
+}
+
+// NewTableBindingWithDim constructs a binding object that holds a 2-dimension data table
+// with the specified initial dimensions.
+func NewTableBindingWithDim[T any](comparator func(T, T) bool, rows, cols int) *TableBinding[T] {
+	if rows < 0 || cols < 0 {
+		panic("TableBinding dimensions cannot be negative")
 	}
 
-	b.internalBinding.AddListener(binding.NewDataListener(func() {
-		// vals := u.SkipV(b.internalBinding.Get())
-		// TODO: syn the data to the internal binding when its getting updated.
-	}))
+	data := make([]T, rows*cols)
 
-	return b
+	return &TableBinding[T]{
+		comparator: comparator,
+		data:       data,
+		nbRows:     rows,
+		nbCols:     cols,
+		listeners:  make([]binding.DataListener, 0),
+	}
 }
 
 func (b *TableBinding[T]) AddListener(dl binding.DataListener) {
-	b.internalBinding.AddListener(dl)
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	b.listeners = append(b.listeners, dl)
 }
 
 func (b *TableBinding[T]) RemoveListener(dl binding.DataListener) {
-	b.internalBinding.RemoveListener(dl)
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	for i, l := range b.listeners {
+		if l == dl {
+			b.listeners = append(b.listeners[:i], b.listeners[i+1:]...)
+			return
+		}
+	}
+}
+
+func (b *TableBinding[T]) trigger() {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	for _, l := range b.listeners {
+		l.DataChanged()
+	}
 }
 
 func (b *TableBinding[T]) Dims() (rows, cols int) {
 	return b.nbRows, b.nbCols
 }
 
-// SetDim sets the table shape. It may alter the table content if the new size is larger than the previous one.
-func (b *TableBinding[T]) SetDim(rows, cols int) {
-	dataCpy := make([]T, len(b.data))
-	copy(dataCpy, b.data)
-}
-
-func (b *TableBinding[T]) AppendRow(data []T) error {
-	if b.nbCols == 0 {
-		b.nbCols = len(data)
+// Resize resizes the table to the specified dimensions.
+// If the new size is larger than the current size, new cells are filled with zero values.
+// If the new size is smaller, data is truncated.
+// Existing data is preserved at the same (row, col) positions.
+// Note: After resize, any previously returned binding.Items from ItemAt are invalidated
+// and should not be used. New items should be obtained via ItemAt after resize.
+func (b *TableBinding[T]) Resize(rows, cols int) {
+	if rows < 0 || cols < 0 {
+		return
 	}
 
-	if len(data) != b.nbCols {
-		return ErrTableOutOfBound
-	}
+	oldRows, oldCols := b.nbRows, b.nbCols
+	totalCells := rows * cols
 
-	b.data = append(b.data, data...)
-	b.nbRows++
-	for j, d := range data {
-		if err := b.internalBinding.Append(d); err != nil {
-			return err
-		}
-		if di, err := b.internalBinding.GetItem(b.toIndex(b.nbRows-1, j)); err == nil {
-			r, c := b.nbRows-1, j
-			di.AddListener(binding.NewDataListener(func() {
-				newVal, err := di.(binding.Item[T]).Get()
-				if err != nil {
-					return
-				}
-				// If the table dims has changed meanwhile
-				if r >= b.nbRows || c >= b.nbCols {
-					// this is not supposed to happened...
-					// ... or that means the data item is dangling
-					// (e.g. still in the memory but untied anymore to any of the table's items)
-					// In such a case, we simply ignore it.
-					return
-				}
-				idx := b.toIndex(r, c)
-				b.data[idx] = newVal
-			}))
-		} else {
-			return err
-		}
-	}
+	// Create new data slice with zero values
+	newData := make([]T, totalCells)
 
-	return nil
-}
-
-func (b *TableBinding[T]) RemoveRow(row int) error {
-	if row >= b.nbRows {
-		return ErrTableOutOfBound
-	}
-
-	newData := make([]T, len(b.data)-b.nbCols)
-	var iNext int
-	for iPrev := range b.nbRows {
-		if iPrev >= row && iPrev < b.nbRows-1 {
-			for j := range b.nbCols {
-				di, err := b.internalBinding.GetItem(b.toIndex(iPrev, j))
-				if err != nil {
-					return err
-				}
-
-				// shifting the values of the bound items located at the deleted row location or after
-				shiftedVal := b.getValue(iPrev+1, j)
-				if err := di.(binding.Item[T]).Set(shiftedVal); err != nil {
-					return err
-				}
+	// Copy existing data preserving 2D positions
+	for i := 0; i < rows && i < oldRows; i++ {
+		for j := 0; j < cols && j < oldCols; j++ {
+			newIdx := b.toIndexWithDims(i, j, cols)
+			oldIdx := b.toIndexWithDims(i, j, oldCols)
+			if oldIdx < len(b.data) {
+				newData[newIdx] = b.data[oldIdx]
 			}
-		}
-
-		if iPrev == row {
-			continue
-		}
-
-		for j := range b.nbCols {
-			newData[b.toIndex(iNext, j)] = b.data[b.toIndex(iPrev, j)]
-		}
-
-		iNext++
-	}
-
-	for j := range b.nbCols {
-		di, err := b.internalBinding.GetItem(b.toIndex(b.nbRows-1, j))
-		if err != nil {
-			return err
-		}
-		var zv T
-		if err := di.(binding.Item[T]).Set(zv); err != nil {
-			return err
 		}
 	}
 
 	b.data = newData
-	b.nbRows--
+	b.nbRows = rows
+	b.nbCols = cols
 
-	if err := b.internalBinding.Set(b.data); err != nil {
-		return err
+	// Trigger notifications for all listeners
+	b.trigger()
+}
+
+// Set fills the entire table with the provided 2D slice.
+// The provided data must have the exact same dimensions as the table, otherwise an error is returned.
+func (b *TableBinding[T]) Set(data [][]T) error {
+	if len(data) != b.nbRows {
+		return ErrTableOutOfBound
 	}
+
+	// Check all rows have consistent column count
+	for i := range data {
+		if len(data[i]) != b.nbCols {
+			return ErrTableOutOfBound
+		}
+	}
+
+	// Flatten the 2D data
+	flatData := make([]T, b.nbRows*b.nbCols)
+	for i := range data {
+		for j := range data[i] {
+			flatData[b.toIndex(i, j)] = data[i][j]
+		}
+	}
+
+	b.data = flatData
+
+	// Trigger notifications for all listeners
+	b.trigger()
 
 	return nil
 }
@@ -153,7 +142,11 @@ func (b *TableBinding[T]) SetValue(val T, row, col int) error {
 		return ErrTableOutOfBound
 	}
 
-	b.setValue(val, row, col)
+	idx := b.toIndex(row, col)
+	b.data[idx] = val
+
+	// Trigger notifications for all listeners
+	b.trigger()
 
 	return nil
 }
@@ -163,32 +156,91 @@ func (b *TableBinding[T]) ValueAt(row, col int) (val T, err error) {
 		err = ErrTableOutOfBound
 		return
 	}
-	return b.getValue(row, col), nil
+	return b.data[b.toIndex(row, col)], nil
 }
 
 func (b *TableBinding[T]) ItemAt(row, col int) (binding.Item[T], error) {
 	if row >= b.nbRows || col >= b.nbCols {
 		return nil, ErrTableOutOfBound
 	}
-	idx := b.toIndex(row, col)
-	di, err := b.internalBinding.GetItem(idx)
-	if err != nil {
-		return nil, err
+
+	// Return a positionTrackingItem that tracks the position and delegates to the table
+	item := &positionTrackingItem[T]{
+		table: b,
+		row:   row,
+		col:   col,
 	}
-
-	return di.(binding.Item[T]), nil
+	
+	// Add the item as a listener to the table so it gets notified when the table changes
+	b.AddListener(item)
+	
+	return item, nil
 }
 
-func (b *TableBinding[T]) setValue(val T, row, col int) {
-	idx := b.toIndex(row, col)
-	b.data[idx] = val
-	u.Skip(b.internalBinding.SetValue(idx, val))
+// positionTrackingItem wraps a binding.Item to track its position in the table
+// This allows the item to be looked up correctly even after the table is resized
+type positionTrackingItem[T any] struct {
+	table      *TableBinding[T]
+	row, col  int
+	listeners []binding.DataListener
 }
 
-func (b *TableBinding[T]) getValue(row, col int) T {
-	return b.data[b.toIndex(row, col)]
+func (pi *positionTrackingItem[T]) Get() (T, error) {
+	// Always get from the current table position
+	if pi.row >= pi.table.nbRows || pi.col >= pi.table.nbCols {
+		var zero T
+		return zero, ErrTableOutOfBound
+	}
+	return pi.table.data[pi.table.toIndex(pi.row, pi.col)], nil
+}
+
+func (pi *positionTrackingItem[T]) Set(val T) error {
+	if pi.row >= pi.table.nbRows || pi.col >= pi.table.nbCols {
+		return ErrTableOutOfBound
+	}
+	// Set the value in the table
+	pi.table.lock.Lock()
+	idx := pi.table.toIndex(pi.row, pi.col)
+	pi.table.data[idx] = val
+	pi.table.lock.Unlock()
+	// Trigger item listeners
+	pi.trigger()
+	// Also trigger table listeners
+	pi.table.trigger()
+	return nil
+}
+
+func (pi *positionTrackingItem[T]) AddListener(listener binding.DataListener) {
+	pi.listeners = append(pi.listeners, listener)
+	listener.DataChanged()
+}
+
+func (pi *positionTrackingItem[T]) RemoveListener(listener binding.DataListener) {
+	for i, l := range pi.listeners {
+		if l == listener {
+			pi.listeners = append(pi.listeners[:i], pi.listeners[i+1:]...)
+			return
+		}
+	}
+}
+
+func (pi *positionTrackingItem[T]) trigger() {
+	for _, l := range pi.listeners {
+		l.DataChanged()
+	}
+}
+
+// DataChanged is called when the table's data changes
+// This is part of the binding.DataListener interface
+func (pi *positionTrackingItem[T]) DataChanged() {
+	// When the table changes, trigger our own listeners
+	pi.trigger()
 }
 
 func (b *TableBinding[T]) toIndex(row, col int) int {
 	return row*b.nbCols + col
+}
+
+func (b *TableBinding[T]) toIndexWithDims(row, col, cols int) int {
+	return row*cols + col
 }

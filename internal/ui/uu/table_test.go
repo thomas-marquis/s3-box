@@ -793,16 +793,15 @@ func TestTableBinding_WidgetBinding(t *testing.T) {
 		data := [][]string{
 			{"a", "b", "c"},
 		}
-		assert.NoError(t, table.Set(data))
+		require.NoError(t, table.Set(data))
 
 		content := container.NewGridWithColumns(3)
-		for i := range 1 {
-			for j := range 3 {
-				e := widget.NewEntry()
-				e.Bind(u.SkipV(table.ItemAt(i, j)))
-				content.Add(e)
-			}
+		for j := range 3 {
+			e := widget.NewEntry()
+			e.Bind(u.SkipV(table.ItemAt(0, j)))
+			content.Add(e)
 		}
+
 		w := fyne_test.NewWindow(content)
 		w.Resize(fyne.NewSize(400, 300))
 		canvas := w.Canvas()
@@ -811,6 +810,15 @@ func TestTableBinding_WidgetBinding(t *testing.T) {
 
 		// When - add a new row by resizing
 		table.Resize(2, 3)
+
+		for j := range 3 {
+			e := widget.NewEntry()
+			e.Bind(u.SkipV(table.ItemAt(1, j)))
+			content.Add(e)
+		}
+
+		tu.AssertImageMatches(t, "images/table-binding-2-rows-1-empty.png", canvas.Capture())
+
 		assert.NoError(t, table.SetValue("d", 1, 0))
 		assert.NoError(t, table.SetValue("e", 1, 1))
 		assert.NoError(t, table.SetValue("f", 1, 2))
