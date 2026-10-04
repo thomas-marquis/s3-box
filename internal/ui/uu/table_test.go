@@ -628,6 +628,87 @@ func TestTableBinding_ItemAt(t *testing.T) {
 		// Then - widget should display the updated value
 		assert.Equal(t, "updated via table", e.Text)
 	})
+
+	t.Run("should return same item instance when ItemAt is called twice with same coordinates", func(t *testing.T) {
+		// Given
+		fyne_test.NewApp()
+		table := uu.NewTableBindingWithDim(func(a, b string) bool { return a == b }, 2, 2)
+		data := [][]string{
+			{"a", "b"},
+			{"c", "d"},
+		}
+		assert.NoError(t, table.Set(data))
+
+		// When
+		item1, err1 := table.ItemAt(0, 0)
+		require.NoError(t, err1)
+
+		item2, err2 := table.ItemAt(0, 0)
+		require.NoError(t, err2)
+
+		// Then
+		assert.Same(t, item1, item2, "ItemAt should return the same cached instance for same coordinates")
+	})
+
+	t.Run("should trigger item listeners when table is resized and item position becomes invalid", func(t *testing.T) {
+		// Given
+		fyne_test.NewApp()
+		table := uu.NewTableBindingWithDim(func(a, b string) bool { return a == b }, 2, 2)
+		data := [][]string{
+			{"a", "b"},
+			{"c", "d"},
+		}
+		require.NoError(t, table.Set(data))
+
+		var itemListenerCallCount int32
+		itemListener := binding.NewDataListener(func() {
+			atomic.AddInt32(&itemListenerCallCount, 1)
+		})
+
+		item, err := table.ItemAt(1, 0)
+		require.NoError(t, err)
+		item.AddListener(itemListener)
+
+		initialCount := atomic.LoadInt32(&itemListenerCallCount)
+		require.Equal(t, int32(1), initialCount, "Listener should be triggered once when added")
+
+		// When
+		table.Resize(1, 2)
+
+		// Then
+		assert.Equal(t, int32(2), atomic.LoadInt32(&itemListenerCallCount),
+			"Item listener should be triggered once more when table resize makes item position invalid")
+	})
+
+	t.Run("should not trigger item listeners unnecessarily during resize when position is still valid", func(t *testing.T) {
+		// Given
+		fyne_test.NewApp()
+		table := uu.NewTableBindingWithDim(func(a, b string) bool { return a == b }, 2, 2)
+		data := [][]string{
+			{"a", "b"},
+			{"c", "d"},
+		}
+		require.NoError(t, table.Set(data))
+
+		var itemListenerCallCount int32
+		itemListener := binding.NewDataListener(func() {
+			atomic.AddInt32(&itemListenerCallCount, 1)
+		})
+
+		item, err := table.ItemAt(0, 0)
+		require.NoError(t, err)
+		item.AddListener(itemListener)
+
+		initialCount := atomic.LoadInt32(&itemListenerCallCount)
+		require.Equal(t, int32(1), initialCount, "Listener should be triggered once when added")
+
+		// When
+		table.Resize(3, 3)
+
+		// Then
+		assert.Equal(t, int32(1), atomic.LoadInt32(&itemListenerCallCount),
+			"Item listener should NOT be triggered again when position remains valid after resize")
+	})
 }
 
 func TestTableBinding_Binding(t *testing.T) {

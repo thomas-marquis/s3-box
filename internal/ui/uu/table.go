@@ -16,6 +16,7 @@ type TableBinding[T any] struct {
 	data           []T
 	nbRows, nbCols int
 	listeners      []binding.DataListener
+	items          map[[2]int]*positionTrackingItem[T]
 	lock           sync.RWMutex
 }
 
@@ -39,6 +40,7 @@ func NewTableBindingWithDim[T any](comparator func(T, T) bool, rows, cols int) *
 		nbRows:     rows,
 		nbCols:     cols,
 		listeners:  make([]binding.DataListener, 0),
+		items:      make(map[[2]int]*positionTrackingItem[T]),
 	}
 }
 
@@ -82,7 +84,31 @@ func (b *TableBinding[T]) Resize(rows, cols int) {
 		return
 	}
 
+	b.lock.Lock()
+
 	oldRows, oldCols := b.nbRows, b.nbCols
+
+	// Before resizing, check which cached items will become invalid
+	// and collect them to trigger their listeners later
+	invalidItems := make([]*positionTrackingItem[T], 0)
+	for key, item := range b.items {
+		row, col := key[0], key[1]
+		// Check if this position will be invalid after resize
+		if row >= rows || col >= cols {
+			// Collect invalid items
+			invalidItems = append(invalidItems, item)
+			// Remove from cache
+			delete(b.items, key)
+			// Remove from listeners list
+			for i, l := range b.listeners {
+				if l == item {
+					b.listeners = append(b.listeners[:i], b.listeners[i+1:]...)
+					break
+				}
+			}
+		}
+	}
+
 	totalCells := rows * cols
 
 	// Create new data slice with zero values
@@ -103,7 +129,15 @@ func (b *TableBinding[T]) Resize(rows, cols int) {
 	b.nbRows = rows
 	b.nbCols = cols
 
-	// Trigger notifications for all listeners
+	// Unlock before triggering listeners to avoid deadlocks
+	b.lock.Unlock()
+
+	// Trigger listeners for invalid items
+	for _, item := range invalidItems {
+		item.trigger()
+	}
+
+	// Trigger notifications for all remaining listeners
 	b.trigger()
 }
 
@@ -129,9 +163,18 @@ func (b *TableBinding[T]) Set(data [][]T) error {
 		}
 	}
 
+	b.lock.Lock()
 	b.data = flatData
+	b.lock.Unlock()
 
-	// Trigger notifications for all listeners
+	// Trigger all cached items' listeners
+	b.lock.RLock()
+	for _, item := range b.items {
+		item.trigger()
+	}
+	b.lock.RUnlock()
+
+	// Trigger table-level listeners
 	b.trigger()
 
 	return nil
@@ -142,10 +185,22 @@ func (b *TableBinding[T]) SetValue(val T, row, col int) error {
 		return ErrTableOutOfBound
 	}
 
+	b.lock.Lock()
 	idx := b.toIndex(row, col)
 	b.data[idx] = val
+	b.lock.Unlock()
 
-	// Trigger notifications for all listeners
+	// Trigger the item's listeners for this specific cell if it exists in cache
+	key := [2]int{row, col}
+	b.lock.RLock()
+	if item, exists := b.items[key]; exists {
+		b.lock.RUnlock()
+		item.trigger()
+	} else {
+		b.lock.RUnlock()
+	}
+
+	// Trigger table-level listeners
 	b.trigger()
 
 	return nil
@@ -164,15 +219,28 @@ func (b *TableBinding[T]) ItemAt(row, col int) (binding.Item[T], error) {
 		return nil, ErrTableOutOfBound
 	}
 
-	// Return a positionTrackingItem that tracks the position and delegates to the table
+	key := [2]int{row, col}
+
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	// Check if we have a cached item for this position
+	if item, exists := b.items[key]; exists {
+		return item, nil
+	}
+
+	// Create new item and cache it
 	item := &positionTrackingItem[T]{
 		table: b,
 		row:   row,
 		col:   col,
 	}
 
+	b.items[key] = item
+
 	// Add the item as a listener to the table so it gets notified when the table changes
-	b.AddListener(item)
+	// Only add if not already in the list (shouldn't happen since we check cache first)
+	b.listeners = append(b.listeners, item)
 
 	return item, nil
 }
@@ -203,9 +271,7 @@ func (pi *positionTrackingItem[T]) Set(val T) error {
 	idx := pi.table.toIndex(pi.row, pi.col)
 	pi.table.data[idx] = val
 	pi.table.lock.Unlock()
-	// Trigger item listeners
-	pi.trigger()
-	// Also trigger table listeners
+	// Trigger table listeners (which will trigger this item's DataChanged, which will trigger item listeners)
 	pi.table.trigger()
 	return nil
 }
@@ -232,9 +298,11 @@ func (pi *positionTrackingItem[T]) trigger() {
 
 // DataChanged is called when the table's data changes
 // This is part of the binding.DataListener interface
+// Note: This method may be called while the table's lock is already held,
+// so we must not try to acquire the lock here.
 func (pi *positionTrackingItem[T]) DataChanged() {
-	// When the table changes, trigger our own listeners
-	pi.trigger()
+	// Don't trigger cell listeners from DataChanged
+	// Cell listeners are triggered explicitly when needed (e.g., when position becomes invalid)
 }
 
 func (b *TableBinding[T]) toIndex(row, col int) int {
