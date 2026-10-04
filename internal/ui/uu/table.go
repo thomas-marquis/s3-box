@@ -12,11 +12,11 @@ var (
 )
 
 type TableBinding[T any] struct {
-	comparator func(T, T) bool
-	data       []T
+	comparator     func(T, T) bool
+	data           []T
 	nbRows, nbCols int
-	listeners    []binding.DataListener
-	lock         sync.RWMutex
+	listeners      []binding.DataListener
+	lock           sync.RWMutex
 }
 
 // NewTableBinding constructs a binding object that holds a 2-dimension data table.
@@ -170,17 +170,17 @@ func (b *TableBinding[T]) ItemAt(row, col int) (binding.Item[T], error) {
 		row:   row,
 		col:   col,
 	}
-	
+
 	// Add the item as a listener to the table so it gets notified when the table changes
 	b.AddListener(item)
-	
+
 	return item, nil
 }
 
 // positionTrackingItem wraps a binding.Item to track its position in the table
 // This allows the item to be looked up correctly even after the table is resized
 type positionTrackingItem[T any] struct {
-	table      *TableBinding[T]
+	table     *TableBinding[T]
 	row, col  int
 	listeners []binding.DataListener
 }
