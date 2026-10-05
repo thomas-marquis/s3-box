@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client"
 )
@@ -29,15 +31,29 @@ var (
 // NewObject creates a new Object and initializes its state based on
 // whether the object exists in S3. If the object exists, it downloads the content
 // and initializes the state with it. If not, it starts in a non-existent state.
-func NewObject(ctx context.Context, client s3client.Client, file *directory.File) (*Object, error) {
+// If lazy is true, it creates a lazy-loaded, read-only object.
+func NewObject(ctx context.Context, client s3client.Client, file *directory.File, lazy bool) (*Object, error) {
 	obj := &Object{
 		file:   file,
 		client: client,
 	}
 
-	// Check if an object exists to determine the initial state
-	buff := types.NewWriteAtBuffer([]byte{})
 	key := buildS3Key(file)
+
+	if lazy {
+		// Lazy loading: don't download content
+		obj.setState(&s3ObjectLazyReadOnly{
+			obj:          obj,
+			position:     0,
+			totalSize:    int64(file.SizeBytes()),
+			nextFetchPos: 0,
+			cache:        make(map[int64][]byte),
+		})
+		return obj, nil
+	}
+
+	// Standard loading: download full content
+	buff := types.NewWriteAtBuffer([]byte{})
 	if err := client.Download(ctx, key, buff); err != nil {
 		if isNotFoundError(err) {
 			obj.setState(&s3ObjectNotExists{obj: obj})
@@ -52,17 +68,14 @@ func NewObject(ctx context.Context, client s3client.Client, file *directory.File
 	return obj, nil
 }
 
-// Read delegates to the current state's Read implementation
 func (o *Object) Read(p []byte) (n int, err error) {
 	return o.currentState.Read(p)
 }
 
-// Write delegates to the current state's Write implementation
 func (o *Object) Write(p []byte) (n int, err error) {
 	return o.currentState.Write(p)
 }
 
-// Close delegates to the current state's Close implementation
 func (o *Object) Close() error {
 	return o.currentState.Close()
 }
@@ -95,6 +108,7 @@ type s3ObjectState directory.FileContent
 var (
 	_ s3ObjectState = (*s3ObjectNotExists)(nil)
 	_ s3ObjectState = (*s3ObjectExists)(nil)
+	_ s3ObjectState = (*s3ObjectLazyReadOnly)(nil)
 )
 
 type withCancelCbs struct {
@@ -251,4 +265,150 @@ func (s *s3ObjectExists) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	return s.position, nil
+}
+
+// s3ObjectLazyReadOnly represents a lazy-loaded, read-only S3 object.
+// It fetches data in ranges from S3 on-demand and caches all loaded parts.
+type s3ObjectLazyReadOnly struct {
+	withCancelCbs
+
+	obj          *Object
+	position     int64
+	totalSize    int64
+	nextFetchPos int64
+	cache        map[int64][]byte
+}
+
+func (s *s3ObjectLazyReadOnly) Read(p []byte) (n int, err error) {
+	if s.position >= s.totalSize {
+		return 0, io.EOF
+	}
+
+	remainingInFile := s.totalSize - s.position
+	if remainingInFile <= 0 {
+		return 0, io.EOF
+	}
+
+	bytesToRead := len(p)
+	if int64(bytesToRead) > remainingInFile {
+		bytesToRead = int(remainingInFile)
+	}
+
+	cachedData, ok := s.getCachedData(s.position, int64(bytesToRead))
+	if ok {
+		n = copy(p, cachedData)
+		s.position += int64(n)
+		return n, nil
+	}
+
+	// Use continuous range counter - always fetch from nextFetchPos
+	// This ensures non-overlapping, sequential S3 range requests
+	fetchStart := s.nextFetchPos
+	fetchSize := int64(bytesToRead)
+
+	// If position is beyond nextFetchPos (gap due to Seek), fill the gap
+	if s.position > s.nextFetchPos {
+		gapSize := s.position - s.nextFetchPos
+		fetchSize = gapSize + int64(bytesToRead)
+		fetchStart = s.nextFetchPos
+	}
+
+	maxFetchSize := s.totalSize - fetchStart
+	if fetchSize > maxFetchSize {
+		fetchSize = maxFetchSize
+		if fetchSize <= 0 {
+			return 0, io.EOF
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.addCallback(cancel)
+
+	data, fetchErr := s.fetchRange(ctx, fetchStart, fetchSize)
+	if fetchErr != nil {
+		return 0, fmt.Errorf("failed to fetch range %d-%d: %w", fetchStart, fetchStart+fetchSize-1, fetchErr)
+	}
+
+	// Cache the fetched data
+	s.cache[fetchStart] = data
+	// Update nextFetchPos for continuous counter
+	s.nextFetchPos = fetchStart + fetchSize
+
+	cachedData, ok = s.getCachedData(s.position, int64(bytesToRead))
+	if !ok {
+		return 0, fmt.Errorf("data not found in cache after fetching")
+	}
+
+	n = copy(p, cachedData)
+	s.position += int64(n)
+
+	return n, nil
+}
+
+func (s *s3ObjectLazyReadOnly) Write(p []byte) (n int, err error) {
+	return 0, errors.New("write not supported in lazy read-only mode")
+}
+
+func (s *s3ObjectLazyReadOnly) Close() error {
+	return nil
+}
+
+func (s *s3ObjectLazyReadOnly) Seek(offset int64, whence int) (int64, error) {
+	var newPos int64
+
+	switch whence {
+	case io.SeekStart:
+		newPos = offset
+	case io.SeekCurrent:
+		newPos = s.position + offset
+	case io.SeekEnd:
+		newPos = s.totalSize + offset
+	default:
+		return 0, directory.ErrInvalidSeek
+	}
+
+	if newPos < 0 {
+		return 0, directory.ErrInvalidSeek
+	}
+	if newPos > s.totalSize {
+		newPos = s.totalSize
+	}
+
+	s.position = newPos
+	return newPos, nil
+}
+
+func (s *s3ObjectLazyReadOnly) getCachedData(start, length int64) ([]byte, bool) {
+	// Check if the range [start, start+length) is fully cached
+	if start+length > s.nextFetchPos {
+		return nil, false
+	}
+
+	// For sequential caching, find which cache entry contains the start position
+	for cacheStart, cacheData := range s.cache {
+		cacheEnd := cacheStart + int64(len(cacheData))
+		if cacheStart <= start && cacheEnd >= start+length {
+			offset := start - cacheStart
+			return cacheData[offset : offset+length], true
+		}
+	}
+
+	return nil, false
+}
+
+func (s *s3ObjectLazyReadOnly) fetchRange(ctx context.Context, start, length int64) ([]byte, error) {
+	key := buildS3Key(s.obj.file)
+	rangeStr := fmt.Sprintf("bytes=%d-%d", start, start+length-1)
+
+	resp, err := s.obj.client.GetObject(ctx, key, func(in any) {
+		if getInput, ok := in.(*s3.GetObjectInput); ok {
+			getInput.Range = aws.String(rangeStr)
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	return io.ReadAll(resp.Body)
 }

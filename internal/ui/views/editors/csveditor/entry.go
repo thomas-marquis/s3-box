@@ -2,7 +2,6 @@ package csveditor
 
 import (
 	"errors"
-	"sync/atomic"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
@@ -19,39 +18,41 @@ var (
 	}
 )
 
+// CellEntry is a custom entry widget that can be bound to a table cell.
+// It extends widget.Entry to add binding support and custom shortcuts.
 type CellEntry struct {
 	widget.Entry
-	records  binding.List[[]string]
-	row, col int
-	val      binding.String
+	row, col   int
+	val        binding.String
+	IsReadOnly bool
 
 	OnClose, OnSave func()
+
+	dl binding.DataListener
 }
 
-func newCellEntry(records binding.List[[]string]) *CellEntry {
-	val := binding.NewString()
-	e := &CellEntry{
-		records: records,
-		val:     val,
-	}
+func newCellEntry() *CellEntry {
+	e := &CellEntry{}
+	e.Validator = nil
+	e.ExtendBaseWidget(e)
+	return e
+}
 
+// Bind binds the cell entry to a string binding.
+// The cell will display the binding's value and update it when edited.
+func (e *CellEntry) Bind(data binding.String) {
 	th := e.Theme()
 	textSize := th.Size(theme.SizeNameText)
 
-	var initialized atomic.Bool
-	initialized.Store(false)
+	// Clean up previous binding
+	if e.dl != nil && e.val != nil {
+		e.val.RemoveListener(e.dl)
+	}
 
-	val.AddListener(binding.NewDataListener(func() {
-		if !initialized.Load() {
-			initialized.Store(true)
-			return
-		}
-
-		text, err := val.Get()
+	e.val = data
+	e.dl = binding.NewDataListener(func() {
+		text, err := data.Get()
 		if err != nil {
-			return
-		}
-		if err := e.updateRecord(text); err != nil {
 			return
 		}
 		currWidth := e.Size().Width
@@ -61,18 +62,14 @@ func newCellEntry(records binding.List[[]string]) *CellEntry {
 		} else {
 			e.Scroll = fyne.ScrollNone
 		}
-	}))
-	e.Bind(val)
+	})
 
-	e.Validator = nil
-
-	e.ExtendBaseWidget(e)
-	return e
+	data.AddListener(e.dl)
 }
 
 func (e *CellEntry) TypedShortcut(s fyne.Shortcut) {
 	if sc, ok := s.(*desktop.CustomShortcut); ok {
-		if e.OnSave != nil && *sc == shortcutSave {
+		if e.OnSave != nil && !e.IsReadOnly && *sc == shortcutSave {
 			e.OnSave()
 		} else if e.OnClose != nil && *sc == shortcutQuit {
 			e.OnClose()
@@ -80,20 +77,15 @@ func (e *CellEntry) TypedShortcut(s fyne.Shortcut) {
 	}
 }
 
+func (e *CellEntry) TypedRune(r rune) {
+	if e.IsReadOnly {
+		return
+	}
+	e.Entry.TypedRune(r)
+}
+
+// UpdateCoords updates the cell's coordinate tracking.
 func (e *CellEntry) UpdateCoords(row, col int) {
 	e.row = row
 	e.col = col
-}
-
-func (e *CellEntry) updateRecord(text string) error {
-	row, err := e.records.GetValue(e.row)
-	if err != nil {
-		return err
-	}
-	if len(row) <= e.col {
-		return errOutOfBounds
-	}
-
-	row[e.col] = text
-	return nil
 }

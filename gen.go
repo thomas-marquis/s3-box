@@ -23,6 +23,9 @@ import _ "go.uber.org/mock/gomock"
 // Global
 //go:generate mockgen -package mocks_appcontext -destination mocks/context/appcontext.go github.com/thomas-marquis/s3-box/internal/ui/app/context AppContext
 
+// Infrastructure
+//go:generate mockgen -package mocks_s3client -destination mocks/infrastructure/s3client.go github.com/thomas-marquis/s3-box/internal/infrastructure/s3/s3client Client
+
 // External
 //go:generate mockgen -package mocks_fyne -destination mocks/fyne/preferences.go fyne.io/fyne/v2 Preferences
 //go:generate mockgen -package mocks_fyne -destination mocks/fyne/window.go fyne.io/fyne/v2 Window
