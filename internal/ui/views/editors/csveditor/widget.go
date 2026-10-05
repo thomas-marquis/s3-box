@@ -52,19 +52,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 
 	table := widget.NewTable(
 		func() (int, int) {
-			nbLines := w.editor.Records.Length()
-			if nbLines == 0 {
-				return 0, 0
-			}
-
-			firstLine, err := w.editor.Records.GetValue(0)
-			if err != nil {
-				return nbLines, 0
-			}
-
-			nbCols := len(firstLine)
-
-			return nbLines, nbCols
+			return w.editor.TableBinding.Dims()
 		},
 		func() fyne.CanvasObject {
 			cell := newCellEntry()
@@ -76,10 +64,13 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			cell := object.(*CellEntry)
 			cell.UpdateCoords(id.Row, id.Col)
 
-			rowData := u.SkipV(w.editor.Records.GetValue(id.Row))
-			cellData := rowData[id.Col]
+			item, err := w.editor.TableBinding.ItemAt(id.Row, id.Col)
+			if err != nil {
+				return
+			}
 
-			cell.Bind(cellData)
+			cell.Bind(item)
+			cell.Refresh()
 			cell.IsReadOnly = w.editor.IsReadOnly()
 
 			if id.Row == 0 && u.SkipV(w.editor.Paginator.HasHeader.Get()) {
@@ -92,7 +83,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 	table.HideSeparators = true
 	table.Hide()
 
-	w.editor.Records.AddListener(binding.NewDataListener(table.Refresh))
+	w.editor.TableBinding.AddListener(binding.NewDataListener(table.Refresh))
 
 	w.editor.AddListener(listenerColumnsWidthKey, func() {
 		cols, _ := w.editor.Columns.Get()

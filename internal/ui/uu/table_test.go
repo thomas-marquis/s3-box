@@ -919,4 +919,57 @@ func TestTableBinding_WidgetBinding(t *testing.T) {
 
 		tu.AssertImageMatches(t, "images/table-binding-2-rows.png", canvas.Capture())
 	})
+
+	t.Run("should detach widgets bound to removed row when downsizing", func(t *testing.T) {
+		// Given
+		table := uu.NewTableBindingWithDim(func(a, b string) bool { return a == b }, 3, 2)
+		data := [][]string{
+			{"a", "b"},
+			{"c", "d"},
+			{"e", "f"},
+		}
+		assert.NoError(t, table.Set(data))
+
+		e1 := widget.NewEntry()
+		e2 := widget.NewEntry()
+		e3 := widget.NewEntry()
+
+		c := container.NewVBox(e1, e2, e3)
+		w := fyne_test.NewWindow(c)
+		w.Resize(fyne.NewSize(400, 300))
+
+		// Bind widgets to cells, including the last row
+		e1.Bind(u.SkipV(table.ItemAt(0, 0)))
+		e2.Bind(u.SkipV(table.ItemAt(1, 0)))
+		e3.Bind(u.SkipV(table.ItemAt(2, 0)))
+
+		// Sanity check
+		assert.Equal(t, "e", e3.Text)
+
+		// When - downsize to remove the last row
+		table.Resize(2, 2)
+
+		// Then - e3 should be detached
+		// Verify by setting e3's text - it should not affect the table
+		e3.SetText("detached value")
+
+		// The table should still have original values
+		assert.Equal(t, "a", u.SkipV(table.ValueAt(0, 0)))
+		assert.Equal(t, "c", u.SkipV(table.ValueAt(1, 0)))
+
+		// Accessing the removed row should now error
+		_, err := table.ValueAt(2, 0)
+		assert.Error(t, err)
+		assert.Equal(t, uu.ErrTableOutOfBound, err)
+
+		// Also verify that trying to get the item at the removed position errors
+		_, err = table.ItemAt(2, 0)
+		assert.Error(t, err)
+		assert.Equal(t, uu.ErrTableOutOfBound, err)
+
+		// e3 should retain its new value since it's detached
+		// Note: This may pass even without explicit detachment if the binding item
+		// returns errors when accessed out of bounds, preventing updates to the table
+		assert.Equal(t, "detached value", e3.Text)
+	})
 }

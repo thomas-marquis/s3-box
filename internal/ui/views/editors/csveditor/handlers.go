@@ -17,18 +17,9 @@ func (e *Editor) handleLoaded(evt event.Event) {
 
 	e.Paginator.MarksReady(r, e.IsLazy)
 
-	// nbRows := 0
-	// // e.Paginator.Reset()
-	// for {
-	// 	record, err := r.Read()
-	// 	if err != nil {
-	// 		break
-	// 	}
-	// 	nbRows++
-	// 	e.Paginator.Append(record)
-	// }
-
-	if len(e.Paginator.Records) == 0 {
+	// Check if there's any data loaded
+	rows, cols := e.TableBinding.Dims()
+	if rows == 0 || cols == 0 {
 		return
 	}
 

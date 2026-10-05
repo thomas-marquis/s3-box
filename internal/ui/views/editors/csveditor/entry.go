@@ -18,6 +18,8 @@ var (
 	}
 )
 
+// CellEntry is a custom entry widget that can be bound to a table cell.
+// It extends widget.Entry to add binding support and custom shortcuts.
 type CellEntry struct {
 	widget.Entry
 	row, col   int
@@ -30,67 +32,29 @@ type CellEntry struct {
 }
 
 func newCellEntry() *CellEntry {
-	// val := binding.NewString()
-	e := &CellEntry{
-		// val: val,
-	}
-
-	// th := e.Theme()
-	// textSize := th.Size(theme.SizeNameText)
-
-	// var initialized atomic.Bool
-	// initialized.Store(false)
-
-	// val.AddListener(binding.NewDataListener(func() {
-	// 	if !initialized.Load() {
-	// 		initialized.Store(true)
-	// 		return
-	// 	}
-
-	// 	text, err := val.Get()
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// 	if err := e.updateRecord(text); err != nil {
-	// 		return
-	// 	}
-	// 	currWidth := e.Size().Width
-	// 	textWidth := colWidth(text, textSize)
-	// 	if textWidth > currWidth {
-	// 		e.Scroll = fyne.ScrollHorizontalOnly
-	// 	} else {
-	// 		e.Scroll = fyne.ScrollNone
-	// 	}
-	// }))
-	// e.Bind(val)
-
+	e := &CellEntry{}
 	e.Validator = nil
-
 	e.ExtendBaseWidget(e)
 	return e
 }
 
+// Bind binds the cell entry to a string binding.
+// The cell will display the binding's value and update it when edited.
 func (e *CellEntry) Bind(data binding.String) {
 	th := e.Theme()
 	textSize := th.Size(theme.SizeNameText)
 
-	if e.dl != nil {
-		data.RemoveListener(e.dl)
+	// Clean up previous binding
+	if e.dl != nil && e.val != nil {
+		e.val.RemoveListener(e.dl)
 	}
 
+	e.val = data
 	e.dl = binding.NewDataListener(func() {
-		// if !initialized.Load() {
-		// 	initialized.Store(true)
-		// 	return
-		// }
-
 		text, err := data.Get()
 		if err != nil {
 			return
 		}
-		// if err := e.updateRecord(text); err != nil {
-		// 	return
-		// }
 		currWidth := e.Size().Width
 		textWidth := colWidth(text, textSize)
 		if textWidth > currWidth {
@@ -110,8 +74,6 @@ func (e *CellEntry) TypedShortcut(s fyne.Shortcut) {
 		} else if e.OnClose != nil && *sc == shortcutQuit {
 			e.OnClose()
 		}
-
-		// TODO: disable paste shortcut when read only is true
 	}
 }
 
@@ -122,20 +84,8 @@ func (e *CellEntry) TypedRune(r rune) {
 	e.Entry.TypedRune(r)
 }
 
+// UpdateCoords updates the cell's coordinate tracking.
 func (e *CellEntry) UpdateCoords(row, col int) {
 	e.row = row
 	e.col = col
 }
-
-// func (e *CellEntry) updateRecord(text string) error {
-// 	row, err := e.records.GetValue(e.row)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if len(row) <= e.col {
-// 		return errOutOfBounds
-// 	}
-
-// 	row[e.col] = text
-// 	return nil
-// }

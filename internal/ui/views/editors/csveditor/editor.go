@@ -19,6 +19,7 @@ import (
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/u"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 )
 
 const (
@@ -45,11 +46,11 @@ type Editor struct {
 	// For example, for binding.List, the event listeners are triggered only if the list size has changed...
 	dataListeners map[string]func()
 
-	Records   binding.List[[]binding.String]
-	Columns   binding.List[ColWidth]
-	Paginator *Paginator
-	IsLazy    bool
-	PageLabel binding.String
+	TableBinding *uu.TableBinding[string]
+	Columns      binding.List[ColWidth]
+	Paginator    *Paginator
+	IsLazy       bool
+	PageLabel    binding.String
 }
 
 func New(bus event.Bus, w fyne.Window, file *directory.File) editor.Editor {
@@ -66,23 +67,15 @@ func newEditor(bus event.Bus, w fyne.Window, file *directory.File) *Editor {
 	ed := &Editor{
 		PageLabel: binding.NewString(),
 		Base:      editor.NewBase(bus, w, file),
-		Records: binding.NewList[[]binding.String](func(r1, r2 []binding.String) bool {
-			if len(r1) != len(r2) {
-				return false
-			}
-			for i := range len(r1) {
-				if u.SkipV(r1[i].Get()) != u.SkipV(r2[i].Get()) {
-					return false
-				}
-			}
-			return true
+		TableBinding: uu.NewTableBinding[string](func(a, b string) bool {
+			return a == b
 		}),
 		Columns: binding.NewList(func(c1, c2 ColWidth) bool {
 			return cmp.Compare(c1, c2) == 0
 		}),
 		dataListeners: make(map[string]func()),
 	}
-	ed.Paginator = NewCsvPaginator(ed.Records)
+	ed.Paginator = NewCsvPaginator(ed.TableBinding)
 	ed.Paginator.HasHeader.AddListener(binding.NewDataListener(ed.updateColumnsWidth))
 
 	ed.ExtendBaseEditor(ed)
@@ -138,11 +131,19 @@ func (e *Editor) PrevPage() {
 }
 
 func (e *Editor) UpdatePageLabel() {
-	u.Skip(
-		e.PageLabel.Set(
-			fmt.Sprintf("%d / %d", e.Paginator.PageNumber(), e.Paginator.TotalPages())),
-	)
-
+	totalPages := e.Paginator.TotalPages()
+	if totalPages < 0 {
+		// Lazy loading: total pages unknown
+		u.Skip(
+			e.PageLabel.Set(
+				fmt.Sprintf("%d / ?", e.Paginator.PageNumber())),
+		)
+	} else {
+		u.Skip(
+			e.PageLabel.Set(
+				fmt.Sprintf("%d / %d", e.Paginator.PageNumber(), totalPages)),
+		)
+	}
 }
 
 func (e *Editor) Save() {
@@ -225,19 +226,24 @@ func (e *Editor) HasChanged() bool {
 }
 
 func (e *Editor) GetContent() string {
-	if len(e.Paginator.Records) == 0 {
+	rows, cols := e.TableBinding.Dims()
+	if rows == 0 || cols == 0 {
 		return ""
 	}
 
 	builder := strings.Builder{}
-	for i, row := range e.Paginator.Records {
-		for j, cell := range row {
-			builder.WriteString(cell)
-			if j < len(row)-1 {
+	for i := range rows{
+		for j := range cols {
+			val, err := e.TableBinding.ValueAt(i, j)
+			if err != nil {
+				return ""
+			}
+			builder.WriteString(val)
+			if j < cols-1 {
 				builder.WriteString(sep)
 			}
 		}
-		if i < len(e.Paginator.Records)-1 {
+		if i < rows-1 {
 			builder.WriteString("\n")
 		}
 	}
@@ -257,32 +263,41 @@ func (e *Editor) updateContentHash(newContent string) {
 }
 
 func (e *Editor) updateColumnsWidth() {
-	if len(e.Paginator.Records) == 0 {
+	rows, cols := e.TableBinding.Dims()
+	if rows == 0 || cols == 0 {
 		return
 	}
 	th := fyne.CurrentApp().Settings().Theme()
 	textSize := th.Size(theme.SizeNameText)
 
-	firstVisibleRow := e.Paginator.Records[e.Paginator.CurrentIndex()]
-	nbCols := len(firstVisibleRow)
 	var colWidths []ColWidth
 	hasHeader := u.SkipV(e.Paginator.HasHeader.Get())
-	for i := range nbCols {
+
+	// Calculate column widths based on all visible rows
+	for i := 0; i < cols; i++ {
 		col := colMinWidth
-		if hasHeader {
-			row := e.Paginator.Records[0]
-			cw := colWidth(row[i], textSize)
-			col = ColWidth(cw)
-			if col >= colMaxWidth {
-				col = colMaxWidth
+		
+		// Check all rows in the current table (which has been resized to current page)
+		for j := 0; j < rows; j++ {
+			// Check if this is the header row
+			isHeaderRow := hasHeader && j == 0
+			
+			val, err := e.TableBinding.ValueAt(j, i)
+			if err != nil {
+				continue
 			}
-		}
-		for j := range e.Paginator.CurrentPageSize() {
-			row := e.Paginator.Records[e.Paginator.CurrentIndex()+j]
-			cw := colWidth(row[i], textSize)
-			if float32(col) < cw-cellPadding {
+			cw := colWidth(val, textSize)
+			
+			// For header row, use it as-is
+			if isHeaderRow {
 				col = ColWidth(cw)
+			} else {
+				// For data rows, compare with current max
+				if float32(col) < cw-cellPadding {
+				col = ColWidth(cw)
+				}
 			}
+			
 			if col >= colMaxWidth {
 				col = colMaxWidth
 				break
