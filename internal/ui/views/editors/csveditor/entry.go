@@ -34,6 +34,7 @@ type CellEntry struct {
 func newCellEntry() *CellEntry {
 	e := &CellEntry{}
 	e.Validator = nil
+	e.AlwaysShowValidationError = false
 	e.ExtendBaseWidget(e)
 	return e
 }
@@ -47,6 +48,7 @@ func (e *CellEntry) Bind(data binding.String) {
 	// Clean up previous binding
 	if e.dl != nil && e.val != nil {
 		e.val.RemoveListener(e.dl)
+		e.Entry.Unbind()
 	}
 
 	e.val = data
@@ -65,6 +67,8 @@ func (e *CellEntry) Bind(data binding.String) {
 	})
 
 	data.AddListener(e.dl)
+	e.Entry.Bind(data)
+	e.Validator = nil
 }
 
 func (e *CellEntry) TypedShortcut(s fyne.Shortcut) {

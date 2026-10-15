@@ -70,7 +70,6 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 			}
 
 			cell.Bind(item)
-			cell.Refresh()
 			cell.IsReadOnly = w.editor.IsReadOnly()
 
 			if id.Row == 0 && u.SkipV(w.editor.Paginator.HasHeader.Get()) {
@@ -83,7 +82,9 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 	table.HideSeparators = true
 	table.Hide()
 
-	w.editor.TableBinding.AddListener(binding.NewDataListener(table.Refresh))
+	w.editor.TableBinding.AddListener(binding.NewDataListener(func() {
+		table.Refresh()
+	}))
 
 	w.editor.AddListener(listenerColumnsWidthKey, func() {
 		cols, _ := w.editor.Columns.Get()
@@ -146,7 +147,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 
 	prevBtn = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), func() {
 		w.editor.PrevPage()
-		if w.editor.Paginator.CurrentIndex() == 0 {
+		if w.editor.Paginator.PageNumber == 1 {
 			prevBtn.Disable()
 		}
 		if w.editor.Paginator.HasNext() {
@@ -159,7 +160,7 @@ func (w *Widget) CreateRenderer() fyne.WidgetRenderer {
 		if !w.editor.NextPage() {
 			nextBtn.Disable()
 		}
-		if w.editor.Paginator.CurrentIndex() > 0 {
+		if w.editor.Paginator.PageNumber > 1 {
 			prevBtn.Enable()
 		}
 	})

@@ -18,8 +18,8 @@ import (
 	"github.com/thomas-marquis/it-happened/event"
 	"github.com/thomas-marquis/s3-box/internal/domain/directory"
 	"github.com/thomas-marquis/s3-box/internal/u"
-	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 	"github.com/thomas-marquis/s3-box/internal/ui/uu"
+	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/editor"
 )
 
 const (
@@ -118,7 +118,7 @@ func (e *Editor) NextPage() bool {
 }
 
 func (e *Editor) PrevPage() {
-	if e.Paginator.CurrentIndex() == 0 {
+	if e.Paginator.PageNumber == 1 {
 		return
 	}
 
@@ -136,12 +136,12 @@ func (e *Editor) UpdatePageLabel() {
 		// Lazy loading: total pages unknown
 		u.Skip(
 			e.PageLabel.Set(
-				fmt.Sprintf("%d / ?", e.Paginator.PageNumber())),
+				fmt.Sprintf("%d / ?", e.Paginator.PageNumber)),
 		)
 	} else {
 		u.Skip(
 			e.PageLabel.Set(
-				fmt.Sprintf("%d / %d", e.Paginator.PageNumber(), totalPages)),
+				fmt.Sprintf("%d / %d", e.Paginator.PageNumber, totalPages)),
 		)
 	}
 }
@@ -232,7 +232,7 @@ func (e *Editor) GetContent() string {
 	}
 
 	builder := strings.Builder{}
-	for i := range rows{
+	for i := range rows {
 		for j := range cols {
 			val, err := e.TableBinding.ValueAt(i, j)
 			if err != nil {
@@ -276,28 +276,28 @@ func (e *Editor) updateColumnsWidth() {
 	// Calculate column widths based on all visible rows
 	for i := 0; i < cols; i++ {
 		col := colMinWidth
-		
+
 		// Check all rows in the current table (which has been resized to current page)
 		for j := 0; j < rows; j++ {
 			// Check if this is the header row
 			isHeaderRow := hasHeader && j == 0
-			
+
 			val, err := e.TableBinding.ValueAt(j, i)
 			if err != nil {
 				continue
 			}
 			cw := colWidth(val, textSize)
-			
+
 			// For header row, use it as-is
 			if isHeaderRow {
 				col = ColWidth(cw)
 			} else {
 				// For data rows, compare with current max
 				if float32(col) < cw-cellPadding {
-				col = ColWidth(cw)
+					col = ColWidth(cw)
 				}
 			}
-			
+
 			if col >= colMaxWidth {
 				col = colMaxWidth
 				break
