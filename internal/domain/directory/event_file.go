@@ -83,6 +83,7 @@ const (
 type LoadFileTriggered struct {
 	File         *File
 	ConnectionID connection_deck.ConnectionID
+	Lazy         bool
 }
 
 func (e LoadFileTriggered) EventType() event.Type {

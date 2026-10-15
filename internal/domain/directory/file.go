@@ -129,6 +129,14 @@ func (f *File) Load(connId connection_deck.ConnectionID, opts ...event.Option) e
 	}, opts...)
 }
 
+func (f *File) LazyLoad(connId connection_deck.ConnectionID, opts ...event.Option) event.Event {
+	return event.New(LoadFileTriggered{
+		File:         f,
+		ConnectionID: connId,
+		Lazy:         true,
+	}, opts...)
+}
+
 // Rename changes the name of the file.
 // Returns an error if the new name is invalid.
 func (f *File) Rename(newName string) (event.Event, error) {

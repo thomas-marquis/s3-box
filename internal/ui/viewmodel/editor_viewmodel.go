@@ -106,7 +106,12 @@ func (v *editorViewModelImpl) Open(file *directory.File) (editor.Editor, error) 
 	})
 
 	connID := u.SkipV(v.state.Connection().Selected().Get()).ID()
-	loadEvt := file.Load(connID, event.WithContext(ctx))
+	var loadEvt event.Event
+	if factory.Capabilities().Editable {
+		loadEvt = file.Load(connID, event.WithContext(ctx))
+	} else {
+		loadEvt = file.LazyLoad(connID, event.WithContext(ctx))
+	}
 	v.bus.Publish(loadEvt)
 
 	return e, nil

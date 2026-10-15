@@ -167,6 +167,7 @@ func (v *settingsViewModelImpl) loadEditorMappings() {
 	defaultEditors := []editor.Factory{
 		&texteditor.Factory{},
 		&csveditor.Factory{},
+		&csveditor.FactoryRO{},
 		&imgviewer.Factory{},
 	}
 

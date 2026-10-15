@@ -1,232 +1,246 @@
 package csveditor_test
 
 import (
-	"slices"
+	"encoding/csv"
+	"strings"
 	"testing"
 
-	"fyne.io/fyne/v2/data/binding"
 	fyne_test "fyne.io/fyne/v2/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thomas-marquis/s3-box/internal/u"
+	"github.com/thomas-marquis/s3-box/internal/ui/uu"
 	"github.com/thomas-marquis/s3-box/internal/ui/views/editors/csveditor"
 )
 
-type paginatorFixture struct {
-	t       *testing.T
-	Binding binding.List[[]string]
-	P       *csveditor.Paginator
-}
+const csvContent16Rows = `id,name,age
+0,Kate,22
+1,Alice,30
+2,Bob,25
+3,Charlie,35
+4,Pierre,40
+5,Sarah,28
+6,John,32
+7,Gabriel,29
+8,Eve,31
+9,Lucas,27
+10,Ursula,33
+11,Victor,26
+12,Wendy,34
+13,Xavier,24
+14,Yasmine,23
+15,Zachary,21`
 
-func setupPaginator(t *testing.T, pageSize int) *paginatorFixture {
+func setupPaginator(t *testing.T, pageSize int) *csveditor.Paginator {
 	t.Helper()
 	fyne_test.NewApp()
-	bound := binding.NewList[[]string](slices.Equal)
-	p := csveditor.NewCsvPaginator(bound)
+	tableBinding := uu.NewTableBinding[string](func(a, b string) bool { return a == b })
+	p := csveditor.NewCsvPaginator(tableBinding)
 	p.PageSize = pageSize
-
-	return &paginatorFixture{
-		t:       t,
-		Binding: bound,
-		P:       p,
-	}
+	return p
 }
 
 func TestPaginator(t *testing.T) {
 	t.Run("should initialize with default values", func(t *testing.T) {
 		// Given
 		fyne_test.NewApp()
-		bound := binding.NewList[[]string](slices.Equal)
+		tableBinding := uu.NewTableBinding[string](func(a, b string) bool { return a == b })
 
 		// When
-		p := csveditor.NewCsvPaginator(bound)
+		p := csveditor.NewCsvPaginator(tableBinding)
 
 		// Then
 		assert.Equal(t, 10, p.PageSize)
-		assert.Equal(t, 0, p.CurrentIndex())
-		assert.Empty(t, p.Records)
-	})
-
-	t.Run("should display the first row on page 2 when HasHeader has been switched to true", func(t *testing.T) {
-		// Given
-		fxt := setupPaginator(t, 3)
-
-		fxt.P.Append([]string{"row1", "col2"}) // 0 | P1 | (H) p1 -> header row
-		fxt.P.Append([]string{"row2", "col2"}) // 1 | P1 | (H) p1
-		fxt.P.Append([]string{"row3", "col2"}) // 2 | P1 | (H) p1
-		fxt.P.Append([]string{"row4", "col2"}) // 3 | P2 | (H) p2
-		fxt.P.Append([]string{"row5", "col2"}) // 4 | P2 | (H) p2
-		fxt.P.Append([]string{"row6", "col2"}) // 5 | P2 | (H) p3
-		fxt.P.Append([]string{"row7", "col2"}) // 6 | P3 | (H) p3
-		fxt.P.Append([]string{"row8", "col2"}) // 7 | P3 | (H) p4
-
-		// (H) SIh = (SI-[PI-1~PI>2])
-		// (H) PSh = PS-1
-
-		// When - page 2
-		fxt.P.Next()
-
-		// When - page 2, enable headers
-		u.Skip(fxt.P.HasHeader.Set(true))
-
-		// Then
-		records := u.SkipV(fxt.Binding.Get())
-		assert.Len(t, records, 3)
-		assert.Equal(t, []string{"row1", "col2"}, records[0])
-		assert.Equal(t, []string{"row4", "col2"}, records[1])
-		assert.Equal(t, []string{"row5", "col2"}, records[2])
-
-		// When - page 3
-		fxt.P.Next()
-
-		// Then
-		records = u.SkipV(fxt.Binding.Get())
-		assert.Len(t, records, 3)
-		assert.Equal(t, []string{"row1", "col2"}, records[0])
-		assert.Equal(t, []string{"row6", "col2"}, records[1])
-		assert.Equal(t, []string{"row7", "col2"}, records[2])
-
-		// When - page 3, disable headers
-		u.Skip(fxt.P.HasHeader.Set(false))
-
-		// Then
-		records = u.SkipV(fxt.Binding.Get())
-		assert.Len(t, records, 2)
-		assert.Equal(t, []string{"row7", "col2"}, records[0])
-		assert.Equal(t, []string{"row8", "col2"}, records[1])
-
-		// When - enable header, page 4
-		u.Skip(fxt.P.HasHeader.Set(true))
-		fxt.P.Next()
-
-		// Then
-		records = u.SkipV(fxt.Binding.Get())
-		assert.Len(t, records, 2)
-		assert.Equal(t, []string{"row1", "col2"}, records[0])
-		assert.Equal(t, []string{"row8", "col2"}, records[1])
+		assert.Equal(t, 1, p.PageNumber)
+		assert.False(t, u.SkipV(p.HasHeader.Get()))
 	})
 }
 
-func TestPaginator_Append(t *testing.T) {
-	t.Run("should add records and populate first page", func(t *testing.T) {
+func TestPaginator_MarksReady(t *testing.T) {
+	t.Run("eager: should load all CSV data into table binding", func(t *testing.T) {
 		// Given
-		fxt := setupPaginator(t, 2)
+		fyne_test.NewApp()
+		tableBinding := uu.NewTableBinding(func(a, b string) bool { return a == b })
+		p := csveditor.NewCsvPaginator(tableBinding)
 
 		// When
-		fxt.P.Append([]string{"row1", "col2"})
-		fxt.P.Append([]string{"row2", "col2"})
+		p.MarksReady(csv.NewReader(strings.NewReader(csvContent16Rows)), false)
 
 		// Then
-		assert.Len(t, fxt.P.Records, 2)
-		assert.Equal(t, csveditor.Record{"row1", "col2"}, fxt.P.Records[0])
+		rows, cols := tableBinding.Dims()
+		assert.Equal(t, 10, rows, "Should have 10 rows (default page size)")
+		assert.Equal(t, 3, cols, "Should have 3 columns")
 
-		records, _ := fxt.Binding.Get()
-		require.Len(t, records, 2)
-		assert.Equal(t, []string{"row1", "col2"}, records[0])
-		assert.Equal(t, []string{"row2", "col2"}, records[1])
+		val, err := tableBinding.ValueAt(0, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, "id", val)
+
+		val, err = tableBinding.ValueAt(0, 1)
+		assert.NoError(t, err)
+		assert.Equal(t, "name", val)
+
+		val, err = tableBinding.ValueAt(0, 2)
+		assert.NoError(t, err)
+		assert.Equal(t, "age", val)
+
+		val, err = tableBinding.ValueAt(1, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, "0", val)
+
+		val, err = tableBinding.ValueAt(1, 1)
+		assert.NoError(t, err)
+		assert.Equal(t, "Kate", val)
+
+		val, err = tableBinding.ValueAt(1, 2)
+		assert.NoError(t, err)
+		assert.Equal(t, "22", val)
+
+		assert.True(t, p.HasNext(), "Should have next page")
 	})
 
-	t.Run("should update bound list gracefully when not on first page", func(t *testing.T) {
+	t.Run("lazy: should load first page", func(t *testing.T) {
 		// Given
-		fxt := setupPaginator(t, 2)
-		fxt.P.Append([]string{"1", "a"})
-		fxt.P.Append([]string{"2", "b"})
-		fxt.P.Append([]string{"3", "c"})
-		fxt.P.Next() // Should be on second page showing ["3", "c"]
+		fyne_test.NewApp()
+		tableBinding := uu.NewTableBinding(func(a, b string) bool { return a == b })
+		p := csveditor.NewCsvPaginator(tableBinding)
 
 		// When
-		fxt.P.Append([]string{"4", "d"})
+		p.MarksReady(csv.NewReader(strings.NewReader(csvContent16Rows)), true)
 
 		// Then
-		assert.Equal(t, 2, fxt.P.CurrentIndex())
-		records, _ := fxt.Binding.Get()
-		require.Len(t, records, 2)
-		assert.Equal(t, []string{"3", "c"}, records[0])
-		assert.Equal(t, []string{"4", "d"}, records[1])
+		rows, cols := tableBinding.Dims()
+		assert.Equal(t, 10, rows, "Should have 10 rows (default page size)")
+		assert.Equal(t, 3, cols, "Should have 3 columns")
+
+		val, err := tableBinding.ValueAt(0, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, "id", val)
+
+		val, err = tableBinding.ValueAt(0, 1)
+		assert.NoError(t, err)
+		assert.Equal(t, "name", val)
+
+		val, err = tableBinding.ValueAt(0, 2)
+		assert.NoError(t, err)
+		assert.Equal(t, "age", val)
+
+		val, err = tableBinding.ValueAt(1, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, "0", val)
+
+		val, err = tableBinding.ValueAt(1, 1)
+		assert.NoError(t, err)
+		assert.Equal(t, "Kate", val)
+
+		val, err = tableBinding.ValueAt(1, 2)
+		assert.NoError(t, err)
+		assert.Equal(t, "22", val)
+
+		assert.True(t, p.HasNext(), "Should have next page")
+	})
+
+	t.Run("lazy: TotalPages should return -1", func(t *testing.T) {
+		// Given
+		fyne_test.NewApp()
+		tableBinding := uu.NewTableBinding[string](func(a, b string) bool { return a == b })
+		p := csveditor.NewCsvPaginator(tableBinding)
+		csvContent := "name,age\nAlice,30"
+
+		// When
+		p.MarksReady(csv.NewReader(strings.NewReader(csvContent)), true)
+
+		// Then
+		assert.Equal(t, -1, p.TotalPages(), "Lazy loading should return -1 for total pages")
 	})
 }
 
 func TestPaginator_Next(t *testing.T) {
-	t.Run("should return false and not increment when on the last page", func(t *testing.T) {
-		// Given
-		fxt := setupPaginator(t, 2)
-		fxt.P.Append([]string{"1", "a"})
-		fxt.P.Append([]string{"2", "b"})
+	fyne_test.NewApp()
 
-		// When
-		res := fxt.P.Next()
+	for _, tc := range []struct {
+		name string
+		lazy bool
+	}{
+		{"eager", false},
+		{"lazy", true},
+	} {
+		t.Run(tc.name+": should return false when no more pages without header", func(t *testing.T) {
+			// Given
+			p := setupPaginator(t, 17)
+			p.MarksReady(csv.NewReader(strings.NewReader(csvContent16Rows)), tc.lazy)
 
-		// Then
-		assert.False(t, res, "Next should return false when no more pages")
-		assert.Equal(t, 0, fxt.P.CurrentIndex(), "CurrentIndex should not have changed")
-	})
+			// When
+			res := p.Next()
 
-	t.Run("should return false when the last page is reached", func(t *testing.T) {
-		// Given
-		fxt := setupPaginator(t, 2)
-		fxt.P.Append([]string{"1", "a"})
-		fxt.P.Append([]string{"2", "b"})
-		fxt.P.Append([]string{"3", "c"})
-		fxt.P.Append([]string{"4", "d"})
+			// Then
+			assert.False(t, res, "Next should return true when more data is available")
+			assert.Equal(t, 1, p.PageNumber)
+		})
 
-		// When
-		res := fxt.P.Next()
+		t.Run(tc.name+": should return true then false when at end", func(t *testing.T) {
+			// Given
+			p := setupPaginator(t, 6)
+			p.MarksReady(csv.NewReader(strings.NewReader(csvContent16Rows)), tc.lazy)
 
-		// Then
-		assert.False(t, res, "Next should return false on the last page")
-		assert.Equal(t, 2, fxt.P.CurrentIndex(), "CurrentIndex should not have changed")
-	})
+			// When & Then
+			res := p.Next()
+			assert.True(t, res, "should have a page 3")
+			assert.Equal(t, 2, p.PageNumber)
 
-	t.Run("should update the bound list and increment index", func(t *testing.T) {
-		// Given
-		fxt := setupPaginator(t, 1)
-		fxt.P.Append([]string{"1", "a"})
-		fxt.P.Append([]string{"2", "b"})
+			res = p.Next()
+			assert.False(t, res, "should not have a page 4")
+			assert.Equal(t, 3, p.PageNumber)
+		})
+	}
 
-		// When
-		res := fxt.P.Next()
-
-		// Then
-		assert.False(t, res)
-		assert.Equal(t, 1, fxt.P.CurrentIndex())
-
-		records, _ := fxt.Binding.Get()
-		require.Len(t, records, 1)
-		assert.Equal(t, []string{"2", "b"}, records[0])
-	})
 }
 
 func TestPaginator_Prev(t *testing.T) {
-	t.Run("should return false and not decrement when on the first page", func(t *testing.T) {
-		// Given
-		fxt := setupPaginator(t, 2)
-		fxt.P.Append([]string{"1", "a"})
-		fxt.P.Append([]string{"2", "b"})
+	fyne_test.NewApp()
 
-		// When
-		res := fxt.P.Prev()
+	for _, tc := range []struct {
+		name string
+		lazy bool
+	}{
+		{"eager", false},
+		{"lazy", true},
+	} {
+		t.Run(tc.name+": should return false on first page", func(t *testing.T) {
+			// Given
+			p := setupPaginator(t, 1)
+			csvContent := "a,b\nc,d"
+			p.MarksReady(csv.NewReader(strings.NewReader(csvContent)), tc.lazy)
 
-		// Then
-		assert.False(t, res, "Prev should return false when on the first page")
-		assert.Equal(t, 0, fxt.P.CurrentIndex(), "CurrentIndex should not have changed")
-	})
+			// When
+			res := p.Prev()
 
-	t.Run("should update the bound list and decrement index", func(t *testing.T) {
-		// Given
-		fxt := setupPaginator(t, 1)
-		fxt.P.Append([]string{"1", "a"})
-		fxt.P.Append([]string{"2", "b"})
-		fxt.P.Next() // Go to second page
+			// Then
+			assert.False(t, res)
+			assert.Equal(t, 1, p.PageNumber)
+		})
 
-		// When
-		res := fxt.P.Prev()
+		t.Run(tc.name+": should go to previous page", func(t *testing.T) {
+			// Given
+			p := setupPaginator(t, 6)
+			p.MarksReady(csv.NewReader(strings.NewReader(csvContent16Rows)), tc.lazy)
 
-		// Then
-		assert.True(t, res)
-		assert.Equal(t, 0, fxt.P.CurrentIndex())
+			require.True(t, p.Next())
+			require.Equal(t, 2, p.PageNumber)
 
-		records, _ := fxt.Binding.Get()
-		require.Len(t, records, 1)
-		assert.Equal(t, []string{"1", "a"}, records[0])
-	})
+			// When
+			res := p.Prev()
+
+			// Then
+			// For eager mode: Prev should work and return false (no more previous pages)
+			// For lazy mode: Prev is not supported, so it returns false and doesn't change page
+			assert.False(t, res)
+			if tc.lazy {
+				// In lazy mode, Prev doesn't work, so page number stays the same
+				assert.Equal(t, 2, p.PageNumber)
+			} else {
+				// In eager mode, Prev works, so page number changes
+				assert.Equal(t, 1, p.PageNumber)
+			}
+		})
+	}
 }
