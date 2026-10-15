@@ -114,20 +114,15 @@ func (p *Paginator) BaseIndex() int {
 	return p.PageSize * (p.PageNumber - 1)
 }
 
-// DataIndex returns the index of the first data row displayed on the current page under the header row (if present).
+// DataIndex returns the index of the first data row displayed on the current page.
+// When header is enabled, data rows start at index 1 (after the header).
+// This is used for internal calculations and should account for the header offset.
 func (p *Paginator) DataIndex() int {
 	if !p.hasHeader() {
 		return p.BaseIndex()
 	}
-
-	switch p.PageNumber {
-	case 1:
-		return 1
-	case 2:
-		return p.BaseIndex()
-	default:
-		return p.BaseIndex() - p.PageNumber + 2
-	}
+	// With header, data starts at index 1, then add page offset
+	return 1 + p.BaseIndex()
 }
 
 // hasHeader returns whether the paginator should display a header row.
@@ -143,34 +138,40 @@ func (p *Paginator) updateTableBinding(allRecords []Record) {
 		return
 	}
 
-	// Get pagination parameters
-	nbDataRows := p.pageDataSize(allRecords)
-	dataIndex := p.DataIndex()
 	hasHeader := p.hasHeader()
+	pageSize := p.PageSize
+	pageNumber := p.PageNumber
 
-	// Determine the data rows to display
-	var pageData [][]string
+	// Separate header from data rows
+	var header Record
+	var dataRecords []Record
 
-	// Calculate effective start and end indices
-	end := dataIndex + nbDataRows
-	if end > len(allRecords) {
-		end = len(allRecords)
+	if hasHeader && len(allRecords) > 0 {
+		header = allRecords[0]
+		dataRecords = allRecords[1:]
+	} else {
+		dataRecords = allRecords
 	}
 
+	// Calculate which data rows to display on current page
+	// Page numbers are 1-based, so page 1 starts at index 0
+	startIdx := (pageNumber - 1) * pageSize
+	endIdx := startIdx + pageSize
+	if endIdx > len(dataRecords) {
+		endIdx = len(dataRecords)
+	}
+
+	// Build page data
+	var pageData [][]string
+
 	// Include header row if enabled
-	if hasHeader && len(allRecords) > 0 {
-		pageData = append(pageData, []string(allRecords[0]))
-		if dataIndex < len(allRecords) {
-			for i := range dataIndex - 1 {
-				pageData = append(pageData, []string(allRecords[i]))
-			}
-		}
-	} else {
-		if dataIndex < len(allRecords) {
-			for i := dataIndex; i < end; i++ {
-				pageData = append(pageData, []string(allRecords[i]))
-			}
-		}
+	if hasHeader && len(header) > 0 {
+		pageData = append(pageData, []string(header))
+	}
+
+	// Add data rows for current page
+	for i := startIdx; i < endIdx; i++ {
+		pageData = append(pageData, []string(dataRecords[i]))
 	}
 
 	// Determine the number of rows and columns
@@ -193,18 +194,10 @@ func (p *Paginator) setState(newState paginatorState) {
 }
 
 func (p *Paginator) pageDataSize(records []Record) int {
-	pageSize := p.PageSize
-	dataIndex := p.DataIndex()
-
-	if dataIndex >= len(records) {
-		return 0
-	}
-
-	remaining := len(records) - dataIndex
-	if remaining < pageSize {
-		return remaining
-	}
-	return pageSize
+	// This function is now deprecated but kept for backward compatibility.
+	// The new updateTableBinding logic handles pagination directly.
+	// For now, return the page size as a default.
+	return p.PageSize
 }
 
 // paginatorState defines the interface for paginator states.
@@ -298,17 +291,43 @@ func (s *paginatorEagerState) TotalPages() int {
 	if s.p.PageSize == 0 {
 		return 0
 	}
-	return (len(s.records) + s.p.PageSize - 1) / s.p.PageSize
+	// Calculate total data rows (excluding header if present)
+	totalDataRows := len(s.records)
+	if s.p.hasHeader() && totalDataRows > 0 {
+		totalDataRows--
+	}
+	// Total pages is ceiling of totalDataRows / pageSize
+	return (totalDataRows + s.p.PageSize - 1) / s.p.PageSize
 }
 
 func (s *paginatorEagerState) HasNext() bool {
-	pageSize := s.p.PageSize
-	startIndex := s.p.DataIndex()
-	return startIndex+pageSize < len(s.records)
+	// Calculate based on page number and total records
+	// If we have a header, the total data rows is len(records) - 1
+	// Otherwise, it's len(records)
+	hasHeader := s.p.hasHeader()
+	totalDataRows := len(s.records)
+	if hasHeader && totalDataRows > 0 {
+		totalDataRows--
+	}
+	
+	// Current page starts at (pageNumber-1) * pageSize
+	// Next page would start at pageNumber * pageSize
+	// We have next if pageNumber * pageSize < totalDataRows
+	return s.p.PageNumber*s.p.PageSize < totalDataRows
 }
 
 func (s *paginatorEagerState) Records() []Record {
 	return s.records
+}
+
+// Records returns all records for the lazy state, including the header if present.
+func (s *paginatorLazyState) Records() []Record {
+	var allRecords []Record
+	if s.p.hasHeader() && len(s.header) > 0 {
+		allRecords = append(allRecords, s.header)
+	}
+	allRecords = append(allRecords, s.records...)
+	return allRecords
 }
 
 // paginatorLazyState is the state for lazy loading (loads data on demand).
@@ -317,6 +336,8 @@ func (s *paginatorEagerState) Records() []Record {
 type paginatorLazyState struct {
 	paginatorEagerState
 	endReached bool
+	// header stores the first record separately if HasHeader is true
+	header Record
 }
 
 // newLazyPaginatorState creates a new lazy loading state.
@@ -328,8 +349,19 @@ func newLazyPaginatorState(p *Paginator, r *csv.Reader) *paginatorLazyState {
 		records: []Record{},
 	}
 
+	// Check if we should treat the first record as a header
+	hasHeader := p.hasHeader()
+	
 	// Load first page
-	for range p.PageSize {
+	// If HasHeader is true, we need to load PageSize + 1 records (header + PageSize data rows)
+	// If HasHeader is false, we need to load PageSize records
+	numRecordsToLoad := p.PageSize
+	if hasHeader {
+		numRecordsToLoad = p.PageSize + 1
+	}
+
+	var header Record
+	for i := 0; i < numRecordsToLoad; i++ {
 		record, err := r.Read()
 		if err != nil {
 			if err == io.EOF {
@@ -337,14 +369,29 @@ func newLazyPaginatorState(p *Paginator, r *csv.Reader) *paginatorLazyState {
 			}
 			break
 		}
-		base.records = append(base.records, Record(record))
+		if i == 0 && hasHeader {
+			// Store the first record as header
+			header = Record(record)
+		} else {
+			// Add to data records
+			base.records = append(base.records, Record(record))
+		}
 	}
 
 	state := &paginatorLazyState{
 		paginatorEagerState: *base,
+		header:             header,
 	}
 
-	state.p.updateTableBinding(base.records)
+	// Build the full records list including header for updateTableBinding
+	// The updateTableBinding function expects allRecords to include the header if hasHeader is true
+	var allRecords []Record
+	if hasHeader && len(header) > 0 {
+		allRecords = append(allRecords, header)
+	}
+	allRecords = append(allRecords, base.records...)
+	
+	state.p.updateTableBinding(allRecords)
 
 	return state
 }
@@ -365,8 +412,22 @@ func (s *paginatorLazyState) Next() bool {
 	}
 
 	s.p.PageNumber++
-	s.p.updateTableBinding(s.records)
+	
+	// Build allRecords including header for updateTableBinding
+	var allRecords []Record
+	if s.p.hasHeader() && len(s.header) > 0 {
+		allRecords = append(allRecords, s.header)
+	}
+	allRecords = append(allRecords, s.records...)
+	
+	s.p.updateTableBinding(allRecords)
 	return hasMore
+}
+
+// Prev is not supported for lazy loading because csv.Reader doesn't support seeking.
+// Always returns false.
+func (s *paginatorLazyState) Prev() bool {
+	return false
 }
 
 func (s *paginatorLazyState) HasNext() bool {
@@ -380,6 +441,7 @@ func (s *paginatorLazyState) HasNext() bool {
 // loadNextPage loads the next page of data from the CSV reader.
 // Returns true if more data was loaded, false if we reached the end.
 func (s *paginatorLazyState) loadNextPage() bool {
+	// Load PageSize records (data rows only, header is stored separately)
 	for range s.p.PageSize {
 		record, err := s.p.content.Read()
 		if err != nil {

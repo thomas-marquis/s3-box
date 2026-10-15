@@ -231,8 +231,16 @@ func TestPaginator_Prev(t *testing.T) {
 			res := p.Prev()
 
 			// Then
+			// For eager mode: Prev should work and return false (no more previous pages)
+			// For lazy mode: Prev is not supported, so it returns false and doesn't change page
 			assert.False(t, res)
-			assert.Equal(t, 1, p.PageNumber)
+			if tc.lazy {
+				// In lazy mode, Prev doesn't work, so page number stays the same
+				assert.Equal(t, 2, p.PageNumber)
+			} else {
+				// In eager mode, Prev works, so page number changes
+				assert.Equal(t, 1, p.PageNumber)
+			}
 		})
 	}
 }

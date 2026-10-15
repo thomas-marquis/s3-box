@@ -250,10 +250,11 @@ func (e *Editor) GetContent() string {
 	return builder.String()
 }
 
-const fileSizeROThreshold = 5 * 1024 // TODO: define it in factory
-
+// IsReadOnly returns true if the editor is in read-only mode.
+// For CSV editor, read-only mode is determined by the IsLazy flag,
+// which is set when the editor is created via FactoryRO (NewLazy).
 func (e *Editor) IsReadOnly() bool {
-	return e.File().SizeBytes() > fileSizeROThreshold
+	return e.IsLazy
 }
 
 func (e *Editor) updateContentHash(newContent string) {
